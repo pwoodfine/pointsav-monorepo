@@ -125,7 +125,7 @@ Last updated: 2026-04-25.
 | service-extraction | Active | service | 21 files; CLAUDE.md present but stale (see NEXT.md Item 9) |
 | service-fs | Active | service | 3 files; in workspace members; activated 2026-04-25 (project-data Task Claude); existing `src/main.rs` is no_std/no_main seL4-unikernel scaffold flagged as drift in `service-fs/CLAUDE.md` "Current state"; left untouched pending Master ratification of MCP-server rewrite (cluster outbox `ring1-scaffold-runtime-model-drift`) |
 | service-http | Scaffold-coded | service | 9 files |
-| service-input | Reserved-folder | service | 2 files (README.md + README.es.md); created 2026-04-25 (project-data Task Claude) per CLAUDE.md §9; Ring 1 generic document ingest — pluggable parser dispatcher (oxidize-pdf, docx-rust, calamine, pulldown-cmark per SLM-STACK §3.4); writes through `service-fs` (WORM), read by `service-extraction` (Ring 2) over MCP |
+| service-input | Active | service | 4 files (README.md + README.es.md + CLAUDE.md + NEXT.md); created and activated 2026-04-25 (project-data Task Claude) in two consecutive commits per CLAUDE.md §9; Ring 1 generic document ingest — pluggable parser dispatcher (oxidize-pdf, docx-rust, calamine, pulldown-cmark per SLM-STACK §3.4); writes through `service-fs` (WORM), read by `service-extraction` (Ring 2) over MCP; Cargo crate scaffold pending |
 | service-message-courier | Reserved-folder | service | 1 file |
 | service-people | Scaffold-coded | service | 17 files; in workspace members |
 | service-pty-bridge | Scaffold-coded | service | Renamed 2026-04-23 from `pointsav-pty-bridge` (brand-prefix violation resolved); 1 source file (`src/main.rs`); not a workspace member |
@@ -184,9 +184,9 @@ Last updated: 2026-04-25.
 
 ## Summary (2026-04-25)
 
-- **Active:** 5 (`app-console-bookkeeper`, `app-workplace-presentation`, `app-workplace-proforma`, `service-extraction`, `service-fs`)
+- **Active:** 6 (`app-console-bookkeeper`, `app-workplace-presentation`, `app-workplace-proforma`, `service-extraction`, `service-fs`, `service-input`)
 - **Scaffold-coded:** 52
-- **Reserved-folder:** 37
+- **Reserved-folder:** 36
 - **Defect:** 0
 - **Not-a-project:** 2 (`discovery-queue`, `target`)
 - **Dormant:** 0
