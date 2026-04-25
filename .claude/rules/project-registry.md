@@ -127,7 +127,7 @@ Last updated: 2026-04-25.
 | service-http | Scaffold-coded | service | 9 files |
 | service-input | Active | service | 4 files (README.md + README.es.md + CLAUDE.md + NEXT.md); created and activated 2026-04-25 (project-data Task Claude) in two consecutive commits per CLAUDE.md §9; Ring 1 generic document ingest — pluggable parser dispatcher (oxidize-pdf, docx-rust, calamine, pulldown-cmark per SLM-STACK §3.4); writes through `service-fs` (WORM), read by `service-extraction` (Ring 2) over MCP; Cargo crate scaffold pending |
 | service-message-courier | Reserved-folder | service | 1 file |
-| service-people | Scaffold-coded | service | 17 files; in workspace members |
+| service-people | Active | service | 17+ files; in workspace members; activated 2026-04-25 (project-data Task Claude); existing scaffold is near-empty Rust stub (`system_status()` placeholder) plus pre-framework Python (`service-people.py`), seed JSON (`ledger_personnel.json`), and 5 uninventoried sub-directories (`sovereign-acs-engine/`, `spatial-crm/`, `spatial-ledger/`, `substrate/`, `tools/`); inventory of those sub-directories is the first NEXT.md item before schema work |
 | service-pty-bridge | Scaffold-coded | service | Renamed 2026-04-23 from `pointsav-pty-bridge` (brand-prefix violation resolved); 1 source file (`src/main.rs`); not a workspace member |
 | service-search | Reserved-folder | service | 1 file |
 | service-slm | Scaffold-coded | service | Contains `router/` (Rust runtime, renamed 2026-04-23 from `cognitive-forge/`) and `router-trainer/` (Python distillation workflow, moved in 2026-04-23 from former top-level `tool-cognitive-forge/`); both names replace the retired "cognitive-forge" term per Do-Not-Use list |
@@ -184,8 +184,8 @@ Last updated: 2026-04-25.
 
 ## Summary (2026-04-25)
 
-- **Active:** 6 (`app-console-bookkeeper`, `app-workplace-presentation`, `app-workplace-proforma`, `service-extraction`, `service-fs`, `service-input`)
-- **Scaffold-coded:** 52
+- **Active:** 7 (`app-console-bookkeeper`, `app-workplace-presentation`, `app-workplace-proforma`, `service-extraction`, `service-fs`, `service-input`, `service-people`)
+- **Scaffold-coded:** 51
 - **Reserved-folder:** 36
 - **Defect:** 0
 - **Not-a-project:** 2 (`discovery-queue`, `target`)
