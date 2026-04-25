@@ -2,6 +2,7 @@
 
 > Last updated: 2026-04-27
 > Last updated: 2026-04-27 (session 7)
+> Last updated: 2026-04-25
 > Read at session start. Update before session end so the next
 > session knows where to pick up.
 
@@ -28,6 +29,15 @@
   both services and exercises the full append-lookup cycle.
 
 ## Queue
+
+## Queue
+
+- Define the Identity Ledger schema — canonical key per identity,
+  multi-endpoint communication addresses, role/relationship
+  attributes. Publish in a `schema/` subdirectory; downstream Ring
+  2 consumers depend on it.
+- MCP server interface — resources for identity reads, tools for
+  identity append/update. Per-tenant moduleId isolation.
 - Append integration with `service-fs` — identity record writes
   flow through the WORM ledger; this crate never persists
   directly.
