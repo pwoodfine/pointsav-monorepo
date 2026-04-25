@@ -8,7 +8,7 @@ must be closed.
 
 State vocabulary — see `~/Foundry/CLAUDE.md` §8 for definitions.
 
-Last updated: 2026-04-23.
+Last updated: 2026-04-25.
 
 ---
 
@@ -123,7 +123,7 @@ Last updated: 2026-04-23.
 | service-email-egress-imap | Scaffold-coded | service | IMAP protocol adapter; doubly-nested wrapper flattened 2026-04-23; 4 sub-crates; parallel structure to `-ews` but without prune/balancer |
 | service-email-template | Scaffold-coded | service | 5 files |
 | service-extraction | Active | service | 21 files; CLAUDE.md present but stale (see NEXT.md Item 9) |
-| service-fs | Scaffold-coded | service | 3 files; in workspace members |
+| service-fs | Active | service | 3 files; in workspace members; activated 2026-04-25 (project-data Task Claude); existing `src/main.rs` is no_std/no_main seL4-unikernel scaffold flagged as drift in `service-fs/CLAUDE.md` "Current state"; left untouched pending Master ratification of MCP-server rewrite (cluster outbox `ring1-scaffold-runtime-model-drift`) |
 | service-http | Scaffold-coded | service | 9 files |
 | service-message-courier | Reserved-folder | service | 1 file |
 | service-people | Scaffold-coded | service | 17 files; in workspace members |
@@ -181,10 +181,10 @@ Last updated: 2026-04-23.
 
 ---
 
-## Summary (2026-04-23)
+## Summary (2026-04-25)
 
-- **Active:** 4 (`app-console-bookkeeper`, `app-workplace-presentation`, `app-workplace-proforma`, `service-extraction`)
-- **Scaffold-coded:** 53
+- **Active:** 5 (`app-console-bookkeeper`, `app-workplace-presentation`, `app-workplace-proforma`, `service-extraction`, `service-fs`)
+- **Scaffold-coded:** 52
 - **Reserved-folder:** 36
 - **Defect:** 0
 - **Not-a-project:** 2 (`discovery-queue`, `target`)
