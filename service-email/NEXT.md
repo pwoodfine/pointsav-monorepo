@@ -34,11 +34,17 @@
   separate registry note (2026-04-23) flags
   Cargo.toml-name-vs-directory-name mismatches in this area —
   beware those when wiring the dependency.
-- Inventory the four pre-framework sub-directories in this crate
-  (`ingress-harvester/`, `master-harvester-rs/`,
-  `sovereign-splinter/`, `scripts/`) and the
-  `TEMPLATE_INDEX_MSFT_ENTRA_ID.md` index template. Decide
-  per-item: keep, rename, retire, or relocate.
+- **`sovereign-splinter/` rename.** Cargo.toml `name` field is
+  `sovereign-splinter` — "sovereign" prefix is Do-Not-Use per
+  workspace conventions. Rename to `email-splitter` (or fold into
+  `service-email/src/` as the `.eml` parsing module). The
+  `spool-daemon.sh` binary path reference updates with it.
+- **`ingress-harvester/` + `master-harvester-rs/` retirement.**
+  Both use the deprecated in-process OAuth pattern. Retire once the
+  EWS rebase is live and the same email-harvesting surface exists
+  in `service-email/src/`. The micro-batching concept from
+  `master-harvester-rs/` (BATCH_SIZE=3) is worth preserving in the
+  rebased daemon loop.
 - Replace `maildir::MaildirVault` writes with `service-fs` MCP
   append calls. The `MaildirVault` is a transition-period sink;
   the long-term shape persists message bodies through the WORM
@@ -75,6 +81,16 @@
   concern downstream of the ledger.
 
 ## Recently done
+
+- 2026-04-26: **pre-framework subdirectory inventory complete.**
+  Four subdirectories + one root template assessed; decisions:
+  | Item | Decision |
+  |---|---|
+  | `ingress-harvester/` | **Retire-pending** — Rust async; EWS SOAP harvester but with inline OAuth `client_credentials` (deprecated pattern); hardcoded folder IDs. Retire once EWS rebase lands. |
+  | `master-harvester-rs/` | **Retire-pending** — Rust async; Graph API (deprecated); dynamic folder discovery + micro-batching (BATCH_SIZE=3) concepts worth porting to rebased daemon. |
+  | `sovereign-splinter/` | **Keep core; rename** — Rust binary; mailparse-based `.eml` parser; routing logic (maildir → service-people/discovery-queue + service-slm/transient-queues + assets/inert-media) superseded by MCP append calls. "sovereign" prefix is Do-Not-Use → queue rename to `email-splitter`. |
+  | `scripts/` | **Correctly placed** — `spool-daemon.sh` already in `scripts/` per repo-layout.md. Calls sovereign-splitter binary; update path reference when renamed. |
+  | `TEMPLATE_INDEX_MSFT_ENTRA_ID.md` | **Relocated** — Moved from repo root to `docs/` (repo-layout.md compliance). Done this session. |
 
 - 2026-04-25: project activated per `~/Foundry/CLAUDE.md` §9 —
   this CLAUDE.md, this NEXT.md, and the registry row created in
