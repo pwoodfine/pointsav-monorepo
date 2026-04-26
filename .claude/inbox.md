@@ -17,5 +17,7 @@ If this inbox accumulates more than 5 pending items, post a NOTAM
 ---
 
 *(no pending messages — last cleared 2026-04-26 at session-end of
-the first cluster session; see `inbox-archive.md` for actioned
-messages and `outbox.md` for outbound to Master)*
+the second cluster session; Master's `ring1-scaffold-runtime-
+model-drift` ratifications and Doctrine v0.0.2 brief are
+archived in `inbox-archive.md`; session-end summary sent via
+`outbox.md`)*

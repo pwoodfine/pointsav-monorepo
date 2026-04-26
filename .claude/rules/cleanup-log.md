@@ -96,7 +96,125 @@ Newest on top. Append a dated block when a session includes meaningful cleanup w
 
 ---
 
-## 2026-04-26
+## 2026-04-26 (second session)
+
+- **Master ratification actioned in full.** Master's inbox message
+  2026-04-26T07:20Z ratified the three decisions surfaced in the
+  prior session's outbox `ring1-scaffold-runtime-model-drift`. All
+  three actioned this session in three commits.
+- **Decision 2 — seL4 scaffold relocated.** Commit `7519390`.
+  Four `git mv` renames preserved history:
+  - `service-fs/src/main.rs` → `vendor-sel4-fs/src/main.rs`
+  - `service-fs/.cargo/config.toml` →
+    `vendor-sel4-fs/.cargo/config.toml`
+  - `service-fs/Cargo.toml` → `vendor-sel4-fs/Cargo.toml` (package
+    name updated in transit; description rewritten to cite the
+    relocation rationale)
+  - `service-fs/Cargo.lock` → `vendor-sel4-fs/Cargo.lock`
+  Created bilingual READMEs at `vendor-sel4-fs/README.md` +
+  `vendor-sel4-fs/README.es.md` per CLAUDE.md §6 (vendor-tier
+  bilingual). Added registry row for `vendor-sel4-fs` in the
+  Vendor section between `vendor-phi3-mini` and
+  `vendor-sel4-kernel` as Reserved-folder. Service-fs registry
+  row updated to record the relocation.
+- **Decision 1 — service-fs Tokio MCP-server skeleton.** Commit
+  `af73232`. New contents:
+  - `Cargo.toml` (tokio + axum 0.7 + serde + tracing + anyhow);
+    package version reset 1.0.1 → 0.1.0 (the 1.0.1 stream
+    belonged to the relocated bare-metal scaffold; this is a
+    fresh hosted skeleton with a different runtime model).
+  - `src/main.rs` — Tokio entrypoint reading `FS_BIND_ADDR`,
+    `FS_MODULE_ID` (required), `FS_LEDGER_ROOT` (required) from
+    env.
+  - `src/http.rs` — axum router with `/healthz`, `/readyz`,
+    `/v1/contract`, `/v1/append`, `/v1/entries`. Per-tenant
+    `X-Foundry-Module-ID` enforcement on the two business
+    endpoints (mismatch → 403). `ApiError` type wraps internal
+    errors with HTTP status + JSON body.
+  - `src/ledger.rs` — `WormLedger` primitive enforcing the
+    append-only invariant at the API surface. In-memory
+    `Vec<Entry>` placeholder (first NEXT.md item: swap for
+    hash-addressed segment files in immutable directories).
+    Three unit tests pass: append assigns monotonic cursors,
+    read_since filters strictly greater, read_since(0) returns
+    all.
+  - `README.md` + `README.es.md` — bilingual pair; the project
+    never had READMEs before this commit (silently violating the
+    bilingual rule from activation; closed in transit).
+  - `cargo check` + `cargo test` both pass clean.
+  Reference shape: slm-doorman-server in the `project-slm`
+  cluster (`78031c4`); Master named this in the ratification
+  message. Inherited the Tokio + axum + ApiError + tracing
+  pattern; adapted for WORM-ledger semantics + per-tenant
+  moduleId boundary.
+- **Decision 3 — workspace membership held; re-add deferred
+  behind Layer 1 audit.** Removed `service-fs` from root
+  `Cargo.toml` `[workspace.members]`; added a new
+  `[workspace.exclude]` array containing `service-fs` and
+  `vendor-sel4-fs` (cargo requires explicit exclude when a
+  nested package exists outside `[members]`). Tried re-adding
+  `service-fs` to `[members]` once the rewrite passed clean per
+  Master's "re-add when builds clean" instruction; workspace-
+  level `cargo check --workspace` then failed with `openssl-sys`
+  system-dep missing — pulled in by an existing sibling member,
+  not by service-fs. Reverted the re-add because the failure is
+  pre-existing Layer 1 audit work, not service-fs's problem.
+  Re-add tracked as Blocked in `service-fs/NEXT.md`.
+- **Bilingual-README hygiene closed in transit.** `service-fs`
+  was activated 2026-04-25 without bilingual READMEs (silent
+  violation of CLAUDE.md §6 / repo-layout.md "Required" entries).
+  This session's Decision 1 commit added both
+  `service-fs/README.md` and `service-fs/README.es.md`
+  alongside the new Cargo manifest and src/. No separate
+  cleanup commit needed.
+- **Cluster manifest backfilled by Master, tracked here this
+  session.** `~/Foundry/clones/project-data/.claude/manifest.md`
+  was created by Master in their v0.0.2 drop (file landed
+  untracked between sessions). Read at session start; will be
+  added to git in the session-end commit so future sessions see
+  it as part of the tracked state.
+- **Doctrine v0.0.2 conventions applied.** Read
+  `~/Foundry/conventions/trajectory-substrate.md` and
+  `~/Foundry/conventions/bcsc-disclosure-posture.md`. The latter's
+  forward-looking-information rule (§Rule 1) governs prose about
+  future capability — already followed in the per-project
+  CLAUDE.md / NEXT.md files written this session
+  ("planned"/"intended"/"first NEXT.md item" rather than
+  declarative future-tense). Trajectory-capture wiring
+  (`capture-edit:` log lines on every commit this session) is
+  Master's workspace-tier responsibility per `trajectory-
+  substrate.md`; transparent to my work.
+- **Workspace `.toggle` continues to alternate across sessions.**
+  This session's three commits authored Jennifer / Peter /
+  Jennifer (next: Peter for the session-end commit). Pattern
+  consistent with Master's confirmation that the toggle is
+  shared workspace state; no anomaly this session.
+- **Registry summary updated.** Active unchanged at 8;
+  Scaffold-coded unchanged at 50; Reserved-folder 36 → 37 (added
+  `vendor-sel4-fs`); Total 98 → 99 (one new project).
+- **Customer-first sequencing for next session.** Per the
+  customer-first ordering convention and Master's inbox
+  message, the next pickup proposal in the session-end outbox
+  is `service-input` parser-dispatcher scaffold — the next-most-
+  productive item now that service-fs has a working consumer
+  surface (`/v1/append`).
+- **Pending items carried to next session in this cluster:**
+  1. service-input parser-dispatcher scaffold (Right-now
+     proposed for next session)
+  2. service-fs storage swap (in-memory → hash-addressed
+     segment files)
+  3. service-fs MCP-server interface layered on JSON-over-HTTP
+  4. service-email EWS auth rebase
+  5. service-people + service-email pre-framework subdirectory
+     inventory
+  6. service-fs systemd unit file (workspace-tier; coordinate
+     via Master)
+  7. Re-add service-fs to workspace `[members]` (Blocked on
+     Layer 1 openssl-sys cleanup)
+
+---
+
+## 2026-04-26 (first session)
 
 - **First Task Claude session in `cluster/project-data` (Ring 1)
   completed.** Acted on three inbox messages from Master Claude
