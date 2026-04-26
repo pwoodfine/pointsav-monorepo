@@ -8,17 +8,19 @@
 
 ## Right now
 
-- **L1 POSIX tile backend** per
-  `~/Foundry/conventions/worm-ledger-design.md` §5 step 2.
-  Implement `PosixTileLedger` writing C2SP tlog-tiles to
-  `FS_LEDGER_ROOT`. New tests beyond the 3 inherited from L2:
-  durability (write, simulate restart, read back); inclusion
-  proof; consistency proof. The L2 trait surface grows here —
-  add `checkpoint() -> SignedNote`, `verify_inclusion(...)`,
-  `verify_consistency(...)` per worm-ledger-design.md §2 (the
-  in-memory backend's verify_* implementations can be trivial
-  pass-throughs since the in-memory case has no on-disk tile
-  structure to verify against).
+- **Checkpoint signing** per
+  `~/Foundry/conventions/worm-ledger-design.md` §5 step 3. The
+  `Checkpoint::signature` field is `None` today; populate it with
+  a real Ed25519 signed-note signature. Add `FS_SIGNING_KEY` env
+  var (path to a key file); load on `PosixTileLedger::open` (and
+  in tests via a fixture key); compute the signed-note format
+  body (`origin\ntree_size\nbase64(root_hash)\n\n`) and sign;
+  return populated `Checkpoint` from `checkpoint()`. Add
+  `--verify-checkpoint` test path that takes the signature + the
+  tenant's public key and verifies independently of the daemon
+  (so a Customer can keep verification capability after Vendor
+  breakout per Doctrine claim #28). Update `LedgerBackend` trait
+  to take `signing_key` on `open` per worm-ledger-design.md §2.
 
 ## Queue
 
@@ -72,6 +74,31 @@
 
 ## Recently done
 
+- 2026-04-26: **L1 PosixTileLedger backend** per
+  `~/Foundry/conventions/worm-ledger-design.md` §5 step 2. New
+  `service-fs/src/posix_tile.rs` — persistent newline-delimited
+  JSON log at `<root>/<moduleId>/log.jsonl`, D4 atomic-write
+  discipline (write `.tmp` → fsync → rename → chmod 0o444),
+  reload-on-open with chain integrity verification (returns
+  `ChainTampered` if any record's stored hash diverges from the
+  recomputed value). `LedgerBackend` trait grew by three methods:
+  `checkpoint() -> Checkpoint` (linear-chain tip; `signature`
+  field `None` today, populated in step 3); `verify_inclusion`
+  + `verify_consistency` (chain segments as v0.1.x proofs;
+  Merkle-tree upgrade is a follow-up that keeps the trait
+  surface unchanged). Both `InMemoryLedger` and `PosixTileLedger`
+  implement the full trait. `main.rs` swapped to construct
+  `PosixTileLedger` by default. `http.rs` got `/v1/checkpoint`
+  endpoint + extended `ApiError` to map all `LedgerError`
+  variants to the right HTTP status (400/403/404/409/500). 7
+  new tests on `PosixTileLedger`: durability across restart,
+  checkpoint-after-restart consistency, chain extension after
+  restart, tamper detection on reload, file-mode 0o444
+  enforcement, empty-ledger checkpoint, verify_inclusion after
+  restart. 11 trait-surface tests on `InMemoryLedger` cover
+  checkpoint advance, inclusion success+failure, consistency
+  success+failure, chain-origin stability. Total **18 unit
+  tests pass clean**.
 - 2026-04-26: **L2 trait extraction** per
   `~/Foundry/conventions/worm-ledger-design.md` §5 step 1. Factored
   `WormLedger` struct into `LedgerBackend` trait + `InMemoryLedger`

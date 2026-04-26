@@ -39,6 +39,7 @@
 
 mod http;
 mod ledger;
+mod posix_tile;
 
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -46,7 +47,7 @@ use std::sync::Arc;
 use anyhow::Context;
 use tracing::info;
 
-use crate::ledger::InMemoryLedger;
+use crate::posix_tile::PosixTileLedger;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -63,11 +64,14 @@ async fn main() -> anyhow::Result<()> {
     let ledger_root = std::env::var("FS_LEDGER_ROOT")
         .context("FS_LEDGER_ROOT is required (absolute path to WORM segment directory)")?;
 
-    // Today the storage backend is the in-memory L2 trait
-    // implementation; next commit per worm-ledger-design.md §5 step
-    // 2 swaps in PosixTileLedger behind the same trait.
+    // Persistent POSIX hash-chain backend per
+    // ~/Foundry/conventions/worm-ledger-design.md §5 step 2.
+    // Loads existing entries on open + verifies the chain (returns
+    // ChainTampered if any record's stored hash diverges from the
+    // recomputed value). InMemoryLedger remains available behind
+    // the same trait for tests + as a fallback.
     let ledger: Box<dyn ledger::LedgerBackend + Send + Sync> =
-        Box::new(InMemoryLedger::open(&ledger_root)
+        Box::new(PosixTileLedger::open(&ledger_root, &module_id)
             .with_context(|| format!("failed to open WORM ledger at {ledger_root}"))?);
 
     let state = Arc::new(http::AppState {

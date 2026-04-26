@@ -374,19 +374,27 @@ service-fs/src/
 │                   backend). 3 unit tests run against the trait
 │                   surface so the same suite will exercise the
 │                   future PosixTileLedger.
+├── posix_tile.rs — PosixTileLedger LedgerBackend impl. Persistent
+│                    newline-delimited JSON log at
+│                    <root>/<moduleId>/log.jsonl. D4 atomic-write
+│                    discipline (write .tmp → fsync → rename →
+│                    chmod 0o444). Chain integrity verified on
+│                    open() — ChainTampered on mismatch. 7 unit
+│                    tests cover durability, restart, tamper
+│                    detection, file-mode enforcement.
 └── (future, per worm-ledger-design.md §5)
-    ├── posix_tile.rs     — PosixTileLedger LedgerBackend impl
-    │                       (C2SP tlog-tiles on disk); replaces
-    │                       in-memory backend in main.rs at startup
-    ├── checkpoint.rs     — signed-note serialisation + signing
+    ├── checkpoint.rs     — signed-note Ed25519 signing wired
+    │                       into Checkpoint::signature (today
+    │                       always None; lands in step 3)
     ├── audit_log.rs      — sub-ledger for ADR-07 read tracking
-    └── mcp.rs            — MCP-server protocol layer
+    │                       (step 4)
+    └── mcp.rs            — MCP-server protocol layer (step 5)
 ```
 
-L2 trait extraction landed (this commit). Future backends slot in
-behind the same trait without touching `main.rs` or `http.rs`:
-- `PosixTileLedger` (next per worm-ledger-design.md §5 step 2) —
-  C2SP tlog-tiles on POSIX filesystem
+L2 trait extraction landed `1e86047`. L1 PosixTileLedger landed
+`<this commit>` — `main.rs` constructs PosixTileLedger by default.
+Future backends slot in behind the same trait without touching
+`main.rs` or `http.rs`:
 - `MoonshotDatabaseLedger` (long-term per D7) —
   capability-mediated tile bytes through `moonshot-database` IPC
 

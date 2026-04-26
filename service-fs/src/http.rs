@@ -40,7 +40,7 @@ use axum::Router;
 use serde::{Deserialize, Serialize};
 use tracing::{info, warn};
 
-use crate::ledger::{LedgerBackend, LedgerError};
+use crate::ledger::{Checkpoint, LedgerBackend, LedgerError};
 
 pub struct AppState {
     pub module_id: String,
@@ -58,6 +58,7 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route("/v1/contract", get(contract))
         .route("/v1/append", post(append))
         .route("/v1/entries", get(entries))
+        .route("/v1/checkpoint", get(checkpoint))
         .with_state(state)
 }
 
@@ -199,6 +200,15 @@ async fn entries(
     }))
 }
 
+async fn checkpoint(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+) -> Result<Json<Checkpoint>, ApiError> {
+    enforce_module_id(&state, &headers)?;
+    let cp = state.ledger.checkpoint().map_err(ApiError::from)?;
+    Ok(Json(cp))
+}
+
 fn enforce_module_id(state: &AppState, headers: &HeaderMap) -> Result<(), ApiError> {
     let supplied = headers
         .get("x-foundry-module-id")
@@ -246,7 +256,10 @@ impl ApiError {
 impl From<LedgerError> for ApiError {
     fn from(e: LedgerError) -> Self {
         let status = match &e {
-            LedgerError::Io(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            LedgerError::Io(_) | LedgerError::Serde(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            LedgerError::EntryNotFound(_) => StatusCode::NOT_FOUND,
+            LedgerError::ChainTampered { .. } => StatusCode::INTERNAL_SERVER_ERROR,
+            LedgerError::InconsistentCheckpoints { .. } => StatusCode::CONFLICT,
         };
         Self {
             status,

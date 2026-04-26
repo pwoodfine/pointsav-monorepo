@@ -87,25 +87,41 @@ service-fs/
 └── src/
     ├── main.rs            — Tokio entrypoint; reads FS_BIND_ADDR,
     │                        FS_MODULE_ID, FS_LEDGER_ROOT from env;
-    │                        constructs InMemoryLedger and wraps in
-    │                        Box<dyn LedgerBackend + Send + Sync>;
+    │                        constructs PosixTileLedger and wraps
+    │                        in Box<dyn LedgerBackend + Send + Sync>;
     │                        spins axum on the bind addr
-    ├── http.rs            — axum router + endpoint handlers;
+    ├── http.rs            — axum router + 6 endpoint handlers
+    │                        (/healthz, /readyz, /v1/contract,
+    │                        /v1/append, /v1/entries, /v1/checkpoint);
     │                        per-tenant moduleId enforcement on
-    │                        /v1/append and /v1/entries; ApiError
-    │                        type wraps internal errors with HTTP
-    │                        status + JSON body; depends on the
+    │                        the four business endpoints; ApiError
+    │                        wraps LedgerError variants with the
+    │                        appropriate HTTP status (400 / 403 /
+    │                        404 / 409 / 500); depends on the
     │                        LedgerBackend trait, not a concrete
     │                        backend
-    └── ledger.rs          — L2 LedgerBackend trait per worm-ledger-
-                             design.md §2 (append / read_since /
-                             root today; checkpoint + verify_*
-                             grow with steps 2–3 of the
-                             implementation roadmap); InMemoryLedger
-                             implementation behind the trait;
-                             3 unit tests run against the trait
-                             surface so the same suite will exercise
-                             the future PosixTileLedger
+    ├── ledger.rs          — L2 LedgerBackend trait + InMemoryLedger
+    │                        impl. Trait carries six methods per
+    │                        worm-ledger-design.md §2: append /
+    │                        read_since / root / checkpoint /
+    │                        verify_inclusion / verify_consistency.
+    │                        Linear SHA-256 hash chain enforces
+    │                        structural tamper-evidence; Merkle-
+    │                        tree upgrade is a follow-up (logarithmic
+    │                        proofs without changing the trait
+    │                        surface). 11 unit tests cover the
+    │                        trait surface against InMemoryLedger.
+    └── posix_tile.rs      — PosixTileLedger LedgerBackend impl.
+                             Persistent log at <root>/<moduleId>/
+                             log.jsonl (newline-delimited JSON
+                             records). D4 atomic-write discipline
+                             on every append: write .tmp → fsync →
+                             rename → chmod 0o444. Chain integrity
+                             verified on open() (returns
+                             ChainTampered on mismatch). 7 unit
+                             tests cover durability across restart,
+                             tamper detection, file-mode enforcement,
+                             chain-extension after restart.
 ```
 
 ## Hard constraints — do not violate
