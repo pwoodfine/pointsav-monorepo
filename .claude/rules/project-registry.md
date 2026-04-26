@@ -118,7 +118,7 @@ Last updated: 2026-04-25.
 | service-bim | Reserved-folder | service | 1 file (RESEARCH.md); research phase |
 | service-content | Scaffold-coded | service | 37 files; in workspace members |
 | service-egress | Scaffold-coded | service | 4 files |
-| service-email | Scaffold-coded | service | 18 files |
+| service-email | Active | service | 18+ files; in workspace members; activated 2026-04-25 (project-data Task Claude); existing `src/auth.rs` + `src/graph_client.rs` use Microsoft Graph REST + inline OAuth `client_credentials` — flagged as drift in CLAUDE.md "Current state"; operator decision 2026-04-25 (real user-turn) directs rebase onto EWS-based MSFT auth pattern proven in sibling `service-email-egress-ews/` (env-var `AZURE_ACCESS_TOKEN` + SOAP `ews_payload.xml`); Tokio runtime model preserved; four pre-framework sub-directories (`ingress-harvester/`, `master-harvester-rs/`, `sovereign-splinter/`, `scripts/`) left in place pending inventory |
 | service-email-egress-ews | Scaffold-coded | service | EWS protocol adapter; doubly-nested wrapper flattened 2026-04-23 (prior "consolidation" plan reversed — kept separate from `-imap` because they are two protocol-specific implementations, not duplicates); 6 sub-crates including EWS-only `egress-prune` and `egress-balancer`; Cargo.toml name mismatches (13 total across both) remain as separate audit finding |
 | service-email-egress-imap | Scaffold-coded | service | IMAP protocol adapter; doubly-nested wrapper flattened 2026-04-23; 4 sub-crates; parallel structure to `-ews` but without prune/balancer |
 | service-email-template | Scaffold-coded | service | 5 files |
@@ -184,8 +184,8 @@ Last updated: 2026-04-25.
 
 ## Summary (2026-04-25)
 
-- **Active:** 7 (`app-console-bookkeeper`, `app-workplace-presentation`, `app-workplace-proforma`, `service-extraction`, `service-fs`, `service-input`, `service-people`)
-- **Scaffold-coded:** 51
+- **Active:** 8 (`app-console-bookkeeper`, `app-workplace-presentation`, `app-workplace-proforma`, `service-email`, `service-extraction`, `service-fs`, `service-input`, `service-people`)
+- **Scaffold-coded:** 50
 - **Reserved-folder:** 36
 - **Defect:** 0
 - **Not-a-project:** 2 (`discovery-queue`, `target`)
