@@ -25,23 +25,26 @@ services as MCP clients.
 
 ## Current state
 
-The directory contains a heterogeneous mix of pre-framework
-artefacts:
+Inventoried 2026-04-26. Pre-framework subdirectories assessed;
+per-item decisions in `NEXT.md` Recently done section.
 
-- `Cargo.toml` (minimal `[package]`, no dependencies)
-- `src/lib.rs` (3-line `system_status()` placeholder)
-- `service-people.py` (4 KB Python script — pre-framework)
-- `ledger_personnel.json` (sample/seed data)
-- `sovereign-acs-engine/`, `spatial-crm/`, `spatial-ledger/`,
-  `substrate/`, `tools/` (each a sub-directory; not yet inventoried
-  in detail)
+- `Cargo.toml` — minimal stub, no dependencies
+- `src/lib.rs` — 3-line `system_status()` placeholder
+- `service-people.py` — pre-framework Python; retire-pending
+- `ledger_personnel.json` — placeholder seed contacts; retire-pending
+- `sovereign-acs-engine/` — Rust binary: email regex + UUIDv5
+  Anchor/Claim JSONL; informs Identity Ledger schema; Do-Not-Use
+  "sovereign" prefix in Cargo name (`→ people-acs-engine`); keep
+- `spatial-ledger/` — Rust binary: batch ledger-writer from
+  `discovery-queue/` → `substrate/ledger_personnel.jsonl`; keep
+  until MCP + service-fs pipeline replaces it
+- `spatial-crm/` — Rust binary: cross-ring entity extractor
+  (writes to `service-slm/transient-queues`); retire-pending
+- `substrate/` — runtime data directory; `*.jsonl` gitignored 2026-04-26
+- `scripts/` — `extract-people-ledger.sh` (moved from `tools/`)
 
-The `system_status()` Rust scaffold is a near-empty stub. The
-authoritative shape of the Identity Ledger — schema, MCP surface,
-relationship to `service-fs`'s WORM ledger — is the work this
-activation opens up. Existing sub-directories may carry useful
-prior thinking; cataloguing them is the first NEXT.md item before
-deciding what to keep, rename, or retire.
+Next step (NEXT.md Right-now): define Identity Ledger schema,
+building on the Anchor/Claim pattern in `sovereign-acs-engine/`.
 
 No drift flags at activation time: the existing scaffold is
 near-empty Rust + adjacent prior-work artefacts, not bare-metal
@@ -60,16 +63,19 @@ defined.
 
 ```
 service-people/
-├── Cargo.toml             — minimal stub
+├── Cargo.toml              — minimal stub (no dependencies yet)
 ├── README.md, README.es.md — bilingual overview
-├── src/lib.rs             — 3-line system_status() placeholder
-├── service-people.py      — pre-framework Python; review-and-decide
-├── ledger_personnel.json  — sample/seed data; review-and-decide
-├── sovereign-acs-engine/  — sub-directory; uninventoried
-├── spatial-crm/           — sub-directory; uninventoried
-├── spatial-ledger/        — sub-directory; uninventoried
-├── substrate/             — sub-directory; uninventoried
-└── tools/                 — sub-directory; uninventoried
+├── CLAUDE.md, NEXT.md
+├── src/lib.rs              — 3-line system_status() placeholder
+├── service-people.py       — pre-framework Python; retire-pending
+├── ledger_personnel.json   — placeholder seed contacts; retire-pending
+├── sovereign-acs-engine/   — Rust binary; email-regex + UUIDv5
+│                             Anchor/Claim; keep; rename Do-Not-Use prefix
+├── spatial-ledger/         — Rust binary; discovery-queue → substrate JSONL
+├── spatial-crm/            — Rust binary; retire-pending (cross-ring)
+├── substrate/              — runtime data (*.jsonl gitignored)
+└── scripts/
+    └── extract-people-ledger.sh  — SSH+rsync substrate export
 ```
 
 ## Hard constraints — do not violate
