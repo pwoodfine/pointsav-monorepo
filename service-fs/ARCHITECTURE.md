@@ -1,11 +1,16 @@
 # ARCHITECTURE.md — service-fs
 
-> **Status:** Proposed (pending Master ratification of the
-> storage-design convention via cluster outbox
-> `worm-ledger-design-convention-proposal`)
+> **Status:** Ratified at workspace tier 2026-04-26 — design
+> convention authored at `~/Foundry/conventions/worm-ledger-design.md`
+> (workspace v0.1.7 / Doctrine v0.0.3, commit `6c0b79a`); this
+> per-project architecture overview reviewed and accepted with no
+> contradictions per Master's reply 2026-04-26T10:35Z.
 > **Last updated:** 2026-04-26
 > **Scope:** Durable architecture overview for `service-fs` —
-> the four-layer stack and the two boot envelopes.
+> the four-layer stack and the two boot envelopes. The substrate-
+> level four-layer pattern is now governed by
+> `~/Foundry/conventions/worm-ledger-design.md`; this per-project
+> file documents how `service-fs` specifically applies it.
 > **What this is not:** the full synthesis with alternatives and
 > sources is `RESEARCH.md`; the compliance posture is `SECURITY.md`;
 > the operational state and constraints are `CLAUDE.md`. This file

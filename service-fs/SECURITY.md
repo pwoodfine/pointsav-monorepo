@@ -1,8 +1,11 @@
 # SECURITY.md — service-fs compliance posture
 
-> **Status:** Posture statement (proposed; pending Master ratification
-> of the storage-design convention via cluster outbox
-> `worm-ledger-design-convention-proposal`)
+> **Status:** Ratified at workspace tier 2026-04-26 — design
+> convention authored at `~/Foundry/conventions/worm-ledger-design.md`
+> (workspace v0.1.7 / Doctrine v0.0.3, commit `6c0b79a`); external
+> WORM standards landed in DOCTRINE §IX (workspace v0.1.6 / Doctrine
+> v0.0.3, commit `ecee9fb`); this posture statement reviewed and
+> accepted with no contradictions per Master's reply 2026-04-26T10:35Z.
 > **Last updated:** 2026-04-26
 > **Scope:** WORM compliance posture for `service-fs` — what
 > external standards it targets, how the design satisfies each, and
