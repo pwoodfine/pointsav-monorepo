@@ -96,6 +96,98 @@ Newest on top. Append a dated block when a session includes meaningful cleanup w
 
 ---
 
+## 2026-04-26 (sixth session — 13-item task list completion)
+
+Full 13-task list from the sixth-session inbox executed in AUTO
+mode. Task list was not persistent across session boundary; inbox
+note (archived at session start) carried the canonical record.
+All 13 tasks landed in commits on `cluster/project-data`.
+
+**service-fs (tasks #1, #3, #4, #5):**
+- **Step 3 — checkpoint signing** (`b4ae62d` area): `ed25519-dalek`
+  + `sha2` deps; `Ed25519Signer` struct with `SigningKey` loaded
+  from `FS_SIGNING_KEY_HEX` env var; `Checkpoint` struct extended
+  with `signature` + `public_key` fields; `/v1/checkpoint` now
+  returns a signed checkpoint; `sign_checkpoint()` unit test added.
+- **Step 4 — ADR-07 audit-log sub-ledger**: separate
+  `AuditLedger` (second `PosixTileLedger` instance at
+  `<root>/_audit/log.jsonl`) records every append operation —
+  timestamp, module_id, cursor, sha256 of payload — without
+  routing any payload content through AI (ADR-07 compliance). HTTP
+  layer wires audit writes after each successful business append.
+- **Round-trip integration test** (`tests/ledger_roundtrip.rs`):
+  creates a temp-dir `PosixTileLedger`, appends 3 payloads, reads
+  them back, verifies cursors + content, forces a restart, verifies
+  chain integrity across the boundary. `tempfile` dep added for
+  `TempDir`.
+- **MCP-server interface layer**: `/mcp/tools/list` +
+  `/mcp/tools/call` endpoints; `append_record` and `read_records`
+  MCP tools; JSON-schema tool descriptors; `McpRequest` /
+  `McpResponse` / `McpToolResult` types in `src/mcp.rs`.
+
+**service-input (tasks #2, #6, #7, #8, #9, #10):**
+- **MarkdownParser via pulldown-cmark**: `src/markdown.rs`;
+  `pulldown_cmark` dep; strips HTML tags from event stream;
+  happy-path + empty-doc tests pass.
+- **DOCX parser via docx-rust**: `src/docx.rs`; `docx-rust` dep;
+  reads paragraph text from XML inside the ZIP; 2 error-path tests.
+- **XLSX parser via calamine**: `src/xlsx.rs`; `calamine` dep;
+  reads all sheets as tab-delimited text; 2 error-path tests.
+- **service-fs HTTP client integration**: `src/fs_client.rs`;
+  `reqwest` dep (rustls-tls); `FsClient::append()` + `read_since()`
+  calling service-fs `/v1/append` + `/v1/entries`; `FS_ENDPOINT`
+  env var; 2 unit tests (mock-free — error-path only).
+- **MCP server interface**: `src/mcp.rs`; axum-based
+  `/mcp/tools/list` + `/mcp/tools/call`; `parse_document` MCP tool
+  dispatches to Dispatcher; `FS_ENDPOINT` wires output through
+  FsClient; `src/http.rs` mounts MCP router.
+- **Happy-path PDF fixture**: `tests/fixtures/minimal.pdf` —
+  614-byte hand-crafted PDF 1.4 with Helvetica Type1 font +
+  `BT/ET` content stream encoding "Hello World"; Python-computed
+  xref offsets; oxidize-pdf 2.x extracts non-empty text. All 30
+  service-input tests pass.
+
+**service-people (task #11 — inventory):**
+- `sovereign-acs-engine/` — keep; Cargo name → `people-acs-engine`
+  (Do-Not-Use "sovereign" prefix; rename queued in NEXT.md)
+- `spatial-ledger/` — keep; precursor WORM batch writer; retire
+  when MCP pipeline is live
+- `spatial-crm/` — retire-pending (cross-ring coupling to
+  service-slm)
+- `substrate/` — runtime data; `ledger_personnel.jsonl` untracked +
+  gitignored (added `.gitignore` entry at monorepo root)
+- `tools/` → `scripts/`: `extract-people-ledger.sh` relocated via
+  `git mv` (repo-layout.md compliance)
+- `service-people.py` + `ledger_personnel.json` — retire-pending
+
+**service-email (tasks #12 + #13):**
+- **Inventory** (task #12): four pre-framework subdirs assessed;
+  `TEMPLATE_INDEX_MSFT_ENTRA_ID.md` relocated from repo root →
+  `docs/` (repo-layout.md compliance). Decisions in NEXT.md.
+- **EWS auth rebase** (task #13): `src/auth.rs` rewritten as
+  `EwsCredentials::from_env()` consuming `AZURE_ACCESS_TOKEN` from
+  env (no inline OAuth handshake); `src/graph_client.rs` renamed
+  to `src/ews_client.rs` via `git mv` + fully rewritten as
+  `EwsClient` (FindItem / GetItem-with-IncludeMimeContent /
+  UpdateItem-IsRead SOAP operations; string-based XML parsing;
+  base64 decode; bearer auth + ExchangeImpersonation header per
+  egress-roster/ews_payload.xml reference); `src/main.rs` daemon
+  loop rewritten; `Cargo.toml` updated (reqwest rustls-tls, base64
+  added, serde/serde_json removed, `[workspace]` table added for
+  standalone isolation); 6 unit tests pass clean.
+
+**Registry rows updated:** service-fs, service-input, service-people,
+service-email all refreshed with commit references and current state.
+
+**Next session pickup recommendations:**
+1. `sovereign-acs-engine/` Cargo name rename → `people-acs-engine`
+2. `sovereign-splinter/` rename → `email-splitter`
+3. `ingress-harvester/` + `master-harvester-rs/` retirement
+4. service-fs systemd unit file (Master/workspace-tier coordination)
+5. service-fs Sigstore Rekor monthly anchoring (Invention #7)
+
+---
+
 ## 2026-04-26 (fifth session — L1 PosixTileLedger + service-input PdfParser)
 
 - **Operator directive:** execute (1) service-fs L1 POSIX tile
