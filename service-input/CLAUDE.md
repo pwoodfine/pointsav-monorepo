@@ -39,31 +39,35 @@ separate decision tracked in NEXT.md.
 
 ## Build and test
 
-No build step yet — Cargo crate not initialised. The first commit
-in the Queue will add `Cargo.toml` + `src/lib.rs` with the
-parser-dispatcher trait.
+```
+cargo check    # standalone (service-input is workspace-excluded
+               # alongside service-fs while the openssl-sys Layer 1
+               # audit issue lives in a sibling member)
+cargo test     # runs the 11 unit tests covering format detection +
+               # dispatcher behaviour
+```
 
 ## File layout
 
 ```
 service-input/
-├── README.md             — English overview (bilingual pair)
-├── README.es.md          — Spanish overview (bilingual pair)
-├── CLAUDE.md             — this file
-└── NEXT.md               — work queue
-```
-
-After the first scaffold commit:
-
-```
-service-input/
-├── Cargo.toml            — crate manifest, no dependencies yet
-├── src/
-│   └── lib.rs            — parser-dispatcher trait + dispatch table
-├── README.md
-├── README.es.md
-├── CLAUDE.md
-└── NEXT.md
+├── Cargo.toml            — crate manifest; serde + serde_json today;
+│                           parser crates (oxidize-pdf, docx-rust,
+│                           calamine, pulldown-cmark) added as each
+│                           parser is wired
+├── README.md, README.es.md — bilingual overview
+├── CLAUDE.md, NEXT.md
+└── src/
+    └── lib.rs            — Format enum, ParsedDocument struct,
+                            ParseError enum, Parser trait,
+                            Dispatcher (per-format registry +
+                            dispatch + dispatch_with_detection),
+                            detect_format (extension-first, magic-
+                            byte fallback). 11 unit tests cover
+                            extension detection, magic-byte
+                            detection, ambiguous ZIP cases,
+                            dispatch + UnsupportedFormat behaviour.
+                            No format-specific parsers wired yet.
 ```
 
 ## Hard constraints — do not violate

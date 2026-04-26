@@ -19,10 +19,15 @@ exclude = [
     # Held-out crates that physically nest under the workspace root
     # but are deliberately not workspace members.
     # - service-fs: see members comment above
+    # - service-input: cargo crate scaffold landed 2026-04-26;
+    #   re-add to [members] blocked behind the same openssl-sys
+    #   Layer 1 audit issue as service-fs (pre-existing 2026-04-18
+    #   audit finding in a sibling member)
     # - vendor-sel4-fs: Reserved-folder bare-metal crate; different
     #   runtime model (its .cargo/config.toml targets
     #   x86_64-unknown-none)
     "service-fs",
+    "service-input",
     "vendor-sel4-fs",
 ]
 
