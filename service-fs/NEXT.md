@@ -56,6 +56,18 @@
 
 ## Recently done
 
+- 2026-04-26: **Round-trip integration tests** in `tests/round_trip.rs`.
+  Two `#[tokio::test]` cases: (1) `append_then_entries_returns_payload` —
+  POST `/v1/append` then GET `/v1/entries?since=0`, asserts payload
+  identity (cursor, payload_id, and JSON payload bytes all round-trip
+  unchanged) and `next_cursor` matches the last entry's cursor;
+  (2) `entries_since_excludes_boundary` — two appends, then GET
+  with `since=c1`, confirms only the second entry is returned (boundary
+  is exclusive). Added `[lib]` target (`src/lib.rs`) exposing
+  `router`, `AppState`, `posix_tile_open` helper for integration-test
+  use; `main.rs` updated to import from the library instead of
+  declaring modules directly. **25 tests pass total** (23 unit + 2
+  integration).
 - 2026-04-26: **Step 4 ADR-07 audit-log sub-ledger** per
   worm-ledger-design.md §5 step 4. `AppState` gained
   `audit_ledger: Box<dyn LedgerBackend + Send + Sync>`. The

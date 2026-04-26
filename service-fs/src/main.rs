@@ -37,17 +37,15 @@
 //! for the on-disk segment-file format that lands as the first
 //! NEXT.md item after `cargo check` passes clean.
 
-mod http;
-mod ledger;
-mod posix_tile;
-
 use std::net::SocketAddr;
 use std::sync::Arc;
 
 use anyhow::Context;
 use tracing::info;
 
-use crate::posix_tile::PosixTileLedger;
+use service_fs::ledger;
+use service_fs::posix_tile::PosixTileLedger;
+use service_fs::{router, AppState};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -97,7 +95,7 @@ async fn main() -> anyhow::Result<()> {
             })?,
     );
 
-    let state = Arc::new(http::AppState {
+    let state = Arc::new(AppState {
         module_id: module_id.clone(),
         ledger,
         audit_ledger,
@@ -112,7 +110,7 @@ async fn main() -> anyhow::Result<()> {
         "service-fs Ring 1 WORM ledger starting"
     );
 
-    let app = http::router(state);
+    let app = router(state);
     let listener = tokio::net::TcpListener::bind(bind_addr)
         .await
         .with_context(|| format!("failed to bind {bind_addr}"))?;

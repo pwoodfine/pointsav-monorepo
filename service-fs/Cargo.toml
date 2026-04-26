@@ -10,6 +10,10 @@ description = "Ring 1 WORM Immutable Ledger — per-tenant boundary-ingest servi
 # vendor-sel4-fs/. This is a fresh hosted MCP-server skeleton with
 # a different runtime model and an empty version stream.
 
+[lib]
+name = "service_fs"
+path = "src/lib.rs"
+
 [[bin]]
 name = "service-fs"
 path = "src/main.rs"
