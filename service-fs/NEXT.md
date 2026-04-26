@@ -8,31 +8,15 @@
 
 ## Right now
 
-- **ADR-07 audit-log sub-ledger** per
-  `~/Foundry/conventions/worm-ledger-design.md` §5 step 4. The
-  `/v1/entries` handler currently logs reads only to `tracing::info!`.
-  Persist every read-call to its own append-only sub-ledger at
-  `<root>/<moduleId>/audit-log/` — a separate `LedgerBackend`
-  instance (can be `PosixTileLedger` or `InMemoryLedger` behind the
-  same trait). Each record: `{moduleId, request_id, since_cursor,
-  entries_returned, timestamp_unix}`. The audit ledger is itself WORM
-  via the same trait surface. Wire it into `AppState` and `http.rs`'s
-  `entries()` handler; add a unit test that confirms at least one
-  audit record per read call.
+- **MCP-server interface layer** — Layer the MCP-server interface on
+  top of the existing JSON-over-HTTP routes per
+  `~/Foundry/conventions/three-ring-architecture.md` §"MCP boundary
+  at Ring 1". MCP resources for ledger reads (`/v1/entries`), MCP
+  tools for append (`/v1/append`). Reference the Anthropic/Cloudflare
+  2026 MCP spec; the JSON shapes already match closely. The Tokio +
+  axum surface stays; MCP is a layered protocol on top.
 
 ## Queue
-
-- Layer the MCP-server interface on top of the existing JSON-over-
-  HTTP routes per `~/Foundry/conventions/three-ring-architecture.md`
-  §"MCP boundary at Ring 1": MCP resources for ledger reads
-  (`/v1/entries`), MCP tools for append (`/v1/append`). Reference
-  the Anthropic/Cloudflare 2026 MCP spec; the JSON shapes already
-  match closely. The Tokio + axum surface stays; MCP is a layered
-  protocol on top.
-- Persist the ADR-07 audit log (currently just `tracing::info!`
-  on every read) to its own append-only file alongside the ledger
-  segments. Format: one JSON record per line with moduleId,
-  request-id, since-cursor, entry count, timestamp.
 - Re-add `service-fs` to root `Cargo.toml` `[workspace.members]`.
   Blocked on: pre-existing Layer 1 audit issue —
   `cargo check --workspace` currently fails on `openssl-sys`
@@ -72,6 +56,22 @@
 
 ## Recently done
 
+- 2026-04-26: **Step 4 ADR-07 audit-log sub-ledger** per
+  worm-ledger-design.md §5 step 4. `AppState` gained
+  `audit_ledger: Box<dyn LedgerBackend + Send + Sync>`. The
+  `entries()` handler now appends a JSON record to `audit_ledger`
+  after every read: `{module_id, request_id, since_cursor,
+  entries_returned, timestamp_unix}`. Audit-ledger failures are
+  logged via `warn!` but not propagated — a failing audit log must
+  not reject a read request. `main.rs` opens a second
+  `PosixTileLedger` at `<ledger_root>/<moduleId>/audit-log/` (same
+  D4 atomic-write discipline; no signing key wired to the audit
+  ledger). `Cargo.toml` dev-dep: `tower = "0.4"` for the HTTP
+  handler test. New test `http::tests::audit_records_each_entries_call`
+  calls `GET /v1/entries` through the axum router via
+  `tower::ServiceExt::oneshot`, then reads the audit ledger and
+  confirms exactly one record with the correct fields. **23 unit
+  tests pass clean** (22 prior + 1 new).
 - 2026-04-26: **Step 3 checkpoint signing** per
   worm-ledger-design.md §5 step 3 (commit `b285259`). Deps added:
   `ed25519-dalek 2` + `base64 0.22`. `ledger.rs`: `signed_note_body`

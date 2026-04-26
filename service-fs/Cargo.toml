@@ -14,6 +14,9 @@ description = "Ring 1 WORM Immutable Ledger — per-tenant boundary-ingest servi
 name = "service-fs"
 path = "src/main.rs"
 
+[dev-dependencies]
+tower = { version = "0.4", features = ["util"] }
+
 [dependencies]
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "net", "signal"] }
 axum = "0.7"

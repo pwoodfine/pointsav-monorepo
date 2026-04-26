@@ -40,7 +40,7 @@ use axum::Router;
 use serde::{Deserialize, Serialize};
 use tracing::{info, warn};
 
-use crate::ledger::{Checkpoint, LedgerBackend, LedgerError};
+use crate::ledger::{now_unix_seconds, Checkpoint, LedgerBackend, LedgerError};
 
 pub struct AppState {
     pub module_id: String,
@@ -49,6 +49,13 @@ pub struct AppState {
     /// §5 step 2: POSIX tile; long-term: moonshot-database) without
     /// changing the wire layer.
     pub ledger: Box<dyn LedgerBackend + Send + Sync>,
+    /// ADR-07 audit sub-ledger — persists every `/v1/entries` read
+    /// call as an append-only record per worm-ledger-design.md §5
+    /// step 4. Each record: `{moduleId, request_id, since_cursor,
+    /// entries_returned, timestamp_unix}`. Backed by the same
+    /// `LedgerBackend` trait as the main ledger; at runtime wired
+    /// to `PosixTileLedger` at `<root>/<moduleId>/audit-log/`.
+    pub audit_ledger: Box<dyn LedgerBackend + Send + Sync>,
 }
 
 pub fn router(state: Arc<AppState>) -> Router {
@@ -170,17 +177,29 @@ async fn entries(
         .read_since(query.since)
         .map_err(ApiError::from)?;
 
-    // ADR-07 audit hook: every Ring 2 read is logged with moduleId,
-    // request-id, since-cursor, and entry count. Future work: persist
-    // the audit log to its own append-only file rather than just
-    // tracing.
+    let entries_returned = raw.len();
+
     info!(
         module_id = %state.module_id,
         request_id,
         since = query.since,
-        count = raw.len(),
+        count = entries_returned,
         "read"
     );
+
+    // ADR-07 audit sub-ledger: persist every read call per
+    // worm-ledger-design.md §5 step 4. Errors are logged but not
+    // propagated — an audit-ledger failure must not reject the read.
+    let audit_payload = serde_json::json!({
+        "module_id": state.module_id,
+        "request_id": request_id,
+        "since_cursor": query.since,
+        "entries_returned": entries_returned,
+        "timestamp_unix": now_unix_seconds(),
+    });
+    if let Err(e) = state.audit_ledger.append("read", &audit_payload) {
+        warn!(module_id = %state.module_id, error = %e, "audit-ledger append failed");
+    }
 
     let next_cursor = raw.last().map(|e| e.cursor).unwrap_or(query.since);
 
@@ -274,5 +293,63 @@ impl From<LedgerError> for ApiError {
 impl IntoResponse for ApiError {
     fn into_response(self) -> axum::response::Response {
         (self.status, Json(self.body)).into_response()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::ledger::InMemoryLedger;
+    use axum::http::Request;
+    use std::path::PathBuf;
+    use std::sync::atomic::{AtomicU64, Ordering};
+    use tower::ServiceExt;
+
+    static TMPCTR: AtomicU64 = AtomicU64::new(0);
+
+    fn tmpdir() -> PathBuf {
+        let n = TMPCTR.fetch_add(1, Ordering::SeqCst);
+        let dir = std::env::temp_dir()
+            .join(format!("svc-fs-http-test-{}-{}", std::process::id(), n));
+        std::fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    #[tokio::test]
+    async fn audit_records_each_entries_call() {
+        let d = tmpdir();
+        let ledger: Box<dyn LedgerBackend + Send + Sync> =
+            Box::new(InMemoryLedger::open(d.join("main"), "tenant").unwrap());
+        let audit_ledger: Box<dyn LedgerBackend + Send + Sync> =
+            Box::new(InMemoryLedger::open(d.join("audit"), "audit-log").unwrap());
+
+        ledger.append("p1", &serde_json::json!({"k": 1})).unwrap();
+
+        let state = Arc::new(AppState {
+            module_id: "test-tenant".to_string(),
+            ledger,
+            audit_ledger,
+        });
+
+        let app = router(state.clone());
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri("/v1/entries?since=0")
+                    .header("x-foundry-module-id", "test-tenant")
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let audit_recs = state.audit_ledger.read_since(0).unwrap();
+        assert_eq!(audit_recs.len(), 1, "one audit record per entries() call");
+        let p = &audit_recs[0].payload;
+        assert_eq!(p["module_id"], "test-tenant");
+        assert_eq!(p["since_cursor"], 0u64);
+        assert_eq!(p["entries_returned"], 1u64);
     }
 }

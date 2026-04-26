@@ -82,9 +82,25 @@ async fn main() -> anyhow::Result<()> {
             .with_context(|| format!("failed to open WORM ledger at {ledger_root}"))?,
     );
 
+    // ADR-07 audit sub-ledger per worm-ledger-design.md §5 step 4.
+    // Placed at <ledger_root>/<moduleId>/audit-log/ — a sibling
+    // directory inside the per-tenant tree, separate from the main
+    // ledger's log.jsonl. The same PosixTileLedger / D4 discipline
+    // applies; no signing key (audit log is integrity-protected by
+    // the hash chain; a separate signing key for the audit log is
+    // a follow-up if required by a specific compliance regime).
+    let audit_ledger_root = format!("{ledger_root}/{module_id}");
+    let audit_ledger: Box<dyn ledger::LedgerBackend + Send + Sync> = Box::new(
+        PosixTileLedger::open(&audit_ledger_root, "audit-log", None::<&std::path::Path>)
+            .with_context(|| {
+                format!("failed to open audit ledger at {audit_ledger_root}/audit-log")
+            })?,
+    );
+
     let state = Arc::new(http::AppState {
         module_id: module_id.clone(),
         ledger,
+        audit_ledger,
     });
 
     info!(
