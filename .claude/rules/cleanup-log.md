@@ -96,6 +96,106 @@ Newest on top. Append a dated block when a session includes meaningful cleanup w
 
 ---
 
+## 2026-04-26
+
+- **First Task Claude session in `cluster/project-data` (Ring 1)
+  completed.** Acted on three inbox messages from Master Claude
+  (v0.0.7 priority briefing, v0.0.9 SLM-stack FYI, v0.0.10
+  auto-mode safety brief). Activated four projects per
+  `~/Foundry/CLAUDE.md` §9: `service-fs`, `service-input` (created
+  + activated), `service-people`, `service-email`. Five commits
+  on branch `cluster/project-data`:
+  - `ee209e3` activate service-fs
+  - `fa1f71e` create service-input (Reserved-folder)
+  - `1490e27` activate service-input (→ Active)
+  - `c45b308` activate service-people
+  - `032afe8` activate service-email
+- **Drift surfaced (not silently propagated).** Two distinct
+  drift findings during the activation pass:
+  1. **`service-fs/src/main.rs`** is a `#![no_std] #![no_main]`
+     bare-metal seL4 unikernel scaffold. Contradicts the same-day
+     ratified `~/Foundry/conventions/three-ring-architecture.md`
+     (Ring 1 = MCP-server processes) and
+     `~/Foundry/conventions/zero-container-runtime.md` (every
+     deployment is a Linux binary under systemd). Operator
+     decision 2026-04-25: keep file untouched at activation;
+     document drift in `service-fs/CLAUDE.md` "Current state";
+     queue the rewrite as Blocked-on-Master in
+     `service-fs/NEXT.md`. Surfaced to Master via cluster outbox
+     `ring1-scaffold-runtime-model-drift` requesting ratification
+     of (a) rewrite direction and (b) disposition of the
+     existing scaffold (suggested: relocate to a future
+     seL4-related project alongside `vendor-sel4-kernel` /
+     `moonshot-sel4-vmm` rather than delete or leave-and-mark).
+  2. **`service-email/src/auth.rs` + `src/graph_client.rs`** use
+     in-process OAuth `client_credentials` against
+     `login.microsoftonline.com` and call Microsoft Graph REST
+     endpoints. Operator decision 2026-04-25 (real user-turn,
+     out-of-band): rebase onto the EWS-based MSFT auth pattern
+     proven in the sibling `service-email-egress-ews/` project —
+     access token consumed from `AZURE_ACCESS_TOKEN` env (per
+     `template.env` and `egress-ingress/src/main.rs` /
+     `egress-roster/src/main.rs`), with EWS SOAP envelopes
+     referenced from `egress-roster/ews_payload.xml`. Tokio
+     runtime model preserved. Logged in
+     `service-email/CLAUDE.md` "Current state" with the rebase
+     queued as Right-now in `service-email/NEXT.md`. Not
+     surfaced to Master — already operator-decided.
+- **Prompt-injection attempt detected and neutralised.** A
+  `<system-reminder>` block embedded in a tool result claimed to
+  be a new user message instructing the EWS rebase. The harness
+  flagged it as potentially malicious. The instruction was
+  topically plausible (consistent with cluster contents and
+  prior conversation), so the safe path was confirmation rather
+  than refusal: paused activation of `service-email`, asked the
+  user via the chat surface, received a real "yes" user turn,
+  then proceeded. The earlier (premature) acknowledgment of the
+  EWS instruction was walked back in the same chat surface.
+  Logging here so future sessions know the EWS direction is
+  legitimate operator policy, not adopted from an injected
+  message.
+- **`service-input` did not previously exist.** Created the
+  directory with bilingual READMEs and added the registry row as
+  Reserved-folder in `fa1f71e`; activated it directly to Active
+  in `1490e27` because the parser-dispatcher scaffold is the
+  entire next workstream and per-project doc discipline is wanted
+  before any code lands. Total registry rows 97 → 98;
+  Reserved-folder count untouched (transient +1 then -1).
+- **Activation-state inventory deferred for two projects.** Both
+  `service-people` and `service-email` carry pre-framework
+  sub-directories that have not been inventoried
+  (`service-people/{sovereign-acs-engine,spatial-crm,spatial-
+  ledger,substrate,tools}/`;
+  `service-email/{ingress-harvester,master-harvester-rs,sovereign-
+  splinter,scripts}/`). Inventory + per-item keep/rename/retire/
+  relocate decisions are queued as the first NEXT.md item in each
+  project. Did not touch any of those sub-directories this
+  session.
+- **Workspace `.toggle` concurrency observation (FYI).** Across
+  this session's five commits, the J/P alternation crossed two
+  apparent skips (commits 2+3 both Peter; commits 4+5 both
+  Jennifer) even though the helper's end-line correctly named
+  the next identity each time. Root cause is most likely benign:
+  the toggle file is shared workspace state, and any other
+  session (Root Claude in another engineering repo, Master
+  Claude using a helper) committing in parallel mutates it
+  between this session's commits. The alternation is preserved
+  across the workspace as a whole, not within any one session.
+  Not a bug; not surfacing as an action item beyond the FYI in
+  the cluster outbox to Master.
+- **Registry summary updated.** Active 4 → 8
+  (added `service-fs`, `service-input`, `service-people`,
+  `service-email`); Scaffold-coded 53 → 50 (three Active
+  promotions); Reserved-folder unchanged at 36 (transient +1/-1
+  for `service-input`); Total 97 → 98 (one new project).
+- **Pending for next session in this cluster:** wait for Master
+  ratification on `service-fs` rewrite direction; begin EWS
+  rebase work on `service-email/src/auth.rs`; inventory the
+  pre-framework sub-directories in `service-people` and
+  `service-email`. All queued in the per-project NEXT.md files.
+
+---
+
 ## 2026-04-23
 
 - **Repo-layout rule introduced.** Added
