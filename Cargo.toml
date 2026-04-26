@@ -6,7 +6,11 @@ members = [
     "app-console-content",
     "tool-acs-miner",
     "system-gateway-mba",
-    "service-fs",
+    # "service-fs" — temporarily held out 2026-04-26 (project-data
+    # Task Claude); the bare-metal seL4 scaffold was relocated to
+    # vendor-sel4-fs/ and the Tokio MCP-server skeleton is the new
+    # contents. Re-add after `cargo check` inside service-fs/ passes
+    # clean (per Master ratification 2026-04-26 Decision 3).
     "system-security",
     "xtask"
 ]

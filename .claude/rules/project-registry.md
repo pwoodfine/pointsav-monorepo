@@ -123,7 +123,7 @@ Last updated: 2026-04-25.
 | service-email-egress-imap | Scaffold-coded | service | IMAP protocol adapter; doubly-nested wrapper flattened 2026-04-23; 4 sub-crates; parallel structure to `-ews` but without prune/balancer |
 | service-email-template | Scaffold-coded | service | 5 files |
 | service-extraction | Active | service | 21 files; CLAUDE.md present but stale (see NEXT.md Item 9) |
-| service-fs | Active | service | 3 files; in workspace members; activated 2026-04-25 (project-data Task Claude); existing `src/main.rs` is no_std/no_main seL4-unikernel scaffold flagged as drift in `service-fs/CLAUDE.md` "Current state"; left untouched pending Master ratification of MCP-server rewrite (cluster outbox `ring1-scaffold-runtime-model-drift`) |
+| service-fs | Active | service | activated 2026-04-25 (project-data Task Claude, `ee209e3`); seL4-unikernel scaffold drift surfaced 2026-04-26 (cluster outbox `ring1-scaffold-runtime-model-drift`) and ratified by Master same date — Decision 1 (rewrite as Tokio MCP-server skeleton), Decision 2 (relocate scaffold to `vendor-sel4-fs/`), Decision 3 (hold workspace membership until rewrite compiles); relocation landed this commit; new Cargo.toml + src/ skeleton lands in the next commit; transitional state — directory currently has only CLAUDE.md + NEXT.md |
 | service-http | Scaffold-coded | service | 9 files |
 | service-input | Active | service | 4 files (README.md + README.es.md + CLAUDE.md + NEXT.md); created and activated 2026-04-25 (project-data Task Claude) in two consecutive commits per CLAUDE.md §9; Ring 1 generic document ingest — pluggable parser dispatcher (oxidize-pdf, docx-rust, calamine, pulldown-cmark per SLM-STACK §3.4); writes through `service-fs` (WORM), read by `service-extraction` (Ring 2) over MCP; Cargo crate scaffold pending |
 | service-message-courier | Reserved-folder | service | 1 file |
@@ -167,6 +167,7 @@ Last updated: 2026-04-25.
 | vendor-linux-systemd | Reserved-folder | vendor | 1 file |
 | vendor-microsoft-graph | Reserved-folder | vendor | 1 file |
 | vendor-phi3-mini | Reserved-folder | vendor | 2 files |
+| vendor-sel4-fs | Reserved-folder | vendor | 6 files (Cargo.toml + Cargo.lock + .cargo/config.toml + src/main.rs + README.md + README.es.md); created 2026-04-26 (project-data Task Claude) per CLAUDE.md §9 as relocation target for the bare-metal seL4 scaffold previously at `service-fs/` (cluster outbox `ring1-scaffold-runtime-model-drift`, ratified by Master Decision 2 same date); joins the seL4 lineage alongside `vendor-sel4-kernel` and `moonshot-sel4-vmm`; activation deferred until seL4-track work resumes; not in workspace members |
 | vendor-sel4-kernel | Scaffold-coded | vendor | 1074 files; vendored external seL4 kernel source |
 | vendor-slm-engine | Reserved-folder | vendor | 3 files |
 | vendor-virtio | Reserved-folder | vendor | 1 file |
@@ -186,10 +187,10 @@ Last updated: 2026-04-25.
 
 - **Active:** 8 (`app-console-bookkeeper`, `app-workplace-presentation`, `app-workplace-proforma`, `service-email`, `service-extraction`, `service-fs`, `service-input`, `service-people`)
 - **Scaffold-coded:** 50
-- **Reserved-folder:** 36
+- **Reserved-folder:** 37
 - **Defect:** 0
 - **Not-a-project:** 2 (`discovery-queue`, `target`)
 - **Dormant:** 0
 - **Archived:** 0
 
-**Total rows:** 98.
+**Total rows:** 99.

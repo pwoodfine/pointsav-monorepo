@@ -1,0 +1,9 @@
+[package]
+name = "vendor-sel4-fs"
+version = "1.0.1"
+edition = "2021"
+authors = ["PointSav Digital Systems"]
+description = "Reserved-folder scaffold for a future seL4-based bare-metal file-system service. Houses the no_std/no_main scaffold relocated from service-fs by project-data Task Claude on 2026-04-26 (cluster outbox ring1-scaffold-runtime-model-drift, ratified by Master decision 2 the same date)."
+
+[dependencies]
+# Pure bare-metal enclave. Zero OS dependencies permitted.
