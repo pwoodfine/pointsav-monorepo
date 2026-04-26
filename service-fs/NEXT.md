@@ -8,14 +8,19 @@
 
 ## Right now
 
-- Swap the `WormLedger` storage backend from in-memory `Vec<Entry>`
-  (placeholder, but invariants enforced and tests pass) to
-  hash-addressed segment files in immutable directories rooted at
-  `FS_LEDGER_ROOT`. The API surface (`open`, `append`,
-  `read_since`, `root`) is the contract that survives the swap;
-  callers and HTTP handlers should not need to change. Add a
-  reload-from-disk path to `WormLedger::open` so the daemon can
-  restart without losing state.
+- **PAUSED pending Master ratification of the storage-design
+  convention proposed in `service-fs/RESEARCH.md` §11.** The
+  storage swap (in-memory `Vec<Entry>` → on-disk format) is
+  structurally important enough that the design ratification is
+  worth doing first. Operator asked 2026-04-26 for a leapfrog-
+  2030 design cross-checked against industry; the synthesis is
+  in `RESEARCH.md` and the ratification request is in the cluster
+  outbox under `worm-ledger-design-convention-proposal`.
+- After Master ratifies (or modifies + ratifies) the design, swap
+  per the §12 roadmap in RESEARCH.md: L2 trait extraction → L1
+  POSIX tile backend (C2SP tlog-tiles per the recommendation) →
+  checkpoint signing → ADR-07 audit-log sub-ledger → MCP-server
+  interface layer.
 
 ## Queue
 
@@ -69,7 +74,23 @@
 
 ## Recently done
 
-- 2026-04-26: Tokio MCP-server skeleton landed (this commit) —
+- 2026-04-26: research synthesis `service-fs/RESEARCH.md`
+  committed — ~600 lines synthesising Foundry-side material
+  (DOCTRINE §IX, MEMO §6.3 + §7, three-ring + zero-container
+  conventions), industry standards (SEC 17a-4(f) 2022 amendment,
+  eIDAS qualified preservation 2026/01, SOC 2 TSC), and modern
+  verifiable-log architecture (Trillian-Tessera, Sigstore Rekor
+  v2, RFC 9162 v2 tile-based CT). Proposed four-layer design
+  with C2SP tlog-tiles + signed-note checkpoints; dual-target
+  Linux daemon + seL4 Microkit unikernel; per-tenant moduleId
+  enforcement at the WORM layer; integration with DOCTRINE
+  Invention #7 monthly Rekor anchoring. Ten ratification
+  decisions surfaced to Master via outbox
+  `worm-ledger-design-convention-proposal`; recommended that the
+  design land as workspace-tier convention
+  `~/Foundry/conventions/worm-ledger-design.md`.
+- 2026-04-26: Tokio MCP-server skeleton landed (commit
+  `af73232`) —
   `Cargo.toml` (axum + tokio + serde + tracing + anyhow); `src/`
   with `main.rs` (env-driven entrypoint), `http.rs` (axum router
   with /healthz, /readyz, /v1/contract, /v1/append, /v1/entries

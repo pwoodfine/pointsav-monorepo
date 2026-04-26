@@ -96,6 +96,92 @@ Newest on top. Append a dated block when a session includes meaningful cleanup w
 
 ---
 
+## 2026-04-26 (third session — research-only, no code changes)
+
+- **Research synthesis written for service-fs storage architecture.**
+  Operator asked 2026-04-26 for deep cross-industry research with
+  leapfrog-2030 framing on the question of `service-fs` long-term
+  storage design, given (a) the MEMO §6.3 WORM legal-compliance
+  language, (b) the MEMO §7 trajectory toward seL4 unikernel native
+  + moonshot-database capability-aware persistence, (c) the
+  Linux/BSD wrapper for hosts where seL4 cannot boot natively.
+  ~600-line synthesis committed at `service-fs/RESEARCH.md` (this
+  commit).
+- **What the synthesis proposes.** A four-layer stack — L1 tile
+  storage (C2SP tlog-tiles per RFC 9162 v2 / Trillian-Tessera /
+  Sigstore Rekor v2), L2 WORM Ledger Rust trait
+  (open/append/read_since/checkpoint/verify_*), L3 wire protocol
+  (axum HTTP + MCP layered), L4 monthly Sigstore Rekor anchoring
+  (already DOCTRINE Invention #7). The cross-cutting design idea:
+  same tile format works on POSIX storage today (Linux/BSD daemon)
+  and through capability-mediated `moonshot-database` IPC long-term
+  (seL4 Microkit unikernel) — wire protocol is identical across
+  envelopes, storage primitive survives the seL4 transition.
+- **Industry standards surveyed.** SEC Rule 17a-4(f) (2022 amendment
+  effective 2023-05-03 — adds Audit-Trail alternative to WORM, but
+  WORM path is cleaner for service-fs); eIDAS qualified preservation
+  service (EU 2025/1946 in force 2026-01-06 + ETSI EN 319 401
+  v3.2.1 + CEN TS 18170:2025 — long-term integrity "irrespective
+  of future technological changes" matches Pillar 2); SOC 2 TSC
+  CC6/CC7/PI1/PI4 (per-tenant access, change detection, processing
+  integrity); DARP confirmed Foundry-internal not regulatory
+  (DOCTRINE.md line 462).
+- **Verified that key Foundry sources are coherent on this question.**
+  MEMO §6.3 calls service-fs WORM-compliant; MEMO §7 lists
+  vendor-sel4-kernel as Legacy → moonshot-kernel and Sled →
+  moonshot-database (capability-aware) as the long-term substrate;
+  conventions/three-ring-architecture.md + zero-container-runtime.md
+  fix today's deployment shape; DOCTRINE §IX SOC 2/DARP posture +
+  Invention #7 Sigstore Rekor anchoring give the audit-anchoring
+  substrate. The seL4 unikernel target is real, not aspirational —
+  Microkit 1.3.0 (rewritten in Rust) is the static-system framework,
+  rust-sel4 + sel4-microkit are official runtime crates.
+- **Key synthesis claim.** The same tile format used internally for
+  service-fs's per-tenant ledger IS the same tile format Sigstore
+  Rekor v2 uses externally. Foundry's monthly anchor bundle
+  (Invention #7) becomes a direct integration rather than a separate
+  format conversion. Customer Totebox tile checkpoints flow into the
+  same Rekor anchoring path with zero new format work — extends
+  Invention #7 from a Vendor audit-posture feature to a Customer
+  evidentiary feature at zero marginal complexity.
+- **Workspace-tier convention proposed.** Outboxed to Master under
+  subject `worm-ledger-design-convention-proposal`. The proposal:
+  the design lands at `~/Foundry/conventions/worm-ledger-design.md`
+  (Master tier per §11 action matrix) rather than baking into
+  service-fs alone, because the same WORM-ledger primitive will be
+  useful for any future Ring 1 producer or audit sub-ledger.
+- **Ten ratification decisions surfaced (D1–D10).** D1 (adopt C2SP
+  tlog-tiles), D2 (adopt C2SP signed-note), D3 (SHA-256 + algorithm-
+  agility), D4 (write-rename + 0o444 today, chattr +i later), D5
+  (Foundry workspace witnesses every Customer Totebox by default), D6
+  (monthly anchoring cadence unchanged), D7 (moonshot-database swap
+  when ready, POSIX backend retained as Envelope A fallback), D8
+  (per-call audit granularity), D9 (dual anchoring — Customer-key +
+  Foundry-key), D10 (workspace re-add deferred separately).
+- **service-fs/NEXT.md Right-now updated.** Storage swap is now
+  PAUSED pending Master ratification of the design convention.
+  Implementation roadmap (5 task-tier commits) sketched in
+  RESEARCH.md §12 for the next Task Claude session in this cluster.
+- **De facto pattern observation: RESEARCH.md is not in
+  repo-layout.md's allowed-files list, but appears at the project
+  root of `app-console-bim`, `app-orchestration-bim`,
+  `app-workplace-bim`, `service-bim` per the registry.** Adding it
+  to the repo-layout allowed-files list would close the de facto
+  deviation; that's a Root-tier edit and out of Task scope. Flagging
+  here so a future Root Claude in the monorepo can codify.
+- **Web research tools used.** WebSearch + WebFetch (one-time loads
+  via ToolSearch), 7 search queries + 1 successful WebFetch (against
+  blog.sigstore.dev/rekor-v2-ga). transparency.dev was a less
+  productive WebFetch — page is high-level, not technical
+  specification. All cited sources listed in RESEARCH.md §13.
+- **Customer-first ordering preserved.** Per Master's prior
+  go-ahead (2026-04-26 07:55 inbox), service-input parser-dispatcher
+  is still the next Task pickup; this research session is a
+  parallel Master-ratification track that doesn't block service-input
+  work.
+
+---
+
 ## 2026-04-26 (second session)
 
 - **Master ratification actioned in full.** Master's inbox message
