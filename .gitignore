@@ -73,3 +73,9 @@ archive-2026-06-01/
 .agent/outbox-archive.md
 NEXT.md
 # [/Option-A-mailbox-fix]
+
+# service-slm/router-trainer — local runtime artifacts (provisioned per-operator,
+# not tracked in Git). Kept here so the Python workflow can still find them on
+# the filesystem. See cleanup-log.md 2026-04-23 entry for rationale.
+service-slm/router-trainer/engine/llamafile
+service-slm/router-trainer/**/*.log
