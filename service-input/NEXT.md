@@ -8,15 +8,19 @@
 
 ## Right now
 
-- **Wire the XLSX parser via `calamine`.** DOCX done (21 tests).
-  XLSX is the next pickup: calamine accepts any `Read + Seek` so no
-  temp-file shim is needed. Implement `XlsxParser` in `src/xlsx.rs`,
-  re-exported as `service_input::XlsxParser`. Extract text from all
-  cells in all sheets into a flat text buffer (cell values
-  space-separated, rows newline-separated). Metadata: `sheet_count`,
-  sheet names as `sheets` array, `parser: "calamine"`. Tests:
-  (a) non-ZIP bytes → `FormatMismatch`, (b) valid-ZIP but invalid XLSX
-  → `ParserInternal`.
+- **service-input → service-fs HTTP client integration.** All four
+  parsers are wired (PDF, Markdown, DOCX, XLSX — 23 tests). Wire the
+  thin HTTP client that takes a parsed `ParsedDocument` and POSTs it
+  to `service-fs`'s `/v1/append` endpoint. The client lives in
+  `src/fs_client.rs`: struct `FsClient { base_url: String, module_id:
+  String }` with `fn submit(&self, doc: &ParsedDocument) -> Result<u64,
+  FsClientError>` (returns the assigned cursor). The wire format is the
+  same JSON body as `/v1/append`: `{payload_id, payload}` where
+  `payload_id` is `doc.source_id` and `payload` is
+  `serde_json::to_value(doc)`. Use the `reqwest` blocking client
+  (simplest; async not needed at Ring 1 boundary ingest throughput).
+  Add a test that spins up an axum router (via `tower::ServiceExt`)
+  and calls `submit`, asserting the returned cursor is ≥ 1.
 
 ## Queue
 
@@ -60,6 +64,18 @@
 
 ## Recently done
 
+- 2026-04-26: **XlsxParser via calamine 0.34** wired. New
+  `service-input/src/xlsx.rs` — `XlsxParser` implementing the
+  `Parser` trait. Uses `open_workbook_from_rs(Cursor::new(bytes))` —
+  no temp-file shim (calamine's reader API). Magic-byte check rejects
+  non-ZIP input with `FormatMismatch`. Text extracted by iterating all
+  sheets via `Reader::worksheet_range`, all rows, all cells; cells
+  space-separated per row, rows newline-separated; `Data::Empty`
+  cells skipped; unreadable sheets produce an inline `[sheet 'X'
+  error: ...]` line rather than aborting. Metadata: `sheet_count`,
+  `sheets` (name array), `parser: "calamine"`. Re-exported as
+  `service_input::XlsxParser` from `lib.rs`. **23 unit tests pass
+  clean** (21 prior + 2 XlsxParser).
 - 2026-04-26: **DocxParser via docx-rust 0.1.11** wired. New
   `service-input/src/docx.rs` — `DocxParser` implementing the
   `Parser` trait. Uses `DocxFile::from_reader(Cursor::new(bytes))`

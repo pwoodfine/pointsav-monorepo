@@ -74,7 +74,18 @@ service-input/
     │                       Pure-text; no temp-file shim. Extracts
     │                       all text runs + headings. Returns
     │                       {headings, parser: "pulldown-cmark"}.
-    └── docx.rs           — DocxParser via docx-rust 0.1.x.
+    ├── docx.rs           — DocxParser via docx-rust 0.1.x.
+    │                       Uses DocxFile::from_reader(Cursor).
+    │                       Magic check rejects non-ZIP early.
+    │                       Text via body.text(); metadata:
+    │                       {paragraph_count, parser: "docx-rust"}.
+    └── xlsx.rs           — XlsxParser via calamine 0.34.
+                            Uses open_workbook_from_rs(Cursor).
+                            Magic check rejects non-ZIP early.
+                            Text from all sheets, all rows, all
+                            cells; space-separated per row, newline
+                            between rows. Metadata: {sheet_count,
+                            sheets, parser: "calamine"}. 2 tests.
                             Uses DocxFile::from_reader(Cursor)
                             (no temp-file shim — reader API accepts
                             Read + Seek). Magic check rejects non-ZIP

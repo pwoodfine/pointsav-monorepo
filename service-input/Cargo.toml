@@ -15,5 +15,6 @@ serde_json = "1"
 oxidize-pdf = "2"
 pulldown-cmark = "0.12"
 docx-rust = "0.1.11"
+calamine = "0.34.0"
 
 [dev-dependencies]

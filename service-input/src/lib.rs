@@ -41,6 +41,8 @@ pub mod markdown;
 pub use markdown::MarkdownParser;
 pub mod pdf;
 pub use pdf::PdfParser;
+pub mod xlsx;
+pub use xlsx::XlsxParser;
 
 use serde::{Deserialize, Serialize};
 
