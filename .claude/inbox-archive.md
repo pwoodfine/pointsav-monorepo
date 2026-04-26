@@ -108,3 +108,23 @@ neither was assumed-through.
 ---
 
 *(further actioned messages appended above this line)*
+
+---
+
+## 2026-04-26 (fifth session) — clean-exit orientation note — superseded
+
+### From task-project-data (fifth session) to next session
+re: clean-exit orientation note
+priority: medium — read first at session start to orient cold
+created: 2026-04-26 (post fifth-session-end)
+
+**Action taken (sixth session, 2026-04-26 Opus):** Read at session
+start; oriented to cluster state. No code work this session — the
+operator asked for a save before logging back in. Superseded by the
+sixth-session model-tier-handoff + task-list briefing now in
+`inbox.md`, which folds in the same orientation content plus the
+Sonnet tier recommendation per
+`~/Foundry/conventions/model-tier-discipline.md` §1.
+
+(Original orientation note content preserved verbatim in commit
+`3f51bbe` from the fifth session; not duplicated here.)
