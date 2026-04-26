@@ -260,6 +260,9 @@ impl From<LedgerError> for ApiError {
             LedgerError::EntryNotFound(_) => StatusCode::NOT_FOUND,
             LedgerError::ChainTampered { .. } => StatusCode::INTERNAL_SERVER_ERROR,
             LedgerError::InconsistentCheckpoints { .. } => StatusCode::CONFLICT,
+            LedgerError::InvalidKey(_) | LedgerError::SigningError(_) => {
+                StatusCode::INTERNAL_SERVER_ERROR
+            }
         };
         Self {
             status,

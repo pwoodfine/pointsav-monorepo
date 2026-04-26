@@ -64,15 +64,23 @@ async fn main() -> anyhow::Result<()> {
     let ledger_root = std::env::var("FS_LEDGER_ROOT")
         .context("FS_LEDGER_ROOT is required (absolute path to WORM segment directory)")?;
 
+    // Optional: path to a 32-byte raw Ed25519 seed file. When set,
+    // every checkpoint is signed with the named key (signed-note body
+    // per worm-ledger-design.md §5 step 3). Omit to run without
+    // checkpoint signing — useful when key provisioning is deferred.
+    let signing_key_path: Option<std::path::PathBuf> =
+        std::env::var("FS_SIGNING_KEY").ok().map(Into::into);
+
     // Persistent POSIX hash-chain backend per
     // ~/Foundry/conventions/worm-ledger-design.md §5 step 2.
     // Loads existing entries on open + verifies the chain (returns
     // ChainTampered if any record's stored hash diverges from the
     // recomputed value). InMemoryLedger remains available behind
     // the same trait for tests + as a fallback.
-    let ledger: Box<dyn ledger::LedgerBackend + Send + Sync> =
-        Box::new(PosixTileLedger::open(&ledger_root, &module_id)
-            .with_context(|| format!("failed to open WORM ledger at {ledger_root}"))?);
+    let ledger: Box<dyn ledger::LedgerBackend + Send + Sync> = Box::new(
+        PosixTileLedger::open(&ledger_root, &module_id, signing_key_path.as_deref())
+            .with_context(|| format!("failed to open WORM ledger at {ledger_root}"))?,
+    );
 
     let state = Arc::new(http::AppState {
         module_id: module_id.clone(),
@@ -84,6 +92,7 @@ async fn main() -> anyhow::Result<()> {
         %bind_addr,
         module_id = %module_id,
         ledger_root = %ledger_root,
+        signing = signing_key_path.is_some(),
         "service-fs Ring 1 WORM ledger starting"
     );
 

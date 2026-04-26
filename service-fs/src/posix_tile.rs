@@ -43,9 +43,12 @@ use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
+use ed25519_dalek::SigningKey;
+
 use crate::ledger::{
-    chain_origin_hash, compute_chain_hash, hex32, now_unix_seconds, parse_hex32, Checkpoint,
-    ConsistencyProof, Entry, InclusionProof, LedgerBackend, LedgerError,
+    chain_origin_hash, compute_chain_hash, hex32, load_signing_key, now_unix_seconds, parse_hex32,
+    sign_checkpoint_body, Checkpoint, ConsistencyProof, Entry, InclusionProof, LedgerBackend,
+    LedgerError,
 };
 
 /// On-disk record shape — what each line of `log.jsonl` is.
@@ -75,6 +78,7 @@ pub struct PosixTileLedger {
     origin: String,
     root: PathBuf,
     log_path: PathBuf,
+    signing_key: Option<SigningKey>,
     inner: Mutex<Inner>,
 }
 
@@ -89,9 +93,16 @@ impl PosixTileLedger {
     /// verifies the chain integrity — returns
     /// `LedgerError::ChainTampered` if any record's stored hash
     /// disagrees with the recomputed value.
+    ///
+    /// `signing_key_path` — optional path to a 32-byte raw Ed25519
+    /// seed file. When present, `checkpoint()` populates
+    /// `Checkpoint::signature` with an Ed25519 signed-note signature.
+    /// Pass `None::<&std::path::Path>` to open without signing (tests,
+    /// deployments where the key is not yet provisioned).
     pub fn open(
         root: impl Into<PathBuf>,
         origin: impl Into<String>,
+        signing_key_path: Option<impl AsRef<std::path::Path>>,
     ) -> Result<Self, LedgerError> {
         let root: PathBuf = root.into();
         let origin: String = origin.into();
@@ -107,10 +118,15 @@ impl PosixTileLedger {
 
         let next_cursor = entries.last().map(|e| e.cursor + 1).unwrap_or(1);
 
+        let signing_key = signing_key_path
+            .map(|p| load_signing_key(p.as_ref()))
+            .transpose()?;
+
         Ok(Self {
             origin,
             root: tenant_dir,
             log_path,
+            signing_key,
             inner: Mutex::new(Inner {
                 next_cursor,
                 entries,
@@ -263,14 +279,18 @@ impl LedgerBackend for PosixTileLedger {
         let inner = self.inner.lock().expect("ledger mutex poisoned");
         let tree_size = inner.entries.len() as u64;
         let root_hash = Self::tip_hash(&inner)?;
-        Ok(Checkpoint {
+        let mut cp = Checkpoint {
             origin: self.origin.clone(),
             tree_size,
             root_hash: hex32(&root_hash),
             algorithm: "sha256".to_string(),
             timestamp: now_unix_seconds(),
             signature: None,
-        })
+        };
+        if let Some(key) = &self.signing_key {
+            sign_checkpoint_body(&mut cp, key)?;
+        }
+        Ok(cp)
     }
 
     fn verify_inclusion(
@@ -398,12 +418,12 @@ mod tests {
     fn append_persists_across_restart() {
         let root = tmpdir();
         {
-            let l = PosixTileLedger::open(&root, "foundry").unwrap();
+            let l = PosixTileLedger::open(&root, "foundry", None::<&std::path::Path>).unwrap();
             l.append("a", &serde_json::json!({"x": 1})).unwrap();
             l.append("b", &serde_json::json!({"x": 2})).unwrap();
         }
         // Re-open — entries should be intact.
-        let l2 = PosixTileLedger::open(&root, "foundry").unwrap();
+        let l2 = PosixTileLedger::open(&root, "foundry", None::<&std::path::Path>).unwrap();
         let all = l2.read_since(0).unwrap();
         assert_eq!(all.len(), 2);
         assert_eq!(all[0].payload_id, "a");
@@ -414,12 +434,12 @@ mod tests {
     fn checkpoint_after_restart_matches_pre_restart() {
         let root = tmpdir();
         let cp_before = {
-            let l = PosixTileLedger::open(&root, "foundry").unwrap();
+            let l = PosixTileLedger::open(&root, "foundry", None::<&std::path::Path>).unwrap();
             l.append("a", &serde_json::json!({"x": 1})).unwrap();
             l.append("b", &serde_json::json!({"x": 2})).unwrap();
             l.checkpoint().unwrap()
         };
-        let l2 = PosixTileLedger::open(&root, "foundry").unwrap();
+        let l2 = PosixTileLedger::open(&root, "foundry", None::<&std::path::Path>).unwrap();
         let cp_after = l2.checkpoint().unwrap();
         // Timestamps will differ; tree_size + root_hash must not.
         assert_eq!(cp_before.tree_size, cp_after.tree_size);
@@ -431,11 +451,11 @@ mod tests {
     fn next_append_after_restart_continues_chain() {
         let root = tmpdir();
         let cp1 = {
-            let l = PosixTileLedger::open(&root, "foundry").unwrap();
+            let l = PosixTileLedger::open(&root, "foundry", None::<&std::path::Path>).unwrap();
             l.append("a", &serde_json::json!({"x": 1})).unwrap();
             l.checkpoint().unwrap()
         };
-        let l2 = PosixTileLedger::open(&root, "foundry").unwrap();
+        let l2 = PosixTileLedger::open(&root, "foundry", None::<&std::path::Path>).unwrap();
         l2.append("b", &serde_json::json!({"x": 2})).unwrap();
         let cp2 = l2.checkpoint().unwrap();
         // cp2 must extend cp1 — verify_consistency confirms it.
@@ -448,7 +468,7 @@ mod tests {
     fn tamper_detection_on_reload() {
         let root = tmpdir();
         let log_path = {
-            let l = PosixTileLedger::open(&root, "foundry").unwrap();
+            let l = PosixTileLedger::open(&root, "foundry", None::<&std::path::Path>).unwrap();
             l.append("a", &serde_json::json!({"x": 1})).unwrap();
             l.append("b", &serde_json::json!({"x": 2})).unwrap();
             // We need the log path to manipulate it after the
@@ -468,7 +488,7 @@ mod tests {
         std::fs::set_permissions(&log_path, perms).unwrap();
         std::fs::write(&log_path, tampered).unwrap();
         // Reopen — should detect tamper.
-        match PosixTileLedger::open(&root, "foundry") {
+        match PosixTileLedger::open(&root, "foundry", None::<&std::path::Path>) {
             Err(LedgerError::ChainTampered { cursor: 1, .. }) => {}
             Err(other) => panic!("expected ChainTampered at cursor 1, got error {other:?}"),
             Ok(_) => panic!("expected ChainTampered at cursor 1, got Ok(ledger)"),
@@ -478,7 +498,7 @@ mod tests {
     #[test]
     fn log_file_is_read_only_after_append() {
         let root = tmpdir();
-        let l = PosixTileLedger::open(&root, "foundry").unwrap();
+        let l = PosixTileLedger::open(&root, "foundry", None::<&std::path::Path>).unwrap();
         l.append("a", &serde_json::json!({"x": 1})).unwrap();
         let log_path = std::path::PathBuf::from(l.root()).join("log.jsonl");
         let perms = std::fs::metadata(&log_path).unwrap().permissions();
@@ -489,7 +509,7 @@ mod tests {
     #[test]
     fn empty_ledger_checkpoint_equals_chain_origin() {
         let root = tmpdir();
-        let l = PosixTileLedger::open(&root, "foundry").unwrap();
+        let l = PosixTileLedger::open(&root, "foundry", None::<&std::path::Path>).unwrap();
         let cp = l.checkpoint().unwrap();
         assert_eq!(cp.tree_size, 0);
         assert_eq!(cp.root_hash, hex32(&chain_origin_hash()));
@@ -499,15 +519,37 @@ mod tests {
     fn verify_inclusion_works_after_restart() {
         let root = tmpdir();
         let c1 = {
-            let l = PosixTileLedger::open(&root, "foundry").unwrap();
+            let l = PosixTileLedger::open(&root, "foundry", None::<&std::path::Path>).unwrap();
             let c = l.append("a", &serde_json::json!({"x": 1})).unwrap();
             l.append("b", &serde_json::json!({"x": 2})).unwrap();
             c
         };
-        let l2 = PosixTileLedger::open(&root, "foundry").unwrap();
+        let l2 = PosixTileLedger::open(&root, "foundry", None::<&std::path::Path>).unwrap();
         let cp = l2.checkpoint().unwrap();
         let proof = l2.verify_inclusion(c1, &cp).unwrap();
         assert_eq!(proof.entry_cursor, c1);
         assert_eq!(proof.checkpoint_tree_size, 2);
+    }
+
+    #[test]
+    fn checkpoint_signed_by_posix_ledger_verifies_independently() {
+        // Write a deterministic test key to a temp file.
+        let key_dir = tmpdir();
+        let key_path = key_dir.join("test.key");
+        std::fs::write(&key_path, &[3u8; 32]).unwrap();
+
+        let signing_key = ed25519_dalek::SigningKey::from_bytes(&[3u8; 32]);
+        let vk_bytes = signing_key.verifying_key().to_bytes();
+
+        let root = tmpdir();
+        let l = PosixTileLedger::open(&root, "foundry", Some(&key_path)).unwrap();
+        l.append("a", &serde_json::json!({"x": 1})).unwrap();
+        let cp = l.checkpoint().unwrap();
+
+        assert!(cp.signature.is_some(), "signed checkpoint must carry a signature");
+        assert!(
+            crate::ledger::verify_checkpoint_signature(&cp, &vk_bytes).unwrap(),
+            "signature must verify with the correct public key (independent of daemon)"
+        );
     }
 }

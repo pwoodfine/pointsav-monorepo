@@ -38,6 +38,8 @@
 
 use std::sync::Mutex;
 
+use base64::{engine::general_purpose::STANDARD as B64, Engine as _};
+use ed25519_dalek::SigningKey;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
@@ -67,6 +69,11 @@ pub enum LedgerError {
     /// append-only relationship (e.g., c2.tree_size < c1.tree_size,
     /// or recomputing forward from c1 doesn't reach c2.root_hash).
     InconsistentCheckpoints { reason: String },
+    /// Signing key file is missing, wrong length, or not a valid
+    /// Ed25519 compressed point (for verifying keys).
+    InvalidKey(String),
+    /// Ed25519 signing or signature encoding failed.
+    SigningError(String),
 }
 
 impl std::fmt::Display for LedgerError {
@@ -86,6 +93,8 @@ impl std::fmt::Display for LedgerError {
             LedgerError::InconsistentCheckpoints { reason } => {
                 write!(f, "inconsistent checkpoints: {reason}")
             }
+            LedgerError::InvalidKey(msg) => write!(f, "invalid key: {msg}"),
+            LedgerError::SigningError(msg) => write!(f, "signing error: {msg}"),
         }
     }
 }
@@ -292,6 +301,91 @@ pub(crate) fn parse_hex32(s: &str) -> Result<[u8; 32], LedgerError> {
     Ok(out)
 }
 
+/// Build the signed-note body for a checkpoint per the C2SP signed-note
+/// convention. Format: `"{origin}\n{tree_size}\n{base64(root_hash)}\n\n"`.
+/// The double trailing newline separates the note body from the signature
+/// section in the full signed-note wire format; we sign this exact body.
+pub(crate) fn signed_note_body(
+    origin: &str,
+    tree_size: u64,
+    root_hash_hex: &str,
+) -> Result<String, LedgerError> {
+    let hash_bytes = hex::decode(root_hash_hex).map_err(|e| {
+        LedgerError::SigningError(format!("root_hash hex decode failed: {e}"))
+    })?;
+    let hash_b64 = B64.encode(&hash_bytes);
+    Ok(format!("{origin}\n{tree_size}\n{hash_b64}\n\n"))
+}
+
+/// Sign `cp` in-place using `key`, populating `cp.signature` with the
+/// 64-byte Ed25519 signature over the signed-note body.
+pub(crate) fn sign_checkpoint_body(
+    cp: &mut Checkpoint,
+    key: &SigningKey,
+) -> Result<(), LedgerError> {
+    use ed25519_dalek::Signer as _;
+    let body = signed_note_body(&cp.origin, cp.tree_size, &cp.root_hash)?;
+    let sig: ed25519_dalek::Signature = key.sign(body.as_bytes());
+    cp.signature = Some(sig.to_bytes().to_vec());
+    Ok(())
+}
+
+/// Load a 32-byte Ed25519 signing key from a raw binary file.
+/// The file must contain exactly 32 bytes (the Ed25519 seed / private key).
+/// Tests can write `[1u8; 32]` to a tmp path and pass it here.
+pub(crate) fn load_signing_key(path: &std::path::Path) -> Result<SigningKey, LedgerError> {
+    let raw = std::fs::read(path).map_err(|e| {
+        LedgerError::InvalidKey(format!(
+            "could not read signing key at {}: {e}",
+            path.display()
+        ))
+    })?;
+    let arr: [u8; 32] = raw.try_into().map_err(|v: Vec<u8>| {
+        LedgerError::InvalidKey(format!(
+            "signing key file must be exactly 32 bytes (Ed25519 seed), got {}",
+            v.len()
+        ))
+    })?;
+    Ok(SigningKey::from_bytes(&arr))
+}
+
+/// Verify a signed checkpoint independently of the daemon. Returns `Ok(true)`
+/// when the signature is valid, `Ok(false)` when it is absent or invalid,
+/// and `Err(...)` when the key or signature bytes are malformed.
+///
+/// `verifying_key_bytes` must be 32 bytes — the Ed25519 compressed public
+/// key (derivable from a `SigningKey` via `signing_key.verifying_key().to_bytes()`).
+/// A Customer who keeps only the public key can call this after a Vendor
+/// breakout, per Doctrine claim #28 (Customer always retains the option to
+/// operate independently).
+pub fn verify_checkpoint_signature(
+    checkpoint: &Checkpoint,
+    verifying_key_bytes: &[u8],
+) -> Result<bool, LedgerError> {
+    let sig_bytes = match &checkpoint.signature {
+        None => return Ok(false),
+        Some(v) => v,
+    };
+    let body = signed_note_body(&checkpoint.origin, checkpoint.tree_size, &checkpoint.root_hash)?;
+    let vk_arr: [u8; 32] = verifying_key_bytes.try_into().map_err(|_| {
+        LedgerError::InvalidKey(format!(
+            "verifying key must be 32 bytes, got {}",
+            verifying_key_bytes.len()
+        ))
+    })?;
+    let sig_arr: [u8; 64] = sig_bytes.as_slice().try_into().map_err(|_| {
+        LedgerError::SigningError(format!(
+            "signature must be 64 bytes, got {}",
+            sig_bytes.len()
+        ))
+    })?;
+    let vk = ed25519_dalek::VerifyingKey::from_bytes(&vk_arr)
+        .map_err(|e| LedgerError::InvalidKey(format!("invalid verifying key: {e}")))?;
+    let sig = ed25519_dalek::Signature::from_bytes(&sig_arr);
+    use ed25519_dalek::Verifier as _;
+    Ok(vk.verify(body.as_bytes(), &sig).is_ok())
+}
+
 /// In-memory `LedgerBackend` implementation. Used today for unit
 /// tests + as a fallback when `FS_LEDGER_ROOT` is unset; will be
 /// retained indefinitely for integration tests that don't want to
@@ -302,6 +396,7 @@ pub(crate) fn parse_hex32(s: &str) -> Result<[u8; 32], LedgerError> {
 /// any real deployment.
 pub struct InMemoryLedger {
     origin: String,
+    signing_key: Option<SigningKey>,
     inner: Mutex<Inner>,
 }
 
@@ -325,6 +420,27 @@ impl InMemoryLedger {
         std::fs::create_dir_all(&path)?;
         Ok(Self {
             origin: origin.into(),
+            signing_key: None,
+            inner: Mutex::new(Inner {
+                next_cursor: 1,
+                entries: Vec::new(),
+            }),
+        })
+    }
+
+    /// Open with an Ed25519 signing key. Checkpoints produced by
+    /// this ledger instance will carry a signed-note signature.
+    /// Used in tests that need to exercise `verify_checkpoint_signature`.
+    pub fn open_with_signing_key(
+        path: impl Into<std::path::PathBuf>,
+        origin: impl Into<String>,
+        key: SigningKey,
+    ) -> Result<Self, LedgerError> {
+        let path: std::path::PathBuf = path.into();
+        std::fs::create_dir_all(&path)?;
+        Ok(Self {
+            origin: origin.into(),
+            signing_key: Some(key),
             inner: Mutex::new(Inner {
                 next_cursor: 1,
                 entries: Vec::new(),
@@ -383,14 +499,18 @@ impl LedgerBackend for InMemoryLedger {
         let inner = self.inner.lock().expect("ledger mutex poisoned");
         let tree_size = inner.entries.len() as u64;
         let root_hash = Self::tip_hash(&inner)?;
-        Ok(Checkpoint {
+        let mut cp = Checkpoint {
             origin: self.origin.clone(),
             tree_size,
             root_hash: hex32(&root_hash),
             algorithm: "sha256".to_string(),
             timestamp: now_unix_seconds(),
             signature: None,
-        })
+        };
+        if let Some(key) = &self.signing_key {
+            sign_checkpoint_body(&mut cp, key)?;
+        }
+        Ok(cp)
     }
 
     fn verify_inclusion(
@@ -649,6 +769,47 @@ mod tests {
             Err(LedgerError::InconsistentCheckpoints { .. }) => {}
             other => panic!("expected InconsistentCheckpoints, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn checkpoint_signed_when_key_provided() {
+        let key = SigningKey::from_bytes(&[1u8; 32]);
+        let vk_bytes = key.verifying_key().to_bytes();
+        let l = InMemoryLedger::open_with_signing_key(tmpdir(), "foundry", key).unwrap();
+        l.append("a", &serde_json::json!({"x": 1})).unwrap();
+        let cp = l.checkpoint().unwrap();
+        assert!(cp.signature.is_some(), "signed checkpoint must carry a signature");
+        assert!(
+            verify_checkpoint_signature(&cp, &vk_bytes).unwrap(),
+            "signature must verify with the correct key"
+        );
+    }
+
+    #[test]
+    fn checkpoint_signature_fails_with_wrong_key() {
+        let key = SigningKey::from_bytes(&[1u8; 32]);
+        let l = InMemoryLedger::open_with_signing_key(tmpdir(), "foundry", key).unwrap();
+        l.append("a", &serde_json::json!({"x": 1})).unwrap();
+        let cp = l.checkpoint().unwrap();
+        let wrong_vk = SigningKey::from_bytes(&[2u8; 32]).verifying_key().to_bytes();
+        assert!(
+            !verify_checkpoint_signature(&cp, &wrong_vk).unwrap(),
+            "signature must NOT verify with the wrong key"
+        );
+    }
+
+    #[test]
+    fn checkpoint_signature_fails_on_tampered_fields() {
+        let key = SigningKey::from_bytes(&[1u8; 32]);
+        let vk_bytes = key.verifying_key().to_bytes();
+        let l = InMemoryLedger::open_with_signing_key(tmpdir(), "foundry", key).unwrap();
+        l.append("a", &serde_json::json!({"x": 1})).unwrap();
+        let mut cp = l.checkpoint().unwrap();
+        cp.tree_size += 1; // tamper with the checkpoint body
+        assert!(
+            !verify_checkpoint_signature(&cp, &vk_bytes).unwrap(),
+            "signature must NOT verify after tampering with tree_size"
+        );
     }
 
     #[test]
