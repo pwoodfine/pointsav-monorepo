@@ -147,4 +147,25 @@ mod tests {
             other => panic!("expected ParserInternal, got {other:?}"),
         }
     }
+
+    /// Happy-path test against a real minimal PDF fixture. Confirms
+    /// that text extraction succeeds and page_count is correct.
+    /// The fixture is a hand-crafted 1-page PDF with Helvetica text
+    /// ("Hello World") in a BT...ET content stream.
+    #[test]
+    fn happy_path_minimal_pdf_parses() {
+        let bytes = include_bytes!("../tests/fixtures/minimal.pdf");
+        let parser = PdfParser::new();
+        let doc = parser
+            .parse("fixture-1", bytes)
+            .expect("minimal.pdf must parse without error");
+        assert!(
+            !doc.text.is_empty(),
+            "extracted text must be non-empty for a PDF with a content stream"
+        );
+        assert!(
+            doc.metadata["page_count"].as_u64().unwrap_or(0) >= 1,
+            "page_count must be >= 1"
+        );
+    }
 }
