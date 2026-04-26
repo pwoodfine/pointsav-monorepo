@@ -8,26 +8,20 @@
 
 ## Right now
 
-- **Wire the DOCX parser via `docx-rust`.** PDF and Markdown
-  parsers are wired and 19 tests pass. DOCX is the next pickup:
-  `service-email` attachment payloads are predominantly DOCX, so
-  this unblocks the `service-email` → `service-input` integration
-  path. Implement `DocxParser` following the same `Parser` trait
-  shape as `PdfParser` and `MarkdownParser` (`struct DocxParser` in
-  `src/docx.rs`; re-exported from `lib.rs` as
-  `service_input::DocxParser`). DOCX is a ZIP-format container
-  (Open Packaging Convention) containing `word/document.xml`;
-  `docx-rust` provides a `DocxFile` API. The ZIP magic-byte
-  detection in `detect_by_magic` can be refined to peek at the
-  `[Content_Types].xml` entry once the docx crate's unzip surface
-  is available — or leave as a follow-up behind the extension path.
-  Add tests: (a) valid DOCX bytes → `ParsedDocument` with
-  non-empty text, (b) invalid bytes → `ParserInternal` error.
+- **Wire the XLSX parser via `calamine`.** DOCX done (21 tests).
+  XLSX is the next pickup: calamine accepts any `Read + Seek` so no
+  temp-file shim is needed. Implement `XlsxParser` in `src/xlsx.rs`,
+  re-exported as `service_input::XlsxParser`. Extract text from all
+  cells in all sheets into a flat text buffer (cell values
+  space-separated, rows newline-separated). Metadata: `sheet_count`,
+  sheet names as `sheets` array, `parser: "calamine"`. Tests:
+  (a) non-ZIP bytes → `FormatMismatch`, (b) valid-ZIP but invalid XLSX
+  → `ParserInternal`.
 
 ## Queue
 
-- Wire the remaining two parsers per `~/Foundry/SLM-STACK.md` §3.4:
-  - XLSX: `calamine`
+- Wire the remaining parser per `~/Foundry/SLM-STACK.md` §3.4:
+  - XLSX: `calamine` (Right-now)
 - Wire `service-fs` integration — once at least one parser is
   working, add a thin client that holds the parsed `ParsedDocument`
   and `POST /v1/append`s to the configured `service-fs` URL with
@@ -66,6 +60,16 @@
 
 ## Recently done
 
+- 2026-04-26: **DocxParser via docx-rust 0.1.11** wired. New
+  `service-input/src/docx.rs` — `DocxParser` implementing the
+  `Parser` trait. Uses `DocxFile::from_reader(Cursor::new(bytes))`
+  (no temp-file shim — docx-rust's reader API accepts any
+  `Read + Seek`). Magic-byte check: rejects non-ZIP input with
+  `FormatMismatch` early; ZIP-but-invalid-DOCX returns
+  `ParserInternal` from the underlying parser. Text extracted via
+  `document.body.text()`; `paragraph_count` + `parser: "docx-rust"`
+  in metadata. Re-exported as `service_input::DocxParser` from
+  `lib.rs`. **21 unit tests pass clean** (19 prior + 2 DocxParser).
 - 2026-04-26: **MarkdownParser via pulldown-cmark 0.12** wired. New
   `service-input/src/markdown.rs` — `MarkdownParser` implementing
   the `Parser` trait. Pure-text input; no temp-file shim needed.

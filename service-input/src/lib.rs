@@ -35,6 +35,8 @@
 //!   (per-tenant moduleId header)
 //! ```
 
+pub mod docx;
+pub use docx::DocxParser;
 pub mod markdown;
 pub use markdown::MarkdownParser;
 pub mod pdf;
