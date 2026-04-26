@@ -53,6 +53,48 @@ held until `cargo check` passes clean (Master Decision 3).
 `X-Foundry-Module-ID` header is required on `/v1/append` and
 `/v1/entries`; mismatch with `FS_MODULE_ID` returns 403.
 
+## Standards & compliance posture
+
+`service-fs` targets two external WORM standards plus the SOC 2
+Trust Services Criteria most relevant to immutable storage:
+
+- **SEC Rule 17a-4(f)** (US, broker-dealer electronic
+  recordkeeping; 2022 amendment effective 2023-05-03) — WORM
+  path, not the Audit-Trail alternative.
+- **eIDAS qualified preservation service** (EU; Commission
+  Implementing Regulation 2025/1946 in force 2026-01-06; ETSI
+  TS 119 511 v1.2.1; ETSI EN 319 401 v3.2.1; CEN TS 18170:2025).
+- **SOC 2 TSC** — CC6 (Logical Access), CC7 (System Operations),
+  PI1 (Processing Integrity Inputs), PI4 (Processing Integrity
+  Outputs).
+
+Plus Foundry-internal: WORM legal compliance per MEMO §6.3 line
+194; DARP per DOCTRINE §IX; ADR-07 zero-AI in Ring 1; Pillar 1
+plain text only; Pillar 2 100-year readability; Invention #7
+monthly Sigstore Rekor anchoring.
+
+Full posture in `SECURITY.md`. What is NOT promised today (no
+formal SOC 3 attestation, no eIDAS designation) is stated
+explicitly there.
+
+## Architecture
+
+Four-layer stack — **L1** tile storage (POSIX today,
+capability-mediated `moonshot-database` long-term); **L2** WORM
+Ledger Rust trait (target-independent contract); **L3** wire
+protocol (axum HTTP today, MCP-server layered on top); **L4**
+monthly Sigstore Rekor anchoring (workspace-tier per Invention
+#7).
+
+Two boot envelopes share the same wire protocol and same tile
+format: **Envelope A** Linux/BSD daemon under systemd (today);
+**Envelope B** seL4 Microkit Protection Domain unikernel
+(long-term Totebox Archive native).
+
+Full overview in `ARCHITECTURE.md`. Full synthesis with
+alternatives considered + ten ratification decisions for Master
+in `RESEARCH.md`.
+
 ## Build and test
 
 ```
@@ -69,10 +111,21 @@ assignment is governed by `pointsav/factory-release-engineering`'s
 
 ## See also
 
+- `SECURITY.md` — compliance posture (SEC 17a-4(f), eIDAS, SOC 2)
+- `ARCHITECTURE.md` — four-layer stack overview
+- `RESEARCH.md` — full synthesis, alternatives, ratification
+  decisions
+- `CLAUDE.md` — operational state, hard constraints
+- `NEXT.md` — work queue
 - `~/Foundry/conventions/three-ring-architecture.md` — Ring 1
   contract
 - `~/Foundry/conventions/zero-container-runtime.md` — deployment
   shape
+- `~/Foundry/MEMO-2026-03-30-Development-Overview-V8.md` §6.3
+  (service-fs role) + §7 (moonshot trajectory toward seL4
+  unikernel + moonshot-database)
+- `~/Foundry/DOCTRINE.md` §IX (SOC 2 / DARP posture); §II.7
+  (Invention #7 Integrity Anchor)
 - `vendor/pointsav-monorepo/service-slm/crates/slm-doorman-server/`
   (project-slm cluster) — reference shape for the Tokio + axum
   pattern

@@ -96,6 +96,80 @@ Newest on top. Append a dated block when a session includes meaningful cleanup w
 
 ---
 
+## 2026-04-26 (third session, follow-up — docs codification + DOCTRINE proposal)
+
+- **Operator follow-up after research synthesis.** Asked
+  2026-04-26 to (a) codify the SEC 17a-4(f) + eIDAS qualified
+  preservation standards in service-fs's per-project documentation,
+  and (b) surface those standards in DOCTRINE.md alongside the
+  existing SOC 2 / SOC 3 / DARP framing.
+- **(a) Documentation codified in this commit.** Three durable
+  per-project doc files written in `service-fs/`:
+  - **`service-fs/SECURITY.md`** (~250 lines) — compliance
+    posture statement. Cites SEC 17a-4(f) (US, broker-dealer;
+    2022 amendment WORM path not Audit-Trail loophole), eIDAS
+    qualified preservation (EU 2025/1946 in force 2026-01-06 +
+    ETSI TS 119 511 + ETSI EN 319 401 v3.2.1 + CEN TS
+    18170:2025), SOC 2 TSC (CC6/CC7/PI1/PI4). Maps each to the
+    proposed design. Per-tenant boundary mechanism (today vs
+    long-term seL4 capability isolation). Threat model with
+    explicit out-of-scope items. What is NOT promised today
+    (no formal SOC 3 attestation, no eIDAS designation, no
+    quantum-resistant signatures yet, no third-party witness
+    today).
+  - **`service-fs/ARCHITECTURE.md`** (~350 lines) — durable
+    architecture overview. Four-layer stack with diagrams (L1
+    tile storage / L2 WORM Ledger trait / L3 wire / L4
+    anchoring). Two boot envelopes (Linux daemon today + seL4
+    Microkit unikernel long-term + Linux/BSD wrapper case). Tile
+    and checkpoint format adoption (C2SP tlog-tiles + signed-
+    note). Append flow + read flow + ADR-07 audit-log sub-
+    ledger + bootstrapping. Cryptographic agility for future
+    hash + signature migration. Rust module map. Marked
+    proposed-pending-ratification.
+  - **`service-fs/README.md` + `README.es.md`** — added
+    "Standards & compliance" + "Architecture" sections
+    (bilingual mirror) pointing to SECURITY.md, ARCHITECTURE.md,
+    RESEARCH.md, plus extended "See also" with the new internal
+    + external Foundry references.
+- **(b) DOCTRINE proposal outboxed to Master.** Cannot edit
+  DOCTRINE.md myself — workspace-tier per CLAUDE.md §11 action
+  matrix. Outbox message
+  `doctrine-external-standards-and-service-fs-docs-review`
+  proposes Master add a new "External WORM standards alignment"
+  subsection to DOCTRINE §IX naming SEC 17a-4(f) and eIDAS
+  qualified preservation explicitly. Substance preserved through
+  drafted text in the outbox; framing/placement open for Master
+  counter-proposal. Same outbox also requests review of the new
+  ARCHITECTURE.md + SECURITY.md against existing ratified
+  conventions.
+- **Doc split rationale documented.** Three durable per-project
+  files have distinct roles:
+  | File | Purpose |
+  |---|---|
+  | RESEARCH.md | Synthesis WITH alternatives + 10 ratification decisions + full sources — input draft for convention authoring |
+  | ARCHITECTURE.md | Durable architecture overview, no alternatives, post-ratification or proposed-pending-ratification |
+  | SECURITY.md | Durable compliance posture, citing standards, what is/isn't promised |
+  Both ARCHITECTURE.md and SECURITY.md are marked "proposed,
+  pending Master ratification" in their headers. Once the
+  worm-ledger-design convention lands at workspace tier, these
+  files become authoritative; until then they are aspirational
+  documentation pinned to the proposal.
+- **Repo-layout compliance for the new files.** Both
+  `ARCHITECTURE.md` and `SECURITY.md` are explicitly listed as
+  allowed at project root in `.claude/rules/repo-layout.md`
+  ("When a project warrants a dedicated architecture note" /
+  "When a project warrants a security posture note"). No
+  framework deviation for these. (RESEARCH.md remains a de facto
+  pattern not yet codified in repo-layout.md — flagged in the
+  prior session entry.)
+- **No code changes this commit.** Documentation + outbox only.
+  Customer-first ordering preserved: service-input parser-
+  dispatcher remains the next Task pickup per Master's prior
+  go-ahead.
+
+---
+
 ## 2026-04-26 (third session — research-only, no code changes)
 
 - **Research synthesis written for service-fs storage architecture.**
