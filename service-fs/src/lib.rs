@@ -9,6 +9,7 @@
 
 pub mod http;
 pub mod ledger;
+pub mod mcp;
 pub mod posix_tile;
 
 pub use http::{router, AppState};

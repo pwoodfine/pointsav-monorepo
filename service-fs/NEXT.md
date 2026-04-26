@@ -8,13 +8,13 @@
 
 ## Right now
 
-- **MCP-server interface layer** — Layer the MCP-server interface on
-  top of the existing JSON-over-HTTP routes per
-  `~/Foundry/conventions/three-ring-architecture.md` §"MCP boundary
-  at Ring 1". MCP resources for ledger reads (`/v1/entries`), MCP
-  tools for append (`/v1/append`). Reference the Anthropic/Cloudflare
-  2026 MCP spec; the JSON shapes already match closely. The Tokio +
-  axum surface stays; MCP is a layered protocol on top.
+- **Round-trip integration test for service-input → service-fs
+  HTTP client** — once `service-input` has at least one wired parser
+  (Markdown ✓), add a thin HTTP client in `service-input` that POSTs
+  a parsed `ParsedDocument` to `service-fs`'s `/v1/append` endpoint.
+  Confirm the payload round-trips: call `GET /v1/entries` on the same
+  ledger and verify the stored payload matches. This is the first
+  end-to-end test that crosses Ring 1 service boundaries.
 
 ## Queue
 - Re-add `service-fs` to root `Cargo.toml` `[workspace.members]`.
@@ -56,6 +56,23 @@
 
 ## Recently done
 
+- 2026-04-26: **MCP-server interface layer** per
+  three-ring-architecture.md §"MCP boundary at Ring 1". New
+  `service-fs/src/mcp.rs` implements JSON-RPC 2.0 (Streamable HTTP
+  transport, single JSON response) on top of the existing axum
+  surface. `POST /mcp` added to the router in `http.rs`. Capabilities
+  exposed: tool `ledger.append` (arguments: payload_id, payload;
+  returns cursor via `content[0].text`); resource `ledger://entries`
+  (URI: `ledger://entries?since=N`; returns entries as JSON text in
+  `contents[0].text`). `initialize` announces both `tools` and
+  `resources` capabilities. `X-Foundry-Module-ID` per-tenant
+  enforcement carries through MCP (mismatch → JSON-RPC error, not a
+  bare 403, so MCP clients get a protocol-level error). `lib.rs`
+  exports `mcp` module. **5 new tests** cover: `initialize` returns
+  capabilities; `tools/list` includes `ledger.append`;
+  `tools/call` ledger.append returns cursor; `resources/read`
+  returns appended entry; wrong module_id → RPC error.
+  **30 tests total** (28 unit + 2 integration).
 - 2026-04-26: **Round-trip integration tests** in `tests/round_trip.rs`.
   Two `#[tokio::test]` cases: (1) `append_then_entries_returns_payload` —
   POST `/v1/append` then GET `/v1/entries?since=0`, asserts payload

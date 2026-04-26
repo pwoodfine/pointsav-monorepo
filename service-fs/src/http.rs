@@ -41,6 +41,7 @@ use serde::{Deserialize, Serialize};
 use tracing::{info, warn};
 
 use crate::ledger::{now_unix_seconds, Checkpoint, LedgerBackend, LedgerError};
+use crate::mcp::mcp_handler;
 
 pub struct AppState {
     pub module_id: String,
@@ -66,6 +67,10 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route("/v1/append", post(append))
         .route("/v1/entries", get(entries))
         .route("/v1/checkpoint", get(checkpoint))
+        // MCP-server interface per three-ring-architecture.md §"MCP
+        // boundary at Ring 1". Layered on top of the JSON-over-HTTP
+        // routes; the underlying /v1/* surface remains unchanged.
+        .route("/mcp", post(mcp_handler))
         .with_state(state)
 }
 
