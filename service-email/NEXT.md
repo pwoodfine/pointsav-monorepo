@@ -8,43 +8,26 @@
 
 ## Right now
 
-- Rebase `src/auth.rs` + `src/graph_client.rs` onto the EWS-based
-  MSFT auth pattern proven in the sibling
-  `service-email-egress-ews/` project (operator decision
-  2026-04-25). Specifically: replace the inline OAuth
-  `client_credentials` flow with `AZURE_ACCESS_TOKEN` consumed
-  from env (per `service-email-egress-ews/template.env` and the
-  pattern in `service-email-egress-ews/egress-ingress/src/main.rs`
-  + `service-email-egress-ews/egress-roster/src/main.rs`); replace
-  Graph REST calls with EWS SOAP requests using
-  `service-email-egress-ews/egress-roster/ews_payload.xml` as the
-  envelope reference.
-
-## Queue
-
-- Decide consumption mode for the EWS code: workspace path-dep on
-  the relevant `service-email-egress-ews/` sub-crate, or lift the
-  pattern into `service-email/src/`. Path-dep is preferred (single
-  source of truth) if the sub-crate's Cargo manifest can be made
-  workspace-clean; pattern-lift is the fallback.
-- Inventory the four `service-email-egress-ews/` sub-crates
-  (`egress-ingress`, `egress-roster`, `egress-archive-ews`,
-  `egress-prune`, `egress-balancer`, `egress-ledger`) and identify
-  the minimum surface `service-email` needs to import. The
-  separate registry note (2026-04-23) flags
-  Cargo.toml-name-vs-directory-name mismatches in this area —
-  beware those when wiring the dependency.
 - **`sovereign-splinter/` rename.** Cargo.toml `name` field is
   `sovereign-splinter` — "sovereign" prefix is Do-Not-Use per
   workspace conventions. Rename to `email-splitter` (or fold into
   `service-email/src/` as the `.eml` parsing module). The
-  `spool-daemon.sh` binary path reference updates with it.
+  `scripts/spool-daemon.sh` binary path reference updates with it.
+
+## Queue
+
 - **`ingress-harvester/` + `master-harvester-rs/` retirement.**
-  Both use the deprecated in-process OAuth pattern. Retire once the
-  EWS rebase is live and the same email-harvesting surface exists
-  in `service-email/src/`. The micro-batching concept from
+  Both use the deprecated in-process OAuth pattern. EWS rebase is
+  now live in `service-email/src/`; retire these once the new path
+  is confirmed end-to-end. The micro-batching concept from
   `master-harvester-rs/` (BATCH_SIZE=3) is worth preserving in the
-  rebased daemon loop.
+  daemon loop (currently polls at 60s with one message per tick).
+- Decide consumption mode for the EWS code: workspace path-dep on
+  the relevant `service-email-egress-ews/` sub-crate, or lift the
+  pattern into `service-email/src/`. The lift approach has been
+  taken in this rebase (pattern copied from egress-roster/ews_payload.xml
+  reference); path-dep can revisit if the egress crates' Cargo
+  name-vs-directory mismatches are resolved.
 - Replace `maildir::MaildirVault` writes with `service-fs` MCP
   append calls. The `MaildirVault` is a transition-period sink;
   the long-term shape persists message bodies through the WORM
@@ -81,6 +64,22 @@
   concern downstream of the ledger.
 
 ## Recently done
+
+- 2026-04-26: **EWS auth rebase complete.**
+  `src/auth.rs` — replaced inline OAuth2 `client_credentials` flow
+  with `EwsCredentials::from_env()` reading `AZURE_ACCESS_TOKEN` +
+  `EXCHANGE_TARGET_USER` + optional `EWS_ENDPOINT` from env.
+  `src/graph_client.rs` → renamed to `src/ews_client.rs` via
+  `git mv`; fully rewritten as `EwsClient` implementing three EWS
+  SOAP operations (FindItem, GetItem with IncludeMimeContent, UpdateItem
+  IsRead=true). `src/main.rs` — daemon loop rewritten using
+  `EwsCredentials` + `EwsClient`; reads `TOTEBOX_ARCHIVE_PATH`;
+  includes 50ms anti-throttle pause between per-message EWS calls.
+  `Cargo.toml` — removed `serde`/`serde_json`; changed reqwest to
+  `rustls-tls` (avoids openssl-sys blocker); added `base64 = "0.22"`;
+  added `[workspace]` table (standalone crate isolation). Six unit
+  tests cover XML parsing helpers and base64 round-trip; all pass
+  clean.
 
 - 2026-04-26: **pre-framework subdirectory inventory complete.**
   Four subdirectories + one root template assessed; decisions:

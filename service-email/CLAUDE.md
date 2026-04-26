@@ -36,36 +36,27 @@ they are protocol-specific implementations, not duplicates).
 
 ## Current state
 
-**Auth surface in src/ is drift — operator-confirmed rebase
-target.** The existing `src/main.rs` + `src/auth.rs` +
-`src/graph_client.rs` implement an in-process OAuth
-`client_credentials` flow against `login.microsoftonline.com`
-with scope `https://graph.microsoft.com/.default`, and call
-Microsoft Graph REST endpoints. **Operator decision 2026-04-25:**
-service-email should reuse the EWS-based MSFT authentication
-pattern that is already working in the sibling
-`service-email-egress-ews/` project, not the in-src Graph OAuth
-flow.
+**EWS auth rebase complete (2026-04-26).** The former inline OAuth
+`client_credentials` + Graph REST path has been replaced:
 
-What "EWS-based MSFT authentication" means in this repo, based on
-the inventory of `service-email-egress-ews/`:
+- `src/auth.rs` — `EwsCredentials::from_env()` reads
+  `AZURE_ACCESS_TOKEN`, `EXCHANGE_TARGET_USER`, optional
+  `EWS_ENDPOINT`. Token is pre-acquired out-of-process; the daemon
+  does not run the OAuth handshake.
+- `src/ews_client.rs` (formerly `graph_client.rs`) — `EwsClient`
+  implementing FindItem / GetItem (IncludeMimeContent) / UpdateItem
+  via EWS SOAP over HTTPS with bearer auth. String-based XML parsing
+  (no extra dep); base64 decode of MimeContent.
+- `src/main.rs` — polling daemon loop using `EwsCredentials` +
+  `EwsClient` + `MaildirVault`.
+- `Cargo.toml` — reqwest with `rustls-tls` (no openssl-sys); base64
+  dep added; serde/serde_json removed; `[workspace]` added for
+  standalone crate isolation.
+- Six unit tests pass clean (`cargo test --manifest-path
+  service-email/Cargo.toml`).
 
-- Access token is pre-acquired (out-of-process) and passed in via
-  `AZURE_ACCESS_TOKEN` env var (alongside `EXCHANGE_TARGET_USER`
-  and per-tenant config in `template.env`).
-- The Rust process consumes the token; it does not run the OAuth
-  handshake inline. This decouples auth refresh from the daemon
-  loop and matches the pattern used in
-  `service-email-egress-ews/egress-ingress/src/main.rs` and
-  `service-email-egress-ews/egress-roster/src/main.rs`.
-- For mailbox protocol surface, `service-email-egress-ews/egress-
-  roster/ews_payload.xml` is the EWS SOAP envelope reference
-  (with `ExchangeImpersonation` of the target user).
-
-The Tokio async runtime model already in `service-email/src/main.rs`
-is fine — it matches the ratified Ring 1 hosted-process intent
-(`~/Foundry/conventions/zero-container-runtime.md`). Only the
-auth/protocol surface changes.
+Next: `sovereign-splinter/` rename (Do-Not-Use "sovereign" prefix) +
+`ingress-harvester/` / `master-harvester-rs/` retirement.
 
 Pre-framework sub-directory inventory (2026-04-26; decisions in NEXT.md):
 
@@ -91,17 +82,15 @@ items run alongside the auth rebase.
 
 ## Build and test
 
-`cargo check` inside this directory builds against the existing
-Cargo.toml (tokio, reqwest, serde, uuid, chrono). It will continue
-to compile during the rebase if changes are sequenced (touch
-`auth.rs` and `graph_client.rs` together; keep `main.rs`
-compatible until both halves of the new wire path are in place).
+```
+cargo check --manifest-path service-email/Cargo.toml
+cargo test  --manifest-path service-email/Cargo.toml
+```
 
-End-to-end testing of the rebased path needs a real Exchange
-mailbox + valid `AZURE_ACCESS_TOKEN`; no automated harness for
-that exists today. Add a fixture-based test for the SOAP payload
-serialisation so unit-level coverage doesn't depend on a live
-mailbox.
+Six unit tests in `ews_client.rs` cover XML parsing helpers and
+base64 round-trip; all pass clean. End-to-end ingestion testing
+requires a real Exchange mailbox + valid `AZURE_ACCESS_TOKEN`;
+no automated harness for that exists today.
 
 ## File layout
 
@@ -111,13 +100,13 @@ service-email/
 ├── README.md, README.es.md
 ├── CLAUDE.md, NEXT.md
 ├── src/
-│   ├── main.rs         — Tokio daemon loop (runtime model OK)
-│   ├── auth.rs         — Graph OAuth (REPLACE per EWS rebase)
-│   ├── graph_client.rs — Graph REST client (REPLACE per EWS rebase)
-│   └── maildir.rs      — Maildir vault writer (transition sink → service-fs)
+│   ├── main.rs         — Tokio async daemon loop
+│   ├── auth.rs         — EwsCredentials::from_env() (AZURE_ACCESS_TOKEN)
+│   ├── ews_client.rs   — EwsClient: FindItem / GetItem / UpdateItem SOAP
+│   └── maildir.rs      — MaildirVault writer (transition sink -> service-fs)
 ├── docs/
 │   └── TEMPLATE_INDEX_MSFT_ENTRA_ID.md  — Entra ID auth index template
-├── ingress-harvester/  — pre-framework; retire-pending (old inline OAuth)
+├── ingress-harvester/  — pre-framework; retire-pending (inline OAuth pattern)
 ├── master-harvester-rs/ — pre-framework; retire-pending (Graph API deprecated)
 ├── sovereign-splinter/ — pre-framework; keep parsing core; Do-Not-Use prefix
 └── scripts/
@@ -141,10 +130,6 @@ service-email/
   pattern, `AZURE_ACCESS_TOKEN` is consumed from env; the daemon
   does not perform the OAuth handshake inline. Token refresh is
   upstream concern.
-- **Do not delete the existing Graph code paths until the EWS
-  rebase compiles and is reviewed.** The current path is what's
-  working today; the rebase is sequenced, not a hard cutover.
-
 ## Dependencies on other projects
 
 - Reads from: upstream Microsoft Exchange (per-tenant mailboxes

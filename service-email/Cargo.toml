@@ -2,12 +2,13 @@
 name = "service-email"
 version = "0.1.0"
 edition = "2021"
-description = "Sovereign bridge for Microsoft Exchange to Maildir conversion."
+description = "Ring 1 Communications Ledger — EWS SOAP ingest from Microsoft Exchange."
+
+[workspace]
 
 [dependencies]
 tokio = { version = "1.35", features = ["full"] }
-reqwest = { version = "0.11", features = ["json"] }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
+reqwest = { version = "0.11", default-features = false, features = ["rustls-tls"] }
+base64 = "0.22"
 uuid = { version = "1.6", features = ["v4"] }
 chrono = "0.4"
