@@ -37,6 +37,8 @@
 
 pub mod docx;
 pub use docx::DocxParser;
+pub mod fs_client;
+pub use fs_client::{FsClient, FsClientError};
 pub mod markdown;
 pub use markdown::MarkdownParser;
 pub mod pdf;

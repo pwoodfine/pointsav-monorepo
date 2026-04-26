@@ -43,8 +43,10 @@ separate decision tracked in NEXT.md.
 cargo check    # standalone (service-input is workspace-excluded
                # alongside service-fs while the openssl-sys Layer 1
                # audit issue lives in a sibling member)
-cargo test     # runs the 11 unit tests covering format detection +
-               # dispatcher behaviour
+cargo test     # runs the 24 tests: format detection + dispatcher
+               # (12), multi-parser integration (1), PdfParser (2),
+               # MarkdownParser (5), DocxParser (2), XlsxParser (2),
+               # FsClient integration (1 — spins up real axum server)
 ```
 
 ## File layout
@@ -65,7 +67,15 @@ service-input/
     │                       detect_format (extension-first, magic-
     │                       byte fallback). 12 unit tests + 1
     │                       multi-parser integration test. Re-exports
-    │                       PdfParser, MarkdownParser, DocxParser.
+    │                       PdfParser, MarkdownParser, DocxParser,
+    │                       XlsxParser, FsClient, FsClientError.
+    ├── fs_client.rs      — FsClient { base_url, module_id } with
+    │                       submit(&self, doc) -> Result<u64, FsClientError>.
+    │                       POSTs to service-fs /v1/append; ureq 3.3
+    │                       blocking (json feature). Integration test
+    │                       spins up real axum server on port 0.
+    │                       Re-exported as service_input::FsClient +
+    │                       FsClientError from lib.rs.
     ├── pdf.rs            — PdfParser via oxidize-pdf 2.x. Temp-file
     │                       shim (oxidize-pdf is file-path-only).
     │                       Returns ParsedDocument with text +

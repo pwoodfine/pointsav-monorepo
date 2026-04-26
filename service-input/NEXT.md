@@ -8,31 +8,16 @@
 
 ## Right now
 
-- **service-input → service-fs HTTP client integration.** All four
-  parsers are wired (PDF, Markdown, DOCX, XLSX — 23 tests). Wire the
-  thin HTTP client that takes a parsed `ParsedDocument` and POSTs it
-  to `service-fs`'s `/v1/append` endpoint. The client lives in
-  `src/fs_client.rs`: struct `FsClient { base_url: String, module_id:
-  String }` with `fn submit(&self, doc: &ParsedDocument) -> Result<u64,
-  FsClientError>` (returns the assigned cursor). The wire format is the
-  same JSON body as `/v1/append`: `{payload_id, payload}` where
-  `payload_id` is `doc.source_id` and `payload` is
-  `serde_json::to_value(doc)`. Use the `reqwest` blocking client
-  (simplest; async not needed at Ring 1 boundary ingest throughput).
-  Add a test that spins up an axum router (via `tower::ServiceExt`)
-  and calls `submit`, asserting the returned cursor is ≥ 1.
+- **service-input MCP server interface.** Expose the ingest surface
+  as an MCP tool. One moduleId per process. Mount at `POST /mcp`
+  (JSON-RPC 2.0 Streamable HTTP transport per 2026 MCP spec).
+  Tool: `document.ingest` (arguments: `filename`, `source_id`,
+  `bytes_base64`). Internally: detect format, dispatch to the right
+  parser, call `FsClient::submit`. Return `{ cursor }` on success.
+  Mirror the shape of `service-fs`'s MCP handler in `mcp.rs`.
 
 ## Queue
 
-- Wire the remaining parser per `~/Foundry/SLM-STACK.md` §3.4:
-  - XLSX: `calamine` (Right-now)
-- Wire `service-fs` integration — once at least one parser is
-  working, add a thin client that holds the parsed `ParsedDocument`
-  and `POST /v1/append`s to the configured `service-fs` URL with
-  the per-tenant `X-Foundry-Module-ID` header. Initially via
-  `service-fs`'s JSON-over-HTTP wire (today's surface); when
-  `service-fs`'s MCP-server interface lands per worm-ledger-design
-  §5 step 5, swap to MCP-client semantics.
 - MCP server interface — expose ingest as a tool; one moduleId per
   process (per `~/Foundry/conventions/three-ring-architecture.md`
   §moduleId discipline).
@@ -64,6 +49,20 @@
 
 ## Recently done
 
+- 2026-04-26: **service-input → service-fs HTTP client** wired. New
+  `service-input/src/fs_client.rs` — `FsClient { base_url, module_id }`
+  with `submit(&self, doc: &ParsedDocument) -> Result<u64, FsClientError>`.
+  POSTs `{ payload_id: doc.source_id, payload: serde_json::to_value(doc) }`
+  to `POST /v1/append` with `X-Foundry-Module-ID` header. Blocking I/O
+  via ureq 3.3 (json feature). `FsClientError` distinguishes
+  `Serialization` / `Transport` / `StatusError { status }` /
+  `ResponseParse`. Integration test (`submit_appends_to_service_fs_and_
+  returns_cursor_ge_1`) spins up a real service-fs axum server on port 0
+  using a background thread + dedicated tokio runtime; asserts cursor ≥ 1.
+  Re-exported as `service_input::FsClient` + `FsClientError`. Dev-deps
+  added: `service-fs = { path = "../service-fs" }`, `tokio = { version =
+  "1", features = ["rt-multi-thread"] }`, `axum = "0.7"`. **24 unit +
+  integration tests pass clean** (23 prior + 1 FsClient integration).
 - 2026-04-26: **XlsxParser via calamine 0.34** wired. New
   `service-input/src/xlsx.rs` — `XlsxParser` implementing the
   `Parser` trait. Uses `open_workbook_from_rs(Cursor::new(bytes))` —

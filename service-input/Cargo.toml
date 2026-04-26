@@ -16,5 +16,9 @@ oxidize-pdf = "2"
 pulldown-cmark = "0.12"
 docx-rust = "0.1.11"
 calamine = "0.34.0"
+ureq = { version = "3.3.0", default-features = false, features = ["json"] }
 
 [dev-dependencies]
+service-fs = { path = "../service-fs" }
+tokio = { version = "1", features = ["rt-multi-thread"] }
+axum = "0.7"
