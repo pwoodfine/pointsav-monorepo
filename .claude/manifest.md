@@ -3,15 +3,60 @@ schema: foundry-cluster-manifest-v1
 cluster_name: project-data
 cluster_branch: cluster/project-data
 created: 2026-04-25
-backfilled: 2026-04-26
+backfilled: 2026-04-26 (manifest schema), 2026-04-26 (triad per Doctrine v0.0.4)
 state: active
+
+triad:
+  vendor:
+    - repo: pointsav-monorepo
+      path: ./
+      upstream: vendor/pointsav-monorepo
+      focus: service-fs/, service-people/, service-email/, service-input/ (Ring 1 services)
+  customer:
+    - fleet_deployment_repo: customer/woodfine-fleet-deployment
+      catalog_subfolder: cluster-totebox-corporate/
+      tenant: woodfine
+      purpose: Ring-1-services-deployment-on-Customer-Totebox
+      status: leg-pending — Task to draft GUIDEs for service-fs operator runbook (provision, daily-ops, recovery, decommission); first GUIDE-* lands when service-fs storage swap is testable
+    - fleet_deployment_repo: vendor/pointsav-fleet-deployment
+      catalog_subfolder: vault-privategit-source/
+      tenant: pointsav
+      purpose: Ring-1-services-deployment-on-the-workspace-VM (PointSav-as-tenant)
+      status: leg-pending — same GUIDEs; pointsav-tenant variant
+  deployment:
+    - path: /srv/foundry  # vault-privategit-source-1 (workspace VM as PointSav tenant Ring 1 instance)
+      tenant: pointsav
+      shape: long-running-service
+      shared_with: [project-slm]
+      runtime_artifacts:
+        - (planned) /usr/local/bin/local-fs + /etc/systemd/system/local-fs.service
+        - /var/lib/local-fs/ledger/ (per service-fs/ARCHITECTURE.md)
+      status: leg-pending — Master to draft systemd unit at infrastructure/local-fs/ when Task confirms K4-equivalent ready
+    - path: ~/Foundry/deployments/cluster-totebox-corporate-N/ (planned; -N when Customer Totebox provisioned)
+      tenant: woodfine
+      shape: corporate-archive
+      shared_with: [project-orgcharts]
+      status: leg-pending — provision when Woodfine Totebox is stood up; v0.5.0+ trajectory
+
 clones:
   - repo: pointsav-monorepo
     role: primary
     path: ./
     upstream: vendor/pointsav-monorepo
-deployment_instance: null
 trajectory_capture: pending
+
+adapter_routing:
+  trains:
+    - cluster-project-data       # own cluster adapter (Ring 1 services + WORM ledger)
+    - engineering-pointsav       # Vendor engineering corpus
+    # NOTE: future tenant-woodfine added when Customer Totebox runtime kicks in
+    # (per Doctrine §IV.b strict tenant isolation; tenant adapter trains
+    # inside the Customer Totebox, not in workspace)
+  consumes:
+    - constitutional-doctrine    # always
+    - engineering-pointsav       # always — Vendor knowledge
+    - cluster-project-data       # own cluster context
+    - role-task                  # current role
 ---
 
 # Cluster manifest — project-data

@@ -96,6 +96,109 @@ Newest on top. Append a dated block when a session includes meaningful cleanup w
 
 ---
 
+## 2026-04-26 (fourth session — admin cleanup + L2 trait extraction + service-input scaffold)
+
+- **Operator directive:** execute Phase 3 (admin cleanup) → Phase 1
+  (L2 trait extraction) → Phase 2 (service-input parser-dispatcher
+  scaffold) in that order. All three phases landed in this
+  session.
+- **Phase 3a — Read ratified workspace docs.** Read
+  `~/Foundry/conventions/worm-ledger-design.md` (workspace v0.1.7
+  / `6c0b79a`) — L2 trait surface explicitly named
+  (`open / append / read_since / checkpoint / verify_inclusion /
+  verify_consistency`); D4 v0.1.x baseline pinned (write-rename +
+  0o444 + journal mode; `chattr +i` deferred to systemd time);
+  citation IDs use bracket format `[citation-id]` per the new
+  citation-substrate convention. Read updated DOCTRINE §IX
+  (workspace v0.1.6 / `ecee9fb`) — Master ratified my proposed
+  text with one substantive paragraph addition on structural-vs-
+  policy compliance. Read
+  `~/Foundry/conventions/citation-substrate.md` — workspace
+  registry at `~/Foundry/citations.yaml`; CFF-flavoured YAML;
+  bracket citation pattern.
+- **Phase 3b — Mailbox cleanup.** Per Master's §VI mailbox
+  protocol cleanup request: archived three actioned outbox
+  messages (`ring1-scaffold-runtime-model-drift session-end
+  summary`, `worm-ledger-design-convention-proposal`,
+  `doctrine-external-standards-and-service-fs-docs-review`) to
+  `outbox-archive.md` with status notes citing the workspace
+  versions where Master actioned each. Reset outbox.md to
+  placeholder. Archived Master's 10:35Z reply to inbox-archive.md.
+  Reset inbox.md to placeholder.
+- **Phase 3c — Doc status upgrade.** Upgraded
+  `service-fs/SECURITY.md` and `service-fs/ARCHITECTURE.md` status
+  headers from "proposed, pending Master ratification" to
+  "ratified at workspace tier 2026-04-26" with cross-references
+  to `6c0b79a` (worm-ledger-design.md) and `ecee9fb` (DOCTRINE
+  §IX).
+- **Phase 3 commit:** `886342f` (3a + 3b + 3c folded together).
+- **Phase 1 — L2 LedgerBackend trait extraction.** Per
+  `~/Foundry/conventions/worm-ledger-design.md` §5 step 1.
+  Refactored `service-fs/src/ledger.rs`: factored `WormLedger`
+  struct into `LedgerBackend` trait + `InMemoryLedger`
+  implementation. Trait carries today's three methods (`append`,
+  `read_since`, `root`) — convention's `checkpoint` + `verify_*`
+  methods land in step 2 with the POSIX backend (where they have
+  real semantics). Trait is object-safe — `open` stays as a
+  per-impl inherent constructor. Updated `http.rs` `AppState` to
+  hold `Box<dyn LedgerBackend + Send + Sync>` so wire layer is
+  backend-agnostic. Updated `main.rs` to construct
+  `InMemoryLedger` and box it. Ported 3 unit tests to run
+  against the trait surface via a `make_ledger() -> Box<dyn
+  LedgerBackend>` helper so the same suite will exercise the
+  future `PosixTileLedger`. cargo check + cargo test pass clean.
+  Updated CLAUDE.md File layout, ARCHITECTURE.md Rust module
+  map, NEXT.md Right-now (→ L1 POSIX tile backend per
+  worm-ledger-design.md §5 step 2). Commit `1e86047`.
+- **Phase 2 — service-input parser-dispatcher initial scaffold.**
+  Per `service-input/NEXT.md` Right-now from prior session.
+  `service-input/Cargo.toml` (serde + serde_json today;
+  format-specific parsers added as each is wired). `src/lib.rs`
+  carries `Format` enum (Pdf / Docx / Xlsx / Markdown per
+  SLM-STACK §3.4), `ParsedDocument` struct, `ParseError` enum,
+  `Parser` trait (object-safe — `Box<dyn Parser + Send + Sync>`
+  per format), `Dispatcher` (per-format registry with builder
+  API + `dispatch` + `dispatch_with_detection`), `detect_format`
+  (extension-first; magic-byte fallback for PDF; DOCX/XLSX
+  ZIP-ambiguity deliberately defers to extension match — a
+  `[Content_Types].xml` inspection variant is a future
+  refinement). 11 unit tests cover detection + dispatch +
+  UnsupportedFormat + FormatUndetected. ADR-07 zero-AI
+  throughout (deterministic format detection only). cargo check
+  + cargo test pass clean. service-input added to root
+  `Cargo.toml` `[exclude]` alongside service-fs (same
+  openssl-sys Layer 1 audit blocker). Updated CLAUDE.md File
+  layout + Build-and-test sections. Updated NEXT.md Right-now
+  (→ wire PdfParser via oxidize-pdf as the natural starting
+  point — PDFs are the highest-volume ingest format for the
+  customer Bookkeeper / Email-attachment flow). Commit
+  `ada358d`.
+- **Cluster manifest backfilled by Master between sessions.**
+  `.claude/manifest.md` extended with a `triad:` section per
+  Doctrine v0.0.4 (vendor leg + customer leg + deployment leg),
+  recording forward-looking "leg-pending" items including:
+  Customer GUIDEs for service-fs operator runbook (lands when
+  storage swap is testable — post L1 POSIX backend); Master to
+  draft systemd unit at `infrastructure/local-fs/` when service-fs
+  storage is testable. Tracked as forward-looking; not actioned
+  this session.
+- **Doctrine has bumped to v0.0.4** between Master's 10:35Z reply
+  (which referenced v0.0.3) and this session-end. The new manifest
+  schema is the first surface I've seen of v0.0.4. No directive in
+  this session's inbox to action anything from v0.0.4 — Master
+  will inbox if there's a Task-tier ask.
+- **Pending work for next Task session in this cluster:** L1
+  POSIX tile backend (service-fs Right-now per worm-ledger-design
+  §5 step 2); wire PdfParser via oxidize-pdf (service-input
+  Right-now); pre-framework subdirectory inventory in
+  service-people + service-email (Queue items); service-email EWS
+  auth rebase (Queue item from operator's prior decision).
+- **Registry summary unchanged in row counts** (no new projects
+  this session); service-fs + service-input rows updated with
+  new file counts and references to this session's commits.
+
+---
+
 ## 2026-04-26 (third session, follow-up — docs codification + DOCTRINE proposal)
 
 - **Operator follow-up after research synthesis.** Asked
