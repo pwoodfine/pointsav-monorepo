@@ -67,13 +67,24 @@ is fine — it matches the ratified Ring 1 hosted-process intent
 (`~/Foundry/conventions/zero-container-runtime.md`). Only the
 auth/protocol surface changes.
 
-Other pre-framework artefacts in this directory (uninventoried):
+Pre-framework sub-directory inventory (2026-04-26; decisions in NEXT.md):
 
-- `ingress-harvester/` — sub-directory; uninventoried
-- `master-harvester-rs/` — sub-directory; uninventoried
-- `sovereign-splinter/` — sub-directory; uninventoried
-- `scripts/` — sub-directory; uninventoried (likely shell helpers)
-- `TEMPLATE_INDEX_MSFT_ENTRA_ID.md` — index template; review-and-decide
+- `ingress-harvester/` — Rust async; EWS SOAP email harvester using
+  inline OAuth client_credentials from `auth-credentials.env` +
+  hardcoded folder IDs; retire-pending (deprecated auth pattern)
+- `master-harvester-rs/` — Rust async; Graph API email fetcher with
+  dynamic folder discovery + BATCH_SIZE=3 micro-batching; retire-pending
+  (Graph API approach deprecated by EWS rebase; folder-discovery +
+  micro-batching patterns worth porting)
+- `sovereign-splinter/` — Rust binary; mailparse-based `.eml` parser
+  that routes to `service-people/discovery-queue` (identity signals) +
+  `service-slm/transient-queues` (body text) + `assets/inert-media`
+  (attachments); "sovereign" prefix is Do-Not-Use; core parsing logic
+  kept — superseded routing will be replaced by MCP append calls
+- `scripts/` — correctly placed per repo-layout.md; contains
+  `spool-daemon.sh` (watches maildir/new/, calls sovereign-splinter)
+- `docs/TEMPLATE_INDEX_MSFT_ENTRA_ID.md` — Entra ID auth index
+  template; moved from root to docs/ (repo-layout.md compliance)
 
 Inventory + decisions (keep / rename / retire / relocate) for those
 items run alongside the auth rebase.
@@ -98,17 +109,19 @@ mailbox.
 service-email/
 ├── Cargo.toml
 ├── README.md, README.es.md
-├── TEMPLATE_INDEX_MSFT_ENTRA_ID.md   — index template; review-and-decide
 ├── CLAUDE.md, NEXT.md
 ├── src/
-│   ├── main.rs                       — Tokio daemon loop (runtime model OK)
-│   ├── auth.rs                       — Graph OAuth (REPLACE per EWS rebase)
-│   ├── graph_client.rs               — Graph REST client (REPLACE per EWS rebase)
-│   └── maildir.rs                    — Maildir vault writer (review for service-fs handoff)
-├── ingress-harvester/                — pre-framework; uninventoried
-├── master-harvester-rs/              — pre-framework; uninventoried
-├── sovereign-splinter/               — pre-framework; uninventoried
-└── scripts/                          — pre-framework; uninventoried
+│   ├── main.rs         — Tokio daemon loop (runtime model OK)
+│   ├── auth.rs         — Graph OAuth (REPLACE per EWS rebase)
+│   ├── graph_client.rs — Graph REST client (REPLACE per EWS rebase)
+│   └── maildir.rs      — Maildir vault writer (transition sink → service-fs)
+├── docs/
+│   └── TEMPLATE_INDEX_MSFT_ENTRA_ID.md  — Entra ID auth index template
+├── ingress-harvester/  — pre-framework; retire-pending (old inline OAuth)
+├── master-harvester-rs/ — pre-framework; retire-pending (Graph API deprecated)
+├── sovereign-splinter/ — pre-framework; keep parsing core; Do-Not-Use prefix
+└── scripts/
+    └── spool-daemon.sh — maildir watcher; calls sovereign-splinter
 ```
 
 ## Hard constraints — do not violate
