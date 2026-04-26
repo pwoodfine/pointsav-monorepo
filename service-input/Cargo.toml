@@ -12,8 +12,8 @@ path = "src/lib.rs"
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+oxidize-pdf = "2"
 
 [dev-dependencies]
-# Real parser crates land here as parsers are wired (oxidize-pdf,
-# docx-rust, calamine, pulldown-cmark per worm-ledger-design.md
-# customer-first ordering).
+# Future parser crates land here as parsers are wired
+# (docx-rust, calamine, pulldown-cmark per SLM-STACK §3.4).

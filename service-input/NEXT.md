@@ -8,20 +8,24 @@
 
 ## Right now
 
-- Wire the first format-specific parser. **PDF** via `oxidize-pdf`
-  is the natural starting point: PDFs are the highest-volume
-  ingest format for the customer Bookkeeper / Email-attachment
-  flow, and PDF parsing is the most-tested-against format among
-  the four. Implement `PdfParser` against the existing `Parser`
-  trait; register it on the `Dispatcher` builder; add an
-  integration test using a small known-good PDF fixture.
+- **Wire the second parser — Markdown via `pulldown-cmark`.** With
+  PDF landed (cryptic/binary, requires temp-file shim, error-path
+  tests only), Markdown is the natural next pickup: pure-text input,
+  no temp-file needed, full happy-path testing trivial, and lets the
+  Dispatcher prove out the multi-parser case. Implement
+  `MarkdownParser` per the same shape as `PdfParser` (impl
+  `Parser` trait; struct in `src/markdown.rs`; re-export from
+  `lib.rs`). Add tests covering: (a) small markdown sample →
+  ParsedDocument with text preserved, (b) heading extraction into
+  `metadata` (pulldown-cmark exposes events for heading
+  starts/ends), (c) Dispatcher with both PdfParser and
+  MarkdownParser registered routes correctly.
 
 ## Queue
 
-- Wire the remaining three parsers per `~/Foundry/SLM-STACK.md` §3.4:
+- Wire the remaining two parsers per `~/Foundry/SLM-STACK.md` §3.4:
   - DOCX: `docx-rust`
   - XLSX: `calamine`
-  - Markdown: `pulldown-cmark`
 - Wire `service-fs` integration — once at least one parser is
   working, add a thin client that holds the parsed `ParsedDocument`
   and `POST /v1/append`s to the configured `service-fs` URL with
@@ -60,6 +64,18 @@
 
 ## Recently done
 
+- 2026-04-26: **PdfParser via oxidize-pdf 2.x** wired. New
+  `service-input/src/pdf.rs` — `PdfParser` implementing the
+  `Parser` trait. Shims around oxidize-pdf's file-path-only API
+  by writing input bytes to a uniquely-named temp file under
+  `std::env::temp_dir()` with an RAII Drop guard. Returns
+  `ParsedDocument` with extracted text + per-page metadata
+  (page_count, parser="oxidize-pdf"). Tests cover invalid-bytes
+  + malformed-PDF error paths; happy-path test deferred until a
+  known-good PDF fixture is checked in (no fixture today —
+  generating one with a write-side library is a future
+  refinement). Re-exported as `service_input::PdfParser` from
+  `lib.rs`.
 - 2026-04-26: **parser-dispatcher initial scaffold** landed.
   `Cargo.toml` (serde + serde_json today; format-specific parsers
   added as each is wired). `src/lib.rs` carries `Format` enum

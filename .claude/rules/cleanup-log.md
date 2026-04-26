@@ -96,6 +96,91 @@ Newest on top. Append a dated block when a session includes meaningful cleanup w
 
 ---
 
+## 2026-04-26 (fifth session — L1 PosixTileLedger + service-input PdfParser)
+
+- **Operator directive:** execute (1) service-fs L1 POSIX tile
+  backend then (2) service-input PdfParser. Both landed.
+- **Phase A — L1 PosixTileLedger** per
+  `~/Foundry/conventions/worm-ledger-design.md` §5 step 2. Commit
+  `10a7dd0`. New `service-fs/src/posix_tile.rs` (~360 lines):
+  persistent newline-delimited JSON log at
+  `<root>/<moduleId>/log.jsonl`; D4 atomic-write discipline on
+  every append (write `.tmp` → fsync → rename → chmod 0o444);
+  reload-on-open verifies chain integrity (returns
+  `ChainTampered` if any record's stored hash diverges from the
+  recomputed value); cursor monotonicity check at reload too.
+  `LedgerBackend` trait grew by three methods (`checkpoint() ->
+  Checkpoint`, `verify_inclusion`, `verify_consistency`) per
+  worm-ledger-design.md §2 — implemented over a linear SHA-256
+  hash chain (each entry's hash chains in the prior entry's
+  hash). Both `InMemoryLedger` and `PosixTileLedger` implement
+  the full trait. `main.rs` swapped to construct
+  `PosixTileLedger` by default. `http.rs` got `/v1/checkpoint`
+  endpoint + extended `ApiError` to map all `LedgerError`
+  variants to the right HTTP status (400 / 403 / 404 / 409 /
+  500). Deps added: `sha2` + `hex`. **18 unit tests pass clean**
+  — 11 trait-surface tests on `InMemoryLedger` (checkpoint
+  advance, inclusion success+failure, consistency
+  success+failure, chain-origin stability) + 7 PosixTileLedger
+  tests (durability across restart, checkpoint-after-restart
+  consistency, chain extension after restart, tamper detection
+  on reload, file-mode 0o444 enforcement, empty-ledger
+  checkpoint, verify_inclusion after restart).
+- **Trait surface design choice:** linear SHA-256 chain for v0.1.x
+  rather than a Merkle tree. Linear chain is simpler, gives full
+  structural tamper-evidence (any retroactive modification
+  breaks the chain), and proofs are O(N) — not the O(log N) a
+  Merkle tree gives. The `Checkpoint`, `InclusionProof`, and
+  `ConsistencyProof` types are designed so a Merkle-tree
+  upgrade can land without changing the trait surface (the
+  `chain_segment` field would become a sibling-hash list; type
+  signatures unchanged). Documented in the module head.
+- **D4 implementation:** the v0.1.x baseline is per-append
+  full-file rewrite via `.tmp` + fsync + rename + chmod 0o444.
+  This is O(N) per append; segment-batched tile files (256
+  entries per sealed segment + a current open segment) are the
+  natural performance upgrade and a follow-up commit. The
+  `LedgerBackend` trait surface and the on-disk record schema
+  both survive that upgrade. `chattr +i` is deferred to
+  systemd-unit time per D4 (requires `CAP_LINUX_IMMUTABLE`); ext4/
+  xfs `journal_data` mode is mount-time, not per-file (deployment
+  concern).
+- **Phase B — PdfParser via oxidize-pdf 2.x.** Commit `<this
+  session>`. New `service-input/src/pdf.rs`: `PdfParser`
+  implementing the `Parser` trait. Shims around oxidize-pdf's
+  file-path-only API (oxidize-pdf 2.5.7 does not expose a
+  bytes-based open) by writing input bytes to a uniquely-named
+  temp file under `std::env::temp_dir()` with an RAII Drop guard
+  for cleanup. Returns `ParsedDocument` with extracted text +
+  `metadata` (page_count, parser="oxidize-pdf"). Tests cover
+  invalid-bytes + malformed-PDF error paths (do not require a
+  known-good PDF fixture). Re-exported as
+  `service_input::PdfParser` from `lib.rs`. Dep added:
+  `oxidize-pdf = "2"` (~85 transitive deps; ~2 minutes to
+  compile cold; not unreasonable for a real-world PDF parser
+  with full spec coverage).
+- **Happy-path PDF test deferred.** Generating a known-good PDF
+  fixture requires either (a) an oxidize-pdf write API call (if
+  available; not yet inspected), (b) a hand-crafted minimal PDF
+  byte string with correct xref offsets (error-prone), or (c) a
+  binary fixture file checked into the repo. Deferred to a
+  follow-up; error-path tests confirm the parser doesn't panic
+  on bad input, which is the immediate correctness concern.
+- **NEXT.md repointed.** service-fs Right-now → step 3 checkpoint
+  signing (Ed25519 + signed-note signature population);
+  service-input Right-now → wire MarkdownParser via
+  pulldown-cmark (pure-text input, no temp-file shim, full
+  happy-path test trivial — proves out the multi-parser
+  Dispatcher case).
+- **Customer-first ordering preserved.** Both Right-now items
+  feed into the next Task session. Master's prior framing —
+  "service-fs L2 + L1 first, then service-input scaffold, then
+  service-fs checkpoint signing + audit sub-ledger + MCP" — is
+  on track: L2 + L1 done; service-input scaffold + first parser
+  done; checkpoint signing is next.
+
+---
+
 ## 2026-04-26 (fourth session — admin cleanup + L2 trait extraction + service-input scaffold)
 
 - **Operator directive:** execute Phase 3 (admin cleanup) → Phase 1

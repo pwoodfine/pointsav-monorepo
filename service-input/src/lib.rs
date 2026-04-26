@@ -35,6 +35,9 @@
 //!   (per-tenant moduleId header)
 //! ```
 
+pub mod pdf;
+pub use pdf::PdfParser;
+
 use serde::{Deserialize, Serialize};
 
 /// Supported ingest formats. Expansion is demand-driven, not

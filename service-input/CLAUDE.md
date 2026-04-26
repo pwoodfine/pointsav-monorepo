@@ -58,16 +58,28 @@ service-input/
 ├── README.md, README.es.md — bilingual overview
 ├── CLAUDE.md, NEXT.md
 └── src/
-    └── lib.rs            — Format enum, ParsedDocument struct,
-                            ParseError enum, Parser trait,
-                            Dispatcher (per-format registry +
-                            dispatch + dispatch_with_detection),
-                            detect_format (extension-first, magic-
-                            byte fallback). 11 unit tests cover
-                            extension detection, magic-byte
-                            detection, ambiguous ZIP cases,
-                            dispatch + UnsupportedFormat behaviour.
-                            No format-specific parsers wired yet.
+    ├── lib.rs            — Format enum, ParsedDocument struct,
+    │                       ParseError enum, Parser trait,
+    │                       Dispatcher (per-format registry +
+    │                       dispatch + dispatch_with_detection),
+    │                       detect_format (extension-first, magic-
+    │                       byte fallback). 11 unit tests cover
+    │                       extension detection, magic-byte
+    │                       detection, ambiguous ZIP cases,
+    │                       dispatch + UnsupportedFormat
+    │                       behaviour. Re-exports `PdfParser`.
+    └── pdf.rs            — PdfParser implementing the Parser
+                            trait via oxidize-pdf 2.x. Shims
+                            around oxidize-pdf's file-path-only
+                            API by writing input bytes to a
+                            uniquely-named temp file under
+                            `std::env::temp_dir()` (RAII Drop
+                            guard cleans up). Returns
+                            ParsedDocument with extracted text
+                            and metadata (page_count + parser
+                            name). Tests cover invalid-bytes +
+                            malformed-PDF error paths (do not
+                            require a known-good PDF fixture).
 ```
 
 ## Hard constraints — do not violate
