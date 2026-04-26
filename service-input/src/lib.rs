@@ -35,6 +35,8 @@
 //!   (per-tenant moduleId header)
 //! ```
 
+pub mod markdown;
+pub use markdown::MarkdownParser;
 pub mod pdf;
 pub use pdf::PdfParser;
 
@@ -351,6 +353,34 @@ mod tests {
         match d.dispatch_with_detection("untitled", "doc1", b"\x00\x01") {
             Err(ParseError::FormatUndetected) => {}
             other => panic!("expected FormatUndetected, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn dispatcher_routes_pdf_and_markdown_independently() {
+        // Both parsers registered; each format routes to its parser.
+        let d = Dispatcher::new()
+            .with_pdf(Box::new(PdfParser))
+            .with_markdown(Box::new(MarkdownParser));
+
+        // Markdown parses successfully.
+        let r = d
+            .dispatch(Format::Markdown, "md1", b"# Hello\n\nBody text.")
+            .unwrap();
+        assert_eq!(r.format, Format::Markdown);
+        assert!(r.text.contains("Hello"));
+
+        // PDF with invalid bytes returns ParserInternal — the parser is registered
+        // and ran, but oxidize-pdf rejected the bytes as an invalid PDF header.
+        match d.dispatch(Format::Pdf, "bad", b"not a real pdf") {
+            Err(ParseError::ParserInternal(_)) => {}
+            other => panic!("expected ParserInternal for invalid PDF bytes, got {other:?}"),
+        }
+
+        // DOCX has no parser registered — returns UnsupportedFormat.
+        match d.dispatch(Format::Docx, "doc1", b"PK\x03\x04") {
+            Err(ParseError::UnsupportedFormat(Format::Docx)) => {}
+            other => panic!("expected UnsupportedFormat for DOCX, got {other:?}"),
         }
     }
 }

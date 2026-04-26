@@ -63,23 +63,32 @@ service-input/
     │                       Dispatcher (per-format registry +
     │                       dispatch + dispatch_with_detection),
     │                       detect_format (extension-first, magic-
-    │                       byte fallback). 11 unit tests cover
-    │                       extension detection, magic-byte
-    │                       detection, ambiguous ZIP cases,
-    │                       dispatch + UnsupportedFormat
-    │                       behaviour. Re-exports `PdfParser`.
-    └── pdf.rs            — PdfParser implementing the Parser
-                            trait via oxidize-pdf 2.x. Shims
-                            around oxidize-pdf's file-path-only
-                            API by writing input bytes to a
-                            uniquely-named temp file under
-                            `std::env::temp_dir()` (RAII Drop
-                            guard cleans up). Returns
-                            ParsedDocument with extracted text
-                            and metadata (page_count + parser
-                            name). Tests cover invalid-bytes +
-                            malformed-PDF error paths (do not
-                            require a known-good PDF fixture).
+    │                       byte fallback). 12 unit tests + 1
+    │                       multi-parser integration test. Re-exports
+    │                       PdfParser and MarkdownParser.
+    ├── pdf.rs            — PdfParser implementing the Parser
+    │                       trait via oxidize-pdf 2.x. Shims
+    │                       around oxidize-pdf's file-path-only
+    │                       API by writing input bytes to a
+    │                       uniquely-named temp file under
+    │                       `std::env::temp_dir()` (RAII Drop
+    │                       guard cleans up). Returns
+    │                       ParsedDocument with extracted text
+    │                       and metadata (page_count + parser
+    │                       name). Tests cover invalid-bytes +
+    │                       malformed-PDF error paths (do not
+    │                       require a known-good PDF fixture).
+    └── markdown.rs       — MarkdownParser implementing the Parser
+                            trait via pulldown-cmark 0.12. Pure-
+                            text input; no temp-file shim. Extracts
+                            all text runs + heading text into
+                            text_buf; heading text also collected
+                            into a headings metadata list. Returns
+                            ParsedDocument with text and
+                            {headings, parser: "pulldown-cmark"}
+                            metadata. 5 unit tests cover text
+                            extraction, heading metadata, body text,
+                            invalid-UTF-8 error path, empty input.
 ```
 
 ## Hard constraints — do not violate

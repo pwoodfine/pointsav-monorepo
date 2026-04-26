@@ -1,6 +1,6 @@
 # NEXT.md — service-input
 
-> Last updated: 2026-04-25
+> Last updated: 2026-04-26
 > Read at session start. Update before session end so the next
 > session knows where to pick up.
 
@@ -8,23 +8,25 @@
 
 ## Right now
 
-- **Wire the second parser — Markdown via `pulldown-cmark`.** With
-  PDF landed (cryptic/binary, requires temp-file shim, error-path
-  tests only), Markdown is the natural next pickup: pure-text input,
-  no temp-file needed, full happy-path testing trivial, and lets the
-  Dispatcher prove out the multi-parser case. Implement
-  `MarkdownParser` per the same shape as `PdfParser` (impl
-  `Parser` trait; struct in `src/markdown.rs`; re-export from
-  `lib.rs`). Add tests covering: (a) small markdown sample →
-  ParsedDocument with text preserved, (b) heading extraction into
-  `metadata` (pulldown-cmark exposes events for heading
-  starts/ends), (c) Dispatcher with both PdfParser and
-  MarkdownParser registered routes correctly.
+- **Wire the DOCX parser via `docx-rust`.** PDF and Markdown
+  parsers are wired and 19 tests pass. DOCX is the next pickup:
+  `service-email` attachment payloads are predominantly DOCX, so
+  this unblocks the `service-email` → `service-input` integration
+  path. Implement `DocxParser` following the same `Parser` trait
+  shape as `PdfParser` and `MarkdownParser` (`struct DocxParser` in
+  `src/docx.rs`; re-exported from `lib.rs` as
+  `service_input::DocxParser`). DOCX is a ZIP-format container
+  (Open Packaging Convention) containing `word/document.xml`;
+  `docx-rust` provides a `DocxFile` API. The ZIP magic-byte
+  detection in `detect_by_magic` can be refined to peek at the
+  `[Content_Types].xml` entry once the docx crate's unzip surface
+  is available — or leave as a follow-up behind the extension path.
+  Add tests: (a) valid DOCX bytes → `ParsedDocument` with
+  non-empty text, (b) invalid bytes → `ParserInternal` error.
 
 ## Queue
 
 - Wire the remaining two parsers per `~/Foundry/SLM-STACK.md` §3.4:
-  - DOCX: `docx-rust`
   - XLSX: `calamine`
 - Wire `service-fs` integration — once at least one parser is
   working, add a thin client that holds the parsed `ParsedDocument`
@@ -64,6 +66,20 @@
 
 ## Recently done
 
+- 2026-04-26: **MarkdownParser via pulldown-cmark 0.12** wired. New
+  `service-input/src/markdown.rs` — `MarkdownParser` implementing
+  the `Parser` trait. Pure-text input; no temp-file shim needed.
+  pulldown-cmark events used to extract: all text runs (including
+  bold/italic/code spans) into `text_buf`; heading text into a
+  `headings` metadata list; line breaks as `\n`. Returns
+  `ParsedDocument` with full text and `{headings, parser:
+  "pulldown-cmark"}` metadata. Re-exported as
+  `service_input::MarkdownParser` from `lib.rs`. Multi-parser
+  integration test `dispatcher_routes_pdf_and_markdown_independently`
+  added to `lib.rs` — confirms PDF and Markdown dispatch
+  independently (Markdown returns text; PDF with invalid bytes
+  returns `ParserInternal`). **19 unit tests pass clean**
+  (11 dispatcher + 2 PdfParser + 5 MarkdownParser + 1 multi-parser).
 - 2026-04-26: **PdfParser via oxidize-pdf 2.x** wired. New
   `service-input/src/pdf.rs` — `PdfParser` implementing the
   `Parser` trait. Shims around oxidize-pdf's file-path-only API
