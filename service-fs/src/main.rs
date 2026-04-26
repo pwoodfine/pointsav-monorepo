@@ -46,7 +46,7 @@ use std::sync::Arc;
 use anyhow::Context;
 use tracing::info;
 
-use crate::ledger::WormLedger;
+use crate::ledger::InMemoryLedger;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -63,8 +63,12 @@ async fn main() -> anyhow::Result<()> {
     let ledger_root = std::env::var("FS_LEDGER_ROOT")
         .context("FS_LEDGER_ROOT is required (absolute path to WORM segment directory)")?;
 
-    let ledger = WormLedger::open(&ledger_root)
-        .with_context(|| format!("failed to open WORM ledger at {ledger_root}"))?;
+    // Today the storage backend is the in-memory L2 trait
+    // implementation; next commit per worm-ledger-design.md §5 step
+    // 2 swaps in PosixTileLedger behind the same trait.
+    let ledger: Box<dyn ledger::LedgerBackend + Send + Sync> =
+        Box::new(InMemoryLedger::open(&ledger_root)
+            .with_context(|| format!("failed to open WORM ledger at {ledger_root}"))?);
 
     let state = Arc::new(http::AppState {
         module_id: module_id.clone(),

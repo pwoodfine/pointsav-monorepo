@@ -8,19 +8,17 @@
 
 ## Right now
 
-- **PAUSED pending Master ratification of the storage-design
-  convention proposed in `service-fs/RESEARCH.md` §11.** The
-  storage swap (in-memory `Vec<Entry>` → on-disk format) is
-  structurally important enough that the design ratification is
-  worth doing first. Operator asked 2026-04-26 for a leapfrog-
-  2030 design cross-checked against industry; the synthesis is
-  in `RESEARCH.md` and the ratification request is in the cluster
-  outbox under `worm-ledger-design-convention-proposal`.
-- After Master ratifies (or modifies + ratifies) the design, swap
-  per the §12 roadmap in RESEARCH.md: L2 trait extraction → L1
-  POSIX tile backend (C2SP tlog-tiles per the recommendation) →
-  checkpoint signing → ADR-07 audit-log sub-ledger → MCP-server
-  interface layer.
+- **L1 POSIX tile backend** per
+  `~/Foundry/conventions/worm-ledger-design.md` §5 step 2.
+  Implement `PosixTileLedger` writing C2SP tlog-tiles to
+  `FS_LEDGER_ROOT`. New tests beyond the 3 inherited from L2:
+  durability (write, simulate restart, read back); inclusion
+  proof; consistency proof. The L2 trait surface grows here —
+  add `checkpoint() -> SignedNote`, `verify_inclusion(...)`,
+  `verify_consistency(...)` per worm-ledger-design.md §2 (the
+  in-memory backend's verify_* implementations can be trivial
+  pass-throughs since the in-memory case has no on-disk tile
+  structure to verify against).
 
 ## Queue
 
@@ -74,6 +72,25 @@
 
 ## Recently done
 
+- 2026-04-26: **L2 trait extraction** per
+  `~/Foundry/conventions/worm-ledger-design.md` §5 step 1. Factored
+  `WormLedger` struct into `LedgerBackend` trait + `InMemoryLedger`
+  impl. Trait carries today's three methods (append / read_since /
+  root); the convention's checkpoint + verify_* methods land in
+  step 2 with the POSIX backend (where they have real semantics).
+  `http.rs` `AppState` now holds `Box<dyn LedgerBackend + Send +
+  Sync>` so the wire layer is backend-agnostic. `main.rs`
+  constructs `InMemoryLedger` and boxes it. 3 existing unit tests
+  ported to run against the trait surface (via
+  `make_ledger() -> Box<dyn LedgerBackend>`) so the same suite
+  exercises the future `PosixTileLedger`. cargo check + cargo test
+  pass clean.
+- 2026-04-26: workspace v0.1.7 ratified
+  `~/Foundry/conventions/worm-ledger-design.md` (`6c0b79a`); D1–D9
+  ratified explicitly with rationale per decision; D10 separately
+  tracked. Workspace v0.1.6 ratified DOCTRINE §IX External WORM
+  standards alignment subsection (`ecee9fb`). service-fs/SECURITY.md
+  + ARCHITECTURE.md headers upgraded from "proposed" to "ratified".
 - 2026-04-26: research synthesis `service-fs/RESEARCH.md`
   committed — ~600 lines synthesising Foundry-side material
   (DOCTRINE §IX, MEMO §6.3 + §7, three-ring + zero-container

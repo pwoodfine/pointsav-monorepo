@@ -87,17 +87,25 @@ service-fs/
 └── src/
     ├── main.rs            — Tokio entrypoint; reads FS_BIND_ADDR,
     │                        FS_MODULE_ID, FS_LEDGER_ROOT from env;
+    │                        constructs InMemoryLedger and wraps in
+    │                        Box<dyn LedgerBackend + Send + Sync>;
     │                        spins axum on the bind addr
     ├── http.rs            — axum router + endpoint handlers;
     │                        per-tenant moduleId enforcement on
     │                        /v1/append and /v1/entries; ApiError
     │                        type wraps internal errors with HTTP
-    │                        status + JSON body
-    └── ledger.rs          — WormLedger primitive; append-only
-                             invariant enforced at API surface;
-                             3 unit tests; in-memory storage
-                             placeholder pending the segment-file
-                             swap (first NEXT.md item)
+    │                        status + JSON body; depends on the
+    │                        LedgerBackend trait, not a concrete
+    │                        backend
+    └── ledger.rs          — L2 LedgerBackend trait per worm-ledger-
+                             design.md §2 (append / read_since /
+                             root today; checkpoint + verify_*
+                             grow with steps 2–3 of the
+                             implementation roadmap); InMemoryLedger
+                             implementation behind the trait;
+                             3 unit tests run against the trait
+                             surface so the same suite will exercise
+                             the future PosixTileLedger
 ```
 
 ## Hard constraints — do not violate

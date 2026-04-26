@@ -359,23 +359,36 @@ DOCTRINE Pillar 2 (100-year readability).
 ```
 service-fs/src/
 ├── main.rs       — Tokio entrypoint (Envelope A) or microkit entry
-│                   (Envelope B); env-driven configuration; spins L3
+│                   (Envelope B); env-driven configuration;
+│                   constructs InMemoryLedger and wraps in
+│                   Box<dyn LedgerBackend + Send + Sync>; spins L3
 ├── http.rs       — L3 wire protocol (axum routes today; MCP layered
-│                   later); per-tenant moduleId enforcement; ApiError
-├── ledger.rs     — L2 WORM Ledger API (open / append / read_since /
-│                   checkpoint / verify_*); append-only invariant;
-│                   3 unit tests today
-└── (future)
-    ├── tile.rs           — L1 storage backend trait + POSIX impl
+│                   later); per-tenant moduleId enforcement; ApiError;
+│                   AppState carries Box<dyn LedgerBackend + Send +
+│                   Sync> so the wire layer is backend-agnostic
+├── ledger.rs     — L2 LedgerBackend trait + InMemoryLedger impl.
+│                   Trait surface today: append / read_since / root.
+│                   Trait surface grows with the storage roadmap:
+│                   + checkpoint (step 3) + verify_inclusion /
+│                   verify_consistency (step 2 alongside POSIX
+│                   backend). 3 unit tests run against the trait
+│                   surface so the same suite will exercise the
+│                   future PosixTileLedger.
+└── (future, per worm-ledger-design.md §5)
+    ├── posix_tile.rs     — PosixTileLedger LedgerBackend impl
+    │                       (C2SP tlog-tiles on disk); replaces
+    │                       in-memory backend in main.rs at startup
     ├── checkpoint.rs     — signed-note serialisation + signing
     ├── audit_log.rs      — sub-ledger for ADR-07 read tracking
     └── mcp.rs            — MCP-server protocol layer
 ```
 
-Today's `src/ledger.rs` is the L2 placeholder (in-memory
-`Vec<Entry>`). The module split lands as part of the
-post-ratification implementation roadmap — see `RESEARCH.md`
-§12.
+L2 trait extraction landed (this commit). Future backends slot in
+behind the same trait without touching `main.rs` or `http.rs`:
+- `PosixTileLedger` (next per worm-ledger-design.md §5 step 2) —
+  C2SP tlog-tiles on POSIX filesystem
+- `MoonshotDatabaseLedger` (long-term per D7) —
+  capability-mediated tile bytes through `moonshot-database` IPC
 
 ---
 

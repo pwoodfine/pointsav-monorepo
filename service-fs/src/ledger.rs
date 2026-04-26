@@ -1,21 +1,48 @@
 // SPDX-License-Identifier: Apache-2.0 OR MIT
 
-//! WORM (Write-Once-Read-Many) Immutable Ledger primitive.
+//! WORM Ledger Layer 2 (per
+//! `~/Foundry/conventions/worm-ledger-design.md`).
 //!
-//! Append-only invariant is enforced at the API surface — there is
-//! no public method that mutates or deletes a previously-persisted
-//! entry. Cursors are monotonically increasing `u64`; reads filter
-//! by `cursor > since`.
+//! L2 in the four-layer stack: the target-independent Rust trait
+//! that the wire layer (L3, in `http.rs`) and the storage layer (L1,
+//! per-backend) compose against. The trait is the durable contract
+//! that survives changes above it (axum vs. MCP-over-IPC) and below
+//! it (in-memory vs. POSIX tiles vs. moonshot-database).
 //!
-//! This module is the storage abstraction. The current
-//! implementation uses an in-memory `Vec<Entry>` behind a `Mutex`
-//! as a placeholder so the daemon can run end-to-end against unit
-//! tests and curl probes without committing to a disk format. The
-//! first NEXT.md item after `cargo check` passes clean is to swap
-//! the storage backend for hash-addressed segment files in
-//! immutable directories rooted at `FS_LEDGER_ROOT`. The API
-//! surface (`open`, `append`, `read_since`, `root`) is the contract
-//! that survives that swap.
+//! The trait surface as ratified in worm-ledger-design.md §2:
+//!
+//! ```text
+//!   open(path, module_id, signing_key) -> Self
+//!   append(payload_id, payload_bytes) -> Cursor
+//!   read_since(cursor) -> Iterator<Entry>
+//!   checkpoint() -> SignedNote
+//!   verify_inclusion(entry, checkpoint) -> Proof
+//!   verify_consistency(c1, c2) -> Proof
+//! ```
+//!
+//! This commit lands the trait + the in-memory backend behind it
+//! per the convention's §5 implementation roadmap step 1 ("L2 trait
+//! extraction"). Steps 2–5 fill in the rest:
+//! - Step 2 (L1 POSIX tile backend) adds `verify_inclusion` /
+//!   `verify_consistency` in real terms; in-memory backend's
+//!   verify_* implementations are trivial.
+//! - Step 3 (checkpoint signing) lands the `signing_key` open
+//!   parameter and a real `checkpoint()` returning a signed-note.
+//! - Steps 4–5 (audit sub-ledger + MCP layer) compose against this
+//!   trait without changing it.
+//!
+//! Today's three runtime methods (`append`, `read_since`, `root`)
+//! are in the trait. `open` stays as a per-impl inherent
+//! constructor — `InMemoryLedger::open(...)` returns the concrete
+//! type, then the daemon wraps it in `Box<dyn LedgerBackend + Send
+//! + Sync>` for use through the wire layer. This keeps the trait
+//! object-safe.
+//!
+//! `checkpoint` / `verify_inclusion` / `verify_consistency` are
+//! NOT in the trait yet — they land in steps 2–3 with the POSIX
+//! backend and the signed-note signing wiring. The convention is
+//! the END-state contract; this trait grows incrementally per the
+//! roadmap.
 
 use std::path::PathBuf;
 use std::sync::Mutex;
@@ -48,7 +75,46 @@ pub struct Entry {
     pub payload: serde_json::Value,
 }
 
-pub struct WormLedger {
+/// L2 WORM Ledger contract per
+/// `~/Foundry/conventions/worm-ledger-design.md` §2.
+///
+/// Object-safe: all methods take `&self` and return concrete types,
+/// so the daemon can hold a `Box<dyn LedgerBackend + Send + Sync>`
+/// regardless of which storage backend (in-memory / POSIX tile /
+/// moonshot-database) is wired at startup.
+///
+/// Append-only invariant lives at the trait surface: there is no
+/// public method that mutates or deletes a previously-persisted
+/// entry. Implementations enforce the invariant additionally at
+/// their storage layer (filesystem write-once for POSIX,
+/// capability denial for moonshot-database).
+pub trait LedgerBackend {
+    /// Append a new payload. Returns the assigned monotonic cursor.
+    /// The entry is now permanent — no API surface can remove or
+    /// modify it.
+    fn append(
+        &self,
+        payload_id: &str,
+        payload: &serde_json::Value,
+    ) -> Result<u64, LedgerError>;
+
+    /// Read entries with cursor strictly greater than `since`.
+    fn read_since(&self, since: u64) -> Result<Vec<Entry>, LedgerError>;
+
+    /// Diagnostic — the on-disk root path (or backend identifier
+    /// for non-filesystem backends). Surfaced via `/v1/contract`.
+    fn root(&self) -> &str;
+}
+
+/// In-memory `LedgerBackend` implementation. Used today for the
+/// service-fs Tokio skeleton + unit tests; will be retained for
+/// integration tests once the POSIX tile backend lands per
+/// worm-ledger-design.md §5 step 2.
+///
+/// Storage is `Vec<Entry>` behind a `Mutex` — daemon restart loses
+/// state. Not suitable for production; use `PosixTileLedger` (next
+/// commit) for any real deployment.
+pub struct InMemoryLedger {
     root: PathBuf,
     inner: Mutex<Inner>,
 }
@@ -58,11 +124,12 @@ struct Inner {
     entries: Vec<Entry>,
 }
 
-impl WormLedger {
-    /// Open the ledger at `root`. Creates the directory if it does
-    /// not exist; does not load any prior entries (placeholder
-    /// implementation — disk-backed reload lands with the
-    /// segment-file storage swap).
+impl InMemoryLedger {
+    /// Open the in-memory ledger at `root`. Creates the directory
+    /// if it does not exist (kept for API parity with future
+    /// `PosixTileLedger::open` so the daemon's main.rs flow does
+    /// not need to know which backend is wired). Does not load any
+    /// prior entries — in-memory by definition.
     pub fn open(root: impl Into<PathBuf>) -> Result<Self, LedgerError> {
         let root: PathBuf = root.into();
         std::fs::create_dir_all(&root)?;
@@ -74,17 +141,10 @@ impl WormLedger {
             }),
         })
     }
+}
 
-    pub fn root(&self) -> &str {
-        // Only used for diagnostic surfaces (/v1/contract); fine to
-        // lossy-convert non-UTF8 paths since the operator-supplied
-        // FS_LEDGER_ROOT will be UTF-8 in practice.
-        std::str::from_utf8(self.root.as_os_str().as_encoded_bytes()).unwrap_or("<non-utf8>")
-    }
-
-    /// Append a new entry. Returns the assigned cursor. The entry
-    /// is now permanent — no API surface can remove or modify it.
-    pub fn append(
+impl LedgerBackend for InMemoryLedger {
+    fn append(
         &self,
         payload_id: &str,
         payload: &serde_json::Value,
@@ -100,8 +160,7 @@ impl WormLedger {
         Ok(cursor)
     }
 
-    /// Read entries with cursor strictly greater than `since`.
-    pub fn read_since(&self, since: u64) -> Result<Vec<Entry>, LedgerError> {
+    fn read_since(&self, since: u64) -> Result<Vec<Entry>, LedgerError> {
         let inner = self.inner.lock().expect("ledger mutex poisoned");
         Ok(inner
             .entries
@@ -109,6 +168,13 @@ impl WormLedger {
             .filter(|e| e.cursor > since)
             .cloned()
             .collect())
+    }
+
+    fn root(&self) -> &str {
+        // Only used for diagnostic surfaces (/v1/contract); fine to
+        // lossy-convert non-UTF8 paths since the operator-supplied
+        // FS_LEDGER_ROOT will be UTF-8 in practice.
+        std::str::from_utf8(self.root.as_os_str().as_encoded_bytes()).unwrap_or("<non-utf8>")
     }
 }
 
@@ -125,9 +191,18 @@ mod tests {
         dir
     }
 
+    /// Tests run against the trait surface, not the concrete
+    /// `InMemoryLedger` type. This is deliberate — the same suite
+    /// runs against the future `PosixTileLedger` per the convention's
+    /// §5 step 2 roadmap. The trait is the contract; the backend
+    /// is the implementation.
+    fn make_ledger() -> Box<dyn LedgerBackend> {
+        Box::new(InMemoryLedger::open(tmpdir()).unwrap())
+    }
+
     #[test]
     fn append_assigns_monotonic_cursors() {
-        let l = WormLedger::open(tmpdir()).unwrap();
+        let l = make_ledger();
         let c1 = l.append("a", &serde_json::json!({"x": 1})).unwrap();
         let c2 = l.append("b", &serde_json::json!({"x": 2})).unwrap();
         assert!(c2 > c1, "cursor should advance");
@@ -135,7 +210,7 @@ mod tests {
 
     #[test]
     fn read_since_filters_strictly_greater() {
-        let l = WormLedger::open(tmpdir()).unwrap();
+        let l = make_ledger();
         let c1 = l.append("a", &serde_json::json!({"x": 1})).unwrap();
         l.append("b", &serde_json::json!({"x": 2})).unwrap();
         let after_first = l.read_since(c1).unwrap();
@@ -145,7 +220,7 @@ mod tests {
 
     #[test]
     fn read_since_zero_returns_all() {
-        let l = WormLedger::open(tmpdir()).unwrap();
+        let l = make_ledger();
         l.append("a", &serde_json::json!({"x": 1})).unwrap();
         l.append("b", &serde_json::json!({"x": 2})).unwrap();
         let all = l.read_since(0).unwrap();

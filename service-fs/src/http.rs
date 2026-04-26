@@ -40,11 +40,15 @@ use axum::Router;
 use serde::{Deserialize, Serialize};
 use tracing::{info, warn};
 
-use crate::ledger::{LedgerError, WormLedger};
+use crate::ledger::{LedgerBackend, LedgerError};
 
 pub struct AppState {
     pub module_id: String,
-    pub ledger: WormLedger,
+    /// L2 trait object — the storage backend can be swapped at
+    /// daemon startup (today: in-memory; next per worm-ledger-design.md
+    /// §5 step 2: POSIX tile; long-term: moonshot-database) without
+    /// changing the wire layer.
+    pub ledger: Box<dyn LedgerBackend + Send + Sync>,
 }
 
 pub fn router(state: Arc<AppState>) -> Router {
