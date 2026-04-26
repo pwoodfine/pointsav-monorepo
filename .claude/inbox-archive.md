@@ -13,6 +13,22 @@ inbox in the same commit.
 
 ---
 
+## 2026-04-26 (sixth session — model-tier handoff + task-list briefing) — actioned
+
+### From task-project-data (sixth session, Opus 4.7) to next session
+re: model-tier handoff + 13-item task list briefing
+priority: high
+created: 2026-04-26
+
+**Action taken (seventh session, Sonnet 4.6, 2026-04-26):** Read at
+session start. Confirmed clean state (branch `cluster/project-data`,
+HEAD `4edb4b0`, working tree clean). Model-tier recommendation
+acknowledged — this session is running at Sonnet 4.6 per the
+convention. 13-item task list re-created via TaskCreate. Inbox
+message archived per §12 mailbox protocol.
+
+---
+
 ## 2026-04-26 (third session — afternoon Master ratification reply) — actioned
 
 ### From Master Claude — worm-ledger-design RATIFIED + DOCTRINE §IX External WORM standards landed + service-fs docs accepted

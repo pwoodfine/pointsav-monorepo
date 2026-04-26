@@ -8,19 +8,17 @@
 
 ## Right now
 
-- **Checkpoint signing** per
-  `~/Foundry/conventions/worm-ledger-design.md` §5 step 3. The
-  `Checkpoint::signature` field is `None` today; populate it with
-  a real Ed25519 signed-note signature. Add `FS_SIGNING_KEY` env
-  var (path to a key file); load on `PosixTileLedger::open` (and
-  in tests via a fixture key); compute the signed-note format
-  body (`origin\ntree_size\nbase64(root_hash)\n\n`) and sign;
-  return populated `Checkpoint` from `checkpoint()`. Add
-  `--verify-checkpoint` test path that takes the signature + the
-  tenant's public key and verifies independently of the daemon
-  (so a Customer can keep verification capability after Vendor
-  breakout per Doctrine claim #28). Update `LedgerBackend` trait
-  to take `signing_key` on `open` per worm-ledger-design.md §2.
+- **ADR-07 audit-log sub-ledger** per
+  `~/Foundry/conventions/worm-ledger-design.md` §5 step 4. The
+  `/v1/entries` handler currently logs reads only to `tracing::info!`.
+  Persist every read-call to its own append-only sub-ledger at
+  `<root>/<moduleId>/audit-log/` — a separate `LedgerBackend`
+  instance (can be `PosixTileLedger` or `InMemoryLedger` behind the
+  same trait). Each record: `{moduleId, request_id, since_cursor,
+  entries_returned, timestamp_unix}`. The audit ledger is itself WORM
+  via the same trait surface. Wire it into `AppState` and `http.rs`'s
+  `entries()` handler; add a unit test that confirms at least one
+  audit record per read call.
 
 ## Queue
 
@@ -74,6 +72,21 @@
 
 ## Recently done
 
+- 2026-04-26: **Step 3 checkpoint signing** per
+  worm-ledger-design.md §5 step 3 (commit `b285259`). Deps added:
+  `ed25519-dalek 2` + `base64 0.22`. `ledger.rs`: `signed_note_body`
+  (C2SP signed-note format: `origin\ntree_size\nbase64(root_hash)\n\n`);
+  `sign_checkpoint_body` (in-place signer for both backends);
+  `verify_checkpoint_signature` (public function — Customer independent
+  verification per Doctrine claim #28); `load_signing_key` (raw 32-byte
+  seed file); `LedgerError::InvalidKey` + `LedgerError::SigningError`.
+  `InMemoryLedger`: `open_with_signing_key` ctor + `checkpoint()` signs
+  when key present. `PosixTileLedger`: `open()` gains optional
+  `signing_key_path` param + `checkpoint()` signs when key present.
+  `main.rs`: reads `FS_SIGNING_KEY` env (optional path to 32-byte seed)
+  and passes to `PosixTileLedger::open`. `http.rs`: `ApiError` mapping
+  covers new error variants. **22 unit tests pass clean** (18 prior +
+  3 ledger signing tests + 1 posix_tile signing test).
 - 2026-04-26: **L1 PosixTileLedger backend** per
   `~/Foundry/conventions/worm-ledger-design.md` §5 step 2. New
   `service-fs/src/posix_tile.rs` — persistent newline-delimited
