@@ -43,10 +43,14 @@ separate decision tracked in NEXT.md.
 cargo check    # standalone (service-input is workspace-excluded
                # alongside service-fs while the openssl-sys Layer 1
                # audit issue lives in a sibling member)
-cargo test     # runs the 24 tests: format detection + dispatcher
-               # (12), multi-parser integration (1), PdfParser (2),
+cargo test --manifest-path service-input/Cargo.toml
+               # runs the 29 tests: format detection + dispatcher (12),
+               # multi-parser integration (1), PdfParser (2),
                # MarkdownParser (5), DocxParser (2), XlsxParser (2),
-               # FsClient integration (1 — spins up real axum server)
+               # FsClient integration (1), MCP handler (5).
+               # NOTE: run from the monorepo root with --manifest-path,
+               # not bare cargo check/test (workspace-level openssl-sys
+               # blocker in sibling members, Layer 1 audit 2026-04-18).
 ```
 
 ## File layout
@@ -69,6 +73,16 @@ service-input/
     │                       multi-parser integration test. Re-exports
     │                       PdfParser, MarkdownParser, DocxParser,
     │                       XlsxParser, FsClient, FsClientError.
+    ├── http.rs           — AppState { module_id, dispatcher, fs_client }
+    │                       + router() (GET /healthz, /readyz, POST /mcp).
+    │                       Re-exported as service_input::http.
+    ├── mcp.rs            — MCP JSON-RPC 2.0 handler. Tool: document.ingest
+    │                       (filename, source_id, bytes_base64). Detects
+    │                       format, dispatches to parser, submits via
+    │                       FsClient. X-Foundry-Module-ID enforcement.
+    │                       5 tests (initialize, tools/list, ingest
+    │                       transport-error, wrong module_id, unknown
+    │                       format). Re-exported as service_input::mcp.
     ├── fs_client.rs      — FsClient { base_url, module_id } with
     │                       submit(&self, doc) -> Result<u64, FsClientError>.
     │                       POSTs to service-fs /v1/append; ureq 3.3
