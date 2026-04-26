@@ -6,13 +6,24 @@ members = [
     "app-console-content",
     "tool-acs-miner",
     "system-gateway-mba",
-    # "service-fs" — temporarily held out 2026-04-26 (project-data
-    # Task Claude); the bare-metal seL4 scaffold was relocated to
-    # vendor-sel4-fs/ and the Tokio MCP-server skeleton is the new
-    # contents. Re-add after `cargo check` inside service-fs/ passes
-    # clean (per Master ratification 2026-04-26 Decision 3).
+    # "service-fs" — Tokio MCP-server skeleton compiles clean inside
+    # its own directory (cargo check + 3 ledger unit tests pass,
+    # 2026-04-26). Re-add to members blocked on workspace-tier
+    # openssl-sys breakage in an existing member (pre-existing Layer
+    # 1 audit finding; not the Tokio rewrite's fault). Tracked as a
+    # NEXT.md item in service-fs/ pending repo-tier cleanup.
     "system-security",
     "xtask"
+]
+exclude = [
+    # Held-out crates that physically nest under the workspace root
+    # but are deliberately not workspace members.
+    # - service-fs: see members comment above
+    # - vendor-sel4-fs: Reserved-folder bare-metal crate; different
+    #   runtime model (its .cargo/config.toml targets
+    #   x86_64-unknown-none)
+    "service-fs",
+    "vendor-sel4-fs",
 ]
 
 [profile.dev]

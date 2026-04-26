@@ -8,7 +8,7 @@ must be closed.
 
 State vocabulary — see `~/Foundry/CLAUDE.md` §8 for definitions.
 
-Last updated: 2026-04-25.
+Last updated: 2026-04-26.
 
 ---
 
@@ -123,7 +123,7 @@ Last updated: 2026-04-25.
 | service-email-egress-imap | Scaffold-coded | service | IMAP protocol adapter; doubly-nested wrapper flattened 2026-04-23; 4 sub-crates; parallel structure to `-ews` but without prune/balancer |
 | service-email-template | Scaffold-coded | service | 5 files |
 | service-extraction | Active | service | 21 files; CLAUDE.md present but stale (see NEXT.md Item 9) |
-| service-fs | Active | service | activated 2026-04-25 (project-data Task Claude, `ee209e3`); seL4-unikernel scaffold drift surfaced 2026-04-26 (cluster outbox `ring1-scaffold-runtime-model-drift`) and ratified by Master same date — Decision 1 (rewrite as Tokio MCP-server skeleton), Decision 2 (relocate scaffold to `vendor-sel4-fs/`), Decision 3 (hold workspace membership until rewrite compiles); relocation landed this commit; new Cargo.toml + src/ skeleton lands in the next commit; transitional state — directory currently has only CLAUDE.md + NEXT.md |
+| service-fs | Active | service | activated 2026-04-25 (project-data Task Claude, `ee209e3`); seL4-unikernel scaffold drift surfaced 2026-04-26 (cluster outbox `ring1-scaffold-runtime-model-drift`); Master ratified 3 decisions same date; Decision 2 relocation to `vendor-sel4-fs/` landed in `7519390`; Decision 1 Tokio MCP-server skeleton landed (this commit) — `Cargo.toml` (tokio + axum + serde + tracing + anyhow), `src/{main.rs,http.rs,ledger.rs}`, bilingual READMEs (first-time addition), 5 axum endpoints (/healthz, /readyz, /v1/contract, /v1/append, /v1/entries) with per-tenant `X-Foundry-Module-ID` enforcement, in-memory `WormLedger` placeholder + 3 passing append-only invariant tests; reference shape slm-doorman-server (project-slm cluster `78031c4`); Decision 3 — workspace `[members]` re-add deferred behind unrelated `openssl-sys` Layer 1 audit issue, currently in workspace `[exclude]` |
 | service-http | Scaffold-coded | service | 9 files |
 | service-input | Active | service | 4 files (README.md + README.es.md + CLAUDE.md + NEXT.md); created and activated 2026-04-25 (project-data Task Claude) in two consecutive commits per CLAUDE.md §9; Ring 1 generic document ingest — pluggable parser dispatcher (oxidize-pdf, docx-rust, calamine, pulldown-cmark per SLM-STACK §3.4); writes through `service-fs` (WORM), read by `service-extraction` (Ring 2) over MCP; Cargo crate scaffold pending |
 | service-message-courier | Reserved-folder | service | 1 file |

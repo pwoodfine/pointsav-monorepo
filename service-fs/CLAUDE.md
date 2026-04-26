@@ -1,6 +1,6 @@
 # CLAUDE.md — service-fs
 
-> **State:** Active  —  **Last updated:** 2026-04-25
+> **State:** Active  —  **Last updated:** 2026-04-26
 > **Version:** 0.0.1  (per `~/Foundry/CLAUDE.md` §7 and DOCTRINE.md §VIII)
 > **Registry row:** `pointsav-monorepo/.claude/rules/project-registry.md`
 >
@@ -25,55 +25,79 @@ from it as an MCP client.
 
 ## Current state
 
-**Activation drift surfaced — do not propagate.** The existing
-scaffold at `src/main.rs` is `#![no_std] #![no_main]` with a
-hand-rolled `_start` entrypoint and a panic handler that loops —
-i.e., a bare-metal seL4 unikernel framing. That contradicts the
-ratified architecture (2026-04-25) on two counts:
+**Tokio MCP-server skeleton landed 2026-04-26 (this commit).**
+Drift closed.
 
-1. `~/Foundry/conventions/three-ring-architecture.md` §"MCP boundary
-   at Ring 1": Ring 1 services are MCP-server processes; "each
-   service exposes a stable wire protocol, not a Rust API."
-2. `~/Foundry/conventions/zero-container-runtime.md`: every Foundry
-   deployment runs as "a Linux binary under systemd on a plain VM
-   or bare-metal host." A bare-metal seL4 unikernel is not that
-   shape.
+History: an earlier seL4-unikernel scaffold (`#![no_std]
+#![no_main]` with a hand-rolled `_start` entrypoint) was at
+`src/main.rs` — surfaced as drift in the cluster outbox
+`ring1-scaffold-runtime-model-drift` on 2026-04-26 because it
+contradicted the ratified `three-ring-architecture.md` (Ring 1 =
+MCP-server processes) and `zero-container-runtime.md` (every
+deployment is a Linux binary under systemd). Master ratified
+three decisions the same day:
 
-The unikernel scaffold is likely earlier work that belongs in a
-future seL4-related project (the registry already carries
-`vendor-sel4-kernel` and `moonshot-sel4-vmm` as scaffold work for
-that lineage). **Operator decision 2026-04-25:** leave the scaffold
-file untouched in the activation commit; the eventual MCP-server
-scaffold for `service-fs` is paused pending Master Claude's
-ratification of the rewrite plan (see cluster outbox message
-`ring1-scaffold-runtime-model-drift`).
+1. **Decision 1** — replace with hosted Tokio MCP-server
+   skeleton. Done in this commit.
+2. **Decision 2** — relocate the seL4 scaffold to
+   `vendor-sel4-fs/` (Reserved-folder; joins the seL4 lineage
+   alongside `vendor-sel4-kernel` and `moonshot-sel4-vmm`).
+   Done in commit `7519390`.
+3. **Decision 3** — hold workspace membership until the rewrite
+   compiles clean. Rewrite compiles (`cargo check`) and the 3
+   ledger tests pass; re-add to workspace `[members]` is blocked
+   on a separate Layer 1 audit issue (workspace-level
+   `cargo check --workspace` surfaces an `openssl-sys` system-
+   dep missing from a sibling member, unrelated to service-fs).
+   Service-fs sits in workspace `[exclude]` for now; tracked in
+   NEXT.md.
 
-Activation snapshot:
-- Per-project `CLAUDE.md` (this file) — present.
-- Per-project `NEXT.md` — present.
-- Registry row — Active.
-- Code state — single 26-line stub from prior bare-metal framing;
-  zero working Ring 1 functionality.
+Code state: minimal but real. The Tokio runtime is up, axum
+router exposes `/healthz`, `/readyz`, `/v1/contract`,
+`/v1/append`, and `/v1/entries`. The WORM ledger primitive in
+`src/ledger.rs` is in-memory (placeholder for hash-addressed
+segment files in immutable directories — first NEXT.md item).
+Three unit tests enforce the append-only / monotonic-cursor
+invariant at the ledger API surface.
 
 ## Build and test
 
-No build step yet — pending the ratified MCP-server scaffold. The
-existing `Cargo.toml` declares no dependencies and the
-`#![no_std] #![no_main]` binary will not link as part of a hosted
-workspace member without removing the bare-metal attributes. Do
-not attempt `cargo check` inside this directory until the rewrite
-is ratified.
+```
+cargo check    # standalone (service-fs is workspace-excluded)
+cargo test     # runs the 3 ledger invariant tests in src/ledger.rs
+```
+
+Workspace-level commands (`cargo check --workspace` from repo
+root) skip service-fs because it's currently in workspace
+`[exclude]`. Re-adding to `[members]` requires the unrelated
+`openssl-sys` Layer 1 audit issue to be closed at repo tier.
 
 ## File layout
 
 ```
 service-fs/
-├── Cargo.toml             — pre-rewrite stub; "Bare-Metal Unikernel"
-│                            description; zero dependencies
-├── Cargo.lock             — pre-rewrite stub
-├── .cargo/config.toml     — pre-rewrite stub
-└── src/main.rs            — 26-line no_std/no_main scaffold
-                             (KEEP UNTOUCHED until rewrite ratified)
+├── Cargo.toml             — Tokio + axum + serde + tracing + anyhow
+├── Cargo.lock             — checked in (binary crate; reproducible
+│                            build target)
+├── README.md              — English overview (bilingual pair added
+│                            2026-04-26 alongside the rewrite)
+├── README.es.md           — Spanish overview (bilingual pair)
+├── CLAUDE.md              — this file
+├── NEXT.md                — work queue
+└── src/
+    ├── main.rs            — Tokio entrypoint; reads FS_BIND_ADDR,
+    │                        FS_MODULE_ID, FS_LEDGER_ROOT from env;
+    │                        spins axum on the bind addr
+    ├── http.rs            — axum router + endpoint handlers;
+    │                        per-tenant moduleId enforcement on
+    │                        /v1/append and /v1/entries; ApiError
+    │                        type wraps internal errors with HTTP
+    │                        status + JSON body
+    └── ledger.rs          — WormLedger primitive; append-only
+                             invariant enforced at API surface;
+                             3 unit tests; in-memory storage
+                             placeholder pending the segment-file
+                             swap (first NEXT.md item)
 ```
 
 ## Hard constraints — do not violate
@@ -89,9 +113,10 @@ service-fs/
   `moduleId` (per `three-ring-architecture.md` §moduleId
   discipline). Cross-tenant reads/writes are not in scope for this
   service.
-- **Do not modify `src/main.rs` until Master Claude ratifies the
-  unikernel-vs-MCP rewrite plan.** The file is documentation of
-  existing-scaffold drift, not active scaffolding.
+- **Do not re-introduce bare-metal framing.** `#![no_std]`,
+  `#![no_main]`, hand-rolled `_start`, target overrides to
+  `x86_64-unknown-none` — none belong in service-fs. That lineage
+  is `vendor-sel4-fs/` and the seL4 family of crates.
 
 ## Dependencies on other projects
 
@@ -104,12 +129,17 @@ Consumed by:
 
 ## What not to do
 
-- Do not "fix" the seL4 scaffold by adding bare-metal logic. The
-  scaffold's runtime model conflicts with the ratified Ring 1
-  architecture; further bare-metal work cements drift.
-- Do not begin the MCP-server rewrite until Master ratifies the
-  plan. The cluster outbox message
-  `ring1-scaffold-runtime-model-drift` is the gate.
+- Do not pull in AI/ML inference dependencies (candle, anthropic
+  client, openai client, etc.). ADR-07 keeps Ring 1 zero-AI;
+  even diagnostic-only inclusion of an inference dep is the kind
+  of slow drift that becomes load-bearing.
+- Do not write directly to disk paths outside `FS_LEDGER_ROOT`.
+  All persistence is rooted under the operator-supplied ledger
+  directory.
+- Do not silently broaden the moduleId enforcement (e.g., "if
+  header is missing, fall back to FS_MODULE_ID"). Explicit
+  rejection is the per-tenant-boundary discipline; soft fallbacks
+  hide misrouted clients.
 
 ---
 
