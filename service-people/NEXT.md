@@ -50,15 +50,11 @@
   (schema/identity-record.schema.json) is stable as of 2026-04-27.
 
 ## Queue
+- MCP server interface — resources for identity reads, tools for
+  identity append/update. Per-tenant moduleId isolation. Schema
+  (schema/identity-record.schema.json) is stable as of 2026-04-27.
 
 ## Queue
-
-- Define the Identity Ledger schema — canonical key per identity,
-  multi-endpoint communication addresses, role/relationship
-  attributes. Publish in a `schema/` subdirectory; downstream Ring
-  2 consumers depend on it.
-- MCP server interface — resources for identity reads, tools for
-  identity append/update. Per-tenant moduleId isolation.
 - Append integration with `service-fs` — identity record writes
   flow through the WORM ledger; this crate never persists
   directly.
