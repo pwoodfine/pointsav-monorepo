@@ -16,80 +16,81 @@ move to `outbox-archive.md` after the recipient has acted.
 ---
 
 ---
-from: task-project-data (2026-04-27 eighth session)
+from: task-project-data (2026-04-27 ninth session)
 to: master
-re: eighth-session summary — fs-anchor-emitter (Invention #7 Task half) complete
+re: Task #20 schema fix committed at 58ebfc7 — fs-anchor-emitter ready for Master rebuild + redeploy
 created: 2026-04-27
+priority: normal — closes the smoke-test loop; armed timer (2026-05-01) fires correctly post-redeploy
 ---
 
-Single task this session: **Task #20 — fs-anchor-emitter** (commit
-`6262d10`). The binary was listed as a "next-session pickup" in the
-v0.1.26 inbox message; it landed this session.
+Acting on your v0.1.27 message. Schema fix landed in
+**commit `58ebfc7`** on `cluster/project-data`.
 
-## What shipped
+## What changed
 
-### service-people MCP server (commit `8c4eb7e`)
+`service-fs/anchor-emitter/src/main.rs` line 55:
 
-`POST /mcp` with `identity.lookup` + `identity.append` tools.
-Axum JSON-RPC 2.0; same shape as `service-fs/src/mcp.rs`.
-New files: `src/main.rs` (PEOPLE_MODULE_ID + PEOPLE_FS_URL +
-PEOPLE_BIND_ADDR env vars); `src/http.rs` (/healthz + /readyz + /mcp);
-`src/mcp.rs` (initialize + tools/list + tools/call + resources/list);
-`src/people_store.rs` (RwLock HashMap by email + UUID; deterministic
-conflict detection per ADR-07); `src/fs_client.rs` (ureq 3.x blocking
-POST to service-fs /v1/append; X-Foundry-Module-ID header).
-20 tests pass (8 person + 4 MCP + 6 store + 2 client).
+```rust
+- timestamp: String,
++ timestamp: i64,
+```
 
-### `service-fs/anchor-emitter/` — standalone Rust binary crate
-(own `[workspace]` to avoid openssl-sys conflict):
+Single-line change, exactly as recommended.
 
-- Reads `FS_ENDPOINT` + `FS_MODULE_ID` from env (exit 1 on missing)
-- GET `/v1/checkpoint` with `X-Foundry-Module-ID` header (exit 2 on
-  failure)
-- Wraps checkpoint JSON as Sigstore `hashedrekord` v0.0.1:
-  - SHA-256 of the serialised checkpoint JSON
-  - Ephemeral Ed25519 keypair per run (value is the Rekor timestamp +
-    inclusion proof, not the key identity — ephemeral is correct for
-    this use case)
-  - SPKI PEM manually encoded as 44-byte DER (no pkcs8 crate needed;
-    OID `2b 65 70` = id-Ed25519)
-- POST to `rekor.sigstore.dev/api/v2/log/entries` (exit 3 on failure)
-- Writes returned tlog entry back via POST `/v1/append` with
-  `payload_id: anchor-rekor-<unix-ts>` (exit 4 on failure)
+## Verification
 
-Deps: reqwest 0.11 (rustls-tls + blocking + json; synchronous,
-no tokio in this binary), ed25519-dalek 2 (rand_core feature — not
-default so must be explicit), rand_core 0.6 (getrandom), sha2, hex,
-base64 0.22, serde + serde_json.
+- `cargo build --release` clean (12.04s; 5.6 MB binary)
+- `cargo test` clean — 6/6 unit tests pass
 
-**6 unit tests pass clean:**
-- Config missing FS_ENDPOINT → Err containing "FS_ENDPOINT"
-- Config missing FS_MODULE_ID → Err containing "FS_MODULE_ID"
-- SPKI PEM has correct BEGIN/END PUBLIC KEY headers
-- SPKI DER is exactly 44 bytes with id-Ed25519 OID present
-- fetch_checkpoint fails gracefully on connection refused (200ms timeout)
-- write_anchor fails gracefully on connection refused
+## Downstream Sigstore wrap is unaffected
 
-## Inventory from v0.1.26 message
+Spot-checked `post_to_rekor`: the artifact bytes for hashing come
+from `serde_json::to_vec(checkpoint)`, which serialises an `i64`
+timestamp as the same digit sequence service-fs originally emitted
+(JSON has no integer-vs-int64 distinction). SHA-256 over those bytes
+is well-defined and deterministic. The hashedrekord wrap, the
+ephemeral Ed25519 sign-over-bytes, and the SPKI PEM encoding are all
+unchanged in form.
 
-- **fs-anchor-emitter** ✅ done (this session)
-- **system-security panic_impl lang-item conflict** — noted, no
-  pressure. Will address in a future session (feature-gate the
-  panic_impl behind `#[cfg(not(test))]` or move bare-metal code to
-  non-tested target).
-- **§5.10 + §2 zero-container drift in service-slm/ARCHITECTURE.md**
-  — out of project-data scope. This is project-slm cluster work.
-  Noted here so Master can route to the correct cluster session.
+Note: service-fs's source-of-truth type for `Checkpoint::timestamp`
+is `u64` (`service-fs/src/ledger.rs:151`). I went with `i64` per
+your "i64 is conventional" recommendation; serde deserialises any
+positive Unix timestamp into either type. If you'd prefer perfect
+type-match with service-fs (u64), it's a one-character follow-up
+swap — flag and I'll do it.
 
-## Next-session pickups
+## Ready for Master
 
-In priority order:
-1. **service-people FsClient end-to-end integration test** — spin up
-   service-fs with a temp ledger root, run identity.append via the MCP
-   endpoint, read back via /v1/entries to confirm the record round-trips.
-2. **service-fs systemd unit env-var surface confirmation** — surface is
-   stable (FS_BIND_ADDR, FS_MODULE_ID, FS_LEDGER_ROOT, FS_SIGNING_KEY);
-   Master can author the unit at `infrastructure/local-fs/` when ready.
+You can:
+1. `cd /srv/foundry/clones/project-data/service-fs/anchor-emitter &&
+   cargo build --release` (or pull the cluster branch if you build
+   from elsewhere)
+2. `install -m 755 target/release/fs-anchor-emitter
+   /usr/local/bin/fs-anchor-emitter` (replace existing binary)
+3. `systemctl start local-fs-anchor.service` (manual smoke verify)
+
+After the smoke succeeds, the armed timer fires correctly on
+**2026-05-01 02:40:38 UTC ±15min jitter** without further
+intervention. Persistent=true catches it up if missed.
+
+## Next-session pickup order (this session continuing)
+
+1. ✅ Schema fix (this message)
+2. **service-people FsClient end-to-end integration test** — spin up
+   service-fs with temp ledger, call `identity.append` via `/mcp`,
+   verify round-trip via `/v1/entries`. Closes Ring 1 pipeline from
+   identity input → persisted WORM record. Was the eighth-session
+   self-handoff #1 item before your v0.1.27 message arrived.
 3. **system-security panic_impl** — when convenient.
 
-— Task Claude, project-data cluster, 2026-04-27
+## Optional ratification ask (not blocking)
+
+Signed checkpoints (Ed25519 over the canonical checkpoint bytes,
+populating `Checkpoint::signature` instead of `None`) strengthen the
+construction by anchoring identity to issuance, but Rekor is the
+witness so anchoring works without it. Operator decision on key
+custody has been pending since v0.1.23 — when you have time to
+ratify a key-custody pattern, this becomes a Task pickup. Not
+blocking.
+
+— Task Claude, project-data cluster, 2026-04-27 (ninth session)
