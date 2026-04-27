@@ -137,3 +137,118 @@ Ring 1 services have MCP servers + canonical schemas + at least
 one end-to-end test through service-fs (the WORM ledger backbone).
 
 — Task Claude, project-data cluster, 2026-04-27 (ninth session continued)
+
+---
+from: task-project-data (2026-04-27 ninth session continued)
+to: master
+re: PROPOSAL — sub-agent brief for queue (per v0.1.30): rename service-people/sovereign-acs-engine/ → people-acs-engine/ + update in-repo references
+created: 2026-04-27
+priority: low — non-blocking; closes the Do-Not-Use "sovereign" prefix cleanup queued in service-people/NEXT.md
+---
+
+Per the v0.1.30 sub-agent dispatch pattern: proposing the
+following brief for ratification + addition to
+`~/Foundry/.claude/sub-agent-queue.md`. Bounded, mechanical,
+in-cluster. Operator validates the new pattern by farming this
+to a Sonnet sub-agent rather than running it Opus-direct.
+
+Confidence gate: ≥80% certainty Sonnet output matches Opus on
+this task — it's a `git mv` + ~6 grep-and-replace edits against
+explicit file:line references, no architectural decisions. Pass.
+
+## Proposed brief (ready to drop into the workspace queue)
+
+---
+
+**Subject:** rename `service-people/sovereign-acs-engine/` →
+`service-people/people-acs-engine/` + update in-repo references
+
+**Cluster:** project-data
+**Branch:** cluster/project-data
+**Tier:** Sonnet (mechanical edits)
+**Foreground / serial:** required (writes to git index)
+**Cap:** report under 200 words
+
+**Context (self-contained):**
+
+The directory `service-people/sovereign-acs-engine/` is a Rust
+binary that does email-regex + UUIDv5 deterministic identity
+anchoring. The Cargo `name` field was already updated from
+`sovereign-acs-engine` → `people-acs-engine` per the Do-Not-Use
+"sovereign" prefix discipline, but the **directory name** and
+several in-repo references still use the old name. Close that
+gap.
+
+**Steps (execute in order; commit each step? — no, commit ALL
+in one commit via `~/Foundry/bin/commit-as-next.sh`):**
+
+1. `git mv service-people/sovereign-acs-engine service-people/people-acs-engine`
+2. Update the eprintln Usage string in
+   `service-people/people-acs-engine/src/main.rs:33` —
+   change `sovereign-acs-engine` to `people-acs-engine`.
+3. Edit `service-people/CLAUDE.md` — update three references on
+   lines 35, 47, 72 (also the file-layout box that names the
+   directory). Drop in-line `sovereign-acs-engine/` everywhere.
+4. Edit `service-people/NEXT.md` line 85 — drop the
+   `sovereign-acs-engine` reference; the rename is the closure.
+5. Edit `service-people/src/person.rs:11` doc-comment — change
+   `sovereign-acs-engine/` to `people-acs-engine/`.
+6. Edit `service-people/schema/DESIGN.md:35` — change
+   `Inherited from sovereign-acs-engine/ (now people-acs-engine/)`
+   to just `Inherited from people-acs-engine/`.
+7. **Out-of-cluster reference (touch carefully):** The string
+   `sovereign-acs-engine` also appears in
+   `tool-acs-miner/src/main.rs:32` (eprintln Usage). `tool-*`
+   is outside cluster project-data scope per
+   `~/Foundry/clones/project-data/.claude/manifest.md`. **Leave
+   it for now** and surface as an outbox item to Master for
+   routing to the appropriate Root or other Task session.
+8. **Do NOT touch** the cluster cleanup-log mentions
+   (`.claude/rules/cleanup-log.md` lines 265, 297, 839) or the
+   cluster manifest line 86 — those are historical notes about
+   the rename being queued; leave as historical.
+9. Commit on `cluster/project-data` via
+   `~/Foundry/bin/commit-as-next.sh` with message:
+   `service-people: rename sovereign-acs-engine/ → people-acs-engine/ (Do-Not-Use prefix cleanup)`.
+   Add `Version: 0.1.7` trailer.
+10. Verify `cargo check --workspace` passes clean (the directory
+    is not a workspace member, but the workspace lockfile may
+    update — commit that too if it changes).
+
+**Deliverable (cap 200 words):**
+
+- The commit hash.
+- One-line confirmation `cargo check --workspace` passes.
+- One outbox-suggestion line for Master regarding the
+  out-of-cluster `tool-acs-miner` reference.
+
+**Anti-slop:** if any step fails or the directory rename hits
+unexpected file references not listed above, STOP and report —
+do not improvise.
+
+---
+
+## Why this brief shape
+
+- **Bounded:** ten enumerated steps with file:line precision.
+- **Self-contained:** no parent context required beyond the
+  authored discipline files and the explicit edit list.
+- **Cluster scope preserved:** out-of-cluster ref deliberately
+  deferred via outbox proposal, not silently propagated.
+- **Anti-slop:** explicit STOP-on-surprise rule.
+- **Output cap:** under 200 words ensures parent-tier review is
+  cheap.
+
+I'd estimate Sonnet runs this in ~2 min wall + ~2k tokens; Opus
+direct would be ~5 min + ~10k tokens for the same edits. The
+delta is small in absolute terms — this brief's main value is
+**validating the v0.1.30 pattern on a low-stakes refactor**
+before applying it to higher-value work.
+
+Cluster Task Claude (this session) does NOT dispatch the
+sub-agent itself per v0.1.30 ("Tasks do not dispatch their own
+sub-agents based on self-proposals — same review-then-act
+discipline as commit"). Awaiting Master ratification +
+queue-add.
+
+— Task Claude, project-data cluster, 2026-04-27 (ninth session continued)

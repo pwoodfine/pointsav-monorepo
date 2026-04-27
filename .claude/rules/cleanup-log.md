@@ -96,6 +96,64 @@ Newest on top. Append a dated block when a session includes meaningful cleanup w
 
 ---
 
+## 2026-04-27 (ninth session continued — system-security panic_handler gate + Master v0.1.30 sub-agent dispatch pattern adopted)
+
+After session-end commit `aee4c38` the operator continued the
+session with two follow-up items: (a) direct work on the
+no-pressure system-security panic_impl conflict, and (b) a
+sub-agent brief proposal in outbox per Master v0.1.30's new
+dispatch pattern.
+
+**Commit `ab3cb85` — system-security panic_handler gate.** The
+long-standing E0152 `duplicate lang item panic_impl` that broke
+`cargo test --workspace` at the repo root: under test mode the
+harness pulls in std (which provides `panic_impl`), conflicting
+with the user-defined `#[panic_handler]` in
+`system-security/src/lib.rs:40`. Fix:
+`#![cfg_attr(not(test), no_std)]` + `#![cfg_attr(not(test), no_main)]`
++ `#[cfg(not(test))] #[panic_handler] ...`. Bare-metal build
+shape preserved exactly under any non-test cfg; under cargo test
+the harness sees a regular hosted library with no panic_handler
+collision. `cargo test --workspace` now passes clean (81 tests
+across the workspace; previously failed at compile time).
+`cargo check --workspace` still passes (no behavioural change to
+bare-metal). `watchdog.rs` is dead in the cargo build graph today
+(not declared as a `mod` in lib.rs and not a `[[bin]]` target);
+separate cleanup item if/when watchdog reactivates. Closes the
+no-pressure follow-up flagged in Master v0.1.27 + v0.1.28.
+
+**Master v0.1.30 — sub-agent dispatch pattern adopted.**
+Workspace-wide convention: when a session would otherwise write
+an exit+re-enter recommendation, dispatch a foreground sub-agent
+at the lower tier instead via the `Agent` tool with
+`model: "sonnet"` (or `"haiku"`). Parent stays in seat, retains
+AUTO + parent context, waits for the sub-agent, reviews,
+commits-or-queues. Six rules at
+`conventions/model-tier-discipline.md` §1A. For waiting Tasks:
+propose sub-agent briefs in outbox; Master ratifies additions to
+`~/Foundry/.claude/sub-agent-queue.md`. Tasks do not
+self-dispatch. **Pattern applied this session by drafting an
+outbox brief proposal** for the bounded mechanical refactor of
+renaming `service-people/sovereign-acs-engine/` →
+`people-acs-engine/` (directory + ~6 in-repo references; Cargo
+`name` field already updated separately at some prior point).
+The brief is self-contained (file:line references, explicit step
+list, anti-slop STOP-on-surprise rule, 200-word output cap).
+Out-of-cluster reference at `tool-acs-miner/src/main.rs:32`
+deliberately deferred via outbox proposal rather than silently
+propagated, preserving cluster-scope discipline. Direct work
+this session (panic_handler gate) was bounded enough that
+orchestration overhead would have exceeded the benefit;
+brief proposal validates the pattern on a parallel refactor.
+
+**Mailbox sync this commit:** Master v0.1.30 archived to
+inbox-archive.md (Master noted "no action required; archive on
+next session start" — folded into the same commit as the
+sub-agent brief outbox + cleanup-log update for §VI archive-on-
+action discipline). Inbox reset to placeholder.
+
+---
+
 ## 2026-04-27 (ninth session — Master v0.1.27 schema fix + v0.1.28 Rekor URL fix + service-people end-to-end test)
 
 Three commits on `cluster/project-data`. Auto-mode session
