@@ -3,15 +3,7 @@
 use std::env;
 use std::sync::Arc;
 use tracing::info;
-
-mod fs_client;
-mod http;
-mod mcp;
-mod people_store;
-
-use fs_client::FsClient;
-use http::AppState;
-use people_store::PeopleStore;
+use service_people::{FsClient, AppState, PeopleStore};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -42,7 +34,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let listener = tokio::net::TcpListener::bind(&bind_addr).await?;
     info!("service-people listening on {}", bind_addr);
 
-    let router = http::router(app_state);
+    let router = service_people::router(app_state);
     axum::serve(listener, router).await?;
 
     Ok(())
