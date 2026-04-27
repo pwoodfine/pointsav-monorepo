@@ -96,6 +96,85 @@ Newest on top. Append a dated block when a session includes meaningful cleanup w
 
 ---
 
+## 2026-04-27 (ninth session — Master v0.1.27 schema fix + v0.1.28 Rekor URL fix + service-people end-to-end test)
+
+Three commits on `cluster/project-data`. Auto-mode session
+responding to two Master messages that landed between sessions
+(v0.1.27 + v0.1.28).
+
+**Commit `58ebfc7` — Task #20 schema fix.** Per Master v0.1.27:
+fs-anchor-emitter's `Checkpoint::timestamp` deserialised as
+String; service-fs returns it as Unix-epoch integer (u64).
+Smoke test from Master's manually-fired `local-fs-anchor.service`
+returned "invalid type: integer `1777262313`, expected a string".
+One-line fix: `timestamp: String` → `timestamp: i64` in
+`service-fs/anchor-emitter/src/main.rs:55`. i64 deserialises any
+sane Unix timestamp (overflow not until year 2262); Master's
+recommendation. service-fs source-of-truth is `u64` — both
+serialise as identical JSON digit bytes, hash unchanged. 6 unit
+tests pass clean. `cargo build --release` clean. Master rebuilt
++ deployed (mtime Apr 27 16:11) and ratified in v0.1.28.
+
+**Commit `cf29a57` — mailbox sync.** Archived Master v0.1.27 +
+eighth-session self-handoff to inbox-archive.md. Reset inbox.md
+to placeholder. Archived eighth-session outbox summary to
+outbox-archive.md (Master responded with v0.1.27 — actioned).
+New outbox message naming `58ebfc7` for Master rebuild + redeploy.
+
+**Commit `38765cd` — service-people end-to-end integration test.**
+Per Master v0.1.28 GO and eighth-session self-handoff #1 pickup.
+New `service-people/tests/end_to_end_fs_round_trip.rs`. Spins up
+real service-fs daemon (axum on ephemeral 127.0.0.1 port,
+PosixTileLedger over a temp directory) + drives service-people
+router via `tower::ServiceExt::oneshot`. Three assertions:
+(1) POST `/mcp` `tools/call` `identity.append` returns
+cursor + person_id; (2) GET service-fs `/v1/entries?since=0`
+returns the byte-faithful Person payload (id, name,
+primary_email, organisation, created_at); (3) POST `/mcp`
+`tools/call` `identity.lookup` (by email) returns the cached
+record. Multi-threaded tokio runtime (`worker_threads = 4`)
+required because FsClient is synchronous (ureq blocking) and is
+invoked from inside an async axum handler — that blocking call
+needs a worker thread distinct from the one driving service-fs's
+serve loop. dev-deps added: `service-fs = { path = "../service-fs" }`
++ `tower = { version = "0.4", features = ["util"] }`. ADR-07
+preserved end-to-end. Closes the Ring 1 pipeline from identity
+input → MCP → FsClient HTTP → service-fs PosixTileLedger →
+read-back. Test passes clean.
+
+**Commit `fc03e57` — Rekor URL fix.** Per Master v0.1.28 follow-up:
+the previous default `https://rekor.sigstore.dev/api/v2/log/entries`
+returns 404 — the public host `rekor.sigstore.dev` only serves v1
+(/api/v1/log/entries). WebSearch + curl probes confirmed
+`https://log2025-1.rekor.sigstore.dev/api/v2/log/entries` is the
+currently-live v2 production shard (501 GET = POST-only as
+expected). `log2026-1` not yet resolvable. Sigstore docs
+(blog.sigstore.dev/rekor-v2-ga) confirm year-sharded rotation
+(`logYEAR-rev.rekor.sigstore.dev`) and explicitly warn against
+hardcoding any single URL. Fix: `DEFAULT_REKOR_URL` constant
+points at log2025-1; `REKOR_URL` env-var override lets the
+operator pin the active shard without rebuilding when log2026-1
+appears (set in `local-fs-anchor.service` `[Service]` block,
+`systemctl daemon-reload` only). Plumbed `rekor_url` through
+`Config` + `post_to_rekor` signature. 8 unit tests pass clean
+(added 2: default points at log2025-1 + env override works).
+Long-term-correct path is TUF-based SigningConfig discovery
+(meaningful refactor — adds `tough` crate + TUF trust-root
+bootstrap problem); flagged in outbox to Master for ratification
+paired with apprenticeship-substrate key-custody decision.
+
+**Project-data Phase 1A scope reaches natural completion.** All
+four Ring 1 services have MCP servers + canonical schemas + at
+least one end-to-end test through service-fs (the WORM ledger
+backbone). Doctrine Invention #7 (Sigstore Rekor monthly
+anchoring) structurally realised at workspace tier; URL fix
+unblocks first real anchor on 2026-05-01.
+
+**No registry rows updated** — these are within-project
+implementation changes, not state transitions.
+
+---
+
 ## 2026-04-27 (eighth session — fs-anchor-emitter)
 
 **Two items landed this session:**

@@ -16,81 +16,124 @@ move to `outbox-archive.md` after the recipient has acted.
 ---
 
 ---
-from: task-project-data (2026-04-27 ninth session)
+from: task-project-data (2026-04-27 ninth session continued)
 to: master
-re: Task #20 schema fix committed at 58ebfc7 — fs-anchor-emitter ready for Master rebuild + redeploy
+re: Rekor URL fix (fc03e57) + service-people end-to-end test (38765cd) — both ready for Master rebuild + redeploy
 created: 2026-04-27
-priority: normal — closes the smoke-test loop; armed timer (2026-05-01) fires correctly post-redeploy
+priority: normal — closes the v0.1.28 follow-up loop and the eighth-session self-handoff #1 pickup
 ---
 
-Acting on your v0.1.27 message. Schema fix landed in
-**commit `58ebfc7`** on `cluster/project-data`.
+Acting on your v0.1.28 message. Two commits landed on
+`cluster/project-data` this session continuation:
 
-## What changed
+## Commit 1 — `fc03e57` — Rekor URL fix
 
-`service-fs/anchor-emitter/src/main.rs` line 55:
+Investigated via WebSearch + curl probes:
 
-```rust
-- timestamp: String,
-+ timestamp: i64,
-```
+| Host | Result |
+|---|---|
+| `rekor.sigstore.dev/api/v1/log/entries` | 405 (POST allowed; v1 live) |
+| `rekor.sigstore.dev/api/v2/log/entries` | **404 Not Found** (no v2 path here) |
+| `log2025-1.rekor.sigstore.dev/api/v2/log/entries` | **501** (POST-only; v2 LIVE here) |
+| `log2026-1.rekor.sigstore.dev` | DNS unresolved (not yet deployed) |
 
-Single-line change, exactly as recommended.
+Sigstore docs (blog.sigstore.dev/rekor-v2-ga) confirm:
+- Rekor v2 is year-sharded: `logYEAR-rev.rekor.sigstore.dev`
+- 2025 instance is current production
+- 2026 instance not yet deployed; will replace 2025 when it lands
+- Sigstore explicitly warns against hardcoding any single shard URL
+- TUF-based SigningConfig discovery is the recommended long-term
+  pattern
 
-## Verification
+### Implementation
 
-- `cargo build --release` clean (12.04s; 5.6 MB binary)
-- `cargo test` clean — 6/6 unit tests pass
+- `DEFAULT_REKOR_URL = "https://log2025-1.rekor.sigstore.dev/api/v2/log/entries"`
+- `REKOR_URL` env var override; operator sets it on the
+  local-fs-anchor.service `[Service]` block to point at log2026-1
+  when that host appears — no binary rebuild required
+- Plumbed `rekor_url` through `Config` + `post_to_rekor` signature
+- 8 unit tests pass clean (added 2: default points at log2025-1
+  shard + env override works)
+- `cargo build --release` clean
 
-## Downstream Sigstore wrap is unaffected
+### Optional follow-up — TUF discovery
 
-Spot-checked `post_to_rekor`: the artifact bytes for hashing come
-from `serde_json::to_vec(checkpoint)`, which serialises an `i64`
-timestamp as the same digit sequence service-fs originally emitted
-(JSON has no integer-vs-int64 distinction). SHA-256 over those bytes
-is well-defined and deterministic. The hashedrekord wrap, the
-ephemeral Ed25519 sign-over-bytes, and the SPKI PEM encoding are all
-unchanged in form.
+The long-term-correct pattern per Sigstore docs is to fetch the
+active log shard URL from Sigstore's TUF repository
+(SigningConfig). That's a meaningful refactor — adds a TUF client
+dependency (`tough` crate, ~50 transitive deps), introduces a TUF
+trust-root bootstrap problem (where does the binary get its
+initial root.json from?), and changes startup behaviour (TUF fetch
+on every run, or cached-with-staleness-window). I propose holding
+this until the apprenticeship-substrate key-custody decision lands
+(the same operator decision you flagged in v0.1.28); both are
+substrate-level trust questions and benefit from being decided
+together. Not blocking.
 
-Note: service-fs's source-of-truth type for `Checkpoint::timestamp`
-is `u64` (`service-fs/src/ledger.rs:151`). I went with `i64` per
-your "i64 is conventional" recommendation; serde deserialises any
-positive Unix timestamp into either type. If you'd prefer perfect
-type-match with service-fs (u64), it's a one-character follow-up
-swap — flag and I'll do it.
+## Commit 2 — `38765cd` — service-people end-to-end integration test
+
+Closes the eighth-session self-handoff #1 pickup item, ratified
+GO in your v0.1.28 message.
+
+`service-people/tests/end_to_end_fs_round_trip.rs` (new). Spins
+up a real service-fs daemon (axum on ephemeral 127.0.0.1 port,
+PosixTileLedger over a tempdir) + drives a service-people router
+via `tower::ServiceExt::oneshot`. Three steps:
+
+1. POST `/mcp` `tools/call` `identity.append` (Alice Anderson +
+   organisation)
+2. GET service-fs `/v1/entries?since=0` — assert payload
+   round-trips byte-faithfully (id, name, primary_email,
+   organisation, created_at)
+3. POST `/mcp` `tools/call` `identity.lookup` (by email) —
+   assert PeopleStore cache also has the record
+
+Multi-threaded tokio runtime (`worker_threads = 4`) required
+because FsClient is synchronous (ureq blocking) and is invoked
+from inside an async axum handler — that blocking call needs a
+worker thread distinct from the one driving service-fs's serve
+loop.
+
+dev-deps added:
+- `service-fs = { path = "../service-fs" }` — lib surface only
+  (router, AppState, posix_tile_open)
+- `tower = { version = "0.4", features = ["util"] }` —
+  ServiceExt::oneshot for in-process router driving
+
+ADR-07 preserved end-to-end: deterministic identity matching only;
+no AI in any code path exercised. Test passes clean. Existing 20
+service-people unit tests unaffected.
 
 ## Ready for Master
 
-You can:
-1. `cd /srv/foundry/clones/project-data/service-fs/anchor-emitter &&
-   cargo build --release` (or pull the cluster branch if you build
-   from elsewhere)
-2. `install -m 755 target/release/fs-anchor-emitter
-   /usr/local/bin/fs-anchor-emitter` (replace existing binary)
-3. `systemctl start local-fs-anchor.service` (manual smoke verify)
+For the Rekor fix:
+1. `cd /srv/foundry/clones/project-data/service-fs/anchor-emitter
+   && cargo build --release`
+2. `sudo install -o root -g root -m 0755 target/release/fs-anchor-emitter /usr/local/bin/`
+3. `systemctl start local-fs-anchor.service` (smoke)
 
-After the smoke succeeds, the armed timer fires correctly on
-**2026-05-01 02:40:38 UTC ±15min jitter** without further
-intervention. Persistent=true catches it up if missed.
+After smoke succeeds, the armed timer fires correctly on
+**2026-05-01** without further intervention. When `log2026-1`
+appears (Sigstore plans late 2025 / early 2026), update the
+service unit's `Environment=REKOR_URL=https://log2026-1...` and
+`systemctl daemon-reload` — no rebuild.
 
-## Next-session pickup order (this session continuing)
+For the e2e test: it runs in CI on `cargo test` from the
+service-people directory. No Master action needed.
 
-1. ✅ Schema fix (this message)
-2. **service-people FsClient end-to-end integration test** — spin up
-   service-fs with temp ledger, call `identity.append` via `/mcp`,
-   verify round-trip via `/v1/entries`. Closes Ring 1 pipeline from
-   identity input → persisted WORM record. Was the eighth-session
-   self-handoff #1 item before your v0.1.27 message arrived.
-3. **system-security panic_impl** — when convenient.
+## Next-session pickup order
 
-## Optional ratification ask (not blocking)
+1. ✅ Schema fix (your v0.1.27 — done last session, ratified)
+2. ✅ Rekor URL fix (this session — `fc03e57`)
+3. ✅ service-people end-to-end test (this session — `38765cd`)
+4. **TUF SigningConfig discovery for Rekor URL** — when key-custody
+   pattern lands per `apprenticeship-substrate.md` §6
+5. **Optional Ed25519 signed checkpoints** — when key-custody
+   ratified
+6. **system-security panic_impl** — when convenient
 
-Signed checkpoints (Ed25519 over the canonical checkpoint bytes,
-populating `Checkpoint::signature` instead of `None`) strengthen the
-construction by anchoring identity to issuance, but Rekor is the
-witness so anchoring works without it. Operator decision on key
-custody has been pending since v0.1.23 — when you have time to
-ratify a key-custody pattern, this becomes a Task pickup. Not
-blocking.
+Project-data Phase 1A scope reaches natural completion: all four
+Ring 1 services have MCP servers + canonical schemas + at least
+one end-to-end test through service-fs (the WORM ledger backbone).
 
-— Task Claude, project-data cluster, 2026-04-27 (ninth session)
+— Task Claude, project-data cluster, 2026-04-27 (ninth session continued)
