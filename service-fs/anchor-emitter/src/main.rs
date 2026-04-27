@@ -24,7 +24,18 @@ use rand_core::OsRng;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
-const REKOR_URL: &str = "https://rekor.sigstore.dev/api/v2/log/entries";
+// Rekor v2 default endpoint. Sigstore deploys log shards on a yearly
+// rotation (`logYEAR-rev.rekor.sigstore.dev`) and explicitly warns
+// against hardcoding any single URL — the 2025 instance will be turned
+// down when the 2026 instance lands. The long-term-correct path is
+// TUF-based SigningConfig discovery; until that is wired in, the
+// `REKOR_URL` env var lets the operator pin the active shard without
+// rebuilding the binary.
+//
+// The legacy v1 host `rekor.sigstore.dev/api/v2/log/entries` returns
+// 404 (no v2 path on that host); v1 is live there at /api/v1/log/entries
+// but uses a different response shape. Use a v2 shard host explicitly.
+const DEFAULT_REKOR_URL: &str = "https://log2025-1.rekor.sigstore.dev/api/v2/log/entries";
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
@@ -32,6 +43,7 @@ const REKOR_URL: &str = "https://rekor.sigstore.dev/api/v2/log/entries";
 struct Config {
     fs_endpoint: String,
     module_id: String,
+    rekor_url: String,
 }
 
 impl Config {
@@ -40,7 +52,9 @@ impl Config {
             .map_err(|_| "FS_ENDPOINT not set".to_string())?;
         let module_id = std::env::var("FS_MODULE_ID")
             .map_err(|_| "FS_MODULE_ID not set".to_string())?;
-        Ok(Self { fs_endpoint, module_id })
+        let rekor_url = std::env::var("REKOR_URL")
+            .unwrap_or_else(|_| DEFAULT_REKOR_URL.to_string());
+        Ok(Self { fs_endpoint, module_id, rekor_url })
     }
 }
 
@@ -143,6 +157,7 @@ struct RekorEntry {
 
 fn post_to_rekor(
     client: &reqwest::blocking::Client,
+    rekor_url: &str,
     checkpoint: &Checkpoint,
 ) -> Result<serde_json::Value, String> {
     // Serialize checkpoint as the artifact being anchored.
@@ -184,7 +199,7 @@ fn post_to_rekor(
     };
 
     let resp = client
-        .post(REKOR_URL)
+        .post(rekor_url)
         .json(&entry)
         .send()
         .map_err(|e| format!("Rekor POST failed: {e}"))?;
@@ -264,7 +279,7 @@ fn main() {
         }
     };
 
-    let tlog_entry = match post_to_rekor(&client, &checkpoint) {
+    let tlog_entry = match post_to_rekor(&client, &cfg.rekor_url, &checkpoint) {
         Ok(v) => v,
         Err(e) => {
             eprintln!("Rekor submission failed: {e}");
@@ -303,6 +318,43 @@ mod tests {
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("FS_MODULE_ID"));
         std::env::remove_var("FS_ENDPOINT");
+    }
+
+    #[test]
+    fn config_rekor_url_defaults_to_log2025_shard() {
+        std::env::set_var("FS_ENDPOINT", "http://localhost:9100");
+        std::env::set_var("FS_MODULE_ID", "test");
+        std::env::remove_var("REKOR_URL");
+        let cfg = Config::from_env().unwrap();
+        assert_eq!(cfg.rekor_url, DEFAULT_REKOR_URL);
+        assert!(
+            cfg.rekor_url.contains("log2025-1.rekor.sigstore.dev"),
+            "default must point at the active 2025 v2 shard host"
+        );
+        assert!(
+            cfg.rekor_url.ends_with("/api/v2/log/entries"),
+            "default must hit the v2 entries endpoint"
+        );
+        std::env::remove_var("FS_ENDPOINT");
+        std::env::remove_var("FS_MODULE_ID");
+    }
+
+    #[test]
+    fn config_rekor_url_overridable_via_env() {
+        std::env::set_var("FS_ENDPOINT", "http://localhost:9100");
+        std::env::set_var("FS_MODULE_ID", "test");
+        std::env::set_var(
+            "REKOR_URL",
+            "https://log2026-1.rekor.sigstore.dev/api/v2/log/entries",
+        );
+        let cfg = Config::from_env().unwrap();
+        assert_eq!(
+            cfg.rekor_url,
+            "https://log2026-1.rekor.sigstore.dev/api/v2/log/entries"
+        );
+        std::env::remove_var("FS_ENDPOINT");
+        std::env::remove_var("FS_MODULE_ID");
+        std::env::remove_var("REKOR_URL");
     }
 
     #[test]
