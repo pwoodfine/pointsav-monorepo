@@ -8,61 +8,35 @@
 
 ## Right now
 
-- MCP server interface — resources for identity reads, tools for
+- **MCP server interface** — resources for identity reads, tools for
   identity append/update. Per-tenant moduleId isolation. Schema
-  (schema/identity-record.schema.json) is stable as of 2026-04-27.
+  (`src/person.rs` — `Person` struct) is stable as of 2026-04-27.
+  Wire as an axum MCP server (same shape as `service-fs/src/mcp.rs`):
+  `POST /mcp` with `identity.lookup` tool (by email → UUID) and
+  `identity.append` tool (new Person → submit via FsClient).
 
 ## Queue
-- Append integration with `service-fs` — identity record writes
-  flow through the WORM ledger; this crate never persists
+
+- **`people-acs-engine/` absorption.** The email-anchoring binary's
+  logic (UUIDv5 anchor derivation, Claim JSONL) now lives in
+  `src/person.rs`. Consider folding the binary into a `src/cmd/`
+  submodule or retiring the standalone binary once the MCP tool
+  surface covers the same use case.
+- **Append integration with `service-fs`** — identity record writes
+  flow through the WORM ledger via `FsClient` (same as
+  `service-input/src/fs_client.rs`). This crate never persists
   directly.
-- Deterministic entity-resolution rules — canonical-key matching
+- **Deterministic entity-resolution rules** — canonical-key matching
   only (ADR-07; no AI). Surfaces ambiguity to the operator (per
   ADR-10 / F12), does not silently merge.
-- Add `service-people` as a workspace member in the monorepo root
-  `Cargo.toml` once a real schema and `lib.rs` exist (Layer 1
-  audit finding in `.claude/rules/cleanup-log.md` 2026-04-18).
-
-## Queue
-
-- **`sovereign-acs-engine/` rename.** Cargo.toml `name` field is
-  `sovereign-acs-engine` — "sovereign" prefix is a Do-Not-Use term
-  per workspace conventions (cleanup-log.md history). Rename to
-  `people-acs-engine`. The directory name itself is non-canonical
-  too; target layout is to fold the email-anchoring logic into
-  `service-people`'s main library once the schema lands, making the
-  standalone binary unnecessary. Track rename alongside schema work.
-- **`spatial-ledger/` retirement.** The batch ledger-writer will be
-  superseded once the MCP + service-fs WORM append pipeline is live.
-  Retire when MCP integration is working end-to-end.
-- **`spatial-crm/` retirement.** Cross-ring coupling — writes
-  directly to `service-slm/transient-queues`, which is Ring 2
-  territory. Functionality superseded by service-extraction (Ring 2)
-  once it is wired to consume Ring 1 parsed documents. Retire when
-  service-extraction covers the regex extraction use-case.
+- **`spatial-ledger/` retirement.** Superseded once the MCP +
+  service-fs WORM append pipeline is live end-to-end.
+- **`spatial-crm/` retirement.** Cross-ring coupling — writes directly
+  to `service-slm/transient-queues`. Retire when service-extraction
+  covers the regex extraction use-case.
 - **`service-people.py` + `ledger_personnel.json` retirement.**
-  Pre-framework Python script and its placeholder seed data. The
-  Python script's dual-timezone campaign-contact logic is a different
-  domain from the identity ledger (communication scheduling, not
-  canonical identity). Both retire once the Rust MCP service has a
-  real schema and real data.
-- MCP server interface — resources for identity reads, tools for
-  identity append/update. Per-tenant moduleId isolation.
-- Append integration with `service-fs` — identity record writes
-  flow through the WORM ledger; this crate never persists directly.
-- Deterministic entity-resolution rules — canonical-key matching
-  only (ADR-07; no AI). Surfaces ambiguity to the operator (per
-  ADR-10 / F12), does not silently merge.
-- Add `service-people` as a workspace member in the monorepo root
-  `Cargo.toml` once a real schema and `lib.rs` exist (Layer 1
-  audit finding in `.claude/rules/cleanup-log.md` 2026-04-18).
-
-## Blocked
-
-- Schema definition — Blocked on: sub-directory inventory (now
-  complete per Recently done 2026-04-26). Inventory revealed a
-  working UUIDv5 anchoring approach in `sovereign-acs-engine/`
-  that informs the schema. Unblocked.
+  Pre-framework Python script and placeholder seed data; retire once
+  the Rust MCP service has real schema + real data.
 
 ## Deferred
 
@@ -75,6 +49,18 @@
   read-only contract.
 
 ## Recently done
+
+- 2026-04-27: **canonical person-record schema** (`src/person.rs`).
+  `Person` struct with `id` (UUIDv5 from primary_email, matching
+  `people-acs-engine/` convention), `name`, `primary_email`,
+  `email_aliases`, `organisation`, `created_at`, `updated_at`. Serde
+  Serialize + Deserialize; chrono `DateTime<Utc>`; builder pattern
+  (`with_alias`, `with_organisation`). Deps added to `Cargo.toml`:
+  `serde`, `serde_json`, `chrono` (serde feature), `uuid` (v4+v5+serde).
+  `src/lib.rs` re-exports `Person`. **8 unit tests pass clean**
+  (deterministic ID, email normalisation, ACS-engine UUID parity,
+  alias builder, organisation builder, JSON round-trip, key presence,
+  null-organisation serialisation). `cargo test -p service-people` green.
 
 - 2026-04-26: **pre-framework subdirectory inventory complete.**
   Five subdirectories + two root artefacts assessed; decisions:
