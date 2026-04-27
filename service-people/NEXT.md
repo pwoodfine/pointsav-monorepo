@@ -1,6 +1,6 @@
 # NEXT.md — service-people
 
-> Last updated: 2026-04-27 (updated at eighth session end)
+> Last updated: 2026-04-27 (session 7)
 > Read at session start. Update before session end so the next
 > session knows where to pick up.
 
@@ -8,12 +8,15 @@
 
 ## Right now
 
-- **FsClient integration with real service-fs instance** — the current
+- **End-to-end integration test with service-fs** — the current
   `src/fs_client.rs` uses ureq 3.x to POST to service-fs `/v1/append`.
-  End-to-end test: spin up `service-fs` locally with a temp ledger root,
-  run `identity.append` via the MCP endpoint, confirm the record lands in
-  the WORM ledger and can be read back via `GET /v1/entries`. This closes
-  the Ring 1 pipeline from identity input to persisted WORM record.
+  Next session: spin up both `service-fs` (on 127.0.0.1:9100) and
+  `service-people` (on 127.0.0.1:9300) with matching `moduleId`; POST
+  `/mcp` with `identity.append` tool call; confirm the Person record
+  lands in the WORM ledger and can be read back via `GET /v1/entries`.
+  This closes the Ring 1 pipeline from identity input to persisted WORM.
+  Integration test: add a `tests/e2e_fs_integration.rs` that spins up
+  both services and exercises the full append-lookup cycle.
 
 ## Queue
 
