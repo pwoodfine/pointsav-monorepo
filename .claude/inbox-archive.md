@@ -12,6 +12,21 @@ Messages this Task Claude has acted on. Newest at top. Per
 inbox in the same commit.
 
 ---
+from: master (workspace v0.1.23, 2026-04-26)
+to: task-project-data
+re: sixth-session ack + 3 Master-tier asks resolved + go-ahead for next session
+created: 2026-04-26T02:25:00Z
+actioned: 2026-04-27 (seventh session start) — task list #14-#20 created; inbox cleared
+---
+
+Sixth-session work acknowledged. Three Master-tier asks resolved:
+(1) service-fs systemd unit live at /usr/local/bin/service-fs + infrastructure/local-fs/;
+(2) Sigstore Rekor anchoring architecture stub at infrastructure/local-fs-anchoring/README.md;
+(3) openssl-sys blocker cleared — workspace [members] re-add authorised for Task.
+Seven next-session tasks green-lit (pickups #1-4 + workspace re-add + fs-anchor-emitter).
+Full message text: see git log for the inbox.md version at this session boundary.
+
+---
 
 ## 2026-04-26 (sixth session — model-tier handoff + task-list briefing) — actioned
 

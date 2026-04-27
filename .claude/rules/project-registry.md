@@ -102,7 +102,7 @@ Last updated: 2026-04-26.
 | system-interface | Scaffold-coded | system | 4 files |
 | system-network-interface | Scaffold-coded | system | 6 files |
 | system-resolution | Reserved-folder | system | 2 files |
-| system-security | Scaffold-coded | system | 22 files; in workspace members |
+| system-security | Scaffold-coded | system | 22 files; in workspace members; **known issue**: declared `staticlib` for bare-metal use — triggers a `panic_impl` lang-item conflict under `cargo test --workspace` (pre-existing; not introduced by service-fs/service-input re-add 2026-04-27); `cargo check --workspace` passes clean |
 | system-slm | Scaffold-coded | system | 4 files |
 | system-substrate | Scaffold-coded | system | 4 files |
 | system-substrate-broadcom | Scaffold-coded | system | 4 files; hardware bridge |

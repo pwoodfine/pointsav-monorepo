@@ -17,12 +17,6 @@
   end-to-end test that crosses Ring 1 service boundaries.
 
 ## Queue
-- Re-add `service-fs` to root `Cargo.toml` `[workspace.members]`.
-  Blocked on: pre-existing Layer 1 audit issue —
-  `cargo check --workspace` currently fails on `openssl-sys`
-  system-dep missing from a sibling member, unrelated to
-  service-fs. Tracked at repo tier in
-  `.claude/rules/cleanup-log.md` 2026-04-18 entry.
 - systemd unit file (`infrastructure/service-fs/service-fs.service`
   shape, modelled on
   `infrastructure/local-slm/local-slm.service` v0.0.11):
@@ -38,11 +32,6 @@
   decide whether the runtime-data destination still makes sense
   (probably yes once the segment-file storage lands; deferred
   until then).
-
-## Blocked
-
-- Re-add to workspace `[members]` — Blocked on: pre-existing
-  `openssl-sys` Layer 1 audit issue in a sibling member.
 
 ## Deferred
 

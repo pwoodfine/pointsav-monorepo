@@ -17,22 +17,9 @@
   registry if relocation changes project count).
 
 ## Queue
-- Add `service-input` as a workspace member in the monorepo root
-  `Cargo.toml` once the crate compiles. Coordinate with the open
-  Layer 1 audit finding (`.claude/rules/cleanup-log.md` 2026-04-18
-  entry) — workspace under-declaration is not a problem this
-  session creates, but adding a new member is the natural moment
-  to surface it again.
 - Round-trip test fixture — small known-good document of each
   format, parse, write through a stub `service-fs`, read back, hash
   the payload. Confirms determinism end-to-end.
-
-## Blocked
-
-- Workspace `Cargo.toml` membership — Blocked on: monorepo's
-  workspace under-declaration is a separate cleanup tracked at
-  repo level (`.claude/rules/cleanup-log.md` 2026-04-18). The new
-  crate can land standalone first; member declaration follows.
 
 ## Deferred
 
