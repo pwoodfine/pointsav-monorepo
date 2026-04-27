@@ -1,5 +1,11 @@
-#![no_std]
-#![no_main]
+// Bare-metal staticlib: the seL4 unikernel build needs no_std + no_main
+// + a custom panic_handler. Under `cargo test`, however, the test harness
+// pulls in std (which already provides `panic_impl`) and requires a main
+// entry — so we gate the bare-metal attributes behind `cfg(not(test))`.
+// This lets `cargo test --workspace` link cleanly without giving up the
+// bare-metal build shape.
+#![cfg_attr(not(test), no_std)]
+#![cfg_attr(not(test), no_main)]
 
 extern "C" {
     fn microkit_dbg_puts(s: *const u8);
@@ -36,5 +42,6 @@ pub extern "C" fn notified(ch: u64) {
     }
 }
 
+#[cfg(not(test))]
 #[panic_handler]
 fn panic(_info: &core::panic::PanicInfo) -> ! { loop {} }
