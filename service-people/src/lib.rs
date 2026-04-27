@@ -2,6 +2,10 @@
 // SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
 
 // Architectural Scaffold
+pub mod person;
+
+pub use person::Person;
+
 pub fn system_status() -> &'static str {
     "SYSTEM EVENT: service-people scaffold verified."
 }
