@@ -52,7 +52,7 @@ struct Checkpoint {
     tree_size: u64,
     root_hash: String,
     algorithm: Option<String>,
-    timestamp: String,
+    timestamp: i64,
     signature: Option<String>,
     public_key: Option<String>,
 }
