@@ -1,6 +1,7 @@
 # NEXT.md — service-people
 
 > Last updated: 2026-04-27
+> Last updated: 2026-04-27 (session 7)
 > Read at session start. Update before session end so the next
 > session knows where to pick up.
 
@@ -16,6 +17,15 @@
 - MCP server interface — resources for identity reads, tools for
   identity append/update. Per-tenant moduleId isolation. Schema
   (schema/identity-record.schema.json) is stable as of 2026-04-27.
+- **End-to-end integration test with service-fs** — the current
+  `src/fs_client.rs` uses ureq 3.x to POST to service-fs `/v1/append`.
+  Next session: spin up both `service-fs` (on 127.0.0.1:9100) and
+  `service-people` (on 127.0.0.1:9300) with matching `moduleId`; POST
+  `/mcp` with `identity.append` tool call; confirm the Person record
+  lands in the WORM ledger and can be read back via `GET /v1/entries`.
+  This closes the Ring 1 pipeline from identity input to persisted WORM.
+  Integration test: add a `tests/e2e_fs_integration.rs` that spins up
+  both services and exercises the full append-lookup cycle.
 
 ## Queue
 - Append integration with `service-fs` — identity record writes
