@@ -1,6 +1,6 @@
 # NEXT.md — service-fs
 
-> Last updated: 2026-04-26
+> Last updated: 2026-04-27
 > Read at session start. Update before session end so the next
 > session knows where to pick up.
 
@@ -8,13 +8,12 @@
 
 ## Right now
 
-- **Round-trip integration test for service-input → service-fs
-  HTTP client** — once `service-input` has at least one wired parser
-  (Markdown ✓), add a thin HTTP client in `service-input` that POSTs
-  a parsed `ParsedDocument` to `service-fs`'s `/v1/append` endpoint.
-  Confirm the payload round-trips: call `GET /v1/entries` on the same
-  ledger and verify the stored payload matches. This is the first
-  end-to-end test that crosses Ring 1 service boundaries.
+- **systemd unit file** — `infrastructure/local-fs/` (workspace-tier;
+  coordinate via Master outbox so the unit matches the daemon's
+  env-var contract: `FS_BIND_ADDR`, `FS_MODULE_ID`, `FS_LEDGER_ROOT`,
+  `FS_SIGNING_KEY`). Master owns this per the action matrix; Task role
+  here is to confirm the env-var surface before Master authors the unit.
+  The surface is stable as of 2026-04-26.
 
 ## Queue
 - systemd unit file (`infrastructure/service-fs/service-fs.service`
@@ -45,6 +44,21 @@
 
 ## Recently done
 
+- 2026-04-27: **`anchor-emitter/` Rust binary** (Doctrine Invention #7).
+  New standalone crate at `service-fs/anchor-emitter/` (own `[workspace]`
+  to avoid openssl-sys workspace conflicts). Reads `FS_ENDPOINT` +
+  `FS_MODULE_ID`; GETs `/v1/checkpoint`; wraps the checkpoint JSON as a
+  Sigstore `hashedrekord` v0.0.1 entry (SHA-256 artifact hash +
+  ephemeral Ed25519 signing keypair per run; SPKI PEM encoding — manual
+  44-byte DER, no pkcs8 dep needed); POSTs to
+  `rekor.sigstore.dev/api/v2/log/entries`; writes the returned tlog entry
+  back via `POST /v1/append` with `payload_id: anchor-rekor-<unix-ts>`.
+  Deps: reqwest 0.11 (rustls-tls + blocking + json), ed25519-dalek 2
+  (rand_core feature), rand_core 0.6 (getrandom), sha2, hex, base64 0.22,
+  serde + serde_json. Exit codes 0/1/2/3/4. **6 unit tests pass clean**
+  (config env-var absent × 2, SPKI headers + OID correctness, connection-
+  refused error paths × 2). Intended to be invoked by a monthly systemd
+  timer (Master-tier); binary is the Task-scoped half of Invention #7.
 - 2026-04-26: **MCP-server interface layer** per
   three-ring-architecture.md §"MCP boundary at Ring 1". New
   `service-fs/src/mcp.rs` implements JSON-RPC 2.0 (Streamable HTTP
