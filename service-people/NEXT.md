@@ -1,6 +1,6 @@
 # NEXT.md — service-people
 
-> Last updated: 2026-04-25
+> Last updated: 2026-04-27
 > Read at session start. Update before session end so the next
 > session knows where to pick up.
 
@@ -13,15 +13,11 @@
   the `service-people.py` + `ledger_personnel.json` artefacts.
   Decide per-item: keep, rename, retire, or relocate. The decisions
   inform the schema work that follows.
+- MCP server interface — resources for identity reads, tools for
+  identity append/update. Per-tenant moduleId isolation. Schema
+  (schema/identity-record.schema.json) is stable as of 2026-04-27.
 
 ## Queue
-
-- Define the Identity Ledger schema — canonical key per identity,
-  multi-endpoint communication addresses, role/relationship
-  attributes. Publish in a `schema/` subdirectory; downstream Ring
-  2 consumers depend on it.
-- MCP server interface — resources for identity reads, tools for
-  identity append/update. Per-tenant moduleId isolation.
 - Append integration with `service-fs` — identity record writes
   flow through the WORM ledger; this crate never persists
   directly.
