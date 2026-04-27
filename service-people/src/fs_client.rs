@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0 OR MIT
 
 use serde::{Deserialize, Serialize};
-use service_people::Person;
+use crate::person::Person;
 
 #[derive(Debug, Clone)]
 pub struct FsClient {
