@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0 OR MIT
 
-use service_people::Person;
+use crate::person::Person;
 use std::collections::HashMap;
 use std::sync::RwLock;
 use uuid::Uuid;

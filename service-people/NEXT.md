@@ -1,6 +1,6 @@
 # NEXT.md — service-people
 
-> Last updated: 2026-04-27
+> Last updated: 2026-04-27 (updated at eighth session end)
 > Read at session start. Update before session end so the next
 > session knows where to pick up.
 
@@ -8,12 +8,12 @@
 
 ## Right now
 
-- **MCP server interface** — resources for identity reads, tools for
-  identity append/update. Per-tenant moduleId isolation. Schema
-  (`src/person.rs` — `Person` struct) is stable as of 2026-04-27.
-  Wire as an axum MCP server (same shape as `service-fs/src/mcp.rs`):
-  `POST /mcp` with `identity.lookup` tool (by email → UUID) and
-  `identity.append` tool (new Person → submit via FsClient).
+- **FsClient integration with real service-fs instance** — the current
+  `src/fs_client.rs` uses ureq 3.x to POST to service-fs `/v1/append`.
+  End-to-end test: spin up `service-fs` locally with a temp ledger root,
+  run `identity.append` via the MCP endpoint, confirm the record lands in
+  the WORM ledger and can be read back via `GET /v1/entries`. This closes
+  the Ring 1 pipeline from identity input to persisted WORM record.
 
 ## Queue
 
@@ -49,6 +49,19 @@
   read-only contract.
 
 ## Recently done
+
+- 2026-04-27: **MCP server interface** (`src/mcp.rs`, `src/http.rs`,
+  `src/main.rs`, `src/fs_client.rs`, `src/people_store.rs`). `POST /mcp`
+  JSON-RPC 2.0 endpoint with `identity.append` (name + primary_email +
+  optional aliases + organisation → Person → FsClient → service-fs
+  `/v1/append` + local PeopleStore cache) and `identity.lookup` (email or
+  UUID → Person). `PeopleStore`: in-process RwLock HashMap index by email
+  + UUID; deterministic conflict detection (ADR-07). `FsClient`: ureq 3.x
+  blocking POST with `X-Foundry-Module-ID` header. Deps: axum 0.7 + tokio
+  + tracing + ureq 3.3 + anyhow. Env vars: `PEOPLE_MODULE_ID` (required),
+  `PEOPLE_FS_URL` (required), `PEOPLE_BIND_ADDR` (default 127.0.0.1:9300).
+  **12 new tests** pass (4 MCP protocol + 6 PeopleStore + 2 FsClient).
+  Total: **20 tests** (8 person + 12 MCP/store/client).
 
 - 2026-04-27: **canonical person-record schema** (`src/person.rs`).
   `Person` struct with `id` (UUIDv5 from primary_email, matching

@@ -7,7 +7,7 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use service_people::Person;
+use crate::person::Person;
 use uuid::Uuid;
 
 use crate::http::AppState;

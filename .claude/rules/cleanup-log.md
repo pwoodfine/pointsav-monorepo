@@ -96,6 +96,41 @@ Newest on top. Append a dated block when a session includes meaningful cleanup w
 
 ---
 
+## 2026-04-27 (eighth session — fs-anchor-emitter)
+
+**Two items landed this session:**
+
+**1. service-people MCP server** (commit `8c4eb7e`) — discovered as
+uncommitted work from the pre-compaction portion of the same session.
+`POST /mcp` JSON-RPC 2.0 with `identity.append` + `identity.lookup`
+tools; axum 0.7 + tokio; ureq 3.x FsClient → service-fs `/v1/append`;
+PeopleStore in-process RwLock index. 20 tests pass. Key ureq 3.x note:
+`.header()` not `.set()`, `.send_json()` for JSON body, `.body_mut()
+.read_json()` for response — 2.x API patterns don't compile against 3.x.
+
+**2. Task #20 — fs-anchor-emitter** (Doctrine Invention #7 Task-scoped
+half). Commit `6262d10`.
+
+New standalone crate at `service-fs/anchor-emitter/` (own `[workspace]`).
+Reads FS_ENDPOINT + FS_MODULE_ID; GETs `/v1/checkpoint`; wraps as Sigstore
+hashedrekord v0.0.1 with ephemeral Ed25519 + SPKI DER (manual 44-byte
+encoding, no pkcs8 dep); POSTs to rekor.sigstore.dev; writes tlog entry
+back via `/v1/append`. reqwest 0.11 blocking (no tokio). Exit codes 0–4.
+6 unit tests pass. ed25519-dalek 2 requires explicit `rand_core` feature
+(not in default features — gotcha for future reference). `Config: Debug`
+required for `Result::unwrap_err()` — fixed by adding `#[derive(Debug)]`.
+
+Master-side half (systemd timer + service unit at
+`infrastructure/local-fs-anchoring/`) pending Master authoring.
+service-fs/NEXT.md Right-now updated to reflect systemd unit coordination
+as the next Task-visible step.
+
+Inbox: Master v0.1.26 "seventh-session ack" message archived. It noted
+§5.10 zero-container drift in service-slm — out of project-data scope;
+flagged to Master in outbox for project-slm routing.
+
+---
+
 ## 2026-04-26 (sixth session — 13-item task list completion)
 
 Full 13-task list from the sixth-session inbox executed in AUTO
