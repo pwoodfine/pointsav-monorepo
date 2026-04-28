@@ -83,8 +83,6 @@ impl FsClient {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::Utc;
-    use uuid::Uuid;
 
     #[test]
     fn append_serializes_person_correctly() {
