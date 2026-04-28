@@ -8,7 +8,7 @@ use uuid::Uuid;
 ///
 /// The `id` field is derived deterministically from `primary_email` as
 /// UUIDv5(NAMESPACE_DNS, email.to_lowercase()), matching the convention
-/// used in `sovereign-acs-engine/` so anchor records from both sources key
+/// used in `people-acs-engine/` so anchor records from both sources key
 /// on the same stable identifier.
 ///
 /// Persisted through `service-fs` via MCP append — never written to disk

@@ -32,9 +32,8 @@ per-item decisions in `NEXT.md` Recently done section.
 - `src/lib.rs` — 3-line `system_status()` placeholder
 - `service-people.py` — pre-framework Python; retire-pending
 - `ledger_personnel.json` — placeholder seed contacts; retire-pending
-- `sovereign-acs-engine/` — Rust binary: email regex + UUIDv5
-  Anchor/Claim JSONL; informs Identity Ledger schema; Do-Not-Use
-  "sovereign" prefix in Cargo name (`→ people-acs-engine`); keep
+- `people-acs-engine/` — Rust binary: email regex + UUIDv5
+  Anchor/Claim JSONL; informs Identity Ledger schema; keep
 - `spatial-ledger/` — Rust binary: batch ledger-writer from
   `discovery-queue/` → `substrate/ledger_personnel.jsonl`; keep
   until MCP + service-fs pipeline replaces it
@@ -44,7 +43,7 @@ per-item decisions in `NEXT.md` Recently done section.
 - `scripts/` — `extract-people-ledger.sh` (moved from `tools/`)
 
 Next step (NEXT.md Right-now): define Identity Ledger schema,
-building on the Anchor/Claim pattern in `sovereign-acs-engine/`.
+building on the Anchor/Claim pattern in `people-acs-engine/`.
 
 No drift flags at activation time: the existing scaffold is
 near-empty Rust + adjacent prior-work artefacts, not bare-metal
@@ -69,8 +68,8 @@ service-people/
 ├── src/lib.rs              — 3-line system_status() placeholder
 ├── service-people.py       — pre-framework Python; retire-pending
 ├── ledger_personnel.json   — placeholder seed contacts; retire-pending
-├── sovereign-acs-engine/   — Rust binary; email-regex + UUIDv5
-│                             Anchor/Claim; keep; rename Do-Not-Use prefix
+├── people-acs-engine/      — Rust binary; email-regex + UUIDv5
+│                             Anchor/Claim; keep
 ├── spatial-ledger/         — Rust binary; discovery-queue → substrate JSONL
 ├── spatial-crm/            — Rust binary; retire-pending (cross-ring)
 ├── substrate/              — runtime data (*.jsonl gitignored)

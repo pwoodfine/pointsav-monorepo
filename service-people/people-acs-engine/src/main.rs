@@ -30,7 +30,7 @@ struct Claim {
 fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() != 3 {
-        eprintln!("[ERROR] Usage: sovereign-acs-engine <TEXT_FILE_PATH> <TOTEBOX_ROOT>");
+        eprintln!("[ERROR] Usage: people-acs-engine <TEXT_FILE_PATH> <TOTEBOX_ROOT>");
         std::process::exit(1);
     }
 

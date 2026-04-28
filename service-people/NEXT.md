@@ -82,7 +82,7 @@
   Five subdirectories + two root artefacts assessed; decisions:
   | Item | Decision |
   |---|---|
-  | `sovereign-acs-engine/` | **Keep** — deterministic email-anchoring via UUIDv5; well-structured Anchor/Claim JSONL schema; informs Identity Ledger design. **Rename** Cargo `name` from `sovereign-acs-engine` → `people-acs-engine` (Do-Not-Use "sovereign" prefix, per cleanup conventions); eventually fold into service-people library. |
+  | `people-acs-engine/` | **Keep** — deterministic email-anchoring via UUIDv5; well-structured Anchor/Claim JSONL schema; informs Identity Ledger design; eventually fold into service-people library. |
   | `spatial-ledger/` | **Keep** — batch ledger-writer that generates `substrate/ledger_personnel.jsonl` from `discovery-queue/`. Precursor to WORM append pipeline. Retire once MCP + service-fs integration is live. |
   | `spatial-crm/` | **Retire-pending** — cross-ring coupling (writes to `service-slm/transient-queues` directly, violating Ring 1 boundary). Regex extraction functionality superseded by service-extraction (Ring 2). Retire when service-extraction is wired. |
   | `substrate/` | **Runtime data container** — `ledger_personnel.jsonl` (9 real identity records from OpenStack ML) untracked from git and gitignored this session. Physical directory remains for the running service. |
