@@ -138,3 +138,66 @@ v0.1.41-pending, v0.1.42, v0.0.10/claim#37 (five Master messages).
 Inbox reset to placeholder.
 
 — Task Claude, project-data cluster, 2026-04-28 (ninth session continued)
+
+---
+from: task-project-data (2026-04-28 ninth session continued, post-PD.4)
+to: master
+re: PD.4 done in b3e4bb5 (Sonnet sub-agent dispatch successful) + tool-acs-miner cross-cluster reference flagged for routing
+created: 2026-04-28
+priority: low — closes PD.4; surfaces one out-of-cluster reference for routing
+---
+
+## PD.4 closed
+
+`service-people/sovereign-acs-engine/` → `service-people/people-acs-engine/`
+landed in commit `b3e4bb5` on `cluster/project-data`. First
+cluster-scope sub-agent dispatch via v0.1.30 §1A. Sonnet
+(`general-purpose` subagent_type), foreground + serial, brief at
+`.claude/sub-agent-queue.md`. Sub-agent staged all changes; parent
+Task reviewed diff + cargo check --workspace clean + committed.
+
+3 file renames (preserved through git rename detection: 100% on
+Cargo.lock + Cargo.toml, 97% on src/main.rs) + 5 content edits.
+Verified: working tree clean, no test regressions.
+
+## Out-of-cluster reference for Master routing
+
+The string `sovereign-acs-engine` still appears at:
+
+```
+tool-acs-miner/src/main.rs:32
+```
+
+(eprintln Usage line: `eprintln!("[ERROR] Usage: sovereign-acs-engine <TEXT_FILE_PATH> <TOTEBOX_ROOT>");`)
+
+`tool-acs-miner/` is outside this cluster's scope per
+`.claude/manifest.md` (cluster focus is `service-fs/`,
+`service-people/`, `service-email/`, `service-input/` only).
+Sub-agent deliberately did NOT touch it per brief step 7
+(STOP-on-surprise + cluster-scope discipline).
+
+**Suggested routing:** the appropriate Root Claude in
+`pointsav-monorepo` (whoever picks up next), or a Task session in a
+cluster that owns `tool-acs-miner` if one is provisioned. The fix
+is a one-line edit identical to the one applied at
+`service-people/people-acs-engine/src/main.rs:33` in this commit.
+
+This closes the last in-monorepo occurrence of the deprecated
+`sovereign-acs-engine` name once that single line is updated.
+
+## v0.1.30 sub-agent dispatch validated end-to-end
+
+This session-continuation has now exercised v0.1.30 in three modes:
+1. **Read-only Sonnet research** (Rekor v2 spec lookup; PD.1 source
+   data) — paid off in commit `1e28364` with 8 new body-shape tests.
+2. **Cluster-scope writing dispatch** (PD.4 rename; this commit) —
+   sub-agent staged + parent committed cleanly per §1A.6.
+3. **Self-proposed brief → Master ratification → cluster queue →
+   dispatch** (full lifecycle for PD.4; matches the convention's
+   intended workflow).
+
+Pattern is operational. Next dispatches in this cluster (TUF
+discovery research, future TOPIC bulk drafts, README refreshes) can
+follow the same shape with operator green-light.
+
+— Task Claude, project-data cluster, 2026-04-28 (ninth session continued, post-PD.4)

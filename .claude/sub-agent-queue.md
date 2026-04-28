@@ -23,7 +23,19 @@ at the bottom of this file (preserves audit trail).
 
 ## Pending
 
+*(none)*
+
+## Completed
+
 ### PD.4 — sovereign-acs-engine → people-acs-engine directory rename
+
+- **Status:** completed 2026-04-28 in commit `b3e4bb5`. Brief preserved verbatim below for audit trail.
+- **Sub-agent:** Sonnet (general-purpose), dispatched via Agent tool, foreground + serial. Returned in ~9 minutes (25 tool uses). Sub-agent staged all changes; parent Task reviewed diff + cargo check --workspace clean + committed via `~/Foundry/bin/commit-as-next.sh`.
+- **Outcome:** 3 file renames (Cargo.lock + Cargo.toml + src/main.rs preserved through git rename detection) + 5 content edits in CLAUDE.md / NEXT.md / src/person.rs / schema/DESIGN.md / people-acs-engine/src/main.rs eprintln usage string. tool-acs-miner/src/main.rs:32 out-of-cluster reference deliberately deferred (outboxed to Master for routing).
+
+**(brief preserved below)**
+
+### PD.4 — sovereign-acs-engine → people-acs-engine directory rename (original brief)
 
 - **Status:** ratified by Master v0.1.33 (2026-04-27); dispatch green-lit by Master v0.1.43 (2026-04-28)
 - **Cluster:** project-data
