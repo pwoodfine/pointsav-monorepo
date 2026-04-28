@@ -3,10 +3,13 @@ schema: foundry-cluster-manifest-v1
 cluster_name: project-data
 cluster_branch: cluster/project-data
 created: 2026-04-25
-backfilled: 2026-04-26 (manifest schema), 2026-04-26 (triad per Doctrine v0.0.4)
+backfilled: 2026-04-26 (manifest schema), 2026-04-26 (triad per Doctrine v0.0.4), 2026-04-28 (triad → tetrad per Doctrine v0.0.10 / claim #37)
 state: active
 
-triad:
+# Project Tetrad Discipline per Doctrine claim #37 + Doctrine v0.0.10.
+# Upgraded from triad on 2026-04-28 by adding the wiki leg below.
+# See ~/Foundry/conventions/project-tetrad-discipline.md.
+tetrad:
   vendor:
     - repo: pointsav-monorepo
       path: ./
@@ -22,7 +25,7 @@ triad:
       catalog_subfolder: vault-privategit-source/
       tenant: pointsav
       purpose: Ring-1-services-deployment-on-the-workspace-VM (PointSav-as-tenant)
-      status: leg-pending — same GUIDEs; pointsav-tenant variant
+      status: leg-pending — same GUIDEs; pointsav-tenant variant; first GUIDE staged 2026-04-28 in drafts-outbound/ (guide-fs-anchor-emitter.draft.md)
   deployment:
     - path: /srv/foundry  # vault-privategit-source-1 (workspace VM as PointSav tenant Ring 1 instance)
       tenant: pointsav
@@ -31,12 +34,27 @@ triad:
       runtime_artifacts:
         - (planned) /usr/local/bin/local-fs + /etc/systemd/system/local-fs.service
         - /var/lib/local-fs/ledger/ (per service-fs/ARCHITECTURE.md)
-      status: leg-pending — Master to draft systemd unit at infrastructure/local-fs/ when Task confirms K4-equivalent ready
+        - /usr/local/bin/fs-anchor-emitter + local-fs-anchor.{service,timer} (live since workspace v0.1.27; armed for 2026-05-01 monthly fire pending PD.1 v0.0.2 body-shape redeploy)
+      status: leg-pending — Master to draft systemd unit at infrastructure/local-fs/ when Task confirms K4-equivalent ready; fs-anchor-emitter half is active
     - path: ~/Foundry/deployments/cluster-totebox-corporate-N/ (planned; -N when Customer Totebox provisioned)
       tenant: woodfine
       shape: corporate-archive
       shared_with: [project-orgcharts]
       status: leg-pending — provision when Woodfine Totebox is stood up; v0.5.0+ trajectory
+  wiki:
+    - repo: vendor/content-wiki-documentation
+      drafts_via: clones/project-data/.claude/drafts-outbound/
+      gateway: project-language Task
+      planned_topics:
+        # Substantive draft already staged 2026-04-28 (per Tetrad
+        # backfill discipline; over-delivers vs. skeleton requirement)
+        - topic-worm-ledger-architecture.md  # active — bulk draft staged 2026-04-28
+        # Skeletons + future bulk drafts
+        - topic-ring1-boundary-ingest.md  # planned — Phase 1A milestone TOPIC; overlaps with worm-ledger; may merge or split
+        - topic-doctrine-invention-7-rekor-anchoring.md  # planned — operator-readable explanation of monthly Sigstore Rekor anchoring; year-shard rotation; TUF discovery
+        - topic-identity-ledger-schema.md  # planned — UUIDv5(NAMESPACE_DNS, email) deterministic identity, Person record, Anchor/Claim pattern from people-acs-engine
+        - topic-adr-07-zero-ai-in-ring-1.md  # planned — why Ring 1 deterministic-only, how it composes with Ring 3 Doorman boundary
+      status: active — first bulk draft (topic-worm-ledger-architecture) staged 2026-04-28; awaiting project-language sweep + refinement
 
 clones:
   - repo: pointsav-monorepo
