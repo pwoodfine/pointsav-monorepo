@@ -89,7 +89,7 @@ fn fetch_checkpoint(
         .map_err(|e| format!("checkpoint JSON parse failed: {e}"))
 }
 
-// ── SPKI PEM encoding for Ed25519 verifying key ────────────────────────────────
+// ── SPKI DER encoding for Ed25519 verifying key ────────────────────────────────
 //
 // Ed25519 SubjectPublicKeyInfo (SPKI) DER structure — 44 bytes total:
 //   30 2a                  SEQUENCE (42 bytes)
@@ -97,15 +97,25 @@ fn fetch_checkpoint(
 //       06 03 2b 65 70     OID 1.3.101.112 (id-Ed25519)
 //     03 21 00             BIT STRING (33 bytes, 0 unused bits)
 //       <32-byte pub key>
+//
+// Rekor v2 (`hashedRekordRequestV002`) wants the raw DER bytes
+// base64-encoded as `verifier.publicKey.rawBytes` — NOT a PEM string.
+// The PEM wrapper here is retained for tests and for any future
+// consumer that wants the conventional PEM textual form.
 
-fn ed25519_spki_pem(pub_key_bytes: &[u8; 32]) -> String {
+fn ed25519_spki_der(pub_key_bytes: &[u8; 32]) -> Vec<u8> {
     let mut der = Vec::with_capacity(44);
     der.extend_from_slice(&[0x30, 0x2a]);          // SEQUENCE
     der.extend_from_slice(&[0x30, 0x05]);          // AlgorithmIdentifier SEQUENCE
     der.extend_from_slice(&[0x06, 0x03, 0x2b, 0x65, 0x70]); // OID id-Ed25519
     der.extend_from_slice(&[0x03, 0x21, 0x00]);    // BIT STRING
     der.extend_from_slice(pub_key_bytes);
+    der
+}
 
+#[allow(dead_code)] // Retained as a primitive for future consumers; tests exercise it.
+fn ed25519_spki_pem(pub_key_bytes: &[u8; 32]) -> String {
+    let der = ed25519_spki_der(pub_key_bytes);
     let b64_der = B64.encode(&der);
     format!(
         "-----BEGIN PUBLIC KEY-----\n{}\n-----END PUBLIC KEY-----\n",
@@ -113,44 +123,67 @@ fn ed25519_spki_pem(pub_key_bytes: &[u8; 32]) -> String {
     )
 }
 
-// ── Rekor hashedrekord entry types ─────────────────────────────────────────────
+// ── Rekor v0.0.2 hashedRekordRequestV002 entry types ───────────────────────────
+//
+// The v0.0.2 body shape per rekor-tiles `api/proto/rekor/v2/`:
+//
+//   {
+//     "hashedRekordRequestV002": {
+//       "digest": "<base64 raw SHA-256 bytes>",
+//       "signature": {
+//         "content": "<base64 raw Ed25519 signature bytes>",
+//         "verifier": {
+//           "publicKey": { "rawBytes": "<base64 raw 44-byte SPKI DER>" },
+//           "keyDetails": "PKIX_ED25519"
+//         }
+//       }
+//     }
+//   }
+//
+// Three breaking changes from v0.0.1: top-level envelope removed
+// (no `kind`/`apiVersion`); `digest` is base64 raw bytes at the
+// top of the request (not a hex string under `data.hash.value`);
+// `signature.format` removed (verifier kind is communicated via
+// the `verifier` oneof — `publicKey` here, alternatively
+// `x509Certificate`).
+//
+// `keyDetails` is the PublicKeyDetails enum from sigstore_common;
+// `PKIX_ED25519` (= 7) is the correct value for our ephemeral
+// Ed25519 keys signing arbitrary artifact bytes (not pre-hashed,
+// so NOT `PKIX_ED25519_PH`).
 
-#[derive(Serialize)]
-struct RekorHash {
-    algorithm: String,
-    value: String,
-}
-
-#[derive(Serialize)]
-struct RekorData {
-    hash: RekorHash,
-}
+const KEY_DETAILS_ED25519: &str = "PKIX_ED25519";
 
 #[derive(Serialize)]
 struct RekorPublicKey {
-    content: String, // base64-encoded PEM
+    #[serde(rename = "rawBytes")]
+    raw_bytes: String, // base64-encoded raw DER (NOT PEM)
+}
+
+#[derive(Serialize)]
+struct RekorVerifier {
+    #[serde(rename = "publicKey")]
+    public_key: RekorPublicKey,
+    #[serde(rename = "keyDetails")]
+    key_details: String,
 }
 
 #[derive(Serialize)]
 struct RekorSignature {
-    format: String,
     content: String, // base64-encoded raw Ed25519 signature
-    #[serde(rename = "publicKey")]
-    public_key: RekorPublicKey,
+    verifier: RekorVerifier,
 }
 
 #[derive(Serialize)]
-struct HashedRekordSpec {
-    data: RekorData,
+struct HashedRekordRequestV002 {
+    digest: String, // base64-encoded raw SHA-256 bytes (NOT hex)
     signature: RekorSignature,
 }
 
 #[derive(Serialize)]
-struct RekorEntry {
-    kind: String,
-    #[serde(rename = "apiVersion")]
-    api_version: String,
-    spec: HashedRekordSpec,
+struct RekorRequest {
+    #[serde(rename = "hashedRekordRequestV002")]
+    request: HashedRekordRequestV002,
 }
 
 // ── Rekor submission ───────────────────────────────────────────────────────────
@@ -164,9 +197,10 @@ fn post_to_rekor(
     let artifact_json = serde_json::to_vec(checkpoint)
         .map_err(|e| format!("checkpoint serialisation failed: {e}"))?;
 
-    // SHA-256 of the artifact.
-    let digest = Sha256::digest(&artifact_json);
-    let hash_hex = hex::encode(digest);
+    // SHA-256 of the artifact. v0.0.2 sends the raw 32-byte digest
+    // base64-encoded — NOT hex.
+    let digest_bytes = Sha256::digest(&artifact_json);
+    let digest_b64 = B64.encode(digest_bytes);
 
     // Ephemeral Ed25519 keypair — value is the Rekor timestamp + inclusion proof.
     let signing_key = SigningKey::generate(&mut OsRng);
@@ -176,31 +210,28 @@ fn post_to_rekor(
     let signature = signing_key.sign(&artifact_json);
     let sig_b64 = B64.encode(signature.to_bytes());
 
-    // SPKI PEM for the verifying key, base64-encoded for Rekor.
-    let pem = ed25519_spki_pem(verifying_key.as_bytes());
-    let pem_b64 = B64.encode(pem.as_bytes());
+    // Raw 44-byte SPKI DER for the verifying key, base64-encoded.
+    // v0.0.2 wants `verifier.publicKey.rawBytes` as base64-of-DER,
+    // NOT base64-of-PEM-string (the v0.0.1 shape was the latter).
+    let der = ed25519_spki_der(verifying_key.as_bytes());
+    let der_b64 = B64.encode(&der);
 
-    let entry = RekorEntry {
-        kind: "hashedrekord".to_string(),
-        api_version: "0.0.1".to_string(),
-        spec: HashedRekordSpec {
-            data: RekorData {
-                hash: RekorHash {
-                    algorithm: "sha256".to_string(),
-                    value: hash_hex,
-                },
-            },
+    let request = RekorRequest {
+        request: HashedRekordRequestV002 {
+            digest: digest_b64,
             signature: RekorSignature {
-                format: "x509".to_string(),
                 content: sig_b64,
-                public_key: RekorPublicKey { content: pem_b64 },
+                verifier: RekorVerifier {
+                    public_key: RekorPublicKey { raw_bytes: der_b64 },
+                    key_details: KEY_DETAILS_ED25519.to_string(),
+                },
             },
         },
     };
 
     let resp = client
         .post(rekor_url)
-        .json(&entry)
+        .json(&request)
         .send()
         .map_err(|e| format!("Rekor POST failed: {e}"))?;
 
@@ -368,16 +399,156 @@ mod tests {
     #[test]
     fn spki_der_is_44_bytes_with_correct_oid() {
         let pub_key = [0xABu8; 32];
-        let pem = ed25519_spki_pem(&pub_key);
-        // Strip PEM headers and decode base64 to get DER bytes.
-        let b64_content: String = pem
-            .lines()
-            .filter(|l| !l.starts_with("-----"))
-            .collect();
-        let der = B64.decode(b64_content.trim()).expect("base64 decode");
+        let der = ed25519_spki_der(&pub_key);
         assert_eq!(der.len(), 44, "SPKI DER must be exactly 44 bytes");
         // OID bytes for id-Ed25519 (1.3.101.112): 2b 65 70
-        assert!(der.windows(3).any(|w| w == [0x2b, 0x65, 0x70]), "OID id-Ed25519 must be present");
+        assert!(
+            der.windows(3).any(|w| w == [0x2b, 0x65, 0x70]),
+            "OID id-Ed25519 must be present"
+        );
+        // Last 32 bytes must be the supplied public key
+        assert_eq!(&der[12..44], &pub_key);
+    }
+
+    #[test]
+    fn spki_der_round_trips_through_pem() {
+        let pub_key = [0xABu8; 32];
+        let pem = ed25519_spki_pem(&pub_key);
+        let b64_content: String = pem.lines().filter(|l| !l.starts_with("-----")).collect();
+        let der_from_pem = B64.decode(b64_content.trim()).expect("base64 decode");
+        assert_eq!(der_from_pem, ed25519_spki_der(&pub_key));
+    }
+
+    // ── v0.0.2 body shape ─────────────────────────────────────────────
+
+    fn synthetic_v002_request() -> RekorRequest {
+        RekorRequest {
+            request: HashedRekordRequestV002 {
+                digest: B64.encode([0xAB; 32]),
+                signature: RekorSignature {
+                    content: B64.encode([0xCD; 64]),
+                    verifier: RekorVerifier {
+                        public_key: RekorPublicKey {
+                            raw_bytes: B64.encode(ed25519_spki_der(&[0xEF; 32])),
+                        },
+                        key_details: KEY_DETAILS_ED25519.to_string(),
+                    },
+                },
+            },
+        }
+    }
+
+    #[test]
+    fn v002_top_level_wrapper_key_is_named() {
+        let req = synthetic_v002_request();
+        let v: serde_json::Value = serde_json::to_value(&req).unwrap();
+        assert!(
+            v.get("hashedRekordRequestV002").is_some(),
+            "top-level wrapper key must be 'hashedRekordRequestV002': got {v}"
+        );
+    }
+
+    #[test]
+    fn v002_has_no_v001_envelope_fields() {
+        // v0.0.1 wrapped the body in {kind, apiVersion, spec}; v0.0.2 must NOT
+        // surface those fields at any level — they're gone entirely from the
+        // request shape.
+        let req = synthetic_v002_request();
+        let json_text = serde_json::to_string(&req).unwrap();
+        assert!(
+            !json_text.contains("\"kind\""),
+            "v0.0.2 body must not contain 'kind' (v0.0.1 envelope removed)"
+        );
+        assert!(
+            !json_text.contains("\"apiVersion\""),
+            "v0.0.2 body must not contain 'apiVersion'"
+        );
+        assert!(
+            !json_text.contains("\"spec\""),
+            "v0.0.2 body must not contain 'spec'"
+        );
+    }
+
+    #[test]
+    fn v002_signature_has_no_format_field() {
+        // v0.0.1 had `signature.format = "x509"`; v0.0.2 removes it
+        // entirely — the verifier kind is communicated through the
+        // `verifier` oneof.
+        let req = synthetic_v002_request();
+        let v: serde_json::Value = serde_json::to_value(&req).unwrap();
+        let sig = &v["hashedRekordRequestV002"]["signature"];
+        assert!(sig.is_object(), "signature must be an object");
+        assert!(
+            sig.get("format").is_none(),
+            "v0.0.2 signature must not have 'format' field"
+        );
+        assert!(sig.get("content").is_some());
+        assert!(sig.get("verifier").is_some());
+    }
+
+    #[test]
+    fn v002_digest_is_base64_raw_bytes_not_hex() {
+        let req = synthetic_v002_request();
+        let v: serde_json::Value = serde_json::to_value(&req).unwrap();
+        let digest = v["hashedRekordRequestV002"]["digest"].as_str().unwrap();
+        let decoded = B64.decode(digest).expect("digest must be valid base64");
+        assert_eq!(
+            decoded.len(),
+            32,
+            "decoded digest must be 32 raw bytes (SHA-256 output length); got {} bytes",
+            decoded.len()
+        );
+        // Hex would be 64 ASCII chars; base64 of 32 bytes is 44 chars (or 43 + padding).
+        assert!(digest.len() <= 44, "base64 of 32 bytes is at most 44 chars");
+    }
+
+    #[test]
+    fn v002_public_key_raw_bytes_decodes_to_44_byte_der() {
+        let req = synthetic_v002_request();
+        let v: serde_json::Value = serde_json::to_value(&req).unwrap();
+        let raw = v["hashedRekordRequestV002"]["signature"]["verifier"]["publicKey"]["rawBytes"]
+            .as_str()
+            .unwrap();
+        let der = B64.decode(raw).expect("rawBytes must be valid base64");
+        assert_eq!(
+            der.len(),
+            44,
+            "decoded publicKey.rawBytes must be exactly 44 bytes (SPKI DER for Ed25519)"
+        );
+        // Must NOT be a PEM string masquerading as base64-of-PEM (the v0.0.1 mistake)
+        assert!(
+            !raw.contains("BEGIN") && !raw.contains("PUBLIC"),
+            "rawBytes must be base64 of DER, NOT base64 of a PEM-wrapped string"
+        );
+    }
+
+    #[test]
+    fn v002_key_details_is_pkix_ed25519() {
+        let req = synthetic_v002_request();
+        let v: serde_json::Value = serde_json::to_value(&req).unwrap();
+        let kd = v["hashedRekordRequestV002"]["signature"]["verifier"]["keyDetails"]
+            .as_str()
+            .unwrap();
+        assert_eq!(
+            kd, "PKIX_ED25519",
+            "keyDetails must be the sigstore_common PublicKeyDetails enum string PKIX_ED25519 \
+             (= 7); NOT the prehash variant PKIX_ED25519_PH (= 8) since we sign arbitrary \
+             artifact bytes, not pre-hashed messages"
+        );
+    }
+
+    #[test]
+    fn v002_serialisation_field_naming() {
+        // Spot-check: serde rename attributes correctly map snake_case Rust
+        // identifiers to camelCase JSON keys per the Rekor v2 wire spec.
+        let req = synthetic_v002_request();
+        let json_text = serde_json::to_string(&req).unwrap();
+        assert!(json_text.contains("\"rawBytes\""));
+        assert!(json_text.contains("\"keyDetails\""));
+        assert!(json_text.contains("\"publicKey\""));
+        assert!(!json_text.contains("\"raw_bytes\""));
+        assert!(!json_text.contains("\"key_details\""));
+        assert!(!json_text.contains("\"public_key\""));
     }
 
     #[test]
