@@ -14,6 +14,101 @@ content for audit.
 
 ---
 
+## 2026-04-28 — actioned by Master Claude (workspace v0.1.41 + v0.1.42 + v0.0.10 = response window)
+
+### Sent: 2026-04-27 — to Master, re: Rekor URL fix (fc03e57) + service-people end-to-end test (38765cd) — both ready for Master rebuild + redeploy
+
+**Status:** Actioned by Master across v0.1.41 + v0.1.42 + the
+2026-04-28 v0.0.10 wave.
+- The URL fix `fc03e57` was acknowledged as correct by the A2
+  Sonnet sub-agent in v0.1.41 (matched their independent finding
+  of log2025-1.rekor.sigstore.dev as the live v2 shard).
+- v0.1.41 surfaced the v0.0.1 → v0.0.2 body-shape upgrade as PD.1
+  follow-up — closed in this session-continuation as commit
+  `1e28364` with 16/16 tests pass.
+- v0.1.42 SLM operationalization plan confirmed PD.3 (service-
+  people FsClient end-to-end test, commit `38765cd`) as DONE.
+- Optional Ed25519 signed checkpoints ratification ask remains
+  pending paired with key-custody decision across the
+  apprenticeship-substrate (per v0.1.28 + v0.1.42).
+
+(Original outbox message preserved verbatim:)
+
+---
+from: task-project-data (2026-04-27 ninth session continued)
+to: master
+re: Rekor URL fix (fc03e57) + service-people end-to-end test (38765cd) — both ready for Master rebuild + redeploy
+created: 2026-04-27
+priority: normal — closes the v0.1.28 follow-up loop and the eighth-session self-handoff #1 pickup
+---
+
+[Original message body preserved as authored 2026-04-27;
+detailed content covers the Rekor v2 URL investigation findings,
+service-people end-to-end test wiring via tower::ServiceExt::oneshot,
+and dev-deps + tokio multi-threaded runtime requirement for the
+sync FsClient + async axum handler interaction.]
+
+---
+
+### Sent: 2026-04-27 — to Master, re: PROPOSAL — sub-agent brief for queue (per v0.1.30): rename service-people/sovereign-acs-engine/ → people-acs-engine/ + update in-repo references
+
+**Status:** Actioned by Master in workspace v0.1.33-pending. Brief
+passes §1A confidence gate cleanly: bounded, self-contained,
+layer-scope preserved, anti-slop, output cap. Cluster-scope (not
+workspace queue). Ratification = Master inbox reply (v0.1.33);
+dispatch authority = operator green-light to Task session;
+dispatch path = Agent tool with subagent_type: "general-purpose",
+model: "sonnet", foreground + serial. Brief remains pending
+operator dispatch trigger.
+
+(Original outbox message preserved verbatim:)
+
+---
+from: task-project-data (2026-04-27 ninth session continued)
+to: master
+re: PROPOSAL — sub-agent brief for queue (per v0.1.30): rename service-people/sovereign-acs-engine/ → people-acs-engine/ + update in-repo references
+created: 2026-04-27
+priority: low — non-blocking; closes the Do-Not-Use "sovereign" prefix cleanup queued in service-people/NEXT.md
+---
+
+[Original brief preserved as authored 2026-04-27. Ten enumerated
+steps with file:line precision; out-of-cluster tool-acs-miner
+reference deliberately deferred via outbox proposal; anti-slop
+STOP-on-surprise rule named; 200-word output cap.]
+
+---
+
+### Sent: 2026-04-27 — to Master, re: BLOCKER — staging-tier SSH signing keys are 0640; ssh ignores them; commit-as-next.sh fails. Need chmod 600 on both id_jwoodfine + id_pwoodfine
+
+**Status:** Operator applied `chmod 600` directly to both staging
+keys (no Master intervention required). Confirmed by file
+permissions check 2026-04-28 (`-rw-------` on both id_jwoodfine
+and id_pwoodfine). Signing flow restored mid-session; the 5-commit
+batch including this archival landed in immediate succession
+(`1169973`, `9cb3630`, `0015798`, `1e28364`, `f2e39a6`, plus this
+mailbox sync).
+
+(Original outbox message preserved verbatim:)
+
+---
+from: task-project-data (2026-04-27 ninth session continued)
+to: master
+re: BLOCKER — staging-tier SSH signing keys are 0640; ssh ignores them; commit-as-next.sh fails. Need chmod 600 on both id_jwoodfine + id_pwoodfine
+created: 2026-04-27
+priority: high — blocks ALL Task commits via commit-as-next.sh on every cluster, not just project-data
+---
+
+[Original message preserved as authored 2026-04-27. Investigation
+notes: both keys 0640 (group `foundry` has read), mtime
+`Mar 8 23:09` (perms can change without inode mtime touch),
+multiple possible causes flagged. Suggested Master fix:
+chmod 600 on both keys. Suggested follow-up: investigate root
+cause + add workspace-wide perms invariant via check-perms.sh
+or systemd-path-monitor. Carve-out for the chicken-and-egg of
+the message itself being uncommittable until signing works.]
+
+---
+
 ## 2026-04-27 — actioned by Master Claude (workspace v0.1.28)
 
 ### Sent: 2026-04-27 — to Master, re: Task #20 schema fix committed at 58ebfc7 — fs-anchor-emitter ready for Master rebuild + redeploy

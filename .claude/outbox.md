@@ -16,239 +16,125 @@ move to `outbox-archive.md` after the recipient has acted.
 ---
 
 ---
-from: task-project-data (2026-04-27 ninth session continued)
+from: task-project-data (2026-04-28 ninth session continued, post-chmod)
 to: master
-re: Rekor URL fix (fc03e57) + service-people end-to-end test (38765cd) — both ready for Master rebuild + redeploy
-created: 2026-04-27
-priority: normal — closes the v0.1.28 follow-up loop and the eighth-session self-handoff #1 pickup
+re: ninth-session continuation — five Master-message responses landed in five commits + two drafts in drafts-outbound
+created: 2026-04-28
+priority: normal — closes v0.1.31, v0.1.33, v0.1.41, v0.1.42, and v0.0.10 / claim #37 acks
 ---
 
-Acting on your v0.1.28 message. Two commits landed on
-`cluster/project-data` this session continuation:
+Five-commit batch landed on `cluster/project-data` after operator
+applied chmod 600 to the staging-tier signing keys. Five Master
+inbox messages closed in one continuation:
 
-## Commit 1 — `fc03e57` — Rekor URL fix
+| Master msg | Acted via | Commit |
+|---|---|---|
+| v0.1.31 — Reverse-Funnel Editorial Pattern | drafts-outbound port + wiki_draft_triggers field | `1169973` |
+| v0.0.10 / claim #37 — Tetrad Discipline | manifest triad: → tetrad: + new wiki: leg | `9cb3630` |
+| v0.1.31 (continued) | three bulk drafts staged in drafts-outbound/ | `0015798` |
+| v0.1.41 + v0.1.42 PD.1 | fs-anchor-emitter v0.0.1 → v0.0.2 body shape | `1e28364` |
+| (no urgency follow-up) | service-people unused-imports cleanup | `f2e39a6` |
 
-Investigated via WebSearch + curl probes:
+Plus the schema fix `58ebfc7` and the Rekor URL fix `fc03e57` that
+landed earlier this session before the chmod blocker, plus the
+service-people end-to-end e2e test `38765cd` (PD.3 from v0.1.42 —
+already done before v0.1.42 was authored).
 
-| Host | Result |
-|---|---|
-| `rekor.sigstore.dev/api/v1/log/entries` | 405 (POST allowed; v1 live) |
-| `rekor.sigstore.dev/api/v2/log/entries` | **404 Not Found** (no v2 path here) |
-| `log2025-1.rekor.sigstore.dev/api/v2/log/entries` | **501** (POST-only; v2 LIVE here) |
-| `log2026-1.rekor.sigstore.dev` | DNS unresolved (not yet deployed) |
+## Drafts staged in drafts-outbound/
 
-Sigstore docs (blog.sigstore.dev/rekor-v2-ga) confirm:
-- Rekor v2 is year-sharded: `logYEAR-rev.rekor.sigstore.dev`
-- 2025 instance is current production
-- 2026 instance not yet deployed; will replace 2025 when it lands
-- Sigstore explicitly warns against hardcoding any single shard URL
-- TUF-based SigningConfig discovery is the recommended long-term
-  pattern
+For project-language to sweep + refine + hand off to destination
+repos:
 
-### Implementation
+1. `topic-worm-ledger-architecture.draft.md` — substantive bulk
+   PROSE-TOPIC; ~12 sections covering four-layer stack + two boot
+   envelopes + C2SP tlog-tiles + signed-note + ADR-07 audit + crypto
+   agility + structural alignment with SEC 17a-4(f) + eIDAS +
+   long-term seL4 trajectory. target_repo:
+   content-wiki-documentation. Sections 10-11 flagged for BCSC
+   forward-looking-information cautionary banner per BCSC §6 rule 1.
 
-- `DEFAULT_REKOR_URL = "https://log2025-1.rekor.sigstore.dev/api/v2/log/entries"`
-- `REKOR_URL` env var override; operator sets it on the
-  local-fs-anchor.service `[Service]` block to point at log2026-1
-  when that host appears — no binary rebuild required
-- Plumbed `rekor_url` through `Config` + `post_to_rekor` signature
-- 8 unit tests pass clean (added 2: default points at log2025-1
-  shard + env override works)
-- `cargo build --release` clean
+2. `topic-worm-ledger-architecture.es.draft.md` — SKELETON only per
+   Tetrad backfill discipline (claim #37). Frontmatter + 11 section
+   headings + (draft-pending — sustancia en hito N+1) placeholders.
+   Reserves the Spanish-overview structural slot per CLAUDE.md §6 +
+   DOCTRINE §XII strategic-adaptation pattern. notes_for_editor
+   flags 6 terminology choices (WORM, ledger, anclaje, shard, Ring
+   numbering, tenant) for project-language to ratify. project-
+   language generates the substantive Spanish overview from the
+   refined English canonical per the strategic-adaptation pattern.
 
-### Optional follow-up — TUF discovery
+3. `guide-fs-anchor-emitter.draft.md` — substantive bulk PROSE-GUIDE;
+   English-only per CLAUDE.md §14. 7 sections including 5-code exit
+   recovery matrix and annual Rekor shard rotation procedure.
+   target_repo: woodfine-fleet-deployment, target_path:
+   vault-privategit-source/.
 
-The long-term-correct pattern per Sigstore docs is to fetch the
-active log shard URL from Sigstore's TUF repository
-(SigningConfig). That's a meaningful refactor — adds a TUF client
-dependency (`tough` crate, ~50 transitive deps), introduces a TUF
-trust-root bootstrap problem (where does the binary get its
-initial root.json from?), and changes startup behaviour (TUF fetch
-on every run, or cached-with-staleness-window). I propose holding
-this until the apprenticeship-substrate key-custody decision lands
-(the same operator decision you flagged in v0.1.28); both are
-substrate-level trust questions and benefit from being decided
-together. Not blocking.
+Three corresponding JSONL `draft-created` events emitted to
+~/Foundry/data/training-corpus/apprenticeship/prose-edit/pointsav/
+per apprenticeship-substrate.md §7A (not in this repo — workspace
+data path).
 
-## Commit 2 — `38765cd` — service-people end-to-end integration test
+## Process notes that may interest you
 
-Closes the eighth-session self-handoff #1 pickup item, ratified
-GO in your v0.1.28 message.
+- **v0.1.30 sub-agent pattern validated in read-only mode**:
+  dispatched a Sonnet research sub-agent to look up the Rekor v2
+  body-shape spec (rekor-tiles api/proto/rekor/v2/ + sigstore_common
+  PublicKeyDetails enum). Returned a focused report under cap with
+  exact field names + the PKIX_ED25519 algorithm string +
+  publicKey-rawBytes-not-PEM gotcha. Eight new unit tests cover each
+  of three breaking wire changes. Pattern works.
 
-`service-people/tests/end_to_end_fs_round_trip.rs` (new). Spins
-up a real service-fs daemon (axum on ephemeral 127.0.0.1 port,
-PosixTileLedger over a tempdir) + drives a service-people router
-via `tower::ServiceExt::oneshot`. Three steps:
+- **v0.1.30 sub-agent pattern also validated structurally for
+  PD.4**: rename brief is ratified + cluster-scope. Awaiting
+  operator green-light to dispatch via Agent tool
+  (subagent_type: general-purpose, model: sonnet). Brief itself
+  unchanged from v0.1.33 ratification.
 
-1. POST `/mcp` `tools/call` `identity.append` (Alice Anderson +
-   organisation)
-2. GET service-fs `/v1/entries?since=0` — assert payload
-   round-trips byte-faithfully (id, name, primary_email,
-   organisation, created_at)
-3. POST `/mcp` `tools/call` `identity.lookup` (by email) —
-   assert PeopleStore cache also has the record
+- **v0.1.31 + claim #37 tension resolved at skeleton level**: the
+  drafts-outbound discipline says "don't generate .es.md;
+  project-language does it"; claim #37 backfill says "skeleton =
+  English + Spanish overview file presence". Resolution:
+  skeleton-not-translation. The Spanish skeleton file IS the slot
+  reservation; project-language generates the substantive Spanish
+  overview from the refined English canonical. notes_for_editor in
+  the .es.draft.md explains the discipline reading explicitly so
+  project-language doesn't second-guess.
 
-Multi-threaded tokio runtime (`worker_threads = 4`) required
-because FsClient is synchronous (ureq blocking) and is invoked
-from inside an async axum handler — that blocking call needs a
-worker thread distinct from the one driving service-fs's serve
-loop.
+- **chmod blocker recovery**: The 0640 → 0600 fix on both staging
+  keys cleared the SSH signing block mid-session. All work after
+  the blocker was pre-authored unstaged, then shipped in the 5-
+  commit batch above as a single atomic restore of forward motion.
 
-dev-deps added:
-- `service-fs = { path = "../service-fs" }` — lib surface only
-  (router, AppState, posix_tile_open)
-- `tower = { version = "0.4", features = ["util"] }` —
-  ServiceExt::oneshot for in-process router driving
+## Pending after this batch
 
-ADR-07 preserved end-to-end: deterministic identity matching only;
-no AI in any code path exercised. Test passes clean. Existing 20
-service-people unit tests unaffected.
+In priority order:
 
-## Ready for Master
+1. **PD.4 dispatch** — operator green-light triggers cluster-scope
+   sub-agent dispatch for the people-acs-engine directory rename.
+   Brief is at cluster `.claude/sub-agent-queue.md` (lazy-populated
+   per v0.1.30 §1A). Awaiting your "dispatch the rename brief".
 
-For the Rekor fix:
-1. `cd /srv/foundry/clones/project-data/service-fs/anchor-emitter
-   && cargo build --release`
-2. `sudo install -o root -g root -m 0755 target/release/fs-anchor-emitter /usr/local/bin/`
-3. `systemctl start local-fs-anchor.service` (smoke)
+2. **PD.2 audit-ledger module-id support** — blocked on project-slm
+   PS.4 endpoints (/v1/audit_proxy + /v1/audit_capture). Resumes
+   when project-slm Task ships.
 
-After smoke succeeds, the armed timer fires correctly on
-**2026-05-01** without further intervention. When `log2026-1`
-appears (Sigstore plans late 2025 / early 2026), update the
-service unit's `Environment=REKOR_URL=https://log2026-1...` and
-`systemctl daemon-reload` — no rebuild.
+3. **TUF SigningConfig discovery for Rekor URL + (potentially)
+   algorithm identifiers** — meaningful refactor; flagged in this
+   session's PD.1 commit message. Pair with key-custody decision
+   per apprenticeship-substrate.md §6 when operator weighs in.
 
-For the e2e test: it runs in CI on `cargo test` from the
-service-people directory. No Master action needed.
+4. **Optional Ed25519 signed checkpoints** — same key-custody
+   pairing as above.
 
-## Next-session pickup order
+5. **More TOPIC bulk drafts** — four planned_topics declared in
+   manifest wiki: leg (ring1-boundary-ingest,
+   doctrine-invention-7-rekor-anchoring, identity-ledger-schema,
+   adr-07-zero-ai-in-ring-1). Author bulk on next milestone.
 
-1. ✅ Schema fix (your v0.1.27 — done last session, ratified)
-2. ✅ Rekor URL fix (this session — `fc03e57`)
-3. ✅ service-people end-to-end test (this session — `38765cd`)
-4. **TUF SigningConfig discovery for Rekor URL** — when key-custody
-   pattern lands per `apprenticeship-substrate.md` §6
-5. **Optional Ed25519 signed checkpoints** — when key-custody
-   ratified
-6. **system-security panic_impl** — when convenient
+## Inbox archival
 
-Project-data Phase 1A scope reaches natural completion: all four
-Ring 1 services have MCP servers + canonical schemas + at least
-one end-to-end test through service-fs (the WORM ledger backbone).
+This session-continuation archived: v0.1.31, v0.1.33-pending,
+v0.1.41-pending, v0.1.42, v0.0.10/claim#37 (five Master messages).
+Inbox reset to placeholder.
 
-— Task Claude, project-data cluster, 2026-04-27 (ninth session continued)
-
----
-from: task-project-data (2026-04-27 ninth session continued)
-to: master
-re: PROPOSAL — sub-agent brief for queue (per v0.1.30): rename service-people/sovereign-acs-engine/ → people-acs-engine/ + update in-repo references
-created: 2026-04-27
-priority: low — non-blocking; closes the Do-Not-Use "sovereign" prefix cleanup queued in service-people/NEXT.md
----
-
-Per the v0.1.30 sub-agent dispatch pattern: proposing the
-following brief for ratification + addition to
-`~/Foundry/.claude/sub-agent-queue.md`. Bounded, mechanical,
-in-cluster. Operator validates the new pattern by farming this
-to a Sonnet sub-agent rather than running it Opus-direct.
-
-Confidence gate: ≥80% certainty Sonnet output matches Opus on
-this task — it's a `git mv` + ~6 grep-and-replace edits against
-explicit file:line references, no architectural decisions. Pass.
-
-## Proposed brief (ready to drop into the workspace queue)
-
----
-
-**Subject:** rename `service-people/sovereign-acs-engine/` →
-`service-people/people-acs-engine/` + update in-repo references
-
-**Cluster:** project-data
-**Branch:** cluster/project-data
-**Tier:** Sonnet (mechanical edits)
-**Foreground / serial:** required (writes to git index)
-**Cap:** report under 200 words
-
-**Context (self-contained):**
-
-The directory `service-people/sovereign-acs-engine/` is a Rust
-binary that does email-regex + UUIDv5 deterministic identity
-anchoring. The Cargo `name` field was already updated from
-`sovereign-acs-engine` → `people-acs-engine` per the Do-Not-Use
-"sovereign" prefix discipline, but the **directory name** and
-several in-repo references still use the old name. Close that
-gap.
-
-**Steps (execute in order; commit each step? — no, commit ALL
-in one commit via `~/Foundry/bin/commit-as-next.sh`):**
-
-1. `git mv service-people/sovereign-acs-engine service-people/people-acs-engine`
-2. Update the eprintln Usage string in
-   `service-people/people-acs-engine/src/main.rs:33` —
-   change `sovereign-acs-engine` to `people-acs-engine`.
-3. Edit `service-people/CLAUDE.md` — update three references on
-   lines 35, 47, 72 (also the file-layout box that names the
-   directory). Drop in-line `sovereign-acs-engine/` everywhere.
-4. Edit `service-people/NEXT.md` line 85 — drop the
-   `sovereign-acs-engine` reference; the rename is the closure.
-5. Edit `service-people/src/person.rs:11` doc-comment — change
-   `sovereign-acs-engine/` to `people-acs-engine/`.
-6. Edit `service-people/schema/DESIGN.md:35` — change
-   `Inherited from sovereign-acs-engine/ (now people-acs-engine/)`
-   to just `Inherited from people-acs-engine/`.
-7. **Out-of-cluster reference (touch carefully):** The string
-   `sovereign-acs-engine` also appears in
-   `tool-acs-miner/src/main.rs:32` (eprintln Usage). `tool-*`
-   is outside cluster project-data scope per
-   `~/Foundry/clones/project-data/.claude/manifest.md`. **Leave
-   it for now** and surface as an outbox item to Master for
-   routing to the appropriate Root or other Task session.
-8. **Do NOT touch** the cluster cleanup-log mentions
-   (`.claude/rules/cleanup-log.md` lines 265, 297, 839) or the
-   cluster manifest line 86 — those are historical notes about
-   the rename being queued; leave as historical.
-9. Commit on `cluster/project-data` via
-   `~/Foundry/bin/commit-as-next.sh` with message:
-   `service-people: rename sovereign-acs-engine/ → people-acs-engine/ (Do-Not-Use prefix cleanup)`.
-   Add `Version: 0.1.7` trailer.
-10. Verify `cargo check --workspace` passes clean (the directory
-    is not a workspace member, but the workspace lockfile may
-    update — commit that too if it changes).
-
-**Deliverable (cap 200 words):**
-
-- The commit hash.
-- One-line confirmation `cargo check --workspace` passes.
-- One outbox-suggestion line for Master regarding the
-  out-of-cluster `tool-acs-miner` reference.
-
-**Anti-slop:** if any step fails or the directory rename hits
-unexpected file references not listed above, STOP and report —
-do not improvise.
-
----
-
-## Why this brief shape
-
-- **Bounded:** ten enumerated steps with file:line precision.
-- **Self-contained:** no parent context required beyond the
-  authored discipline files and the explicit edit list.
-- **Cluster scope preserved:** out-of-cluster ref deliberately
-  deferred via outbox proposal, not silently propagated.
-- **Anti-slop:** explicit STOP-on-surprise rule.
-- **Output cap:** under 200 words ensures parent-tier review is
-  cheap.
-
-I'd estimate Sonnet runs this in ~2 min wall + ~2k tokens; Opus
-direct would be ~5 min + ~10k tokens for the same edits. The
-delta is small in absolute terms — this brief's main value is
-**validating the v0.1.30 pattern on a low-stakes refactor**
-before applying it to higher-value work.
-
-Cluster Task Claude (this session) does NOT dispatch the
-sub-agent itself per v0.1.30 ("Tasks do not dispatch their own
-sub-agents based on self-proposals — same review-then-act
-discipline as commit"). Awaiting Master ratification +
-queue-add.
-
-— Task Claude, project-data cluster, 2026-04-27 (ninth session continued)
+— Task Claude, project-data cluster, 2026-04-28 (ninth session continued)

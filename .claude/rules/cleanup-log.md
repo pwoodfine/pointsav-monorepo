@@ -96,6 +96,119 @@ Newest on top. Append a dated block when a session includes meaningful cleanup w
 
 ---
 
+## 2026-04-28 (ninth session continued — five Master messages closed in five commits + Tetrad backfill + Reverse-Funnel pipeline drafts + PD.1 body shape upgrade)
+
+Mid-session SSH signing blocker (both staging keys at 0640 instead
+of canonical 0600) cleared by operator chmod. Five logical commits
+landed in immediate succession, closing five Master inbox messages:
+
+**Commit `1169973` — drafts-outbound port + wiki_draft_triggers
+(v0.1.31 plumbing).** Per Master v0.1.31 Reverse-Funnel Editorial
+Pattern (Doctrine claim #35) inbox message: cluster Tasks now have
+an editorial input port at .claude/drafts-outbound/. Two pieces:
+the port directory with discipline-reminder README, and the
+manifest `wiki_draft_triggers:` field enumerating five typical
+trigger events for this cluster (phase_milestone /
+architectural_decision_ratified / service_activated /
+deployment_artifact_shipped / schema_published) each naming
+typical_protocol + target_repo. Structural prerequisite for the
+draft staging that follows.
+
+**Commit `9cb3630` — manifest triad → tetrad backfill (Doctrine
+v0.0.10 / claim #37).** Per Master 2026-04-28 inbox: the Triad
+(claim #30) is upgraded to a Tetrad by adding a fourth structural
+leg, wiki TOPIC contribution to vendor/content-wiki-documentation.
+Renamed top-level YAML field; added new wiki: leg block declaring
+repo + drafts_via path + project-language gateway + 5
+planned_topics + status: active. Customer + deployment legs
+annotated with the GUIDE draft already staged + the active
+fs-anchor-emitter half of the runtime.
+
+**Commit `0015798` — three bulk drafts staged in drafts-outbound/.**
+Per the v0.1.31 pattern + claim #37 wiki-leg requirement:
+- topic-worm-ledger-architecture.draft.md — substantive bulk
+  PROSE-TOPIC, ~12 sections (four-layer stack, two boot envelopes,
+  C2SP tlog-tiles + signed-note formats, append/read flows, ADR-07
+  audit sub-ledger, crypto agility, structural alignment with SEC
+  17a-4(f) + eIDAS, long-term seL4 trajectory). Source material:
+  service-fs/ARCHITECTURE.md + SECURITY.md + RESEARCH.md (already
+  ratified workspace-tier 2026-04-26).
+- topic-worm-ledger-architecture.es.draft.md — SKELETON only per
+  Tetrad backfill discipline. Reserves the Spanish-overview
+  structural slot per CLAUDE.md §6 + DOCTRINE §XII strategic-
+  adaptation pattern. notes_for_editor flags 6 terminology choices
+  for project-language to ratify (WORM, ledger, anclaje, shard,
+  Ring numbering, tenant). v0.1.31-vs-v0.0.10 tension resolved at
+  skeleton level: the file IS the slot reservation; project-
+  language generates substantive Spanish overview from refined
+  English canonical.
+- guide-fs-anchor-emitter.draft.md — substantive bulk PROSE-GUIDE,
+  English-only per CLAUDE.md §14. 7 sections covering operator
+  surface, 5-code exit-recovery matrix, annual Rekor shard rotation
+  procedure. target_repo: woodfine-fleet-deployment.
+
+Three corresponding JSONL `draft-created` events emitted to
+~/Foundry/data/training-corpus/apprenticeship/prose-edit/pointsav/
+per apprenticeship-substrate.md §7A (workspace data path; not
+in-repo).
+
+**Commit `1e28364` — fs-anchor-emitter PD.1 body-shape upgrade
+v0.0.1 → v0.0.2.** Per Master v0.1.41 + v0.1.42: Rekor v2 expects
+hashedRekordRequestV002, not v0.0.1. Read-only Sonnet sub-agent
+(per v0.1.30 §1A) returned the complete spec from rekor-tiles
+api/proto/rekor/v2/{hashedrekord,verifier}.proto +
+sigstore_common PublicKeyDetails enum. Three breaking wire
+changes from v0.0.1: top-level envelope removed (no
+kind/apiVersion/spec); digest is base64-of-raw-bytes (NOT hex);
+signature.format removed. New verifier field with
+publicKey.rawBytes (base64 of 44-byte SPKI DER, NOT base64-of-PEM-
+string — the v0.0.1 mistake) + keyDetails: PKIX_ED25519 (= 7;
+NOT the prehash variant). Refactored ed25519_spki_pem into
+ed25519_spki_der + thin pem-wrapping helper. Dropped unused `hex`
+dep. Eight new unit tests cover each breaking wire change; 16/16
+total pass clean. Master rebuilds + reinstalls; armed
+local-fs-anchor.timer (2026-05-01) then fires correctly.
+
+**Commit `f2e39a6` — service-people unused-imports cleanup.**
+Two-line cleanup of unused chrono::Utc + uuid::Uuid imports in
+fs_client tests. 20/20 lib tests still pass. Closes the no-pressure
+trivial item from the ninth-session task list.
+
+**Mailbox sync (this commit).** Archived five Master messages
+(v0.1.31, v0.1.33-pending, v0.1.41-pending, v0.1.42, v0.0.10/
+claim#37) to inbox-archive.md per §VI archive-on-action discipline.
+Archived three outbox messages to outbox-archive.md (the BLOCKER
+chmod request; the URL-fix + e2e-test summary; the people-acs-
+engine rename brief proposal) — all three actioned by Master in
+the v0.1.33 + v0.1.41 + v0.1.42 wave or directly by operator
+chmod. New comprehensive outbox message naming all five new
+session-continuation commits + flagging four pending follow-ups
+(PD.4 dispatch awaiting operator green-light; PD.2 blocked on
+project-slm PS.4; TUF discovery + signed checkpoints paired with
+key-custody decision; four planned_topics for future TOPIC bulk
+drafts).
+
+**Pattern validations this session-continuation:**
+- v0.1.30 sub-agent dispatch validated in **read-only mode**
+  (Rekor v2 spec research → focused report under cap → applied to
+  PD.1 implementation; pattern works for bounded research without
+  git-index race risk).
+- v0.1.30 also **structurally validated** for PD.4 cluster-scope
+  dispatch (rename brief ratified; awaiting operator green-light).
+- v0.1.31 Reverse-Funnel pipeline operational (drafts-outbound
+  populated + project-language has substantive bulk + skeleton-
+  not-translation precedent set for the Tetrad-bilingual tension).
+- v0.0.10 Tetrad backfill complete (manifest declares all four
+  legs; wiki: leg moves from leg-pending to active).
+
+**Pending after this batch:** PD.4 dispatch (operator green-light);
+PD.2 (blocked on project-slm PS.4 endpoints); TUF SigningConfig
+discovery (paired with key-custody); optional Ed25519 signed
+checkpoints (paired with key-custody); four more TOPIC bulk drafts
+named in manifest planned_topics for future milestones.
+
+---
+
 ## 2026-04-27 (ninth session continued — system-security panic_handler gate + Master v0.1.30 sub-agent dispatch pattern adopted)
 
 After session-end commit `aee4c38` the operator continued the
