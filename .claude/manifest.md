@@ -57,6 +57,32 @@ adapter_routing:
     - engineering-pointsav       # always — Vendor knowledge
     - cluster-project-data       # own cluster context
     - role-task                  # current role
+
+# Reverse-Funnel Editorial Pattern triggers (Doctrine claim #35;
+# conventions/cluster-wiki-draft-pipeline.md). When this cluster
+# hits one of these milestones, stage a bulk draft at
+# .claude/drafts-outbound/ for project-language to refine.
+wiki_draft_triggers:
+  - phase_milestone:
+      description: substantive code milestone like "all four Ring 1 services have MCP servers + canonical schemas + at least one end-to-end test"
+      typical_protocol: PROSE-TOPIC
+      target_repo: content-wiki-documentation
+  - architectural_decision_ratified:
+      description: workspace-tier convention or Doctrine claim that originated as a project-data RESEARCH.md and was ratified by Master (e.g., worm-ledger-design.md, Doctrine Invention #7)
+      typical_protocol: PROSE-TOPIC
+      target_repo: content-wiki-documentation
+  - service_activated:
+      description: new Ring 1 service moves from Reserved-folder / Scaffold-coded to Active per project-registry; per-project README needs first authoring or substantive refresh
+      typical_protocol: PROSE-README
+      target_repo: pointsav-monorepo  # in-place README under the project dir
+  - deployment_artifact_shipped:
+      description: Master ships an IaC artifact for one of this cluster's services (binary installed, systemd unit + timer ARMED, etc.); operator runbook GUIDE warranted
+      typical_protocol: PROSE-GUIDE
+      target_repo: woodfine-fleet-deployment  # catalog GUIDE inside the deployment subfolder
+  - schema_published:
+      description: canonical schema (Identity Ledger, WORM checkpoint, Hashedrekord wrap) reaches stable shape and warrants public-facing TOPIC describing the contract
+      typical_protocol: PROSE-TOPIC
+      target_repo: content-wiki-documentation
 ---
 
 # Cluster manifest — project-data
