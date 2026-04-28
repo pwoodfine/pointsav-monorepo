@@ -32,7 +32,7 @@ Uuid::new_v5(&Uuid::NAMESPACE_DNS, email.as_bytes())
 
 ### 2. Two-Ledger Pattern (Anchor + Claim)
 
-Inherited from `sovereign-acs-engine/` (now `people-acs-engine/`):
+Inherited from `people-acs-engine/`:
 
 - **Anchor records** (not in this schema, but in sibling `anchors.jsonl`): One immutable record per unique email address, recording UUIDv5 derivation and source.
 - **Identity records** (this schema, in `ledger_personnel.jsonl`): Canonical person record with all known addresses, roles, and attributes.
