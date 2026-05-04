@@ -121,4 +121,33 @@ mod tests {
             other => panic!("expected ParserInternal for invalid XLSX, got {other:?}"),
         }
     }
+
+    /// Happy-path test against a real minimal XLSX fixture. Confirms
+    /// that text extraction succeeds, the known cell content is present,
+    /// and sheet metadata is reported correctly.
+    /// The fixture is a hand-crafted minimal OOXML ZIP with one sheet
+    /// named "Sheet1" and cell A1 containing "Hello XLSX World".
+    #[test]
+    fn happy_path_minimal_xlsx_parses() {
+        let bytes = include_bytes!("../tests/fixtures/minimal.xlsx");
+        let parser = XlsxParser;
+        let doc = parser
+            .parse("fixture-1", bytes)
+            .expect("minimal.xlsx must parse without error");
+        assert!(
+            doc.text.contains("Hello XLSX World"),
+            "extracted text must contain the known fixture content; got: {:?}",
+            doc.text
+        );
+        assert_eq!(
+            doc.metadata["sheet_count"].as_u64(),
+            Some(1),
+            "sheet_count must be 1"
+        );
+        assert_eq!(
+            doc.metadata["sheets"][0],
+            "Sheet1",
+            "first sheet name must be Sheet1"
+        );
+    }
 }

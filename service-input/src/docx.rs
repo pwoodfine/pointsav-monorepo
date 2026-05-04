@@ -103,4 +103,27 @@ mod tests {
             other => panic!("expected ParserInternal for invalid DOCX, got {other:?}"),
         }
     }
+
+    /// Happy-path test against a real minimal DOCX fixture. Confirms
+    /// that text extraction succeeds, the known paragraph text is
+    /// present, and paragraph_count is reported correctly.
+    /// The fixture is a hand-crafted minimal OOXML ZIP containing
+    /// one paragraph with the text "Hello DOCX World".
+    #[test]
+    fn happy_path_minimal_docx_parses() {
+        let bytes = include_bytes!("../tests/fixtures/minimal.docx");
+        let parser = DocxParser;
+        let doc = parser
+            .parse("fixture-1", bytes)
+            .expect("minimal.docx must parse without error");
+        assert!(
+            doc.text.contains("Hello DOCX World"),
+            "extracted text must contain the known fixture content; got: {:?}",
+            doc.text
+        );
+        assert!(
+            doc.metadata["paragraph_count"].as_u64().unwrap_or(0) >= 1,
+            "paragraph_count must be >= 1"
+        );
+    }
 }
