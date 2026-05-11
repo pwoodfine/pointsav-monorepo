@@ -79,3 +79,6 @@ NEXT.md
 # the filesystem. See cleanup-log.md 2026-04-23 entry for rationale.
 service-slm/router-trainer/engine/llamafile
 service-slm/router-trainer/**/*.log
+
+# Multi-agent session locks (ephemeral — not committed)
+.agent/engines/*/session.lock
