@@ -28,3 +28,6 @@ service-slm/router-trainer/**/*.log
 # ledger pipeline, not source-controlled. Physical directory remains
 # for the running service to write into.
 service-people/substrate/*.jsonl
+
+# Multi-agent session locks (ephemeral — not committed)
+.agent/engines/*/session.lock
