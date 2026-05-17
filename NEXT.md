@@ -80,6 +80,12 @@ v0.3.0 plan at `/home/jennifer/.claude/plans/no-make-a-plan-abundant-forest.md`.
       grammar-constrained extraction; medium priority after Tier B basic enrichment is stable
       [2026-06-19 totebox@project-intelligence]
 ### seL4 Phase H1 — moonshot-toolkit integration
+- [x] **HTML print layout — resolved 2026-05-17** `[2026-05-17 totebox@claude-code]`
+  - Root cause: `@page { size: landscape; margin: 0.3in }` + `slide { width: 10.4in }` triple-stacked margins; Chrome silently ignored
+  - Fix: `@page { size: 11in 8.5in; margin: 0; }` + `slide { width: 11in; height: 8.5in; transform: none }` in all 3 preview HTMLs
+  - PDF generator: `preview/build-pdf.mjs` (Playwright + Chromium); confirmed 792×612pt = 11×8.5in per page
+  - Generate: `NODE_PATH=/home/jennifer/sandbox/working/ps-talking-points/node_modules node build-pdf.mjs <file.html>` or `all`
+  - Do NOT use the browser print dialog — output varies by operator; use the script
 
 - [x] `moonshot-toolkit` v0.3.1 — build pipeline functional; `os-console-hello.toml` spec exists; QEMU gate passed
 - [x] `moonshot-sel4-vmm` Phase H1 — `#![no_std]` PD runtime complete (syscall, types, debug modules)
