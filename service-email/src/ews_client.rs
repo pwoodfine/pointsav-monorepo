@@ -210,6 +210,154 @@ fn extract_mime_content(xml: &str) -> Option<&str> {
 mod tests {
     use super::*;
 
+    fn test_client() -> EwsClient {
+        EwsClient::new(
+            "test-token".to_string(),
+            "https://outlook.office365.com/EWS/Exchange.asmx".to_string(),
+            "user@example.com".to_string(),
+        )
+    }
+
+    // ── soap_envelope construction ────────────────────────────────────
+
+    #[test]
+    fn soap_envelope_contains_target_user() {
+        let client = test_client();
+        let envelope = client.soap_envelope("<m:FindItem/>");
+        assert!(
+            envelope.contains("user@example.com"),
+            "envelope must contain target_user in ExchangeImpersonation header"
+        );
+    }
+
+    #[test]
+    fn soap_envelope_wraps_body_fragment() {
+        let client = test_client();
+        let body = "<m:GetItem><m:ItemIds/></m:GetItem>";
+        let envelope = client.soap_envelope(body);
+        assert!(envelope.contains(body), "envelope must contain the supplied body fragment");
+        assert!(envelope.contains("<soap:Body>"), "envelope must have a soap:Body element");
+    }
+
+    #[test]
+    fn soap_envelope_sets_exchange_version() {
+        let client = test_client();
+        let envelope = client.soap_envelope("");
+        assert!(
+            envelope.contains("Exchange2016"),
+            "envelope must declare RequestServerVersion Exchange2016"
+        );
+    }
+
+    // ── FindItem response fixtures ────────────────────────────────────
+
+    #[test]
+    fn extract_item_ids_parses_full_finditem_response() {
+        let xml = r#"<?xml version="1.0" encoding="utf-8"?>
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"
+            xmlns:m="http://schemas.microsoft.com/exchange/services/2006/messages"
+            xmlns:t="http://schemas.microsoft.com/exchange/services/2006/types">
+  <s:Body>
+    <m:FindItemResponse>
+      <m:ResponseMessages>
+        <m:FindItemResponseMessage ResponseClass="Success">
+          <m:ResponseCode>NoError</m:ResponseCode>
+          <m:RootFolder TotalItemsInView="3" IncludesLastItemInRange="true">
+            <t:Items>
+              <t:Message>
+                <t:ItemId Id="AABB001" ChangeKey="CK1"/>
+              </t:Message>
+              <t:Message>
+                <t:ItemId Id="AABB002" ChangeKey="CK2"/>
+              </t:Message>
+              <t:Message>
+                <t:ItemId Id="AABB003" ChangeKey="CK3"/>
+              </t:Message>
+            </t:Items>
+          </m:RootFolder>
+        </m:FindItemResponseMessage>
+      </m:ResponseMessages>
+    </m:FindItemResponse>
+  </s:Body>
+</s:Envelope>"#;
+        let ids = extract_item_ids(xml);
+        assert_eq!(ids, vec!["AABB001", "AABB002", "AABB003"]);
+    }
+
+    #[test]
+    fn extract_item_ids_handles_soap_fault_gracefully() {
+        let xml = r#"<?xml version="1.0" encoding="utf-8"?>
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
+  <s:Body>
+    <s:Fault>
+      <faultcode>s:Client</faultcode>
+      <faultstring>The access token has expired.</faultstring>
+    </s:Fault>
+  </s:Body>
+</s:Envelope>"#;
+        let ids = extract_item_ids(xml);
+        assert!(ids.is_empty(), "SOAP fault response must produce empty id list");
+    }
+
+    #[test]
+    fn extract_item_ids_handles_empty_inbox() {
+        let xml = r#"<?xml version="1.0" encoding="utf-8"?>
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"
+            xmlns:m="http://schemas.microsoft.com/exchange/services/2006/messages"
+            xmlns:t="http://schemas.microsoft.com/exchange/services/2006/types">
+  <s:Body>
+    <m:FindItemResponse>
+      <m:ResponseMessages>
+        <m:FindItemResponseMessage ResponseClass="Success">
+          <m:ResponseCode>NoError</m:ResponseCode>
+          <m:RootFolder TotalItemsInView="0" IncludesLastItemInRange="true">
+            <t:Items/>
+          </m:RootFolder>
+        </m:FindItemResponseMessage>
+      </m:ResponseMessages>
+    </m:FindItemResponse>
+  </s:Body>
+</s:Envelope>"#;
+        let ids = extract_item_ids(xml);
+        assert!(ids.is_empty(), "empty inbox response must produce empty id list");
+    }
+
+    // ── GetItem response fixtures ─────────────────────────────────────
+
+    #[test]
+    fn extract_mime_content_parses_full_getitem_response() {
+        let b64 = BASE64.encode(b"From: sender@example.com\r\nSubject: Test\r\n\r\nHello.");
+        let xml = format!(
+            r#"<?xml version="1.0" encoding="utf-8"?>
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"
+            xmlns:m="http://schemas.microsoft.com/exchange/services/2006/messages"
+            xmlns:t="http://schemas.microsoft.com/exchange/services/2006/types">
+  <s:Body>
+    <m:GetItemResponse>
+      <m:ResponseMessages>
+        <m:GetItemResponseMessage ResponseClass="Success">
+          <m:ResponseCode>NoError</m:ResponseCode>
+          <m:Items>
+            <t:Message>
+              <t:ItemId Id="AABB001" ChangeKey="CK1"/>
+              <t:MimeContent CharacterSet="UTF-8">{}</t:MimeContent>
+            </t:Message>
+          </m:Items>
+        </m:GetItemResponseMessage>
+      </m:ResponseMessages>
+    </m:GetItemResponse>
+  </s:Body>
+</s:Envelope>"#,
+            b64
+        );
+        let extracted = extract_mime_content(&xml);
+        assert!(extracted.is_some(), "must extract MimeContent from full GetItem response");
+        let decoded = BASE64.decode(extracted.unwrap().trim()).unwrap();
+        assert_eq!(decoded, b"From: sender@example.com\r\nSubject: Test\r\n\r\nHello.");
+    }
+
+    // ── existing helper tests ─────────────────────────────────────────
+
     #[test]
     fn extract_item_ids_parses_single_id() {
         let xml = r#"<t:Items><t:Message><t:ItemId Id="AAABBB123" ChangeKey="CK456"/></t:Message></t:Items>"#;
