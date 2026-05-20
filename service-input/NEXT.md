@@ -62,6 +62,13 @@
   operator confirms.
 
 ## Queue
+- **`maildir.rs` removal decision.** `src/maildir.rs` (`MaildirVault`)
+  is no longer referenced — the daemon loop in `service-email/src/main.rs`
+  now uses `FsClient` (swap landed 2026-05-20). File retained on disk
+  pending operator confirmation that it is unneeded. Remove once
+  operator confirms.
+
+## Queue
 - Additional format parsers beyond the initial four — add only when
   a customer use case surfaces it (demand-driven, not completeness-driven).
 
