@@ -8,6 +8,30 @@ Last updated: 2026-06-20
 ---
 
 ## Active
+## Hot — pick up here next session
+
+- [x] **NOTAM unreadable — resolved 2026-05-20** `[2026-05-20 totebox@claude-code]`
+  - Fixed by Command: NOTAM.md now `-rw-r--r-- mathew:foundry` (world-readable). Outbox message actioned.
+
+- [x] **Key Plans foundation — 4 operator decisions received 2026-05-20** `[2026-05-20 totebox@claude-code]`
+  - All 4 decisions answered via inbox `command-20260520-bim-foundation-decisions`
+  - Decision 1: descriptive display names (Index PDF style); codes (PO-1/M-1/B-1) are internal-only DTCG keys
+  - Decision 2: **delete** inline BIM_TOKENS block from `building-width-calculator.html`; fetch from DTCG at render time
+  - Decision 3: all 3 building types in scope now (Professional Centre + Retail Select + Tech Industrial + 12 common-area Key Plans)
+  - Decision 4: type-prefixed tile codes (CO-A, RS-A, TI-A); Corridor Expander T = 300 SF; arithmetic gaps intentional by design; J/K/L/M as stub DTCG entries with `status: reserved`
+  - **Now unblocked:** DTCG token standardisation, HTML BIM_TOKENS removal, Rust crate scaffold
+
+- [ ] **Deliverable 1: key-plans-registry.md — ready to implement** `[2026-05-21 totebox@claude-code]`
+  - Plan: `.agent/plans/plan-bim-objects.md` (full spec with authoritative sizes from FIN.xlsx)
+  - Output file: `woodfine-bim-library/key-plans/key-plans-registry.md`
+  - Also copy to `outputs/` for `fpull bim outputs/` access
+  - All Q1–Q6 resolved; authoritative sizes sourced from `CONSTRUCTION_2026_01_06_Key Plan_Professional Office_FFE_FIN.xlsx` Tab `Summary_Key Plans`
+  - Infrastructure Key Plan m² = TBD (architect drawings); equipment programs documented in plan
+
+- [ ] **Apply Decision 1–4 to existing DTCG tokens + HTML** `[2026-05-21 totebox@claude-code]`
+  - Standardise naming in all existing DTCG entries to Decision 1 convention
+  - Delete BIM_TOKENS block from `building-width-calculator.html` (Decision 2)
+  - Add stub entries for RS/TI tiles and J/K/L/M placeholders (Decisions 3 + 4)
 
 v0.3.0 plan at `/home/jennifer/.claude/plans/no-make-a-plan-abundant-forest.md`.
 - [ ] **Stage 6 + Doorman rebuild** — outbox updated (msg-id project-intelligence-20260620-session26c-stage6-prompt-fix);
