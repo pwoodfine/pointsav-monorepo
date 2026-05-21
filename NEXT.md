@@ -21,12 +21,10 @@ Last updated: 2026-06-20
   - Decision 4: type-prefixed tile codes (CO-A, RS-A, TI-A); Corridor Expander T = 300 SF; arithmetic gaps intentional by design; J/K/L/M as stub DTCG entries with `status: reserved`
   - **Now unblocked:** DTCG token standardisation, HTML BIM_TOKENS removal, Rust crate scaffold
 
-- [ ] **Deliverable 1: key-plans-registry.md — ready to implement** `[2026-05-21 totebox@claude-code]`
-  - Plan: `.agent/plans/plan-bim-objects.md` (full spec with authoritative sizes from FIN.xlsx)
-  - Output file: `woodfine-bim-library/key-plans/key-plans-registry.md`
-  - Also copy to `outputs/` for `fpull bim outputs/` access
-  - All Q1–Q6 resolved; authoritative sizes sourced from `CONSTRUCTION_2026_01_06_Key Plan_Professional Office_FFE_FIN.xlsx` Tab `Summary_Key Plans`
-  - Infrastructure Key Plan m² = TBD (architect drawings); equipment programs documented in plan
+- [x] **Deliverable 1: key-plans-registry.md — done 2026-05-21** `[2026-05-21 totebox@claude-code]`
+  - Committed: d1ac026 in woodfine-bim-library (pwoodfine, main)
+  - Output: `woodfine-bim-library/key-plans/key-plans-registry.md`
+  - Also in `outputs/key-plans-registry.md` — pull via `fpull bim outputs/`
 
 - [ ] **Apply Decision 1–4 to existing DTCG tokens + HTML** `[2026-05-21 totebox@claude-code]`
   - Standardise naming in all existing DTCG entries to Decision 1 convention
