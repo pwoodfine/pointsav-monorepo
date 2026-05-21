@@ -95,6 +95,25 @@
 
 ## Queue
 
+- **Enable Exchange polling.** `local-email.service` is running (port 9204,
+  MCP server only). To activate the EWS daemon, create an override file:
+  ```
+  sudo mkdir -p /etc/systemd/system/local-email.service.d/
+  sudo tee /etc/systemd/system/local-email.service.d/exchange.conf <<'EOF'
+  [Service]
+  Environment="AZURE_ACCESS_TOKEN=<az account get-access-token --resource https://outlook.office365.com | jq -r .accessToken>"
+  Environment="EXCHANGE_TARGET_USER=<mailbox@domain.com>"
+  EOF
+  sudo systemctl daemon-reload && sudo systemctl restart local-email
+  ```
+  Token expires; update + restart to rotate. Logs: `journalctl -u local-email -f`.
+
+- **`maildir.rs` removal.** `MaildirVault` is no longer used (replaced by
+  FsClient 2026-05-20). File retained pending operator go-ahead. One unit
+  test exists that constructs it; removal is a two-line clean — confirm safe.
+
+## Queue
+
 - Add `service-email` to `conventions/software-units.yaml` (workspace scope)
   so `bin/deploy-binary.sh` can manage future binary updates. Binary currently
   deployed manually; ledger entry at `data/binary-ledger/service-email.jsonl`.
