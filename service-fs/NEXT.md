@@ -14,6 +14,7 @@
 > Last updated: 2026-05-27 (session 5)
 > Last updated: 2026-05-29 (session 6)
 > Last updated: 2026-05-29 (session 7)
+> Last updated: 2026-05-27 (session 5)
 > Read at session start. Update before session end so the next
 > session knows where to pick up.
 
@@ -133,6 +134,14 @@ for `anchor-emitter/` (monthly Rekor anchoring, Doctrine Invention #7).
   project-editorial as a JOURNAL-NOTES-j2 addendum once available.
   Required for J2 submission data section (J2 ASPLOS submission;
   J5 on HOLD pending J2).
+Nothing pending in Totebox scope. Master owns the systemd timer
+for `anchor-emitter/` (monthly Rekor anchoring, Doctrine Invention #7).
+
+## Queue
+
+- `discovery-queue/` cleanup — registry has it as Not-a-project;
+  move to `service-fs/data/` deferred until segment-file storage lands.
+  Operator decision pending.
 
 ## Deferred
 
