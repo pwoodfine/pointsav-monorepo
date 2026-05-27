@@ -5,6 +5,7 @@
 > Last updated: 2026-05-27 (session 5)
 > Last updated: 2026-05-29 (session 6)
 > Last updated: 2026-05-29 (session 7)
+> Last updated: 2026-05-27 (session 5)
 > Read at session start. Update before session end so the next
 > session knows where to pick up.
 
@@ -79,6 +80,14 @@ for `anchor-emitter/` (monthly Rekor anchoring, Doctrine Invention #7).
   256-entry sealed segments (C2SP tlog-tiles target) are the next
   performance tier. Hold until J2 bench data establishes the O(N)
   baseline so the improvement is quantifiable.
+Nothing pending in Totebox scope. Master owns the systemd timer
+for `anchor-emitter/` (monthly Rekor anchoring, Doctrine Invention #7).
+
+## Queue
+
+- `discovery-queue/` cleanup — registry has it as Not-a-project;
+  move to `service-fs/data/` deferred until segment-file storage lands.
+  Operator decision pending.
 
 ## Deferred
 
