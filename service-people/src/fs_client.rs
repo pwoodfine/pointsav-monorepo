@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0 OR MIT
 
 use serde::{Deserialize, Serialize};
+use crate::acs::{Anchor, Claim};
 use crate::person::Person;
 
 #[derive(Debug, Clone)]
@@ -51,11 +52,15 @@ impl FsClient {
         }
     }
 
-    pub fn append(&self, person: &Person) -> Result<u64, FsClientError> {
+    fn append_record<T: Serialize>(
+        &self,
+        payload_id: &str,
+        payload: &T,
+    ) -> Result<u64, FsClientError> {
         let url = format!("{}/v1/append", self.base_url);
         let body = serde_json::json!({
-            "payload_id": person.id.to_string(),
-            "payload": person
+            "payload_id": payload_id,
+            "payload": payload
         });
 
         let mut response = ureq::post(&url)
@@ -77,6 +82,18 @@ impl FsClient {
                 "missing or non-u64 'cursor' in response: {resp_json}"
             ))
         })
+    }
+
+    pub fn append(&self, person: &Person) -> Result<u64, FsClientError> {
+        self.append_record(&person.id.to_string(), person)
+    }
+
+    pub fn append_anchor(&self, anchor: &Anchor) -> Result<u64, FsClientError> {
+        self.append_record(&anchor.target_uuid, anchor)
+    }
+
+    pub fn append_claim(&self, claim: &Claim) -> Result<u64, FsClientError> {
+        self.append_record(&claim.claim_id, claim)
     }
 }
 
@@ -103,5 +120,41 @@ mod tests {
         let client = FsClient::new("http://127.0.0.1:9100", "test-module");
         assert_eq!(client.base_url, "http://127.0.0.1:9100");
         assert_eq!(client.module_id, "test-module");
+    }
+
+    #[test]
+    fn fs_client_is_clone() {
+        let client = FsClient::new("http://127.0.0.1:9100", "test-module");
+        let cloned = client.clone();
+        assert_eq!(client.base_url, cloned.base_url);
+        assert_eq!(client.module_id, cloned.module_id);
+    }
+
+    #[test]
+    fn anchor_serializes_correctly() {
+        let anchor = Anchor {
+            target_uuid: "test-uuid".to_string(),
+            anchor_source: "test@example.com".to_string(),
+            timestamp: "2026-01-01T00:00:00Z".to_string(),
+        };
+        let json = serde_json::to_string(&anchor).unwrap();
+        assert!(json.contains("\"target_uuid\""));
+        assert!(json.contains("test@example.com"));
+    }
+
+    #[test]
+    fn claim_serializes_correctly() {
+        let claim = Claim {
+            claim_id: "claim-1".to_string(),
+            target_uuid: "test-uuid".to_string(),
+            attribute: "email".to_string(),
+            value: "test@example.com".to_string(),
+            confidence_score: 1.0,
+            source_id: "doc.txt".to_string(),
+            timestamp: "2026-01-01T00:00:00Z".to_string(),
+        };
+        let json = serde_json::to_string(&claim).unwrap();
+        assert!(json.contains("\"attribute\""));
+        assert!(json.contains("\"confidence_score\""));
     }
 }
