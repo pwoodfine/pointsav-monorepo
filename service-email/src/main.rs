@@ -38,7 +38,6 @@ mod auth;
 mod ews_client;
 mod fs_client;
 mod http;
-mod maildir;
 mod mcp;
 
 use auth::EwsCredentials;
