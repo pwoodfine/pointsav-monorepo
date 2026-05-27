@@ -2,6 +2,7 @@
 
 > Last updated: 2026-04-25
 > Last updated: 2026-04-27
+> Last updated: 2026-05-27 (session 5)
 > Read at session start. Update before session end so the next
 > session knows where to pick up.
 
@@ -45,6 +46,14 @@
 - All scaffold-replacement work — Blocked on: Master Claude
   ratification of the rewrite plan in response to outbox message
   `ring1-scaffold-runtime-model-drift`.
+Nothing pending in Totebox scope. Master owns the systemd timer
+for `anchor-emitter/` (monthly Rekor anchoring, Doctrine Invention #7).
+
+## Queue
+
+- `discovery-queue/` cleanup — registry has it as Not-a-project;
+  move to `service-fs/data/` deferred until segment-file storage lands.
+  Operator decision pending.
 
 ## Deferred
 
@@ -60,6 +69,10 @@
   CLAUDE.md, this NEXT.md, and the registry row created in one
   commit; runtime-model drift surfaced in CLAUDE.md "Current state"
   rather than silently propagated.
+- 2026-05-19 (Master): **`local-fs.service` deployed** on `127.0.0.1:9100`.
+  `FS_MODULE_ID=foundry-workspace`, `FS_LEDGER_ROOT` configured. Confirmed
+  healthy in session 3. Systemd unit at `infrastructure/local-fs/local-fs.service`.
+
 - 2026-04-27: **`anchor-emitter/` Rust binary** (Doctrine Invention #7).
   New standalone crate at `service-fs/anchor-emitter/` (own `[workspace]`
   to avoid openssl-sys workspace conflicts). Reads `FS_ENDPOINT` +
