@@ -2,6 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
 
 // Architectural Scaffold
+pub mod acs;
 pub mod person;
 pub mod fs_client;
 pub mod http;

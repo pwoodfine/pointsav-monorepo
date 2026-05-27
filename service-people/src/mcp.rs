@@ -7,6 +7,7 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use crate::acs;
 use crate::person::Person;
 use uuid::Uuid;
 
@@ -125,6 +126,18 @@ fn tools_list_handler(request: &JsonRpcRequest) -> JsonRpcResponse {
                     },
                     "required": ["query_type", "value"]
                 }
+            },
+            {
+                "name": "identity.scan_text",
+                "description": "Scan raw text for email addresses and emit Anchor+Claim records to the WORM ledger",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "text": { "type": "string", "description": "Raw text to scan for email addresses" },
+                        "source_id": { "type": "string", "description": "Document or source identifier for provenance" }
+                    },
+                    "required": ["text", "source_id"]
+                }
             }
         ]
     });
@@ -175,6 +188,7 @@ async fn tools_call_handler(state: &AppState, request: &JsonRpcRequest) -> JsonR
     match tool_name {
         "identity.append" => append_tool_handler(state, &arguments, request).await,
         "identity.lookup" => lookup_tool_handler(state, &arguments, request).await,
+        "identity.scan_text" => scan_text_tool_handler(state, &arguments, request).await,
         _ => JsonRpcResponse {
             jsonrpc: "2.0".to_string(),
             result: None,
@@ -300,6 +314,52 @@ async fn lookup_tool_handler(
     }
 }
 
+async fn scan_text_tool_handler(
+    state: &AppState,
+    arguments: &Value,
+    request: &JsonRpcRequest,
+) -> JsonRpcResponse {
+    let args = match arguments.as_object() {
+        Some(obj) => obj,
+        None => return error_response(-32602, "Invalid arguments", request.id.clone()),
+    };
+
+    let text = match args.get("text").and_then(|v| v.as_str()) {
+        Some(t) => t,
+        None => return error_response(-32602, "Missing 'text' argument", request.id.clone()),
+    };
+
+    let source_id = match args.get("source_id").and_then(|v| v.as_str()) {
+        Some(s) => s,
+        None => return error_response(-32602, "Missing 'source_id' argument", request.id.clone()),
+    };
+
+    let pairs = acs::scan_text(text, source_id);
+    let identities_found = pairs.len();
+    let mut anchors_written = 0u64;
+    let mut claims_written = 0u64;
+
+    for (anchor, claim) in &pairs {
+        if state.fs_client.append_anchor(anchor).is_ok() {
+            anchors_written += 1;
+        }
+        if state.fs_client.append_claim(claim).is_ok() {
+            claims_written += 1;
+        }
+    }
+
+    JsonRpcResponse {
+        jsonrpc: "2.0".to_string(),
+        result: Some(json!({
+            "identities_found": identities_found,
+            "anchors_written": anchors_written,
+            "claims_written": claims_written
+        })),
+        error: None,
+        id: request.id.clone(),
+    }
+}
+
 fn resources_list_handler(request: &JsonRpcRequest) -> JsonRpcResponse {
     let resources = json!({
         "resources": []
@@ -349,7 +409,7 @@ mod tests {
     }
 
     #[test]
-    fn tools_list_includes_both_tools() {
+    fn tools_list_includes_all_three_tools() {
         let request = JsonRpcRequest {
             jsonrpc: "2.0".to_string(),
             method: "tools/list".to_string(),
@@ -362,7 +422,7 @@ mod tests {
 
         let result = response.result.unwrap();
         let tools = result.get("tools").unwrap().as_array().unwrap();
-        assert_eq!(tools.len(), 2);
+        assert_eq!(tools.len(), 3);
 
         let tool_names: Vec<&str> = tools
             .iter()
@@ -371,6 +431,35 @@ mod tests {
 
         assert!(tool_names.contains(&"identity.append"));
         assert!(tool_names.contains(&"identity.lookup"));
+        assert!(tool_names.contains(&"identity.scan_text"));
+    }
+
+    #[test]
+    fn scan_text_tool_is_in_tools_list() {
+        let request = JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            method: "tools/list".to_string(),
+            params: None,
+            id: Some(Value::Number(2.into())),
+        };
+
+        let response = tools_list_handler(&request);
+        let result = response.result.unwrap();
+        let tools = result.get("tools").unwrap().as_array().unwrap();
+
+        let scan_tool = tools
+            .iter()
+            .find(|t| t.get("name").and_then(|n| n.as_str()) == Some("identity.scan_text"))
+            .expect("identity.scan_text must be in tools list");
+
+        let schema = scan_tool.get("inputSchema").unwrap();
+        let required = schema.get("required").unwrap().as_array().unwrap();
+        let required_names: Vec<&str> = required
+            .iter()
+            .filter_map(|v| v.as_str())
+            .collect();
+        assert!(required_names.contains(&"text"));
+        assert!(required_names.contains(&"source_id"));
     }
 
     #[test]
