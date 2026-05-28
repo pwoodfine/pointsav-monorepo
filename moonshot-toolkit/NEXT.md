@@ -17,6 +17,35 @@
 - **Configurable kernel/elfloader paths** — `vendor-sel4-kernel/build/aarch64-qemu`
   and `vendor-sel4-tools/elfloader-tool` are well-known hardcoded paths. Consider
   a `[build]` section in system-spec.toml for per-spec overrides.
+- Nothing in progress. Phase 1C.c complete (`d550217`): seL4 qemu-arm-virt
+  AArch64 QEMU boot confirmed — "hello from seL4 rootserver" output observed.
+  Phase 1C.d still blocked — see Blocked section below.
+
+## Queue
+
+- **Sigstore Cosign + customer-apex cosignature** — `plan_hash` field is in place; cosignature emission deferred until `moonshot-toolkit build` produces a full bootable image (post-#14 + post-Phase 1C.d).
+- **`build-totebox.sh` removal** — still present; remove once moonshot-toolkit build produces a real bootable image end-to-end (Phase 1C.d complete).
+
+## Blocked
+
+- ~~**Phase 1C.c — QEMU boot**~~ COMPLETE (`d550217`, 2026-05-28).
+  Boot: elfloader → seL4 kernel → hello-rootserver → "hello from seL4 rootserver".
+  Three root causes resolved: KernelVerificationBuild=ON disabled CONFIG_PRINTING;
+  GNU cpio padding mismatch (replaced with Python CPIO writer); QEMU -m 512M <
+  kernel DTB range (boot with -m 1G). Elfloader entry 0x40400000, kernel at
+  0xffffff8040000000, rootserver at 0x400000.
+
+- **Phase 1C.d — Image assembly** — `AssembleImage` step returns an actionable
+  error. Requires either:
+  1. Microkit SDK tarball — available from `github.com/seL4/microkit/releases`
+     as a pre-built release (e.g. `microkit-sdk-1.4.0-linux-x86-64.tar.gz`).
+     Provides `bin/microkit` CLI: `microkit <system.xml> --board qemu-arm-virt
+     --config debug --search-path build/ --output build/system.img`.
+     Note: the `microkit` PyPI package is an unrelated Flask helper — do not install.
+  2. Rust image assembler — `moonshot-toolkit/src/assemble.rs` implementing the
+     Microkit image format (ELF packing + manifest). Preferred path per MEMO §7
+     Rust-Only mandate; requires documenting the Microkit image format spec first.
+  Unblocked by: either option above. Rust path is preferred long-term.
 
 ## Deferred
 
