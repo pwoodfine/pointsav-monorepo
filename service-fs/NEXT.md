@@ -4,6 +4,7 @@
 > Last updated: 2026-04-27
 > Last updated: 2026-05-27 (session 5)
 > Last updated: 2026-05-29 (session 6)
+> Last updated: 2026-05-29 (session 7)
 > Read at session start. Update before session end so the next
 > session knows where to pick up.
 
@@ -62,6 +63,16 @@ for `anchor-emitter/` (monthly Rekor anchoring, Doctrine Invention #7).
   project-editorial as a JOURNAL-NOTES-j2 addendum once available.
   Required for J2 submission data section (J2 ASPLOS submission;
   J5 on HOLD pending J2).
+- **Bench re-run with trimmed parameters** — full 100-sample run at
+  prior_entries=[0,10,50,100] estimated >3 hours on GCE pd-standard.
+  Re-run with `--sample-size 10` and/or remove the 50/100 data points
+  to collect checkpoint + read_since groups in a practical session window.
+  J2 data draft already staged (`JOURNAL-NOTES-j2-benchmarks.md`);
+  this re-run adds the missing checkpoint latency + read_since numbers.
+- **Segment-file upgrade** — append is currently O(N) per D4 full-rewrite.
+  256-entry sealed segments (C2SP tlog-tiles target) are the next
+  performance tier. Hold until J2 bench data establishes the O(N)
+  baseline so the improvement is quantifiable.
 
 ## Deferred
 
@@ -77,6 +88,15 @@ for `anchor-emitter/` (monthly Rekor anchoring, Doctrine Invention #7).
   CLAUDE.md, this NEXT.md, and the registry row created in one
   commit; runtime-model drift surfaced in CLAUDE.md "Current state"
   rather than silently propagated.
+- 2026-05-29 (session 7): **Criterion bench harness added** (commit `7006b29f`).
+  `service-fs/benches/ledger_bench.rs` — three benchmark groups: `append/single_call`
+  (iter_batched at prior sizes [0,10,50,100]), `checkpoint` (pre-seeded [1,100,1000]),
+  `read_since/full_scan` (pre-seeded [10,100,1000]). Criterion 0.5 + html_reports
+  added to dev-dependencies. Initial run: `append/prior_entries/0` = **422ms median**
+  [399ms, 448ms] (100 samples, GCE pd-standard disk). O(N) full-rewrite confirmed
+  (0→10 prior entries: ~15.6× cost increase). `JOURNAL-NOTES-j2-benchmarks.md`
+  staged in `.agent/drafts-outbound/` as J2 §4 performance data addendum.
+
 - 2026-05-19 (Master): **`local-fs.service` deployed** on `127.0.0.1:9100`.
   `FS_MODULE_ID=foundry-workspace`, `FS_LEDGER_ROOT` configured. Confirmed
   healthy in session 3. Systemd unit at `infrastructure/local-fs/local-fs.service`.
