@@ -69,6 +69,12 @@ for `anchor-emitter/` (monthly Rekor anchoring, Doctrine Invention #7).
   to collect checkpoint + read_since groups in a practical session window.
   J2 data draft already staged (`JOURNAL-NOTES-j2-benchmarks.md`);
   this re-run adds the missing checkpoint latency + read_since numbers.
+- **Bench re-run on cold storage (nice-to-have)** — the 2026-05-29 run measured
+  all three groups at 100 samples each; results are in `JOURNAL-NOTES-j2-benchmarks.md`.
+  Append results were OS-page-cache-warm (masked O(N) at N≤100). A cold-storage run
+  (fresh VM boot, no prior writes) would confirm the warm-up-phase O(N) scaling
+  seen during the session. Not blocking for J2 — the current draft notes the
+  cache effect explicitly.
 - **Segment-file upgrade** — append is currently O(N) per D4 full-rewrite.
   256-entry sealed segments (C2SP tlog-tiles target) are the next
   performance tier. Hold until J2 bench data establishes the O(N)
