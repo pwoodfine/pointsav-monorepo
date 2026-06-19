@@ -38,6 +38,12 @@ woodfine-fleet-deployment/
 .DS_Store
 ~$*
 
+# Log files — pipeline output; never committed
+*.log
+
+# Pipeline analysis output — local only
+*-conflict-report.json
+
 # Safety-net archive of misplaced repo clones (cannot be committed; deletion review 2026-07-01)
 archive-2026-06-01/
 
