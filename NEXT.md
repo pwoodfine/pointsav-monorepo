@@ -2,6 +2,7 @@
 # NEXT.md — project-gis (Totebox)
 # NEXT.md — project-editorial (Totebox)
 # NEXT.md — project-workplace (Totebox)
+# NEXT.md — project-design (Totebox)
 
 > Totebox Session — starts in `/srv/foundry/clones/project-console`
 > Phase 10 complete 2026-06-16. Phase 11 (F7 BIM) blocked on project-bim Phase 1.
@@ -10,6 +11,7 @@ Hot open items. ≤200 lines. Backlog at `.agent/next-backlog.md`.
 > **NOTE (2026-06-19):** Lines below this section contain contamination from prior project-knowledge + project-intelligence sessions. Cleanup is a carry-forward item — do not act on those items.
 
 Last updated: 2026-06-19
+Last updated: 2026-06-18
 
 ---
 
@@ -84,6 +86,10 @@ Last updated: 2026-06-19
       [2026-06-17 totebox@claude-code]
 - [ ] **check --strict gate** — F2/F3 dead links at project-editorial must resolve first
       [2026-06-17 command@claude-code]
+- [x] **app-privategit-design Stage 6 (Phases A–D)** — promoted; canonical includes routes split,
+      inotify watcher, SSE sidebar, Phase C WYSIWYG, Phase D AI bridge [2026-06-18 command@claude-code]
+- [ ] **pointsav-design-system Stage 6** — 4 commits unpromoted (financial-report-layout,
+      orgchart primitives, wp-* tokens, financial-report-layout V2); send Stage 6 msg to Command
 
 These require operator access to iMac / vault-privategit-source-1 to diagnose:
 
@@ -218,3 +224,24 @@ Outbox to project-data sent 2026-06-19 to start parallel os-totebox + os-orchest
 - [x] Master BRIEF updated (Sprint 0 row; 2026-06-15 work log) — 298ba52a
 - [x] 12-agent external audit — F1–F7 content repair requests dispatched to project-editorial
 - [x] check --strict: F2/F3 dead links identified
+- [ ] **M-17 BRIEF sweep** — ~8 foreign BRIEFs in `.agent/briefs/` (BRIEF-enrichment-pipeline-correctness,
+      BRIEF-jennifer-2-ingest-pipeline, BRIEF-journal-programme, BRIEF-gis-nightly-rebuild-aec-2026-06-12,
+      BRIEF-cross-platform-release, etc.); mark status: archived on non-design BRIEFs
+- [ ] **CLAUDE.md + manifest.md identity repair** — completed 2026-06-18 by Command; verify at next
+      session start that `get_session_brief(archive="project-design")` resolves correctly
+- [ ] **F-series content repair** — track responses from project-editorial for F1–F7 requests
+      (design system documentation gaps); update artifact-registry.md Status column when returned
+- [ ] **pointsav-design-system sub-clone Stage 6** — push 4 commits to staging-j, notify Command
+
+## Completed (Sessions 1–12)
+
+- [x] **app-privategit-design v0.2.0** — multi-module rewrite; 4 moonshot stubs (74527127)
+- [x] **Phase A** — D1 routes/ split + D8 sovereign inotify watcher + in-memory search index
+- [x] **Phase B** — D4 SSE live-reload sidebar + static/ assets
+- [x] **Phase C** — D3 WYSIWYG edit overlay + PUT vault save-back
+- [x] **Phase D** — D5 AI bridge; DoormanOlmo + ClaudeCloud SSE relay; static/ai.js selection overlay
+- [x] **DESIGN-TOKEN-CHANGE-wp-tokens** — 27 wp-* Workplace token foundation; dispatched to project-editorial
+- [x] **BRIEF-app-privategit-design** — v0.2.0 plan (12-point rewrite); DESIGN-BUNDLE discovery
+- [x] **BRIEF audit** — foreign BRIEFs identified and logged; ~8 M-17 contamination items surfaced
+- [x] **archive identity repair** — manifest.md + CLAUDE.md corrected from project-intelligence
+      contamination [2026-06-18 command@claude-code]
