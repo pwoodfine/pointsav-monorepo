@@ -1,16 +1,34 @@
 # NEXT.md — project-console
 # NEXT.md — project-gis (Totebox)
+# NEXT.md — project-editorial (Totebox)
 
 > Totebox Session — starts in `/srv/foundry/clones/project-console`
 > Phase 10 complete 2026-06-16. Phase 11 (F7 BIM) blocked on project-bim Phase 1.
 Hot open items. ≤200 lines. Backlog at `.agent/next-backlog.md`.
 > **Scope: this archive only.** Cross-repo and workspace-level items live at `~/Foundry/NEXT.md`.
+> **NOTE (2026-06-19):** Lines below this section contain contamination from prior project-knowledge + project-intelligence sessions. Cleanup is a carry-forward item — do not act on those items.
 
 Last updated: 2026-06-19
 
 ---
 
 ## Phase 11 — F7 BIM cartridge (blocked)
+## Active (Totebox scope)
+
+- [ ] **Stage 6 pending** — media-knowledge-projects tip 7fa466b (6 commits: M7 snapshot dating + M9 parity passes 1–5). Route to Command [2026-06-19 totebox@claude-code]
+- [ ] **Track 2d / project-console** — Command routing guidance pending for PROSE-RESEARCH-ppn-architecture-phd-thesis + knowledge-platform-rewrite; 13 project-console artifacts awaiting Command ACK (msg-id: command-20260619-drafts-outbound-pickup-editorial-researc) [2026-06-19 totebox@claude-code]
+- [ ] **media-knowledge-documentation M9** — ES parity sweep not yet run for documentation sub-clone [2026-06-19 totebox@claude-code]
+- [ ] **NEXT.md contamination cleanup** — project-knowledge + project-intelligence content below must be relocated or deleted [2026-06-19 totebox@claude-code]
+- [ ] **F2/F3 dead links** — check --strict gate blocked; dead wikilinks in project-editorial [carried]
+
+## Completed (2026-06-19)
+
+- [x] **M7 snapshot dating** — corrected 7,594 → 6,493 in index.md; methodology-example note in dedup article; commit 4649f95 [2026-06-19 totebox@claude-code]
+- [x] **M9 EN/ES parity sweep** — all 53 ES articles in media-knowledge-projects at 84%+; 5 commit passes (f7a9be5, 6310748, 1c5d2db, ba4c412, 7fa466b) [2026-06-19 totebox@claude-code]
+
+---
+
+## Stale (prior project-knowledge + project-intelligence contamination — DO NOT ACT)
 
 - [ ] `app-console-bim` activation — blocked on project-bim Phase 1 service (no ETA from project-bim)
 
