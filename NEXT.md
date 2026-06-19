@@ -205,3 +205,16 @@ Outbox to project-data sent 2026-06-19 to start parallel os-totebox + os-orchest
 - [x] **archive contamination identified** — NEXT.md, session-start, briefs/README foreign content reported via outbox [2026-06-16 totebox]
 - [x] **app-workplace-http-prototype** — manual start after service died on reboot [2026-06-16 totebox]
 - [x] **DESIGN-TOKEN-CHANGE-wp-tokens** — 27 DTCG tokens committed + routed to project-design [2026-06-09 totebox]
+- [x] **Stage 6 — sub-clone + archive** — promoted Session 86 (→ d0abd9ad) [2026-06-16 command]
+- [x] **Post-Stage-6 TOML + binary rebuild** — instance/canonical_url added; binary rebuilt; all 3 instances healthy [2026-06-16 command]
+- [x] Phase 9: WCAG 2.2 focus outline, sitemap/i18n repairs, defects 1/4/8 — committed E6+E7
+- [x] Phase 7 ActivityPub scaffold — committed E5 (6d554ec6)
+- [x] Sprint C 7-category IA — 9cc1a80c
+- [x] GET /images/{*path} route — da07781e
+- [x] Sub-clone CLAUDE.md identity fixed (was project-console contamination) — a51f201b
+- [x] Archive identity corrected in manifest + CLAUDE.md — 9fb431cb
+- [x] .agent/briefs/ gitignore exclusion removed; BRIEFs now tracked — f11197ee
+- [x] D1b draft renamed with DESIGN- prefix — 9eda459f
+- [x] Master BRIEF updated (Sprint 0 row; 2026-06-15 work log) — 298ba52a
+- [x] 12-agent external audit — F1–F7 content repair requests dispatched to project-editorial
+- [x] check --strict: F2/F3 dead links identified
