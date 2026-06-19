@@ -29,22 +29,32 @@ Last updated: 2026-06-19
       EU seismic cluster count (still 0 — ESHM20 tarball issue pre-existing),
       layer11 freshness (120 MB, Jun 18 22:18 ✓), layer12 EU flood (151 KB present).
       Commands: `python3 -c "import json; d=json.load(open('/srv/foundry/deployments/gateway-orchestration-gis-1/www/data/archetype-pks.geojson')); ..."` per plan.
+- [ ] **GFWED wildfire — Night 6 verification** — GFWED variable name bug fixed (`:FWI` → `:GPM.LATE.v5_FWI`).
+      Next `build-aec-flood.sh` run should produce layer15-wildfire-global.pmtiles.
+      Verify: `ls -lh /srv/foundry/deployments/gateway-orchestration-gis-1/www/tiles/layer15*.pmtiles`
       [2026-06-19 totebox@claude-code]
-- [ ] **GFWED wildfire** — all 12 months of 2024 download failed in build-aec-flood.sh Step 13
-      (wildfire raster not produced; layer15/Step16 skipped). Investigate GFWED URL or
-      find alternate source. [2026-06-19 totebox@claude-code]
-- [ ] **EU seismic (EFEHR / ESHM20)** — ESHM20 tarball from gitlab.seismo.ethz.ch produces
-      1-feature metadata GeoJSON (not hazard polygons); EU seismic remains 0 clusters.
-      Step 8 OR→two-if logic bug fixed 2026-06-17. Tarball content issue is separate.
-      [2026-06-17 totebox@claude-code]
+- [ ] **EU seismic fallback** — `maps.efehr.org` is NXDOMAIN (subdomain removed upstream).
+      Parent `efehr.org` resolves (129.132.116.17). Investigate:
+      (a) `git clone --depth 1 https://gitlab.seismo.ethz.ch/efehr/eshm20.git` to see if
+          actual hazard shapefiles are in the repo (vs the tarball's metadata-only GeoJSON);
+      (b) GSHAP GeoTIFF from gfz.de as fallback (coarser 1999 data; already documented in
+          sample-eshm20-api.py fallback section).
+      [2026-06-19 totebox@claude-code]
+- [ ] **FEMA US SFHA (layer12-fema-sfha-us.pmtiles)** — Not refreshed in Night 5 (clusters.geojson
+      missing). Check why FEMA REST step was skipped; old Jun 17 tile (2.8 MB) still deployed.
+      [2026-06-19 totebox@claude-code]
 - [ ] **F-series tracking** — F1–F7 content repair requests sent to project-editorial 2026-06-14;
       track responses; update artifact-registry.md Status column when returned
       [2026-06-16 totebox]
 
 ## Blocked — Command Session (route via outbox)
 
-- [ ] **Stage 6 READY** — 2 commits ahead of origin: f06fff1e (numpy 2.x + USGS_TIF) +
-      ce6bdca1 (OGR_GEOJSON_MAX_OBJ_SIZE fix). Outbox msg queued. [2026-06-19 totebox@claude-code]
+- [ ] **Stage 6 READY** — 3 commits ahead of origin:
+      - `f06fff1e` fix(gis): numpy 2.x compat — gdal_calc.py→GDAL Python API; USGS_TIF explicit default
+      - `ce6bdca1` fix(gis): OGR_GEOJSON_MAX_OBJ_SIZE 0 for large IT flood GeoJSON in merge step
+      - `b203609d` docs(gis): NEXT.md updated — Night 5 flood build; GFWED + EU seismic carry-forward
+      - (+ this session's commit once landed)
+      Outbox msg queued. [2026-06-19 totebox@claude-code]
 - [ ] **push-to-prod.sh gis** — after post-overnight verification passes; Command Session only.
       [2026-06-17 totebox@claude-code]
 - [ ] **check --strict gate** — F2/F3 dead links at project-editorial must resolve first
@@ -123,19 +133,31 @@ Outbox to project-data sent 2026-06-19 to start parallel os-totebox + os-orchest
       92MB, causing every clean download to fail validation [2026-06-17 totebox@claude-code]
 - [x] **PKS Phase 5b** — 7,045 clusters (T1=692/T2=2,665/T3=3,188); MX=177; false-US removed
       [2026-06-16 totebox]
+- [x] **Post-overnight build verification** — 2026-06-19 session: PKS T1=692 ✓, T2=2,670, T3=3,709;
+      park_ride=22,514 ✓; layer10 (2.1 MB) ✓, layer11 (120 MB) ✓, layer12-EU (151 KB) ✓;
+      flood_hazard=855 hits in PRO clusters-meta ✓; wildfire FAILED (variable name bug now fixed);
+      EU seismic 0 (ESHM20 blocked, not script). [2026-06-19 totebox@claude-code]
+- [x] **GFWED variable name fix** — NetCDF variable is `GPM.LATE.v5_FWI` not `FWI`; fixed
+      in build-aec-flood.sh lines 504–505 (2026-06-19 totebox@claude-code)
+- [x] **Log file cleanup** — *.log added to .gitignore (root + app-orchestration-gis);
+      empty stale logs (ingest-100m.log, ingest-1km.log, test_bg.log) deleted; all remaining
+      logs now gitignored [2026-06-19 totebox@claude-code]
+- [x] **Briefs README contamination** — README.md was showing project-knowledge content;
+      restored to GIS briefs (pks-fable-analysis + gis-nightly-rebuild-aec) [2026-06-19 totebox@claude-code]
+- [x] **build-aec-flood.sh OGR_GEOJSON_MAX_OBJ_SIZE fix** — Step 12 EU merge fixed (ce6bdca1) [2026-06-19 totebox@claude-code]
+- [x] **build-aec-flood.sh numpy 2.x / USGS_TIF fix** — gdal_calc.py→pure GDAL Python API (f06fff1e) [2026-06-18 totebox@claude-code]
+- [x] **AEC flood build — Night 5** — layer11 ✓, layer12-EU ✓; wildfire GFWED failed [2026-06-19 totebox@claude-code]
+- [x] **overnight-aec-builds.sh path fix** (2026-06-17 totebox@claude-code)
+- [x] **build-aec-seismic.sh EU join fix** — Step 8 OR→two-if (2026-06-17 totebox@claude-code)
+- [x] **build-aec-flood.sh AQUEDUCT threshold fix** — 100MB→85MB (2026-06-17 totebox@claude-code)
+- [x] **PKS Phase 5b** — 7,045 clusters (T1=692/T2=2,665/T3=3,188); MX=177 [2026-06-16 totebox]
 - [x] **park-and-ride anchor ingest** — 23,117 records [2026-06-16 totebox]
 - [x] **EU/US car rental + hotel chain ingests** [2026-06-16 totebox]
 - [x] **PKS archetype rebalanced** — Fable analysis + mode-group collapse [2026-06-15 totebox]
-- [x] **VWH retail_contamination badge** — showArchetypeDetail() badge for 3,048/6,368 clusters
-      [2026-06-13 totebox]
-- [x] **AEC wetland VRT fix** — 408 GWL_FCS30 5°-tiles assembled; gdal_translate removed (9c041f65)
-      [2026-06-16 totebox]
+- [x] **VWH retail_contamination badge** (2026-06-13 totebox)
+- [x] **AEC wetland VRT fix** — 408 GWL_FCS30 5°-tiles assembled (9c041f65) [2026-06-16 totebox]
 - [x] **AEC wildfire numpy fix** — pure Python GDAL API (2ea45b07) [2026-06-16 totebox]
-- [x] **ashrae_zone producer script** — build-ashrae-zone.py; 6,493/6,493 populated (dce0d157)
-      [2026-06-16 totebox]
-- [x] **PKS opportunity_class field** — SATURATED/EXPAND/DEVELOP per BRIEF §10.12 (2ea45b07)
-      [2026-06-16 totebox]
-- [x] **EFEHR seismic API (sample-eshm20-api.py)** — maps.efehr.org NXDOMAIN; main build script
-      uses gitlab.seismo.ethz.ch tarball (unaffected); sample script is dev-only [2026-06-16 totebox]
-- [x] **NEXT.md contamination (M-17)** — project-knowledge + project-intelligence content removed;
-      GIS-only content restored [2026-06-17 totebox@claude-code]
+- [x] **ashrae_zone producer script** — build-ashrae-zone.py; 6,493/6,493 populated (dce0d157) [2026-06-16 totebox]
+- [x] **PKS opportunity_class field** — SATURATED/EXPAND/DEVELOP (2ea45b07) [2026-06-16 totebox]
+- [x] **EFEHR seismic API (sample-eshm20-api.py)** — maps.efehr.org now confirmed NXDOMAIN [2026-06-16 totebox]
+- [x] **NEXT.md contamination (M-17)** — project-knowledge + project-intelligence content removed (2026-06-17 totebox@claude-code)
