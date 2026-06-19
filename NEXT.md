@@ -1,6 +1,7 @@
 # NEXT.md — project-console
 # NEXT.md — project-gis (Totebox)
 # NEXT.md — project-editorial (Totebox)
+# NEXT.md — project-workplace (Totebox)
 
 > Totebox Session — starts in `/srv/foundry/clones/project-console`
 > Phase 10 complete 2026-06-16. Phase 11 (F7 BIM) blocked on project-bim Phase 1.
@@ -181,3 +182,26 @@ Outbox to project-data sent 2026-06-19 to start parallel os-totebox + os-orchest
 - [x] **overnight-aec-builds.sh path fix** (2026-06-17 totebox@claude-code)
 - [x] **build-aec-seismic.sh EU join fix** — Step 8 OR→two-if (2026-06-17 totebox@claude-code)
 - [x] **build-aec-flood.sh AQUEDUCT threshold fix** — 100MB→85MB (2026-06-17 totebox@claude-code)
+## Blocked — Command Session (route via outbox)
+
+- [ ] **Stage 6 — monorepo** — workbench + moonshot crates (f00e676a ec305edc 8412516b + 75aa556c)
+      msg-id: project-workplace-20260614-workbench-moonshot-stage6
+- [ ] **prototype systemd unit** — `local-workplace-http-prototype.service` (port 9110)
+      msg-id: project-workplace-20260616-contamination-and-prototype-unit
+
+## Active (Totebox scope)
+
+- [ ] **M-17 BRIEF sweep** — ~20 foreign BRIEFs in `.agent/briefs/`; identify owners + route via outbox
+- [ ] **manifest cluster_branch reconcile** — `cluster/project-workplace` is 1046 commits behind main; update manifest to point to main
+- [ ] **briefs/state versioning gap** — after Option A gitignore, BRIEFs + NEXT + session-context unversioned; needs versioning home
+- [ ] **app-workplace-aibridge Phase 3** — deeper docengine + crdt cross-crate composition layers
+- [ ] **moonshot crates Phase 3** — parser incremental retokenize; crdt undo/redo hardening; bim-engine full STEP grammar
+
+## Completed (Sessions 1–11)
+
+- [x] **workbench moonshot crates** — docengine/parser/crdt/editor/bim-engine v0 + app-workplace-aibridge; 53+ tests [2026-06-14 totebox]
+- [x] **workbench pre-promote fixes** — cargo fmt + clippy fix (f00e676a + ec305edc) [2026-06-09 totebox]
+- [x] **BRIEF audit** — all 10 project-workplace BRIEFs updated with correct frontmatter [2026-06-15 totebox]
+- [x] **archive contamination identified** — NEXT.md, session-start, briefs/README foreign content reported via outbox [2026-06-16 totebox]
+- [x] **app-workplace-http-prototype** — manual start after service died on reboot [2026-06-16 totebox]
+- [x] **DESIGN-TOKEN-CHANGE-wp-tokens** — 27 DTCG tokens committed + routed to project-design [2026-06-09 totebox]
