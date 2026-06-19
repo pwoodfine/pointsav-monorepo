@@ -10,11 +10,12 @@
 
 ## Cluster mission
 
-SLM inference infrastructure — Doorman (Tier A/B/C routing + circuit breaker),
-OLMo 7B Tier A (local CPU inference via `local-slm.service`),
-OLMo 32B Tier B (yoyo-batch L4 GPU; us-central1-b target),
-DataGraph entity enrichment (LadybugDB via `service-content`),
-and LoRA training pipeline.
+Editorial gateway for all three content platforms (documentation, projects, corporate).
+Responsibilities: language pass (banned-vocab + BCSC compliance), bilingual EN+ES review,
+TOPIC/GUIDE routing to content-wiki-* and woodfine-fleet-deployment, wiki commit pipeline.
+Manages media-knowledge-documentation, media-knowledge-projects, and media-knowledge-corporate
+as canonical sub-clones (DOCTRINE §IV.e exception — commits go directly to canonical; GitHub
+is downstream mirror).
 
 **Active cartridges:** F2 People, F4 Content, F9 SLM, F11 System, F12 Input (Anchor), F3 Email, F6 Bookkeeper.
 **Phase 10 complete 2026-06-16:** F2 PeopleCartridge scaffold, Rgb color helpers, session persistence, chassis reconnect watchdog.
@@ -46,7 +47,9 @@ Per `~/Foundry/AGENT.md` § Session roles:
 
 ## Commit + promote
 
-Commits via `~/Foundry/bin/commit-as-next.sh "<message>"` (from archive root or `service-slm/`).
+Commits to media-knowledge-* go directly to canonical (DOCTRINE §IV.e).
+Commits to woodfine-fleet-deployment use admin-tier: `~/Foundry/bin/commit-as-next.sh --admin woodfine "<msg>"`.
+Commits to pointsav-monorepo use: `~/Foundry/bin/commit-as-next.sh "<msg>"`.
 Stage 6 promotion via `~/Foundry/bin/promote.sh` from Command Session.
 **Stage 6 pending:** commits through `fc4d0978` (Phase 10) need promote; git divergence on main is a Command-side blocker.
 
