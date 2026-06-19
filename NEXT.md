@@ -1,11 +1,11 @@
 # NEXT.md — project-console
+# NEXT.md — project-gis (Totebox)
 
 > Totebox Session — starts in `/srv/foundry/clones/project-console`
 > Phase 10 complete 2026-06-16. Phase 11 (F7 BIM) blocked on project-bim Phase 1.
 Hot open items. ≤200 lines. Backlog at `.agent/next-backlog.md`.
 > **Scope: this archive only.** Cross-repo and workspace-level items live at `~/Foundry/NEXT.md`.
 
-Last updated: 2026-06-19 (Session 25 shutdown)
 Last updated: 2026-06-19
 
 ---
@@ -49,13 +49,19 @@ Last updated: 2026-06-19
 
 ## Blocked — Command Session (route via outbox)
 
-- [ ] **Stage 6 READY** — 3 commits ahead of origin:
-      - `f06fff1e` fix(gis): numpy 2.x compat — gdal_calc.py→GDAL Python API; USGS_TIF explicit default
-      - `ce6bdca1` fix(gis): OGR_GEOJSON_MAX_OBJ_SIZE 0 for large IT flood GeoJSON in merge step
-      - `b203609d` docs(gis): NEXT.md updated — Night 5 flood build; GFWED + EU seismic carry-forward
+- [ ] **Performance — nginx gzip + cache-control on foundry-prod** — Two nginx changes must be
+      applied on foundry-prod via SSH (cannot be done from Totebox scope). Exact diffs in outbox
+      msg `project-gis-20260619-perf-nginx-prod`. Expected impact: maplibre-gl.js 784 KB → ~200 KB;
+      clusters-meta.json 19 MB → ~2.1 MB; repeat visits near-instant for cached assets.
+      [2026-06-19 totebox@claude-code]
+- [ ] **Stage 6 READY** — commits ahead of origin (pending from both yesterday and today):
+      - `f06fff1e` fix(gis): numpy 2.x compat
+      - `ce6bdca1` fix(gis): OGR_GEOJSON_MAX_OBJ_SIZE 0 for large IT flood GeoJSON
+      - `b203609d` docs(gis): NEXT.md updated — Night 5 flood build
+      - `d7602bc7` fix(gis): GFWED NetCDF variable name + gitignore + briefs README fix
       - (+ this session's commit once landed)
       Outbox msg queued. [2026-06-19 totebox@claude-code]
-- [ ] **push-to-prod.sh gis** — after post-overnight verification passes; Command Session only.
+- [ ] **push-to-prod.sh gis** — after Stage 6; will deploy preload hints + new HTML.
       [2026-06-17 totebox@claude-code]
 - [ ] **check --strict gate** — F2/F3 dead links at project-editorial must resolve first
       [2026-06-17 command@claude-code]
@@ -133,6 +139,12 @@ Outbox to project-data sent 2026-06-19 to start parallel os-totebox + os-orchest
       92MB, causing every clean download to fail validation [2026-06-17 totebox@claude-code]
 - [x] **PKS Phase 5b** — 7,045 clusters (T1=692/T2=2,665/T3=3,188); MX=177; false-US removed
       [2026-06-16 totebox]
+## Completed (Sessions 84+)
+
+- [x] **Performance — preload hints + preconnect** — `<link rel="preconnect">` for openfreemap.org
+      + `<link rel="preload">` for maplibre-gl.js/pmtiles.js/CSS added to both deployment
+      www/index.html and archive source app-orchestration-gis/www/index.html. Ships with next
+      push-to-prod.sh gis. [2026-06-19 totebox@claude-code]
 - [x] **Post-overnight build verification** — 2026-06-19 session: PKS T1=692 ✓, T2=2,670, T3=3,709;
       park_ride=22,514 ✓; layer10 (2.1 MB) ✓, layer11 (120 MB) ✓, layer12-EU (151 KB) ✓;
       flood_hazard=855 hits in PRO clusters-meta ✓; wildfire FAILED (variable name bug now fixed);
@@ -140,24 +152,14 @@ Outbox to project-data sent 2026-06-19 to start parallel os-totebox + os-orchest
 - [x] **GFWED variable name fix** — NetCDF variable is `GPM.LATE.v5_FWI` not `FWI`; fixed
       in build-aec-flood.sh lines 504–505 (2026-06-19 totebox@claude-code)
 - [x] **Log file cleanup** — *.log added to .gitignore (root + app-orchestration-gis);
-      empty stale logs (ingest-100m.log, ingest-1km.log, test_bg.log) deleted; all remaining
-      logs now gitignored [2026-06-19 totebox@claude-code]
+      all remaining logs now gitignored [2026-06-19 totebox@claude-code]
 - [x] **Briefs README contamination** — README.md was showing project-knowledge content;
       restored to GIS briefs (pks-fable-analysis + gis-nightly-rebuild-aec) [2026-06-19 totebox@claude-code]
-- [x] **build-aec-flood.sh OGR_GEOJSON_MAX_OBJ_SIZE fix** — Step 12 EU merge fixed (ce6bdca1) [2026-06-19 totebox@claude-code]
-- [x] **build-aec-flood.sh numpy 2.x / USGS_TIF fix** — gdal_calc.py→pure GDAL Python API (f06fff1e) [2026-06-18 totebox@claude-code]
+- [x] **NEXT.md contamination repair (M-17)** — project-intelligence session wrote intelligence
+      items to project-gis NEXT.md; restored to correct GIS state [2026-06-19 totebox@claude-code]
+- [x] **build-aec-flood.sh OGR_GEOJSON_MAX_OBJ_SIZE fix** (ce6bdca1) [2026-06-19 totebox@claude-code]
+- [x] **build-aec-flood.sh numpy 2.x / USGS_TIF fix** (f06fff1e) [2026-06-18 totebox@claude-code]
 - [x] **AEC flood build — Night 5** — layer11 ✓, layer12-EU ✓; wildfire GFWED failed [2026-06-19 totebox@claude-code]
 - [x] **overnight-aec-builds.sh path fix** (2026-06-17 totebox@claude-code)
 - [x] **build-aec-seismic.sh EU join fix** — Step 8 OR→two-if (2026-06-17 totebox@claude-code)
 - [x] **build-aec-flood.sh AQUEDUCT threshold fix** — 100MB→85MB (2026-06-17 totebox@claude-code)
-- [x] **PKS Phase 5b** — 7,045 clusters (T1=692/T2=2,665/T3=3,188); MX=177 [2026-06-16 totebox]
-- [x] **park-and-ride anchor ingest** — 23,117 records [2026-06-16 totebox]
-- [x] **EU/US car rental + hotel chain ingests** [2026-06-16 totebox]
-- [x] **PKS archetype rebalanced** — Fable analysis + mode-group collapse [2026-06-15 totebox]
-- [x] **VWH retail_contamination badge** (2026-06-13 totebox)
-- [x] **AEC wetland VRT fix** — 408 GWL_FCS30 5°-tiles assembled (9c041f65) [2026-06-16 totebox]
-- [x] **AEC wildfire numpy fix** — pure Python GDAL API (2ea45b07) [2026-06-16 totebox]
-- [x] **ashrae_zone producer script** — build-ashrae-zone.py; 6,493/6,493 populated (dce0d157) [2026-06-16 totebox]
-- [x] **PKS opportunity_class field** — SATURATED/EXPAND/DEVELOP (2ea45b07) [2026-06-16 totebox]
-- [x] **EFEHR seismic API (sample-eshm20-api.py)** — maps.efehr.org now confirmed NXDOMAIN [2026-06-16 totebox]
-- [x] **NEXT.md contamination (M-17)** — project-knowledge + project-intelligence content removed (2026-06-17 totebox@claude-code)
