@@ -157,3 +157,126 @@ Last updated: 2026-06-19
 - [x] **NEXT.md contamination cleanup** — removed project-gis, project-console, project-intelligence, project-workplace, project-design content [2026-06-19 totebox@claude-code]
 - [x] **M7 snapshot dating** — corrected 7,594 → 6,493 in index.md; methodology-example note in dedup article; commit 4649f95 [2026-06-19 totebox@claude-code]
 - [x] **M9 EN/ES parity sweep** — all 53 ES articles in media-knowledge-projects at 84%+; 5 commit passes (f7a9be5, 6310748, 1c5d2db, ba4c412, 7fa466b) [2026-06-19 totebox@claude-code]
+# NEXT.md — project-console
+
+> **Scope: this archive only (pointsav-monorepo Totebox).**
+> Cross-repo and workspace-level items live at `~/Foundry/NEXT.md`.
+> Out-of-scope items route to outbox, not this file.
+
+Last updated: 2026-06-19 [Jennifer Woodfine / claude-code]
+
+---
+
+## Phase H1 — seL4 unikernel substrate — COMPLETE 2026-06-19
+
+| Item | Status | Notes |
+|---|---|---|
+| vendor-sel4-kernel AArch64 build | COMPLETE | `build/aarch64-qemu/kernel.elf` (910K, AArch64 ELF) |
+| moonshot-sel4-vmm `#![no_std]` PD runtime | COMPLETE | `lib.rs`, `syscall.rs`, `debug.rs`, `types.rs`; seL4 ABI wrappers; cfg-gated AArch64 asm |
+| `console_hello.c` bare-metal PD + TOML spec | COMPLETE | `moonshot-toolkit/examples/console_hello.c`; `os-console-hello.toml` |
+| moonshot-toolkit image build | COMPLETE | `build/system-image.bin` (1.1M elfloader ELF) built via separate target-dir to avoid cargo-lock contention |
+| QEMU boot verification | **GATE PASSED** | `Hello from os-console seL4 PD` on serial; QEMU `-m 1G` required (DTB reports 1 GiB; 512M causes Data Abort) |
+| Phase H1 commit | COMMITTED | All Phase H1 files staged and committed |
+
+[2026-06-19 totebox@claude-code]
+
+## Phase H2 — seL4 substrate continuation (multi-day, see BRIEF-sel4-unikernel.md)
+
+### H2a — Rust rootserver — GATE PASSED 2026-06-19
+
+| Item | Status | Notes |
+|---|---|---|
+| `CompileRustPd` step in moonshot-toolkit | COMPLETE | `spec.rs` `rust_bin: Option<String>`; `plan.rs` `CompileRustPd` variant; `main.rs` `compile_rust_pd()` — cargo build → `aarch64-unknown-none --release` |
+| `moonshot-sel4-vmm/src/bin/console_main.rs` | COMPLETE | Pure Rust `_start()` → `vmm::write_bytes(BANNER)` → `vmm::spin()`; no C |
+| `moonshot-toolkit/examples/os-console-rust.toml` | COMPLETE | `rust_bin = "console_main"` spec |
+| QEMU boot verification | **GATE PASSED** | "Hello from moonshot-sel4-vmm (Rust)" on serial; chardev file: `-chardev file,id=s0,path=/tmp/sel4-serial.log -serial chardev:s0 -m 1G` |
+
+### H2b — Two PDs + seL4 IPC (Day 2, ~6-10 hours)
+- [ ] `moonshot-sel4-vmm/src/bootstrap.rs` — rootserver CSpace/VSpace setup (~150 lines)
+- [ ] counter-pd + receiver-pd (C or Rust)
+- [ ] `moonshot-toolkit/examples/os-console-ipc.toml` — 3-PD spec
+- **Gate:** "IPC received: N" printed by receiver-pd via rootserver-distributed endpoint cap.
+
+### H2c — UART MMIO from user space (Day 3, ~4-6 hours)
+- [ ] Rootserver maps PL011 UART page (0x09000000) into console-pd VSpace
+- [ ] Direct MMIO write to UART DR/FR registers (no SysDebugPutChar)
+- **Gate:** "Hello via MMIO UART" from PD-direct register write.
+
+### H3 — VirtIO serial + ratatui (Week 2, 2-3 days)
+- [ ] VirtIO MMIO serial driver (QEMU virt 0x0a000000+; virtqueue rings)
+- [ ] ratatui backend — TestBackend → buffer → VirtIO write per line
+- **Gate:** ratatui layout (borders + 2 panes) visible in QEMU serial output.
+
+---
+
+## Phase 9 — Operations — COMPLETE 2026-06-14
+
+| Item | Commit | What shipped |
+|---|---|---|
+| 1 — Graceful SIGTERM | `3e20be12` | `AtomicBool` + ctrlc handler; `request_shutdown()`; terminal restored on `systemctl stop` |
+| 2 — fail2ban port 2222 | `5efb513d` | `infrastructure/fail2ban/jail.local` + filter; 5-retry, 1h ban |
+| 3 — Prometheus metrics | `3e20be12` | `os_console_up` / `os_console_uptime_seconds` / `os_console_info` on loopback :9299; `metrics_port` config field |
+| 4 — Multi-tab ContentCartridge | `a27860b3` | `TabSnapshot` + `Vec<tabs>`; Ctrl-T open, Ctrl-W close, Ctrl-Tab cycle; max 4 tabs; tab bar on >1 tabs |
+
+---
+
+## Stage 6 pending (Command scope — route via outbox)
+
+All Phase 8+9+10+T0 commits + 2026-06-19 need `bin/promote.sh` from Command Session:
+
+| SHA | Subject |
+|---|---|
+| `6f21f580` | feat(release): Phase B — CI matrix, rustls-tls, TerminalCaps |
+| `d9261705` | ops(session): Phase B complete |
+| `d58960b4` | ops(brief): mark Phase B complete |
+| `5c36ce66` | ops(monorepo): remove .agent/ from git index |
+| `5efb513d` | ops(fail2ban): port 2222 brute-force protection |
+| `3e20be12` | feat(sigterm+metrics): SIGTERM + Prometheus |
+| `a27860b3` | feat(tabs): multi-tab ContentCartridge |
+| `2c21e142` | ops(phase9): mark complete — NEXT.md + BRIEF |
+| `469b7147` | test(tabs): 9 unit tests for tab management |
+| `bc95acfa`..`fc4d0978` | Phase 10 commits (F2 People, reconnect watchdog, session persistence) |
+| `5dab352e`..`91eb2148` | T0 pairing + tunnel fixes |
+| `c9084667` | feat(content): pdfium-render optional — pdf feature flag |
+| `3816794d` | docs(briefs): BRIEF-macos-binary-mac-pro |
+| `0e8cfef5` | docs(sel4): BRIEF-sel4-unikernel + H2a/b/c/H3 roadmap; strip M-17 contamination from NEXT.md |
+| `e25b6ad7` | feat(sel4): Phase H1b — CompileRustPd build step in moonshot-toolkit + AArch64 panic handler |
+| H2a completion | feat(sel4): Phase H2a — Rust PD gate passed; console_main.rs + os-console-rust.toml |
+
+## darwin-x86_64 binary pending (waiting on Jennifer)
+
+- [ ] Jennifer builds on Mac Pro: `cargo build --release --bin os-console`
+- [ ] Jennifer scps binary to `mathew@34.53.65.203:/tmp/darwin-x86_64-0.2.4`
+- [ ] Deploy: scp to foundry-prod + chmod (instructions in BRIEF-macos-binary-mac-pro.md)
+- [ ] Then: `curl -fsSL https://software.pointsav.com/releases/os-console/install.sh | bash` on Mac Pro
+
+---
+
+## Operator-gated items
+
+- [ ] GCE firewall: open port 2222 inbound
+- [ ] Deploy `local-console.service` systemd unit + enable
+- [ ] `pairing-server` systemd unit on GCE VM
+- [ ] Peter SSH key: `proofctl user add peter --tenant woodfine --role editor`
+- [ ] Tag `v0.1.0` on pointsav-monorepo (triggers GitHub Actions release build)
+- [ ] Branch rename `cluster/project-proofreader → cluster/project-console` on GitHub
+
+---
+
+## Phase 10 — next coding sprint (in-scope when ready)
+
+| Item | What |
+|---|---|
+| F2 People cartridge | `app-console-people` lib + `PeopleCartridge`; read-only from `service-people :9091` |
+| Chassis reconnect watchdog | retry MBA connection on drop; backoff; indicator in status bar |
+| `/audit` log viewer | tail `service-input` ledger; search; export |
+| Tab labels from state | improve `tab_label()` to pull actual query/title text live |
+
+---
+
+## Standing deferred
+
+- F7 BIM cartridge — gated on `app-console-bim` activation
+- F10 mesh cartridge — gated on `app-console-mesh` activation; Phase 1 scope when ready: poll `service-vm-fleet :9203` GET /v1/nodes → read-only table (node ID | hostname | ip | status | last_heartbeat | preferred role); no writes
+- F11 → :9202 endpoint — currently polls :9201; will connect to `service-ppn-pairing :9202` when project-infrastructure deploys it (PPN Phase 1)
+- Phase 12 (AI marginalia) — gated on SYS-ADR-07/10/19 review
