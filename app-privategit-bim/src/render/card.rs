@@ -7,17 +7,50 @@ use serde_json::Value;
 use super::shell::esc;
 
 pub fn render_home(state: &AppState) -> String {
+    let cards = render_category_cards(state);
     format!(
-        r#"<div class="bim-home">
-  <h1>BIM Object Catalog</h1>
-  <p class="bim-home-subtitle">PointSav BIM Object Schema v1 (PBS-1) — {token_count} entities across {cat_count} categories</p>
-  <div class="bim-category-grid">
-    {cards}
-  </div>
+        r#"<div class="bim-hero">
+  <p class="bim-hero__eyebrow">Woodfine BIM Object Library</p>
+  <p class="bim-hero__statline">Building specifications that enforce compliance at placement,<br>not inspection after the fact.</p>
+  <p class="bim-hero__lead">The AEC industry has spent twenty years validating BIM models after
+  design is complete. BIM Objects take a different position: if every element in the design
+  library already encodes its regulatory requirements and performance constraints, a
+  non-compliant model cannot be assembled. Compliance is a property of the starting
+  material, not a filter applied at the end.</p>
+</div>
+<article class="bim-article">
+  <section>
+    <h2>The problem with building specifications</h2>
+    <p>Every building project generates thousands of specification decisions — fire ratings,
+    thermal values, structural classifications, material provenance. Those decisions are
+    scattered across incompatible containers: proprietary model files, PDF specification
+    clauses, product data sheets, contractor RFIs, O&amp;M binders. None of them travel
+    reliably between the software tools that design, finance, regulate, and manage buildings.</p>
+    <p>The U.S. construction sector loses an estimated $31.3 billion annually to rework caused
+    by data inconsistencies. At project handover, the BIM model that cost hundreds of thousands
+    of dollars to produce is commonly delivered to the owner as a static PDF extract.</p>
+  </section>
+  <section>
+    <h2>BIM Objects as the answer</h2>
+    <p>A BIM Object is a machine-readable specification unit stored in W3C DTCG format JSON.
+    Each object carries its IFC 4.3 entity anchor, Uniclass 2015 classification, applicable
+    property sets, and regulatory overlays as structured data — not prose. The object travels
+    with the element through every tool in the AEC stack.</p>
+    <p>When an architect places a wall, the BIM Object for that wall already knows its required
+    fire rating, its thermal transmittance range, and which jurisdictional code clause governs
+    it. No post-hoc checking. No separate specification document.</p>
+  </section>
+  <section>
+    <h2>Browse the catalog</h2>
+    <p>Organized by IFC 4.3 entity class. <a href="/tokens">Browse all categories</a> or
+    navigate by category in the sidebar.</p>
+  </section>
+</article>
+<div class="bim-home">
+  <h2>Categories</h2>
+  <div class="bim-category-grid">{cards}</div>
 </div>"#,
-        token_count = state.token_count,
-        cat_count = SIDEBAR_ORDER.len(),
-        cards = render_category_cards(state),
+        cards = cards,
     )
 }
 
@@ -67,11 +100,11 @@ pub fn render_token_page(category: &str, state: &AppState) -> String {
                     .and_then(|v| v.as_str())
                     .unwrap_or("—");
                 rows.push_str(&format!(
-                    r#"<cds-table-row>
-  <cds-table-cell><code>{slug}</code></cds-table-cell>
-  <cds-table-cell><code>{ifc_class}</code></cds-table-cell>
-  <cds-table-cell>{description}</cds-table-cell>
-</cds-table-row>"#,
+                    r#"<tr>
+  <td><code>{slug}</code></td>
+  <td><code>{ifc_class}</code></td>
+  <td>{description}</td>
+</tr>"#,
                     slug = esc(slug),
                     ifc_class = esc(ifc_class),
                     description = esc(description),
@@ -89,18 +122,16 @@ pub fn render_token_page(category: &str, state: &AppState) -> String {
   <p class="bim-intro">{intro}</p>
   <p class="bim-ifc-anchor"><strong>IFC anchor:</strong> <code>{ifc_anchor}</code></p>
   <p class="bim-elements">{elements}</p>
-  <cds-data-table>
-    <cds-table-head>
-      <cds-table-header-row>
-        <cds-table-header-cell>Token slug</cds-table-header-cell>
-        <cds-table-header-cell>IFC class</cds-table-header-cell>
-        <cds-table-header-cell>Description</cds-table-header-cell>
-      </cds-table-header-row>
-    </cds-table-head>
-    <cds-table-body>
-      {rows}
-    </cds-table-body>
-  </cds-data-table>
+  <table class="bim-token-table">
+    <thead>
+      <tr>
+        <th>Token slug</th>
+        <th>IFC class</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>{rows}</tbody>
+  </table>
 </div>"#,
         category = esc(category),
         display_name = esc(meta.map(|m| m.display_name).unwrap_or(category)),

@@ -317,3 +317,86 @@ html, body {
   gap: 1rem;
   margin-top: 1rem;
 }
+
+/* Hero section */
+.bim-hero {
+  padding: 2rem 0 1.5rem;
+  border-bottom: 1px solid #e0e0e0;
+  margin-bottom: 2rem;
+}
+.bim-hero__eyebrow {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #6f6f6f;
+  margin: 0 0 0.5rem;
+}
+.bim-hero__statline {
+  font-size: 1.5rem;
+  font-weight: 300;
+  color: #161616;
+  line-height: 1.3;
+  margin: 0 0 1rem;
+}
+.bim-hero__lead {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: #393939;
+  max-width: 72ch;
+  margin: 0;
+}
+
+/* Article prose sections on home page */
+.bim-article {
+  max-width: 72ch;
+  margin: 2rem 0;
+}
+.bim-article h2 {
+  font-size: 1.25rem;
+  font-weight: 400;
+  margin: 1.5rem 0 0.5rem;
+}
+.bim-article p {
+  line-height: 1.7;
+  color: #393939;
+  margin: 0 0 1rem;
+}
+.bim-article a {
+  color: #164679;
+}
+
+/* Footer */
+.bim-footer {
+  background: #161616;
+  color: #c6c6c6;
+  padding: 2rem;
+  margin-top: auto;
+}
+.bim-footer__inner {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+.bim-footer__heading {
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: #f4f4f4;
+  margin: 0 0 0.5rem 0;
+}
+.bim-footer__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.8;
+}
+.bim-footer__list a {
+  color: #a8c8f8;
+  text-decoration: none;
+}
+.bim-footer__list a:hover {
+  text-decoration: underline;
+}
