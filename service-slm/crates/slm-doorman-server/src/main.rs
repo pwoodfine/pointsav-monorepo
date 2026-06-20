@@ -420,9 +420,24 @@ async fn main() -> anyhow::Result<()> {
                         // Only dispatch if apprenticeship is enabled.
                         let outcome = if let Some(cfg) = drain_doorman_arc.apprenticeship.as_ref() {
                             use slm_doorman::ApprenticeshipDispatcher;
+                            // The drain queue exists specifically to use Tier B for
+                            // enrichment when it is available. Override tier_a_first
+                            // (which is normally true to protect real-time paths from
+                            // accruing GPU charges) and pin the yoyo node to "trainer"
+                            // so briefs reach the L4 GPU rather than any offline default
+                            // node. The hold-check above already ensures Tier B is healthy
+                            // before this dispatcher is created.
+                            let mut drain_cfg = cfg.clone();
+                            drain_cfg.tier_a_first = false;
+                            // All drain items go to Tier B regardless of body size:
+                            // the queue exists for Tier B enrichment, and brief bodies
+                            // are 100–400 chars while the default threshold is 8,000 —
+                            // without this override nothing ever routes to Yoyo.
+                            drain_cfg.brief_tier_b_threshold_chars = 0;
+                            drain_cfg.yoyo_dispatch_label = Some("trainer".to_string());
                             let dispatcher = ApprenticeshipDispatcher::with_cache(
                                 &drain_doorman_arc.doorman,
-                                cfg.clone(),
+                                drain_cfg,
                                 Arc::clone(&drain_doorman_arc.brief_cache),
                             );
                             // Pass the actual_diff from the queue entry so the
