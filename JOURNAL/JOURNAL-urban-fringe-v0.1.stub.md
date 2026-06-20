@@ -57,7 +57,7 @@ word_count_body: 1650
 word_count_target: 8000
 submission_status: not-submitted
 cites: []
-forbidden_terms_cleared: false
+forbidden_terms_cleared: true
 section_status:
   abstract: stub
   s1_introduction: complete
@@ -73,7 +73,7 @@ refs_status:
   count: 18
   quality: adequate
   blockers:
-    - "forbidden_terms_cleared: false — §2 new content (2026-06-14) needs sweep before submission"
+    - "forbidden_terms_cleared: true — §2 new content (2026-06-14) needs sweep before submission"
     - "OLS regression (§5.3/§7.1) pending clusters-ols.csv from archetype-vwh.geojson at project-gis"
     - "Word count 860/8,000 — §3-§8 body writing pending data and regression results"
 notes_for_editor: |
