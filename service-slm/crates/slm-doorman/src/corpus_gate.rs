@@ -807,7 +807,7 @@ mod tests {
         let err = check_dpo_pair(rejected, "ok").unwrap_err();
         assert!(
             matches!(err, DoormanError::CorpusGateRejected { reason } if reason.contains("chosen side too short")),
-            "near-empty chosen must be rejected; got {err:?}"
+            "near-empty chosen must be rejected by the chosen-floor check"
         );
     }
 
@@ -820,7 +820,7 @@ mod tests {
         let err = check_dpo_pair(echo, decent_chosen()).unwrap_err();
         assert!(
             matches!(err, DoormanError::CorpusGateRejected { reason } if reason.contains("system-prompt diff example")),
-            "verbatim system-prompt example echo must be rejected; got {err:?}"
+            "verbatim system-prompt example echo must be rejected by the marker co-occurrence check"
         );
     }
 }
