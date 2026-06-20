@@ -1,0 +1,21 @@
+# os-console seL4 Phase H2 — Serial PD + Console PD via IPC.
+#
+# Build from monorepo root:
+#   CARGO_TARGET_DIR=/tmp/moonshot-h2-build cargo run \
+#     --manifest-path moonshot-toolkit/Cargo.toml \
+#     -- build moonshot-toolkit/examples/os-console-serial.toml
+#
+# Boot with:
+#   qemu-system-aarch64 -machine virt -cpu cortex-a53 -m 1G \
+#     -nographic -kernel build/system-image.bin 2>&1 | tee /tmp/sel4-serial.log
+#
+# Gate: "Serial PD gate: PASSED" in QEMU serial output.
+# Demonstrates: multi-MR IPC string protocol; serial PD architectural pattern;
+#               console_pd/serial_pd role separation; seL4_Send 4-MR, seL4_Recv 4-MR.
+
+[[protection_domains]]
+name        = "os-console-serial"
+binary      = "moonshot-sel4-vmm"
+rust_bin    = "serial_main"
+priority    = 100
+stack_bytes = 65536
