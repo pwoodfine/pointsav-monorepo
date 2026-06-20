@@ -163,9 +163,9 @@ Last updated: 2026-06-20 (gate clean — 0 dead links, 0 MISSING sections)
 ## Active (Totebox scope)
 
 - [ ] **Stage 6 pending** — Command: promote all media-knowledge-* sub-clones
-  - media-knowledge-projects: 7fa466b, 3e3579b, bef1c2e
+  - media-knowledge-projects: 7fa466b, 3e3579b, bef1c2e, 58dbe9b, 45ea336, f4aa1ef, b2a92d4
   - media-knowledge-corporate: ac6379f, 981809f
-  - media-knowledge-documentation: f1451e9, a971310, 281bc0d, d5bdae9, c6ecf4e, 8fa30e9, a88b9c7, 3cb31b4, 028832e, dcd40d7
+  - media-knowledge-documentation: f1451e9, a971310, 281bc0d, d5bdae9, c6ecf4e, 8fa30e9, a88b9c7, 3cb31b4, 028832e, dcd40d7, 63e68c5
   [2026-06-20 totebox@claude-code]
 
 ## Blocked — Command Session (route via outbox)
@@ -177,7 +177,8 @@ Last updated: 2026-06-20 (gate clean — 0 dead links, 0 MISSING sections)
 
 ## Completed (2026-06-20)
 
-- [x] **gate clean** — 0 dead links, 0 MISSING sections across 800 articles (all 3 wikis); fixed content_type topic→page for special pages + added H2 sections to stub articles [2026-06-20 totebox@claude-code]
+- [x] **wiki repo migration** — ~40 MCorp research/BIM articles moved from media-knowledge-documentation to media-knowledge-projects with topic- prefix naming and correct archetype terminology (PRO=Retail Centres, VWH=Urban Fringe, PKS=Commuter); wikilink slugs updated; gate clean 0/0 after migration [2026-06-20 totebox@claude-code]
+- [x] **gate clean** — 0 dead links, 0 MISSING sections across 788 articles (all 3 wikis) [2026-06-20 totebox@claude-code]
 - [x] **Dead link sweep (F2/F3)** — 29 dead links resolved: stub articles created (service-vm-fleet, service-vm-tenant, location-intelligence-archetypes), wikilink fixes, cross-wiki link removal; commit 8fa30e9 [2026-06-20 totebox@claude-code]
 - [x] **M9 media-knowledge-documentation parity sweep** — ES articles expanded to full parity across architecture/, substrate/, reference/, applications/; commits 281bc0d, d5bdae9, c6ecf4e, a88b9c7 [2026-06-20 totebox@claude-code]
 - [x] **TOPIC intake — Phase B** — 9 TOPICs editorial clearing + EN+ES committed to media-knowledge-documentation [2026-06-20 totebox@claude-code]
