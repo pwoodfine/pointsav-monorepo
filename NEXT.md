@@ -156,26 +156,33 @@ v0.3.0 plan at `/home/jennifer/.claude/plans/no-make-a-plan-abundant-forest.md`.
 > **Scope: this archive only.** Cross-repo and workspace-level items live at `~/Foundry/NEXT.md`.
 > Hot open items. ≤200 lines. Backlog at `.agent/next-backlog.md`.
 
-Last updated: 2026-06-20 (Phase B complete)
+Last updated: 2026-06-20 (gate clean — 0 dead links, 0 MISSING sections)
 
 ---
 
 ## Active (Totebox scope)
 
-- [ ] **Stage 6 pending** — Command: media-knowledge-projects (7fa466b + trademark commit 3e3579b), media-knowledge-corporate (ac6379f), media-knowledge-documentation (f1451e9 + a971310 Phase B TOPIC intake) [2026-06-20 totebox@claude-code]
-- [ ] **F2/F3 dead links** — check --strict gate blocked; dead wikilinks in project-editorial [carried]
+- [ ] **Stage 6 pending** — Command: promote all media-knowledge-* sub-clones
+  - media-knowledge-projects: 7fa466b, 3e3579b, bef1c2e
+  - media-knowledge-corporate: ac6379f, 981809f
+  - media-knowledge-documentation: f1451e9, a971310, 281bc0d, d5bdae9, c6ecf4e, 8fa30e9, a88b9c7, 3cb31b4, 028832e, dcd40d7
+  [2026-06-20 totebox@claude-code]
 
 ## Blocked — Command Session (route via outbox)
 
 - [ ] **Trademark Phase 1a** — factory-release-engineering (TRADEMARK.md, tokens/legal-tokens-*.yaml, readmes/footer-*.md, policies/DISCLAIMER.md, README.md, PLAYBOOK.md); outbox message sent [2026-06-19 totebox@claude-code]
 - [ ] **Trademark Phase 4** — woodfine-fleet-deployment GUIDEs (~80 files), workspace governance docs (CLAUDE.md, AGENT.md, conventions/); admin-tier [2026-06-19 totebox@claude-code]
 
+---
+
 ## Completed (2026-06-20)
 
+- [x] **gate clean** — 0 dead links, 0 MISSING sections across 800 articles (all 3 wikis); fixed content_type topic→page for special pages + added H2 sections to stub articles [2026-06-20 totebox@claude-code]
+- [x] **Dead link sweep (F2/F3)** — 29 dead links resolved: stub articles created (service-vm-fleet, service-vm-tenant, location-intelligence-archetypes), wikilink fixes, cross-wiki link removal; commit 8fa30e9 [2026-06-20 totebox@claude-code]
+- [x] **M9 media-knowledge-documentation parity sweep** — ES articles expanded to full parity across architecture/, substrate/, reference/, applications/; commits 281bc0d, d5bdae9, c6ecf4e, a88b9c7 [2026-06-20 totebox@claude-code]
 - [x] **TOPIC intake — Phase B** — 9 TOPICs editorial clearing + EN+ES committed to media-knowledge-documentation [2026-06-20 totebox@claude-code]
 - [x] **Inbox actioning** — trademark pivot messages actioned; zero content-wiki edits needed [2026-06-20 totebox@claude-code]
 - [x] **Non-TOPIC routing** — outbox messages sent to project-design, project-documents, project-data, Command [2026-06-20 totebox@claude-code]
-- [x] **media-knowledge-documentation M9** — ES parity sweep complete [2026-06-20 totebox@claude-code]
 
 ## Completed (2026-06-19)
 
@@ -384,3 +391,6 @@ Last updated: 2026-06-20
 - [x] **build-aec-flood.sh numpy 2.x / USGS_TIF fix** (b1f2514d).
 - [x] **AEC flood build Night 5** — layer11 ✓, layer12-EU ✓.
 - [x] **overnight-aec-builds.sh path fix** / **build-aec-seismic.sh EU join fix**.
+- [x] **Trademark Phase 3 — TOPIC/GUIDE content wikis** — MCorp™ + Capability Geometry™ applied across all three sub-clones (documentation, projects, corporate); 3 commits (3e3579b, ac6379f, f1451e9); copyright lines corrected to Woodfine Capital Projects Inc. [2026-06-19 totebox@claude-code]
+- [x] **M9 EN/ES parity sweep — media-knowledge-projects** — all 53 ES articles at 84%+; 5 commit passes (7fa466b) [2026-06-19 totebox@claude-code]
+- [x] **M7 snapshot dating** — corrected 7,594 → 6,493 in index.md; commit 4649f95 [2026-06-19 totebox@claude-code]
