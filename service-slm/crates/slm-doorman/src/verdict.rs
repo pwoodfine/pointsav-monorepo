@@ -554,6 +554,7 @@ fn read_brief_prompt_from_corpus(corpus_root: &Path, task_type: &str, brief_id: 
     row["brief"]["body"].as_str().unwrap_or("").to_string()
 }
 
+#[allow(clippy::too_many_arguments)]
 fn write_dpo_pair(
     corpus_root: &Path,
     task_type: &str,
