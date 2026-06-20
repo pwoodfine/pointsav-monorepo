@@ -17,3 +17,5 @@ notify = "6"
 tokio-stream = { version = "0.1", features = ["sync"] }
 moonshot-docengine = { path = "../moonshot-docengine" }
 moonshot-bim-engine = { path = "../moonshot-bim-engine" }
+zip = "2"
+walkdir = "2"

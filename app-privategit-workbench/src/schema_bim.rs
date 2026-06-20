@@ -15,7 +15,7 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Json, Response},
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::fs;
 
 use crate::{err, resolve_path, AppState};
@@ -218,4 +218,54 @@ fn collect_bim(dir: &str, prefix: &str, out: &mut Vec<serde_json::Value>) {
             }
         }
     }
+}
+
+#[derive(Deserialize)]
+pub struct CreateBody {
+    name: String,
+}
+
+#[derive(Serialize)]
+struct CreateResponse {
+    ok: bool,
+    path: String,
+}
+
+/// POST /api/bim/create  body: {"name": "<workspace>.bim.json"}
+/// Creates a blank BIM workspace JSON file in the first writable root.
+pub async fn create(
+    State(state): State<AppState>,
+    axum::Json(body): axum::Json<CreateBody>,
+) -> Response {
+    let mut name = body.name.trim().to_string();
+    if name.is_empty() {
+        return err(StatusCode::BAD_REQUEST, "name is required");
+    }
+    if name.contains('/') || name.contains("..") {
+        return err(StatusCode::BAD_REQUEST, "invalid name");
+    }
+    if !name.ends_with(".bim.json") {
+        name.push_str(".bim.json");
+    }
+
+    let root = match state.roots.iter().find(|r| r.writable) {
+        Some(r) => r,
+        None => return err(StatusCode::FORBIDDEN, "no writable root configured"),
+    };
+
+    let fs_path = std::path::PathBuf::from(&root.fs_path).join(&name);
+    if fs_path.exists() {
+        return err(StatusCode::CONFLICT, "file already exists");
+    }
+
+    if let Err(e) = fs::write(&fs_path, b"{}") {
+        return err(StatusCode::INTERNAL_SERVER_ERROR, e.to_string());
+    }
+
+    let path = format!(
+        "{}/{}",
+        root.url_prefix.trim_end_matches('/'),
+        name
+    );
+    Json(CreateResponse { ok: true, path }).into_response()
 }

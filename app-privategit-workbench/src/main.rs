@@ -14,7 +14,7 @@ use std::{
     collections::HashMap,
     convert::Infallible,
     fs,
-    io::Write,
+    io::{Cursor, Write},
     net::SocketAddr,
     path::{Path, PathBuf},
     process::{Command, Stdio},
@@ -25,11 +25,14 @@ use std::{
 use tokio::net::TcpListener;
 use tokio::sync::broadcast;
 use tokio_stream::{wrappers::BroadcastStream, StreamExt as _};
+use walkdir::WalkDir;
 
 mod mcp;
 mod schema_bim;
+mod schema_files;
 mod schema_gis;
 mod schema_presentation;
+mod schema_proforma;
 mod schema_schedule;
 
 const SPA_HTML: &str = include_str!("assets/index.html");
@@ -218,6 +221,8 @@ struct FileResponse {
 struct DirEntry {
     name: String,
     is_dir: bool,
+    mtime: u64,
+    size: u64,
 }
 
 #[derive(Serialize)]
@@ -274,6 +279,8 @@ async fn get_file(
             .map(|r| DirEntry {
                 name: r.url_prefix.trim_end_matches('/').to_string(),
                 is_dir: true,
+                mtime: 0,
+                size: 0,
             })
             .collect();
         entries.sort_by(|a, b| a.name.cmp(&b.name));
@@ -311,8 +318,16 @@ async fn get_file(
                 if name.starts_with('.') {
                     return None;
                 }
-                let is_dir = de.file_type().ok()?.is_dir();
-                Some(DirEntry { name, is_dir })
+                let meta = de.metadata().ok()?;
+                let is_dir = meta.is_dir();
+                let mtime = meta
+                    .modified()
+                    .ok()
+                    .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
+                    .map(|d| d.as_secs())
+                    .unwrap_or(0);
+                let size = if is_dir { 0 } else { meta.len() };
+                Some(DirEntry { name, is_dir, mtime, size })
             })
             .collect();
         entries.sort_by(|a, b| b.is_dir.cmp(&a.is_dir).then(a.name.cmp(&b.name)));
@@ -1555,6 +1570,88 @@ async fn get_section(State(state): State<AppState>, Query(q): Query<SectionQuery
 }
 
 // ---------------------------------------------------------------------------
+// GET /download — recursive ZIP download of a directory
+// ---------------------------------------------------------------------------
+
+/// GET /download?path=<url_path>
+/// Zips the directory at the given path and returns it as a download.
+/// Read-only paths are allowed (ZIP is a read operation).
+async fn zip_download(State(state): State<AppState>, Query(q): Query<FileQuery>) -> Response {
+    if q.path.trim_matches('/').is_empty() {
+        return err(StatusCode::BAD_REQUEST, "path is required");
+    }
+    let (fs_path, _writable) = match resolve_path(&state.roots, &q.path) {
+        Ok(v) => v,
+        Err(e) => return err(StatusCode::BAD_REQUEST, e.to_string()),
+    };
+    if !fs_path.exists() {
+        return err(StatusCode::NOT_FOUND, "path not found");
+    }
+    if !fs_path.is_dir() {
+        return err(StatusCode::BAD_REQUEST, "path is not a directory");
+    }
+
+    let dir_name = fs_path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("download")
+        .to_string();
+
+    let result = tokio::task::spawn_blocking(move || -> Result<Vec<u8>> {
+        let buf = Cursor::new(Vec::new());
+        let mut zip = zip::ZipWriter::new(buf);
+        let options = zip::write::SimpleFileOptions::default()
+            .compression_method(zip::CompressionMethod::Deflated);
+
+        for entry in WalkDir::new(&fs_path).into_iter().filter_map(|e| e.ok()) {
+            let path = entry.path();
+            let rel = match path.strip_prefix(&fs_path) {
+                Ok(r) => r,
+                Err(_) => continue,
+            };
+            if rel == Path::new("") {
+                continue;
+            }
+            // Skip hidden files/dirs
+            if rel.components().any(|c| {
+                c.as_os_str().to_str().unwrap_or("").starts_with('.')
+            }) {
+                continue;
+            }
+
+            let zip_path = rel.to_string_lossy().to_string();
+            if path.is_dir() {
+                zip.add_directory(format!("{}/", zip_path), options)?;
+            } else {
+                zip.start_file(&zip_path, options)?;
+                let bytes = fs::read(path)?;
+                use std::io::Write as _;
+                zip.write_all(&bytes)?;
+            }
+        }
+
+        let result = zip.finish()?;
+        Ok(result.into_inner())
+    })
+    .await;
+
+    match result {
+        Ok(Ok(bytes)) => {
+            let cd = format!("attachment; filename=\"{}.zip\"", dir_name);
+            let mut headers = HeaderMap::new();
+            headers.insert("content-type", "application/zip".parse().unwrap());
+            headers.insert("content-disposition", cd.parse().unwrap());
+            (StatusCode::OK, headers, Bytes::from(bytes)).into_response()
+        }
+        Ok(Err(e)) => err(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()),
+        Err(e) => err(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("zip task panicked: {}", e),
+        ),
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 
@@ -1687,6 +1784,12 @@ async fn main() -> Result<()> {
         .route("/api/bim/files", get(schema_bim::list_files))
         .route("/api/bim/parse", get(schema_bim::parse_file))
         .route("/api/bim/instances", get(schema_bim::list_instances))
+        .route("/api/bim/create", post(schema_bim::create))
+        .route("/api/files", get(schema_files::list_files))
+        .route("/api/files/create", post(schema_files::create))
+        .route("/api/proforma/files", get(schema_proforma::list_files))
+        .route("/api/proforma/create", post(schema_proforma::create))
+        .route("/download", get(zip_download))
         .with_state(state);
 
     let addr: SocketAddr = config.bind.parse().context("parsing bind address")?;
