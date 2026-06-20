@@ -615,3 +615,6 @@ END-ISO-10303-21;
         assert_eq!(p[8], Value::Ref(7));
     }
 }
+
+#[cfg(feature = "wasm")]
+pub mod wasm;

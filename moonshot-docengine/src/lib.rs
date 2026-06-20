@@ -660,3 +660,6 @@ mod tests {
         }
     }
 }
+
+#[cfg(feature = "wasm")]
+pub mod wasm;

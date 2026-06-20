@@ -249,3 +249,6 @@ mod tests {
         assert_eq!(h.text(), "keep DROP me");
     }
 }
+
+#[cfg(feature = "wasm")]
+pub mod wasm;
