@@ -3,7 +3,7 @@ schema: foundry-journal-v1
 artifact_type: JOURNAL
 state: draft
 version: "0.2"
-title: "Composing Trustworthy Systems from Verified Primitives: A Substrate Architecture for Customer-Sovereign Capability Ledgers on a Two-Bottom Operating System Stack"
+title: "Composing Capability Geometry from Verified Primitives: A Substrate Architecture for Customer-Sovereign Capability Ledgers on a Two-Bottom Operating System Stack"
 target_journal: "ASPLOS (ACM SIGARCH/SIGPLAN Symposium on Architectural Support for Programming Languages and Operating Systems)"
 target_publisher: "ACM SIGARCH"
 impact_factor: ""
@@ -49,7 +49,7 @@ keywords:
   - Veriexec
   - WORM ledger
   - ownership transfer
-  - trustworthy systems
+  - capability geometry
   - reproducible builds
 bcsc_class: no-disclosure-implication
 ai_tool_used: "claude-sonnet-4-6 (Anthropic)"
@@ -89,7 +89,7 @@ preprint_posted: true
 preprint_posted_date: 2026-05-28
 doi: ""
 license: "CC BY 4.0"
-cite_as: "Woodfine, Mathew, Woodfine, Peter M., & Woodfine, Jennifer M. (2026). Composing Trustworthy Systems from Verified Primitives. Working Paper v0.2, 30 May 2026. Woodfine Management Corp., New York, NY."
+cite_as: "Woodfine, Mathew, Woodfine, Peter M., & Woodfine, Jennifer M. (2026). Composing Capability Geometry from Verified Primitives. Working Paper v0.2, 30 May 2026. Woodfine Management Corp., New York, NY."
 revision_history:
   - version: "0.1"
     date: "2026-05-28"
@@ -111,18 +111,18 @@ notes_for_editor: |
 > **Working Paper · Version 0.1 · 2026-05-28 · CC BY 4.0**
 > This manuscript is a working draft. It has not been peer reviewed. Findings are preliminary and subject to revision without notice. Correspondence: corporate.secretary@woodfinegroup.com.
 >
-> *Cite as:* Woodfine, Mathew, Woodfine, Peter M., & Woodfine, Jennifer M. (2026). Composing Trustworthy Systems from Verified Primitives. Working Paper v0.1, 28 May 2026. Woodfine Management Corp., New York, NY.
+> *Cite as:* Woodfine, Mathew, Woodfine, Peter M., & Woodfine, Jennifer M. (2026). Composing Capability Geometry from Verified Primitives. Working Paper v0.1, 28 May 2026. Woodfine Management Corp., New York, NY.
 
 > **Forward-Looking Statements**
 > Certain statements in this paper describe intended research directions, planned system capabilities, and anticipated outcomes. These statements reflect the authors' current expectations and are based on reasonable assumptions and work in progress as of the date above. Actual results, measurements, and findings may differ materially. Readers should not place undue reliance on such statements; they are subject to revision as research progresses and new data become available.
 
-# Composing Trustworthy Systems from Verified Primitives: A Substrate Architecture for Customer-Sovereign Capability Ledgers on a Two-Bottom Operating System Stack
+# Composing Capability Geometry from Verified Primitives: A Substrate Architecture for Customer-Sovereign Capability Ledgers on a Two-Bottom Operating System Stack
 
 **Mathew Woodfine, Peter M. Woodfine, and Jennifer M. Woodfine**  
 Woodfine Management Corp., New York, NY, USA  
 *Corresponding author:* corporate.secretary@woodfinegroup.com
 
-**Keywords:** capability systems, transparency logs, seL4, NetBSD, Veriexec, WORM ledger, ownership transfer, trustworthy systems, reproducible builds
+**Keywords:** capability systems, transparency logs, seL4, NetBSD, Veriexec, WORM ledger, ownership transfer, capability geometry, reproducible builds
 
 **ACM CCS:** D.4.6 Security and Protection · D.4.1 Process Management · C.0 General · D.2.11 Software Architectures
 
@@ -219,7 +219,7 @@ The Capability Ledger Substrate positions two operating system bottoms beneath e
 
 The same operating system runtime binaries execute on either bottom via a thin Rust shim (§5.3). Linux is not a substrate bottom. It remains an unsupported community-tier fallback for hardware NetBSD does not drive; it is not in the trust chain, and it does not appear in any operational GUIDE.
 
-The structural rationale for the two-bottom design is hardware reach without trustworthy-systems compromise. A single-substrate design choosing seL4 exclusively would be constrained to AArch64 hardware where formal proofs apply and AArch64 seL4 port coverage exists (38 platforms in the vendored seL4 kernel tree as of v15.0.0-dev). A single-substrate design choosing a commodity OS would abandon the formal-verification properties that make the native bottom meaningful for regulated workloads. The two-bottom design allows the same operator to run the compat bottom on a leased laptop today and the native bottom on a verified production appliance tomorrow, with the same capability ledger, the same apex signing key, and the same audit history.
+The structural rationale for the two-bottom design is hardware reach without capability-geometry compromise. A single-substrate design choosing seL4 exclusively would be constrained to AArch64 hardware where formal proofs apply and AArch64 seL4 port coverage exists (38 platforms in the vendored seL4 kernel tree as of v15.0.0-dev). A single-substrate design choosing a commodity OS would abandon the formal-verification properties that make the native bottom meaningful for regulated workloads. The two-bottom design allows the same operator to run the compat bottom on a leased laptop today and the native bottom on a verified production appliance tomorrow, with the same capability ledger, the same apex signing key, and the same audit history.
 
 ### 3.2 The Capability Type System (`system-core` v0.2.0)
 
@@ -597,7 +597,7 @@ This paper has presented a substrate architecture for customer-sovereign, trustw
 
 **The Capability Ledger Substrate.** The substrate's capability state IS the WORM ledger. Every kernel-mediated capability invocation, grant, revocation, and temporal extension emits a signed entry to a customer-rooted Merkle log whose apex is the customer's signing key. The kernel consults the log before honouring any capability invocation via a state machine (`system-ledger`) implementing a `LedgerConsumer` trait with structured `Verdict` results and five-step cost-ordered consultation logic. The architecture is implemented in 51+44 = 95 tested Rust test cases and 10 Criterion benchmarks.
 
-**The Two-Bottom Operating System Design.** A seL4 v15.0.0 native bottom on AArch64-first hardware and a NetBSD compatibility bottom deploying Veriexec verified-image boot and offline-reproducible `build.sh` enable the same operating system runtime binaries to execute on either substrate via a thin Rust shim with Cargo feature-flag selection. Linux is not a substrate bottom. The design achieves hardware reach without trustworthy-systems compromise — a structural property not available from single-substrate hyperscaler or proprietary-RTOS architectures.
+**The Two-Bottom Operating System Design.** A seL4 v15.0.0 native bottom on AArch64-first hardware and a NetBSD compatibility bottom deploying Veriexec verified-image boot and offline-reproducible `build.sh` enable the same operating system runtime binaries to execute on either substrate via a thin Rust shim with Cargo feature-flag selection. Linux is not a substrate bottom. The design achieves hardware reach without capability-geometry compromise — a structural property not available from single-substrate hyperscaler or proprietary-RTOS architectures.
 
 **The N+3+ Apex Co-Signing Ceremony.** An ownership-transfer ceremony derived from C2SP signed-note multi-signature semantics makes deployment ownership transfer atomic (a single ledger event at height N+2), auditable (both parties' signatures in a public transparency log), and final (P-old's signatures are refused by the kernel at heights N+3+). The new apex inherits all capability state, audit history, operational identity, and formal verification proofs — the proofs are mathematics; they transfer.
 
@@ -637,7 +637,7 @@ Forrester Research. 2024. *From Unicorns and Rainbows to Storm Clouds: The State
 
 Google Transparency Team, Ben Laurie, Adam Langley, and Emilia Kasper. 2013. "Certificate Transparency." RFC 6962, IETF.
 
-Heiser, Gernot, and Gerwin Klein. 2010. "It's Time for Trustworthy Systems." *IEEE Security and Privacy* 8 (2): 67–69.
+Heiser, Gernot, and Gerwin Klein. 2010. "It's Time for Capability Geometry." *IEEE Security and Privacy* 8 (2): 67–69.
 
 Klein, Gerwin, Kevin Elphinstone, Gernot Heiser, June Andronick, David Cock, Philip Derrin, Dhammika Elkaduwe, Kai Engelhardt, Rafal Kolanski, Michael Norrish, Thomas Sewell, Harvey Tuch, and Simon Winwood. 2009. "seL4: Formal Verification of an OS Kernel." *Proceedings of the ACM Symposium on Operating Systems Principles (SOSP).*
 

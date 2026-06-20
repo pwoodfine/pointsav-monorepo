@@ -175,6 +175,24 @@ The startup sequence is deterministic and sequentially ordered. A session reads 
 
 The implementation consists of four components: the manifest validator, the session lock writer, the mailbox router, and the inference gateway. The manifest validator is a shell script that confirms the archive identifier and tetrad declarations are present before allowing the session to proceed. The session lock writer is an atomic file-creation operation. The mailbox router is a coordination-tier binary that sweeps archive outboxes on a configurable interval. The inference gateway is a Rust binary that accepts HTTP requests from co-located session processes, routes them to the appropriate tier, and appends the invocation record to the archive's transparency log.
 
+### 4.1 Architecture Context Update — 2026-06-19
+
+The following entries record implementation decisions confirmed during the reference deployment development cycle. All forward-looking statements use intended/planned/may/target language per BCSC disclosure posture.
+
+**Three-binary architecture formally confirmed.** The runtime comprises three distinct binaries with non-overlapping roles: `os-console` (host TUI — the keyboard-native SSH terminal interface to the Totebox Archive), `os-totebox` (WORM vault — sovereign data persistence with capability-enforced write-once semantics), and `os-orchestration` (federation hub — stateless aggregation layer mediating inter-domain communication). This separation enforces the data-domain isolation described in §3.1 at the binary boundary rather than at the process boundary alone.
+
+**seL4 Microkit Protection Domain design locked for os-totebox.** The intended os-totebox runtime targets a seven-PD seL4 Microkit stack. The planned priority assignment runs from watchdog-pd at priority 250 (highest; health monitoring) down through coordination-pd, capability-pd, and write-pd, to service-extraction at priority 110. The design is intended to ensure that a compromised lower-priority service cannot preempt or interfere with the integrity-critical PDs above it. Full PD specification is maintained in BRIEF-os-totebox-build-out.md.
+
+**Capability Geometry™ defined.** The isolation guarantee described informally in §3.1 and §7 is formalised as Capability Geometry: the seL4 capability DAG structure ensures that a compromised service-slm instance provably cannot reach service-fs, because no capability path exists between those two PDs in the declared DAG. This property is verifiable from the static PD configuration without runtime inspection, satisfying the structural-not-policy isolation requirement stated in §1.
+
+**First Ring 2 service implemented.** `service-people` (GET /v1/people, port :9091) was committed at `997b8d22`, constituting the first concrete implementation of the Ring 2 service layer described in §3.1. This provides early benchmark baseline data for the startup and per-inference overhead measurements planned for §5.
+
+**service-extraction added to workspace.** The service-extraction crate has been added to the pointsav-monorepo Cargo workspace, enabling cross-crate dependency resolution between the extraction pipeline and the capability-checking infrastructure. This is a prerequisite for the §5 evaluation harness.
+
+**Planning documents created.** BRIEF-os-totebox-build-out.md is the intended canonical planning document for the WORM vault build-out, covering the seven-PD seL4 stack and Phase H1 targets. BRIEF-os-orchestration-build-out.md is the intended canonical planning document for the federation layer, covering the capability-broker PD design and Yo-Yo Tier B integration.
+
+**Phase H1 target.** The near-term implementation target is a moonshot-sel4-vmm PD runtime of approximately 300 lines of code, with a moonshot-toolkit TOML specification at `examples/os-totebox.toml`. These targets may be revised as implementation proceeds.
+
 ---
 
 ## 5. Evaluation
@@ -263,7 +281,7 @@ The session-orchestration runtime implementation described in this paper is inte
 
 ## References
 
-*[To be populated. Key anticipated citations: Dennis & Van Horn (1966) capability systems; Klein et al. (2009) seL4 formal verification; Yu et al. (2022) Orca iteration-level scheduling; Kwon et al. (2023) vLLM paged attention; Laurie et al. (2021) RFC 9162 Certificate Transparency; companion paper J2 — "Composing Trustworthy Systems from Verified Primitives" (Woodfine et al., 2026) — cite when published.]*
+*[To be populated. Key anticipated citations: Dennis & Van Horn (1966) capability systems; Klein et al. (2009) seL4 formal verification; Yu et al. (2022) Orca iteration-level scheduling; Kwon et al. (2023) vLLM paged attention; Laurie et al. (2021) RFC 9162 Certificate Transparency; companion paper J2 — "Composing Capability Geometry from Verified Primitives" (Woodfine et al., 2026) — cite when published.]*
 
 ---
 

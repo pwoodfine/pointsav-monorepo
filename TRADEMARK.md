@@ -7,8 +7,10 @@
 **ToteboxOS™**, **ConsoleOS™**, **OrchestrationOS™**, and **WorkplaceOS™** are
 unregistered trademarks of Woodfine Capital Projects Inc.
 
-**WoodfineGroup™** is an unregistered trademark of Woodfine Management Corp.,
+**WoodfineGroup™** is an unregistered trademark of MCorp,
 a wholly owned subsidiary of Woodfine Capital Projects Inc.
+
+**Capability Geometry™** is an unregistered trademark of Woodfine Capital Projects Inc.
 
 ---
 
