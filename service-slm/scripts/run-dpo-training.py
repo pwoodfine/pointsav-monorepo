@@ -123,6 +123,12 @@ TEMPLATE_ECHO_PREFIXES = (
 # starts with a template prefix like "<unified diff>".
 _REAL_DIFF_MARKERS = ("diff --git", "--- a/", "+++ b/", "@@ ")
 
+# Verbatim tokens from APPRENTICE_SYSTEM_PROMPT's diff example. ≥2 co-occurring
+# means OLMo copied the example rather than producing a real diff — a stub that
+# still carries "--- a/"/"@@" markers and so slips past _REAL_DIFF_MARKERS.
+# Must stay in sync with corpus_gate.rs SYSTEM_PROMPT_EXAMPLE_MARKERS.
+_SYSTEM_PROMPT_EXAMPLE_MARKERS = ("path/to/file", "-old line", "+new line", " context line")
+
 
 def load_feedback_files(corpus_path: str) -> list[dict]:
     """Load DPO pairs from corpus_path.
@@ -190,6 +196,11 @@ def load_feedback_files(corpus_path: str) -> list[dict]:
         is_echo = any(rejected_lc.startswith(p) for p in TEMPLATE_ECHO_PREFIXES)
         if not is_echo and rejected_lc.startswith("<unified diff"):
             is_echo = not any(m in rejected for m in _REAL_DIFF_MARKERS)
+        if not is_echo:
+            # System-prompt example echo: ≥2 verbatim marker tokens co-occur.
+            example_markers = sum(1 for m in _SYSTEM_PROMPT_EXAMPLE_MARKERS if m in rejected)
+            if example_markers >= 2:
+                is_echo = True
         if is_echo:
             skipped_template_echo += 1
             continue
