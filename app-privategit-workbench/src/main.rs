@@ -1652,6 +1652,44 @@ async fn zip_download(State(state): State<AppState>, Query(q): Query<FileQuery>)
 }
 
 // ---------------------------------------------------------------------------
+// Raw binary file serving (PDFs, images)
+// ---------------------------------------------------------------------------
+
+/// GET /raw?path=<url_path>
+/// Serves a file as raw bytes with inferred content-type. Used for binary
+/// files (PDFs, images) that the /file endpoint cannot serve as JSON text.
+async fn get_raw(State(state): State<AppState>, Query(q): Query<FileQuery>) -> Response {
+    let (fs_path, _writable) = match resolve_path(&state.roots, &q.path) {
+        Ok(v) => v,
+        Err(e) => return err(StatusCode::BAD_REQUEST, e.to_string()),
+    };
+    if !fs_path.exists() || fs_path.is_dir() {
+        return err(StatusCode::NOT_FOUND, "not found");
+    }
+    let ext = fs_path
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("")
+        .to_lowercase();
+    let content_type = match ext.as_str() {
+        "pdf" => "application/pdf",
+        "png" => "image/png",
+        "jpg" | "jpeg" => "image/jpeg",
+        "gif" => "image/gif",
+        "svg" => "image/svg+xml",
+        "webp" => "image/webp",
+        _ => "application/octet-stream",
+    };
+    let bytes = match tokio::fs::read(&fs_path).await {
+        Ok(b) => b,
+        Err(e) => return err(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()),
+    };
+    let mut headers = HeaderMap::new();
+    headers.insert("content-type", content_type.parse().unwrap());
+    (StatusCode::OK, headers, Bytes::from(bytes)).into_response()
+}
+
+// ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 
@@ -1790,6 +1828,7 @@ async fn main() -> Result<()> {
         .route("/api/proforma/files", get(schema_proforma::list_files))
         .route("/api/proforma/create", post(schema_proforma::create))
         .route("/download", get(zip_download))
+        .route("/raw", get(get_raw))
         .with_state(state);
 
     let addr: SocketAddr = config.bind.parse().context("parsing bind address")?;
