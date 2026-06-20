@@ -56,6 +56,35 @@ LEARNING_RATE = 2e-6   # lowered from 1e-5; 12-25× too hot vs OLMo 2 reference 
 NUM_EPOCHS = 1   # lowered from 3; 3 epochs on single-task corpus → over-reinforcement collapse risk (Opus audit §17)
 BETA = 0.1  # DPO default. Prior 0.5 justification (empty-"[]" rejected) is obsolete — those pairs are now filtered.
 
+# SFT phase hyperparameters (--mode sft). The 2026-06-19 Opus audit established
+# that the apprenticeship corpus must be taught with SFT FIRST: OLMo 7B emits
+# template placeholders on the majority of shadow briefs, so there is no valid
+# `rejected` worth contrasting against and preference optimisation is premature.
+# SFT on the senior-authored `chosen` diffs teaches the base format + edit skill;
+# on-policy DPO/SimPO is layered on afterward once the model emits valid diffs.
+# SFT needs a HOTTER LR than DPO (DPO LR 2e-6 is 5-10× too cold for SFT) and 2-3
+# epochs on a ~1-2k example corpus.
+SFT_LEARNING_RATE = 2e-5
+SFT_NUM_EPOCHS = 2
+
+# System message wrapped around every SFT example so the training prompt matches
+# the exact system+user shape the model conditions on at inference. Mirrors
+# APPRENTICE_SYSTEM_PROMPT in slm-doorman/src/apprenticeship.rs — keep in sync.
+SFT_SYSTEM_PROMPT = (
+    "You are a code-editing assistant. Output ONLY the structured response below "
+    "— no prose before it.\n\n"
+    "REQUIRED FORMAT (copy exactly, fill in values):\n\n"
+    "---\nself_confidence: 0.7\nescalate: false\n---\n\n"
+    "## Reasoning\nOne sentence: what changed and why.\n\n"
+    "## Diff\n```diff\n--- a/path/to/file\n+++ b/path/to/file\n"
+    "@@ -1,3 +1,3 @@\n context line\n-old line\n+new line\n```\n\n"
+    "Rules:\n"
+    "- The VERY FIRST characters of your response must be ---\n"
+    "- Write reasoning in ONE sentence only — brevity leaves tokens for the diff.\n"
+    "- Set escalate: false and write the unified diff when you can make the change.\n"
+    "- The diff MUST be a valid unified diff (--- a/ +++ b/ @@ lines)."
+)
+
 
 # Minimum rejected side length for DIFF pairs. Pairs below this are template stubs
 # that teach the model "longer = better" rather than quality (Jun-14 audit finding).
@@ -201,6 +230,61 @@ def load_feedback_files(corpus_path: str) -> list[dict]:
         f"template-echo={skipped_template_echo} too-short={skipped_too_short} "
         f"ratio>{MAX_LENGTH_RATIO:.0f}x={skipped_ratio} verdict={skipped_verdict}) "
         f"avg_ratio={avg_ratio:.1f}x"
+    )
+    return records
+
+
+def load_sft_files(corpus_path: str) -> list[dict]:
+    """Load SFT records from corpus_path.
+
+    Reads `sft-*.jsonl` files produced by export-sft.py. Each source line is
+    `{"prompt": <user text>, "completion": <assistant envelope>}`. We wrap each
+    into the conversational system+user+assistant shape the model sees at
+    inference (SFT_SYSTEM_PROMPT system turn + user prompt + assistant
+    completion), so the training distribution matches deployment.
+
+    Unlike the DPO loader there is no `rejected` side and no length-ratio gate:
+    every senior-authored completion is gold. We only drop structurally-empty
+    rows and completions that are too short to carry the canonical envelope.
+    """
+    files = sorted(set(glob.glob(os.path.join(corpus_path, "sft-*.jsonl"))))
+    print(f"[corpus] found {len(files)} SFT file(s) in {corpus_path}")
+    records = []
+    skipped_format = 0
+    skipped_short = 0
+    for f in files:
+        with open(f) as fh:
+            for line in fh:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    d = json.loads(line)
+                except Exception as e:
+                    print(f"[WARN] skip line in {f}: {e}", file=sys.stderr)
+                    skipped_format += 1
+                    continue
+                prompt = d.get("prompt", "")
+                completion = d.get("completion", "")
+                if not prompt or not completion:
+                    skipped_format += 1
+                    continue
+                # The canonical envelope (frontmatter + reasoning + fenced diff)
+                # is ~120 chars of scaffold even for a one-line diff; anything
+                # below that is a malformed capture.
+                if len(completion) < 120:
+                    skipped_short += 1
+                    continue
+                records.append({
+                    "messages": [
+                        {"role": "system", "content": SFT_SYSTEM_PROMPT},
+                        {"role": "user", "content": prompt},
+                        {"role": "assistant", "content": completion},
+                    ]
+                })
+    print(
+        f"[corpus] loaded {len(records)} SFT records "
+        f"(format-skip={skipped_format} too-short={skipped_short})"
     )
     return records
 
@@ -385,11 +469,22 @@ def run_training(records: list[dict], base_model: str, output_dir: str, dry_run:
     is_32b = "32B" in base_model or "32b" in base_model
     _batch_size = 1 if is_32b else BATCH_SIZE
     _grad_accum = 4 if is_32b else GRAD_ACCUM
-    _max_length = 512  # 1024 OOMs on L4 24 GB; 512 fits 7B DPO double-forward with grad ckpt
+    # max_length must fit prompt + full completion. The previous flat 512 silently
+    # truncated every diff longer than ~512 tokens mid-hunk (median chosen ≈ 1000+
+    # tokens), so the model trained on syntactically-invalid half-diffs (Opus audit
+    # 2026-06-19, training-architecture finding P2). SimPO is a single forward pass
+    # (no reference model) so 1024 fits comfortably on an L4 24 GB; standard DPO is a
+    # double forward and stays at 512 to preserve the documented OOM guard.
+    if is_32b:
+        _max_length = 1024
+    elif loss_type == "dpo":
+        _max_length = 512   # double-forward OOMs >512 on L4 24 GB
+    else:  # simpo — single forward
+        _max_length = 1024
     if is_32b:
         print(f"[train] 32B memory mode: batch=1, grad_ckpt=True, max_len={_max_length}, grad_accum={_grad_accum}")
     else:
-        print(f"[train] 7B memory mode: batch={_batch_size}, grad_ckpt=True, max_len={_max_length}")
+        print(f"[train] 7B memory mode: batch={_batch_size}, grad_ckpt=True, max_len={_max_length}, loss={loss_type}")
 
     # expandable_segments avoids fragmentation-caused OOM on CUDA
     os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
@@ -507,8 +602,149 @@ def run_training(records: list[dict], base_model: str, output_dir: str, dry_run:
     print("[train] done")
 
 
+def run_sft_training(records: list[dict], base_model: str, output_dir: str, dry_run: bool,
+                     max_runtime_seconds: int = 0, resume: bool = False) -> None:
+    """Supervised fine-tune base_model on (system+user → assistant) records.
+
+    This is the FIRST training phase per the 2026-06-19 Opus audit: teach the
+    model the canonical output format and the basic edit skill from the
+    senior-authored gold diffs before any preference optimisation. Uses TRL's
+    SFTTrainer on the conversational `messages` format; the OLMo chat template
+    masks the prompt and computes loss on the assistant turn only.
+    """
+    print(f"[sft] base model: {base_model}")
+    print(f"[sft] output dir: {output_dir}")
+    print(f"[sft] records:    {len(records)}")
+    print(f"[sft] LoRA r={LORA_R} alpha={LORA_ALPHA} lr={SFT_LEARNING_RATE} epochs={SFT_NUM_EPOCHS}")
+    if max_runtime_seconds:
+        print(f"[sft] runtime cap: {max_runtime_seconds}s")
+
+    if dry_run:
+        print("[sft] DRY-RUN — skipping actual training")
+        return
+
+    try:
+        import torch
+        from datasets import Dataset
+        from peft import LoraConfig, TaskType
+        from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig, TrainerCallback
+        from trl import SFTConfig, SFTTrainer
+    except ImportError as e:
+        print(f"[ERROR] Missing training library: {e}", file=sys.stderr)
+        print("Install: pip install trl peft transformers datasets bitsandbytes", file=sys.stderr)
+        sys.exit(1)
+
+    os.makedirs(output_dir, exist_ok=True)
+    print(f"[sft] CUDA available: {torch.cuda.is_available()}")
+    if torch.cuda.is_available():
+        print(f"[sft] GPU: {torch.cuda.get_device_name(0)}")
+
+    bnb_config = BitsAndBytesConfig(
+        load_in_4bit=True,
+        bnb_4bit_quant_type="nf4",
+        bnb_4bit_compute_dtype=torch.bfloat16,
+        bnb_4bit_use_double_quant=True,
+    )
+
+    print("[sft] loading tokenizer ...")
+    tokenizer = AutoTokenizer.from_pretrained(base_model, trust_remote_code=True)
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+    tokenizer.padding_side = "right"
+
+    print("[sft] loading model (4-bit) ...")
+    model = AutoModelForCausalLM.from_pretrained(
+        base_model,
+        quantization_config=bnb_config,
+        device_map="auto",
+        trust_remote_code=True,
+    )
+    model.config.use_cache = False
+
+    # Same target-module assertion as the preference path: OLMo names, not LLaMA.
+    _model_module_names = {name.split(".")[-1] for name, _ in model.named_modules()}
+    _matched = [m for m in LORA_TARGET_MODULES if m in _model_module_names]
+    if not _matched:
+        print(
+            f"[ERROR] LORA_TARGET_MODULES {LORA_TARGET_MODULES} matched 0 modules in model.\n"
+            f"        Training would produce a no-op adapter. Aborting.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    print(f"[sft] LoRA target assertion: {len(_matched)}/{len(LORA_TARGET_MODULES)} modules matched: {_matched}")
+
+    peft_config = LoraConfig(
+        task_type=TaskType.CAUSAL_LM,
+        r=LORA_R,
+        lora_alpha=LORA_ALPHA,
+        lora_dropout=LORA_DROPOUT,
+        target_modules=LORA_TARGET_MODULES,
+        bias="none",
+    )
+
+    class RuntimeCapCallback(TrainerCallback):
+        def __init__(self, max_seconds: int) -> None:
+            self._start = time.monotonic()
+            self._max = max_seconds
+
+        def on_step_end(self, args, state, control, **kwargs):
+            if self._max and (time.monotonic() - self._start) >= self._max:
+                print(f"[sft] runtime cap reached — saving checkpoint and stopping")
+                control.should_save = True
+                control.should_training_stop = True
+
+    dataset = Dataset.from_list(records)
+    split = dataset.train_test_split(test_size=0.1, seed=42)
+
+    os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
+
+    callbacks = []
+    if max_runtime_seconds:
+        callbacks.append(RuntimeCapCallback(max_runtime_seconds))
+
+    training_args = SFTConfig(
+        output_dir=output_dir,
+        num_train_epochs=SFT_NUM_EPOCHS,
+        per_device_train_batch_size=BATCH_SIZE,
+        gradient_accumulation_steps=GRAD_ACCUM,
+        gradient_checkpointing=True,
+        gradient_checkpointing_kwargs={"use_reentrant": False},
+        learning_rate=SFT_LEARNING_RATE,
+        max_length=2048,   # full single-file diff in canonical envelope fits; single forward
+        logging_steps=5,
+        save_steps=5,
+        save_total_limit=2,
+        eval_strategy="steps",
+        eval_steps=5,
+        report_to="none",
+        bf16=torch.cuda.is_available(),
+    )
+    trainer = SFTTrainer(
+        model=model,
+        args=training_args,
+        train_dataset=split["train"],
+        eval_dataset=split["test"],
+        processing_class=tokenizer,
+        peft_config=peft_config,
+        callbacks=callbacks or None,
+    )
+
+    resume_ckpt = None
+    if resume:
+        checkpoints = sorted(glob.glob(os.path.join(output_dir, "checkpoint-*")))
+        if checkpoints:
+            resume_ckpt = checkpoints[-1]
+            print(f"[sft] resuming from checkpoint: {resume_ckpt}")
+    print(f"[sft] starting SFT on {len(split['train'])} records ...")
+    trainer.train(resume_from_checkpoint=resume_ckpt)
+    print(f"[sft] saving adapter to {output_dir}")
+    trainer.save_model(output_dir)
+    tokenizer.save_pretrained(output_dir)
+    print("[sft] done")
+
+
 def main() -> None:
-    parser = argparse.ArgumentParser(description="LoRA DPO training for apprenticeship adapter")
+    parser = argparse.ArgumentParser(description="LoRA SFT/DPO training for apprenticeship adapter")
     parser.add_argument("--corpus", default=os.path.join(FOUNDRY_ROOT, "data", "training-corpus", "feedback"),
                         help="Path to feedback/ directory containing apprenticeship-*.jsonl files")
     parser.add_argument("--base-model", default="/data/weights/olmo-3-7b-think-hf",
@@ -531,10 +767,17 @@ def main() -> None:
     parser.add_argument("--resume", action="store_true",
                         help="Resume training from the latest checkpoint in output_dir. "
                              "Pass on every daily run to accumulate training incrementally.")
+    parser.add_argument("--mode", default="pref", choices=["pref", "sft"],
+                        help="Training phase. 'sft' (supervised fine-tune on gold diffs) MUST "
+                             "run first per the 2026-06-19 audit — it teaches the canonical "
+                             "format + edit skill before any preference optimisation. 'pref' "
+                             "(default, DPO/SimPO) is only valid once SFT produces a model that "
+                             "emits valid diffs >90% of the time, ideally with on-policy rejected "
+                             "samples. SFT reads sft-*.jsonl; pref reads apprenticeship-*.jsonl.")
     parser.add_argument("--loss-type", default="simpo", choices=["simpo", "dpo"],
-                        help="Preference learning objective. 'simpo' (default) avoids the "
-                             "reference-model length-normalisation bias that caused token-count "
-                             "discrimination in the Jun-14 run. 'dpo' for ablation comparison.")
+                        help="Preference learning objective (--mode pref only). 'simpo' (default) "
+                             "avoids the reference-model length-normalisation bias that caused "
+                             "token-count discrimination in the Jun-14 run. 'dpo' for ablation.")
     parser.add_argument("--simpo-gamma", type=float, default=0.5,
                         help="SimPO margin (gamma). Default 0.5. Increase to widen the "
                              "reward margin between chosen and rejected; decrease if training "
@@ -546,20 +789,29 @@ def main() -> None:
         local_staging = "/tmp/foundry-training-corpus"
         corpus_path = sync_from_gcs(args.adapter_name, local_staging)
 
-    records = load_feedback_files(corpus_path)
+    if args.mode == "sft":
+        records = load_sft_files(corpus_path)
+    else:
+        records = load_feedback_files(corpus_path)
     if not records:
-        print("[ERROR] No valid DPO pairs found — check corpus path and field names", file=sys.stderr)
+        kind = "SFT records" if args.mode == "sft" else "DPO pairs"
+        print(f"[ERROR] No valid {kind} found — check corpus path and field names", file=sys.stderr)
         sys.exit(1)
 
     # Use a fixed -wip suffix so --resume finds the same checkpoint directory each day.
     # Only rename to a dated path when promoting the adapter to the registry.
     output_dir = args.output_dir or f"./adapters/{args.adapter_name}-wip"
 
-    run_training(records, args.base_model, output_dir, dry_run=args.dry_run,
-                 max_runtime_seconds=args.max_runtime_seconds,
-                 resume=args.resume,
-                 loss_type=args.loss_type,
-                 simpo_gamma=args.simpo_gamma)
+    if args.mode == "sft":
+        run_sft_training(records, args.base_model, output_dir, dry_run=args.dry_run,
+                         max_runtime_seconds=args.max_runtime_seconds,
+                         resume=args.resume)
+    else:
+        run_training(records, args.base_model, output_dir, dry_run=args.dry_run,
+                     max_runtime_seconds=args.max_runtime_seconds,
+                     resume=args.resume,
+                     loss_type=args.loss_type,
+                     simpo_gamma=args.simpo_gamma)
 
     if args.upload_gcs and not args.dry_run:
         upload_adapter_to_gcs(output_dir, args.adapter_name)
