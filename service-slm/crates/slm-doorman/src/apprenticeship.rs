@@ -568,22 +568,7 @@ pub fn apprentice_prompt(cfg: &ApprenticeshipConfig, brief: &ApprenticeshipBrief
          ## Brief body\n\
          {body}\n\n\
          ## Acceptance test\n\
-         {acceptance}\n\n\
-         ## Required response shape\n\
-         Respond with exactly this YAML frontmatter, then `## Reasoning` and `## Diff`:\n\
-         \n\
-         ---\n\
-         self_confidence: <0.0..=1.0>\n\
-         escalate: <true|false>\n\
-         ---\n\
-         \n\
-         ## Reasoning\n\
-         <your reasoning here>\n\
-         \n\
-         ## Diff\n\
-         ```diff\n\
-         <unified diff, OR empty if escalate=true>\n\
-         ```\n",
+         {acceptance}\n",
         brief_id = brief.brief_id,
         task_type = brief.task_type,
         senior = brief.senior_identity,
