@@ -11,11 +11,16 @@ Last updated: 2026-06-19 (Session 26 — drain dispatch fix + Opus audit improve
 ## Active (Phase 2 complete — Phase 4 next)
 
 v0.3.0 plan at `/home/jennifer/.claude/plans/no-make-a-plan-abundant-forest.md`.
-- [ ] **Stage 6 + Doorman rebuild** — new outbox message needed: commits `c0448b81`→`75849f60`
-      (6 commits including drain dispatch fix). After rebuild, add systemd overrides:
-      `SLM_DRAIN_CONCURRENCY=4` and `SLM_QUEUE_DRAIN_INTERVAL_SEC=1` to local-doorman.service
-      (saves ~63h on 1,128-item backlog). Command scope.
-      [2026-06-19 totebox@project-intelligence]
+- [ ] **Stage 6 + Doorman rebuild** — outbox updated (msg-id project-intelligence-20260620-session26c-stage6-prompt-fix);
+      commits `c0448b81`→`0506d359` (8 commits). After rebuild, add systemd overrides:
+      `SLM_DRAIN_CONCURRENCY=4` and `SLM_QUEUE_DRAIN_INTERVAL_SEC=1` to local-doorman.service.
+      Command scope.
+      [2026-06-20 totebox@project-intelligence]
+- [x] **DPO corpus quality: 55% template-echo stubs** — root cause: `apprentice_prompt()` had
+      redundant "## Required response shape" block with `<unified diff, OR empty if escalate=true>`
+      placeholder inside code fence; OLMo echoed it literally. Fix: removed block entirely
+      (system prompt already shows format). Commit `0506d359`. Expect real_diff rate 19%→50%.
+      [2026-06-20 totebox@project-intelligence]
 - [ ] **down_for_secs in TierBInfo** — `health_down_secs: Option<u64>` added to TierBInfo
       + `health_down_since_secs: Arc<AtomicU64>` wired in YoYoTierClient/run_health_probe;
       committed but deploy pending (Stage 6 + slm-doorman-server rebuild required)
