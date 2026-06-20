@@ -268,6 +268,7 @@ All Phase 8+9+10+T0 commits + 2026-06-19 need `bin/promote.sh` from Command Sess
 | `0e8cfef5` | docs(sel4): BRIEF-sel4-unikernel + H2a/b/c/H3 roadmap; strip M-17 contamination from NEXT.md |
 | `e25b6ad7` | feat(sel4): Phase H1b — CompileRustPd build step in moonshot-toolkit + AArch64 panic handler |
 | H2a completion | feat(sel4): Phase H2a — Rust PD gate passed; console_main.rs + os-console-rust.toml |
+| `2e0b47c5` | feat(sel4): Phase H8 — HTTP GET to Doorman /healthz; ARP reply + raw TCP; gate PASSED |
 
 ## darwin-x86_64 binary pending (waiting on Jennifer)
 
