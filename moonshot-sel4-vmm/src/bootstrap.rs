@@ -101,6 +101,62 @@ pub unsafe fn tcb_resume(tcb_cap: u64) {
     check_ok(r);
 }
 
-/// Convenience: shorthand for the two TCB size constants.
-pub const EP_SIZE_BITS: u64 = 4;   // seL4_EndpointBits
-pub const TCB_SIZE_BITS: u64 = 11; // seL4_TCBBits (non-MCS, non-debug)
+/// seL4_ARM_PageTable_Map: map a page table cap into a VSpace.
+///
+/// Kernel decode (AArch64 vspace.c, decodeARMPageTableInvocation):
+///   extra_cap[0] = vspace cap  (caps_or_badges[0])
+///   MR[0] = vaddr              (getSyscallArg(0, buffer))
+///   MR[1] = attr               (read in AArch32; convention to send in AArch64)
+///   msginfo: label=ARMPageTableMap, extra_caps=1, length=2
+pub unsafe fn page_table_map(
+    ipc: *mut IpcBuffer,
+    pt_cap: u64,
+    vspace_cap: u64,
+    vaddr: u64,
+    attr: u64,
+) {
+    (*ipc).caps_or_badges[0] = vspace_cap;
+    let r = syscall::call_mrs(
+        pt_cap,
+        msginfo_new(label::ARM_PAGE_TABLE_MAP, 1, 2),
+        vaddr, // MR[0] = vaddr
+        attr,  // MR[1] = attr
+        0,
+        0,
+    );
+    check_ok(r);
+}
+
+/// seL4_ARM_Page_Map: map a frame cap into a VSpace.
+///
+/// Kernel decode (AArch64 vspace.c, case ARMPageMap):
+///   extra_cap[0] = vspace cap  (caps_or_badges[0])
+///   MR[0] = vaddr              (getSyscallArg(0, buffer))
+///   MR[1] = rights             (getSyscallArg(1, buffer); 3 = R|W)
+///   MR[2] = attr               (getSyscallArg(2, buffer); 0 = device/uncached)
+///   msginfo: label=ARMPageMap, extra_caps=1, length=3
+pub unsafe fn page_map(
+    ipc: *mut IpcBuffer,
+    frame_cap: u64,
+    vspace_cap: u64,
+    vaddr: u64,
+    rights: u64,
+    attr: u64,
+) {
+    (*ipc).caps_or_badges[0] = vspace_cap;
+    let r = syscall::call_mrs(
+        frame_cap,
+        msginfo_new(label::ARM_PAGE_MAP, 1, 3),
+        vaddr,  // MR[0]
+        rights, // MR[1]
+        attr,   // MR[2]
+        0,
+    );
+    check_ok(r);
+}
+
+/// Convenience: shorthand for object size constants.
+pub const EP_SIZE_BITS: u64 = 4;    // seL4_EndpointBits
+pub const TCB_SIZE_BITS: u64 = 11;  // seL4_TCBBits (non-MCS, non-debug)
+pub const PAGE_SIZE_BITS: u64 = 12; // seL4_PageBits — 4 KiB small page
+pub const PT_SIZE_BITS: u64 = 12;   // seL4_ARM_PageTableBits — 4 KiB page table
