@@ -181,12 +181,6 @@ input { background: var(--bg); color: var(--fg); border: 1px solid var(--border)
   </aside>
   <div class="resizer" id="rsz-sb"></div>
   <aside id="pv">
-    <div id="pv-toolbar">Preview</div>
-    <div id="pv-content"><p style="color:var(--fg3);padding:16px;">No file open.</p></div>
-  </aside>
-  <div class="resizer" id="rsz-pv"></div>
-  <main id="ed">
-    <div id="tab-bar"></div>
     <div id="ed-toolbar">
       <span id="ed-path">No file open</span>
       <button id="tb-copy" class="tb-btn" onclick="copyFileName()" title="Copy filename" style="display:none">⎘ Copy</button>
@@ -203,6 +197,12 @@ input { background: var(--bg); color: var(--fg); border: 1px solid var(--border)
       <span style="font-size:10px;color:var(--fg3)" id="ed-mtime"></span>
       <label style="font-size:11px;color:var(--fg3)">Ln:<input id="ln-input" class type="number" min="1" title="Go to line (Ctrl+G)" oninput="goToLine(+this.value)"></label>
     </div>
+    <div id="pv-toolbar">Preview</div>
+    <div id="pv-content"><p style="color:var(--fg3);padding:16px;">No file open.</p></div>
+  </aside>
+  <div class="resizer" id="rsz-pv"></div>
+  <main id="ed">
+    <div id="tab-bar"></div>
     <div id="sse-notice">
       File changed on disk
       <button onclick="reloadFile()">Reload</button>
