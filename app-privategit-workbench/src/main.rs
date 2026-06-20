@@ -215,6 +215,17 @@ struct FileResponse {
 }
 
 #[derive(Serialize)]
+struct DirEntry {
+    name: String,
+    is_dir: bool,
+}
+
+#[derive(Serialize)]
+struct DirResponse {
+    entries: Vec<DirEntry>,
+}
+
+#[derive(Serialize)]
 struct ErrorBody {
     error: String,
 }
@@ -247,11 +258,28 @@ fn log_activity(log_dir: &Option<PathBuf>, action: &str, path: &str, meta: serde
 }
 
 /// GET /file?path=<url_path>
+/// - Empty path  → {entries: [{name, is_dir:true}]} listing all configured roots
+/// - Directory   → {entries: [{name, is_dir}]} listing directory contents
+/// - File        → {content, mtime, writable}
 async fn get_file(
     State(state): State<AppState>,
     headers: HeaderMap,
     Query(q): Query<FileQuery>,
 ) -> Response {
+    // Empty path — return all configured roots as top-level directory entries.
+    if q.path.trim_matches('/').is_empty() {
+        let mut entries: Vec<DirEntry> = state
+            .roots
+            .iter()
+            .map(|r| DirEntry {
+                name: r.url_prefix.trim_end_matches('/').to_string(),
+                is_dir: true,
+            })
+            .collect();
+        entries.sort_by(|a, b| a.name.cmp(&b.name));
+        return Json(DirResponse { entries }).into_response();
+    }
+
     if headers.get("x-wb-source").and_then(|v| v.to_str().ok()) == Some("user") {
         let ext = q.path.rsplit('.').next().unwrap_or("").to_string();
         log_activity(
@@ -269,8 +297,28 @@ async fn get_file(
     if !fs_path.exists() {
         return err(StatusCode::NOT_FOUND, "file not found");
     }
-    if !fs_path.is_file() {
-        return err(StatusCode::BAD_REQUEST, "not a file");
+
+    // Directory — list contents.
+    if fs_path.is_dir() {
+        let rd = match fs::read_dir(&fs_path) {
+            Ok(r) => r,
+            Err(e) => return err(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()),
+        };
+        let mut entries: Vec<DirEntry> = rd
+            .filter_map(|de| {
+                let de = de.ok()?;
+                let name = de.file_name().to_string_lossy().to_string();
+                if name.starts_with('.') {
+                    return None;
+                }
+                let is_dir = de.file_type().ok()?.is_dir();
+                Some(DirEntry { name, is_dir })
+            })
+            .collect();
+        entries.sort_by(|a, b| {
+            b.is_dir.cmp(&a.is_dir).then(a.name.cmp(&b.name))
+        });
+        return Json(DirResponse { entries }).into_response();
     }
 
     let meta = match fs::metadata(&fs_path) {
