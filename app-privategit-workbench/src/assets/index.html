@@ -1,3891 +1,468 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Foundry Intranet</title>
+<title>Foundry Workbench</title>
 <style>
+:root {
+  --bg: #fafafa; --bg2: #f0f0f0; --bg3: #e8e8e8;
+  --fg: #24292e; --fg2: #586069; --fg3: #959da5;
+  --accent: #0066cc; --accent-bg: #e8f0fe;
+  --border: #d0d7de; --danger: #cf222e;
+  --row-h: 22px; --sb-w: 280px; --pv-w: 380px;
+}
+[data-theme="dark"] {
+  --bg: #1e1e1e; --bg2: #252526; --bg3: #3c3c3c;
+  --fg: #d4d4d4; --fg2: #abb2bf; --fg3: #6a737d;
+  --accent: #4d9fff; --accent-bg: #0d3a5c;
+  --border: #333; --danger: #f85149;
+}
 * { box-sizing: border-box; margin: 0; padding: 0; }
+body { font: 13px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+       background: var(--bg); color: var(--fg); display: flex; flex-direction: column;
+       height: 100vh; overflow: hidden; }
+button { cursor: pointer; border: none; background: none; color: inherit; font: inherit; }
 
-body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  font-size: 13px;
-  background: #1e1e1e;
-  color: #ccc;
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  overflow: hidden;
-}
+/* Header */
+#hdr { background: var(--bg2); border-bottom: 1px solid var(--border);
+       padding: 6px 12px; display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+#hdr h1 { font-size: 12px; font-weight: 600; letter-spacing: .04em; }
+#hdr .spacer { flex: 1; }
+#hdr button { padding: 3px 8px; border-radius: 4px; font-size: 12px; }
+#hdr button:hover { background: var(--bg3); }
+#save-btn { color: var(--accent); font-weight: 600; }
+#save-btn.dirty::after { content: "•"; margin-left: 2px; }
+#theme-btn { font-size: 15px; }
+#status-bar { font-size: 11px; color: var(--fg3); }
 
-/* ── Header ───────────────────────────────────────────────────────── */
-header {
-  background: #252526;
-  border-bottom: 1px solid #333;
-  padding: 8px 14px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-shrink: 0;
-}
-header h1 { font-size: 13px; font-weight: 600; color: #eee; letter-spacing: 0.02em; white-space: nowrap; }
-header .tag {
-  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
-  background: #0066cc22; color: #4d9fff; border: 1px solid #4d9fff44;
-  padding: 2px 7px; border-radius: 3px; white-space: nowrap;
-}
-.search-wrap { flex: 1; display: flex; align-items: center; gap: 8px; margin-left: auto; max-width: 400px; }
-.search-wrap input {
-  flex: 1; background: #3c3c3c; border: 1px solid #555; border-radius: 4px;
-  color: #eee; font-size: 12px; padding: 5px 10px; outline: none;
-}
-.search-wrap input:focus { border-color: #4d9fff; }
-.search-wrap input::placeholder { color: #666; }
-#search-status { font-size: 10px; color: #555; white-space: nowrap; min-width: 50px; }
+/* Layout */
+#layout { display: flex; flex: 1; overflow: hidden; }
 
-/* ── Layout ───────────────────────────────────────────────────────── */
-.layout { display: flex; flex: 1; overflow: hidden; }
+/* Sidebar */
+#sb { width: var(--sb-w); background: var(--bg2); border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; flex-shrink: 0; min-width: 160px; }
+#schema-bar { display: flex; flex-wrap: wrap; gap: 2px; padding: 6px;
+              border-bottom: 1px solid var(--border); flex-shrink: 0; }
+#schema-bar button { font-size: 11px; padding: 3px 7px; border-radius: 3px;
+                     color: var(--fg2); }
+#schema-bar button:hover { background: var(--bg3); }
+#schema-bar button.active { background: var(--accent-bg); color: var(--accent);
+                             font-weight: 600; }
+#tree-wrap { flex: 1; overflow: hidden; position: relative; }
+#tree-spacer-top { pointer-events: none; }
+#tree { overflow-y: auto; height: 100%; }
+.tree-row { display: flex; align-items: center; height: var(--row-h);
+            padding-right: 8px; white-space: nowrap; user-select: none;
+            cursor: pointer; font-size: 12px; }
+.tree-row:hover { background: var(--bg3); }
+.tree-row.selected { background: var(--accent-bg); color: var(--accent); }
+.tree-row .indent { display: inline-block; width: 12px; flex-shrink: 0; }
+.tree-row .icon { width: 14px; text-align: center; flex-shrink: 0; margin-right: 4px; }
+.tree-row .name { overflow: hidden; text-overflow: ellipsis; flex: 1; }
+.tree-row .badge { font-size: 10px; margin-left: 4px; color: var(--fg3); }
+.tree-row.modified .badge { color: #e5a84f; }
 
-/* ── Sidebar ──────────────────────────────────────────────────────── */
-.sidebar {
-  width: 300px; min-width: 160px;
-  background: #252526; flex-shrink: 0;
-  display: flex; flex-direction: column; overflow: hidden;
-  transition: width 0.15s ease;
-}
-.sidebar.sb-collapsed { min-width: 32px; }
-.sidebar.sb-collapsed #tree-panel,
-.sidebar.sb-collapsed #search-panel { visibility: hidden; pointer-events: none; overflow: hidden; }
+/* Resizers */
+.resizer { width: 4px; background: var(--border); cursor: col-resize; flex-shrink: 0; }
+.resizer:hover, .resizer.dragging { background: var(--accent); }
 
-/* ── Sidebar toolbar (≡ toggle + 👁 hidden-files) ─────────────────── */
-#sidebar-toolbar {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 4px 6px; flex-shrink: 0; gap: 4px;
-  border-bottom: 1px solid #333;
-}
-.sb-tool-btn {
-  background: none; border: none; cursor: pointer;
-  color: #666; font-size: 13px; padding: 3px 5px; border-radius: 3px;
-  line-height: 1; flex-shrink: 0;
-}
-.sb-tool-btn:hover { background: #3c3c3c; color: #ccc; }
-.sb-tool-btn.active { color: #4d9fff; background: #0d3a5c; }
-#sb-toggle-btn { font-size: 15px; }
-.sidebar.sb-collapsed #sidebar-toolbar { justify-content: center; }
-.sidebar.sb-collapsed .sb-tool-btn:not(#sb-toggle-btn) { display: none; }
+/* Editor pane */
+#ed { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 200px; }
+#ed-toolbar { background: var(--bg2); border-bottom: 1px solid var(--border);
+              padding: 4px 8px; font-size: 11px; color: var(--fg3); flex-shrink: 0;
+              display: flex; align-items: center; gap: 8px; }
+#ed-path { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#editor { flex: 1; width: 100%; background: var(--bg); color: var(--fg);
+          border: none; outline: none; resize: none; font: 13px/1.5 "Fira Code",monospace;
+          padding: 12px 16px; tab-size: 2; }
+#viewer { flex: 1; overflow: hidden; }
+#viewer iframe { width: 100%; height: 100%; border: none; }
+#viewer pre { margin: 0; padding: 12px 16px; overflow: auto; height: 100%;
+              font: 12px/1.5 "Fira Code",monospace; white-space: pre-wrap; }
 
-/* ── Resize handles ───────────────────────────────────────────────── */
-.resizer { width: 5px; background: #2d2d2d; cursor: col-resize; flex-shrink: 0; transition: background 0.15s; }
-.resizer:hover, .resizer.active { background: #4d9fff55; }
+/* Preview pane */
+#pv { width: var(--pv-w); background: var(--bg); border-left: 1px solid var(--border);
+      display: flex; flex-direction: column; overflow: hidden; min-width: 120px; }
+#pv-toolbar { background: var(--bg2); border-bottom: 1px solid var(--border);
+              padding: 4px 8px; font-size: 11px; color: var(--fg3); flex-shrink: 0; }
+#pv-content { flex: 1; overflow: auto; padding: 12px 16px; font-size: 13px; }
+#pv-content iframe { width: 100%; height: 100%; border: none; }
 
-/* ── Search panel ─────────────────────────────────────────────────── */
-#search-panel { display: none; flex: 1; overflow-y: auto; }
-#search-panel.visible { display: block; }
-#search-panel::-webkit-scrollbar { width: 5px; }
-#search-panel::-webkit-scrollbar-thumb { background: #444; border-radius: 3px; }
-
-.search-result { padding: 6px 12px; cursor: pointer; border-bottom: 1px solid #2a2d2e; transition: background 0.1s; }
-.search-result:hover { background: #2a2d2e; }
-.search-result.active { background: #094771; }
-.res-name { font-size: 12px; color: #a8d5a2; font-weight: 500; }
-.search-result.active .res-name { color: #c8e6c9; }
-.res-path { font-size: 10px; color: #666; margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.search-msg { padding: 12px; color: #555; font-size: 11px; font-style: italic; }
-
-/* ── Tree panel ───────────────────────────────────────────────────── */
-#tree-panel { flex: 1; overflow-y: auto; }
-#tree-panel.hidden { display: none; }
-#tree-panel::-webkit-scrollbar { width: 5px; }
-#tree-panel::-webkit-scrollbar-thumb { background: #444; border-radius: 3px; }
-
-.section-header {
-  padding: 11px 12px 4px; font-size: 10px; font-weight: 700;
-  text-transform: uppercase; letter-spacing: 0.08em; color: #888;
-  cursor: pointer; user-select: none; display: flex; align-items: center; gap: 6px;
-}
-.section-header:hover { color: #bbb; }
-.section-header .arrow { font-size: 9px; transition: transform 0.15s; color: #555; }
-.section-header.open .arrow { transform: rotate(90deg); }
-.section-body { overflow: hidden; }
-.section-body.collapsed { display: none; }
-
-.tree-item {
-  display: flex; align-items: center; padding: 4px 8px;
-  cursor: pointer; color: #bbb; gap: 5px;
-  border-left: 2px solid transparent; transition: background 0.1s;
-  white-space: nowrap; overflow: hidden;
-}
-.tree-item:hover { background: #2a2d2e; color: #eee; }
-.tree-item.active { background: #094771; color: #fff; border-left-color: #4d9fff; }
-.tree-item.viewable { color: #a8d5a2; }
-.tree-item.viewable:hover { color: #c8e6c9; }
-.tree-item.viewable.active { color: #fff; }
-
-.tree-item .icon { font-size: 12px; flex-shrink: 0; }
-.tree-item .label { flex: 1; overflow: hidden; text-overflow: ellipsis; font-size: 12px; }
-.tree-item .arrow { font-size: 9px; color: #555; flex-shrink: 0; transition: transform 0.15s; margin-right: 2px; }
-.tree-item.open .arrow { transform: rotate(90deg); }
-
-.tree-children { overflow: hidden; }
-.tree-children.collapsed { display: none; }
-
-.loading { padding: 4px 8px 4px 28px; color: #555; font-size: 11px; font-style: italic; }
-.empty   { padding: 4px 8px 4px 28px; color: #555; font-size: 11px; }
-.err     { padding: 4px 8px 4px 28px; color: #f85149; font-size: 11px; }
-
-/* ── Main area (viewer + editor) ──────────────────────────────────── */
-#main-area { flex: 1; display: flex; overflow: hidden; }
-
-/* ── Viewer ───────────────────────────────────────────────────────── */
-.viewer { flex: 1; min-width: 200px; display: flex; flex-direction: column; overflow: hidden; }
-
-.viewer-bar {
-  background: #252526; border-bottom: 1px solid #333;
-  padding: 0 12px; font-size: 11px; flex-shrink: 0;
-  display: flex; align-items: center; gap: 10px; height: 32px; overflow: hidden;
-}
-.viewer-bar .bar-path { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #aaa; }
-.bar-btn {
-  font-size: 10px; color: #ccc; background: #3c3c3c; border: 1px solid #555;
-  border-radius: 3px; padding: 2px 8px; cursor: pointer; white-space: nowrap;
-  flex-shrink: 0; line-height: 1.6;
-}
-.bar-btn:hover { background: #4a4a4a; color: #eee; }
-.viewer-bar .bar-link {
-  font-size: 10px; color: #4d9fff; text-decoration: none; white-space: nowrap; flex-shrink: 0;
-}
-.viewer-bar .bar-link:hover { color: #7bb8ff; }
-
-.viewer-placeholder {
-  flex: 1; display: flex; align-items: center; justify-content: center;
-  flex-direction: column; gap: 10px; color: #444; padding: 32px;
-}
-.viewer-placeholder h2 { font-size: 14px; color: #555; font-weight: 500; }
-.viewer-placeholder p  { font-size: 12px; line-height: 1.7; text-align: center; max-width: 340px; }
-
-#preview-frame { flex: 1; border: none; background: #fff; display: none; }
-
-/* ── Text viewer (md + code) ──────────────────────────────────────── */
-#text-viewer { flex: 1; min-height: 0; overflow-y: auto; display: none; }
-#text-viewer::-webkit-scrollbar { width: 8px; }
-#text-viewer::-webkit-scrollbar-thumb { background: #555; border-radius: 4px; }
-
-#text-content.md-view {
-  min-height: 100%; background: #fff; color: #24292e;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  font-size: 14px; line-height: 1.7;
-  max-width: 860px; margin: 0 auto; padding: 32px 48px 60px;
-}
-#text-content.md-view h1,
-#text-content.md-view h2 { border-bottom: 1px solid #e1e4e8; padding-bottom: 0.3em; }
-#text-content.md-view h1,#text-content.md-view h2,#text-content.md-view h3,
-#text-content.md-view h4,#text-content.md-view h5,#text-content.md-view h6 { margin: 1.4em 0 0.5em; font-weight: 600; }
-#text-content.md-view h1 { font-size: 1.8em; } #text-content.md-view h2 { font-size: 1.4em; }
-#text-content.md-view h3 { font-size: 1.15em; } #text-content.md-view h4 { font-size: 1em; }
-#text-content.md-view p { margin: 0.75em 0; }
-#text-content.md-view a { color: #0366d6; }
-#text-content.md-view strong { font-weight: 600; }
-#text-content.md-view code {
-  background: #f6f8fa; border: 1px solid #e1e4e8;
-  padding: 1px 5px; border-radius: 3px; font-size: 0.88em;
-  font-family: "SF Mono","Fira Code","Consolas",monospace;
-}
-#text-content.md-view pre {
-  background: #f6f8fa; border: 1px solid #e1e4e8;
-  border-radius: 6px; padding: 14px 16px; overflow-x: auto; margin: 1em 0;
-}
-#text-content.md-view pre code { background: none; border: none; padding: 0; font-size: 0.85em; }
-#text-content.md-view ul,#text-content.md-view ol { margin: 0.6em 0; padding-left: 2em; }
-#text-content.md-view li { margin: 0.25em 0; }
-#text-content.md-view li input[type=checkbox] { margin-right: 6px; }
-#text-content.md-view table { border-collapse: collapse; width: 100%; margin: 1em 0; font-size: 0.9em; }
-#text-content.md-view th,#text-content.md-view td { border: 1px solid #dfe2e5; padding: 7px 13px; }
-#text-content.md-view th { background: #f6f8fa; font-weight: 600; }
-#text-content.md-view tr:nth-child(even) { background: #fafbfc; }
-#text-content.md-view blockquote { border-left: 4px solid #dfe2e5; padding: 0 16px; color: #6a737d; margin: 1em 0; }
-#text-content.md-view hr { border: none; border-top: 1px solid #e1e4e8; margin: 1.5em 0; }
-#text-content.md-view img { max-width: 100%; }
-
-/* ── Click-to-source: hover + flash when editor is open ──────────────── */
-#text-content.click-to-edit h1, #text-content.click-to-edit h2,
-#text-content.click-to-edit h3, #text-content.click-to-edit h4,
-#text-content.click-to-edit h5, #text-content.click-to-edit h6,
-#text-content.click-to-edit p,  #text-content.click-to-edit li,
-#text-content.click-to-edit blockquote, #text-content.click-to-edit pre {
-  cursor: pointer; border-radius: 3px; transition: background 0.1s;
-}
-#text-content.click-to-edit h1:hover, #text-content.click-to-edit h2:hover,
-#text-content.click-to-edit h3:hover, #text-content.click-to-edit h4:hover,
-#text-content.click-to-edit h5:hover, #text-content.click-to-edit h6:hover,
-#text-content.click-to-edit p:hover,  #text-content.click-to-edit li:hover,
-#text-content.click-to-edit blockquote:hover { background: rgba(77,159,255,0.07); }
-#text-content.click-to-edit.md-view pre:hover { background: rgba(77,159,255,0.07); }
-@keyframes preview-flash {
-  from { background-color: rgba(77,159,255,0.30); }
-  to   { background-color: rgba(77,159,255,0); }
-}
-.preview-click-flash { animation: preview-flash 0.55s ease-out; }
-
-#text-content.code-view {
-  min-height: 100%; background: #1e1e1e;
-  font-family: "SF Mono","Fira Code","Consolas","Monaco",monospace;
-  font-size: 12px; line-height: 1.6; color: #d4d4d4;
-  padding: 20px; white-space: pre-wrap; word-break: break-word; tab-size: 4;
-}
-
-/* ── Image viewer ─────────────────────────────────────────────────── */
-#image-viewer {
-  flex: 1; display: none;
-  align-items: center; justify-content: center;
-  background: #111; overflow: auto; padding: 16px;
-}
-#image-viewer img { max-width: 100%; max-height: 100%; object-fit: contain; }
-
-/* ── Editor panel ─────────────────────────────────────────────────── */
-#editor-panel {
-  display: none;
-  flex-direction: column;
-  width: 440px; min-width: 200px; flex-shrink: 0;
-  background: #1e1e1e;
-  position: relative;
-}
-#editor-panel.visible { display: flex; }
-
-.editor-bar {
-  background: #252526; border-bottom: 1px solid #333; border-left: 1px solid #333;
-  padding: 0 12px; font-size: 11px; flex-shrink: 0;
-  display: flex; align-items: center; gap: 8px; height: 32px;
-}
-.editor-bar .editor-title { color: #aaa; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; font-size: 10px; flex: 1; }
-#editor-dirty { color: #e8c07d; font-size: 14px; line-height: 1; }
-#editor-status { font-size: 10px; color: #999; min-width: 50px; }
-#editor-cursor { font-size: 10px; color: #999; min-width: 90px; text-align: right; font-variant-numeric: tabular-nums; }
-#save-btn.saved { color: #89d185; border-color: #89d18555; }
-#ln-jump-input {
-  width: 52px; background: #3c3c3c; border: 1px solid #444; border-radius: 3px;
-  color: #eee; font-size: 11px; padding: 2px 5px; outline: none; text-align: center;
-}
-#ln-jump-input:focus { border-color: #4d9fff; }
-
-/* ── Go-to-line bar ───────────────────────────────────────────────────── */
-#goto-bar {
-  display: none; align-items: center; gap: 8px; flex-shrink: 0;
-  padding: 4px 12px; background: #252526;
-  border-bottom: 1px solid #333; border-left: 1px solid #333;
-}
-#goto-bar.visible { display: flex; }
-.goto-label { font-size: 11px; color: #888; white-space: nowrap; }
-#goto-input {
-  width: 70px; background: #3c3c3c; border: 1px solid #555; border-radius: 3px;
-  color: #eee; font-size: 12px; padding: 2px 6px; outline: none;
-}
-#goto-input:focus { border-color: #4d9fff; }
-.goto-hint { font-size: 10px; color: #444; white-space: nowrap; }
-
-/* ── Find/Replace bar ─────────────────────────────────────────────── */
-#find-bar {
-  display: none; flex-direction: column; flex-shrink: 0;
-  background: #252526; border-bottom: 1px solid #333; border-left: 1px solid #333;
-  padding: 4px 8px; gap: 3px;
-}
-#find-bar.visible { display: flex; }
-.find-row { display: flex; align-items: center; gap: 5px; }
-.find-row input {
-  flex: 1; min-width: 0; background: #3c3c3c; border: 1px solid #555;
-  border-radius: 3px; color: #eee; font-size: 12px; padding: 3px 8px; outline: none;
-}
-.find-row input:focus { border-color: #4d9fff; }
-#find-count { font-size: 10px; color: #666; white-space: nowrap; min-width: 54px; text-align: right; }
-.find-btn {
-  font-size: 11px; color: #999; background: #3c3c3c; border: 1px solid #555;
-  border-radius: 3px; padding: 2px 7px; cursor: pointer; line-height: 1.6;
-  white-space: nowrap; flex-shrink: 0;
-}
-.find-btn:hover { background: #4a4a4a; color: #eee; }
-
-/* ── Document Outline panel ────────────────────────────────────────────── */
-#outline-panel {
-  display: none; position: absolute; top: 33px; right: 8px;
-  width: 300px; max-height: 360px;
-  background: #252526; border: 1px solid #555; border-radius: 4px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.65);
-  flex-direction: column; z-index: 100;
-}
-#outline-panel.visible { display: flex; }
-#outline-filter {
-  background: #3c3c3c; border: none; border-bottom: 1px solid #444;
-  color: #eee; font-size: 12px; padding: 5px 10px; outline: none;
-  border-radius: 4px 4px 0 0; width: 100%; box-sizing: border-box;
-}
-#outline-list { overflow-y: auto; flex: 1; }
-.outline-item {
-  padding: 4px 10px; font-size: 12px; color: #ccc; cursor: pointer;
-  display: flex; align-items: baseline; gap: 6px;
-  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
-}
-.outline-item:hover, .outline-item.outline-focused { background: #094771; color: #eee; }
-.outline-depth { color: #569cd6; font-size: 10px; width: 22px; flex-shrink: 0; text-align: right; }
-.outline-empty { padding: 10px; font-size: 11px; color: #555; text-align: center; }
-
-#editor-wrap {
-  flex: 1;
-  display: flex;
-  overflow: hidden;
-}
-#editor-gutter {
-  width: 44px;
-  min-width: 44px;
-  flex-shrink: 0;
-  background: #1a1a1a;
-  border-left: 1px solid #333;
-  border-right: 1px solid #2a2a2a;
-  overflow: hidden;
-  text-align: right;
-  padding: 16px 8px 16px 0;
-  font-family: "SF Mono","Fira Code","Consolas","Monaco",monospace;
-  font-size: 12px;
-  line-height: 1.6;
-  color: #636d7e;
-  user-select: none;
-  cursor: default;
-}
-#editor-gutter div { line-height: 1.6; }
-#editor-gutter .gl-active { color: #c8ccd4; }
-
-#editor-code-wrap {
-  flex: 1;
-  position: relative;
-  overflow: hidden;
-  background: #1e1e1e;
-}
-#editor-highlight {
-  position: absolute;
-  inset: 0;
-  padding: 16px;
-  margin: 0;
-  overflow: hidden;
-  font: 12px/1.6 "SF Mono","Fira Code","Consolas","Monaco",monospace;
-  white-space: pre;
-  tab-size: 4;
-  pointer-events: none;
-  color: #d4d4d4;
-  background: transparent;
-  z-index: 0;
-  word-wrap: normal;
-}
-.hl-kw { color: #569cd6; }
-.hl-str { color: #ce9178; }
-.hl-cmt { color: #6a9955; }
-.hl-num { color: #b5cea8; }
-.hl-type { color: #4ec9b0; }
-.hl-fn { color: #dcdcaa; }
-.hl-macro { color: #c586c0; }
-.hl-attr { color: #9cdcfe; }
-.hl-tag { color: #569cd6; }
-
-#editor-textarea {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  resize: none;
-  border: none;
-  outline: none;
-  background: transparent;
-  color: transparent;
-  caret-color: #d4d4d4;
-  font-family: "SF Mono","Fira Code","Consolas","Monaco",monospace;
-  font-size: 12px;
-  line-height: 1.6;
-  padding: 16px;
-  tab-size: 4;
-  white-space: pre;
-  overflow-x: auto;
-  overflow-y: auto;
-  z-index: 1;
-}
-#editor-textarea::selection { background: rgba(77, 159, 255, 0.35); color: inherit; }
-#editor-textarea::-webkit-scrollbar { width: 8px; }
-#editor-textarea::-webkit-scrollbar-thumb { background: #555; border-radius: 4px; }
-
-/* ── Tab bar ──────────────────────────────────────────────────────── */
-#tab-bar {
-  display: flex;
-  overflow-x: auto;
-  background: #252526;
-  border-bottom: 1px solid #333;
-  min-height: 33px;
-  scrollbar-width: thin;
-  flex-shrink: 0;
-}
-#tab-bar:empty { display: none; }
-#tab-bar::-webkit-scrollbar { height: 3px; }
-#tab-bar::-webkit-scrollbar-thumb { background: #444; border-radius: 2px; }
-.tab {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 0 6px 0 12px;
-  min-width: 80px;
-  max-width: 200px;
-  font-size: 12px;
-  color: #999;
-  cursor: pointer;
-  border-right: 1px solid #333;
-  white-space: nowrap;
-  overflow: hidden;
-  flex-shrink: 0;
-  user-select: none;
-}
-.tab:hover { background: #2d2d2d; color: #ccc; }
-.tab.active { background: #1e1e1e; color: #eee; border-top: 2px solid #4d9fff; }
-.tab .tab-name { flex: 1; overflow: hidden; text-overflow: ellipsis; }
-.tab .tab-dirty { color: #e8c07d; font-size: 9px; flex-shrink: 0; }
-.tab .tab-close {
-  color: #555; background: none; border: none; cursor: pointer;
-  font-size: 16px; line-height: 1; padding: 0 4px; flex-shrink: 0;
-}
-.tab .tab-close:hover { color: #eee; background: #555; border-radius: 2px; }
-
-/* ── Recovery bar ─────────────────────────────────────────────────── */
-#recovery-bar {
-  background: #664400;
-  color: #ffd080;
-  padding: 6px 12px;
-  font-size: 12px;
-  display: none;
-  align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
-}
-#recovery-bar.visible { display: flex; }
-#recovery-restore {
-  background: #e8c07d; color: #000; border: none;
-  padding: 2px 8px; border-radius: 3px; cursor: pointer; font-size: 11px;
-}
-#recovery-discard {
-  background: none; color: #ffd080; border: 1px solid #ffd080;
-  padding: 2px 8px; border-radius: 3px; cursor: pointer; font-size: 11px;
-}
-
-/* ── Context menu ─────────────────────────────────────────────────── */
-#ctx-menu {
-  display: none;
-  position: fixed;
-  z-index: 2000;
-  background: #252526;
-  border: 1px solid #454545;
-  border-radius: 4px;
-  box-shadow: 0 4px 12px rgba(0,0,0,.5);
-  font-size: 12px;
-  min-width: 180px;
-  padding: 4px 0;
-}
-#ctx-menu button {
-  display: block; width: 100%; text-align: left;
-  padding: 5px 14px; background: none; border: none;
-  color: #ccc; cursor: pointer; font-size: 12px;
-}
-#ctx-menu button:hover { background: #094771; color: #fff; }
-#ctx-menu hr { margin: 3px 0; border: none; border-top: 1px solid #454545; }
-
-/* ── Pinned section ───────────────────────────────────────────────── */
-#pinned-section { display: none; }
-#pinned-section.visible { display: block; }
-.pinned-folder-children { overflow: hidden; }
-.pinned-folder-children.collapsed { display: none; }
-
-/* ── Git status badges ────────────────────────────────────────────── */
-.tree-git {
-  font-size: 9px;
-  margin-left: 4px;
-  flex-shrink: 0;
-}
-.tree-git[data-s="modified"]  { color: #e8c07d; }
-.tree-git[data-s="untracked"] { color: #79c0ff; }
-.tree-git[data-s="staged"]    { color: #89d185; }
-.tree-git[data-s="deleted"]   { color: #f85149; }
-
-/* ── Print ────────────────────────────────────────────────────────── */
-@media print {
-  header, .sidebar, .resizer, .viewer-bar, #editor-panel, .editor-bar { display: none !important; }
-  body, .layout, #main-area, .viewer { display: block !important; height: auto !important; overflow: visible !important; }
-  #text-viewer { display: block !important; overflow: visible !important; }
-  #text-content.md-view { padding: 0 !important; max-width: none !important; }
-  #image-viewer { display: flex !important; background: #fff !important; }
-  .viewer-placeholder, #preview-frame { display: none !important; }
-}
-
-/* ── PDF print configuration dialog ──────────────────────────────────── */
-#pdf-dialog-overlay {
-  position: fixed; inset: 0; z-index: 3000;
-  background: rgba(0,0,0,0.65);
-  display: flex; align-items: center; justify-content: center;
-}
-#pdf-dialog-panel {
-  background: #252526; border: 1px solid #454545; border-radius: 6px;
-  box-shadow: 0 8px 24px rgba(0,0,0,.6);
-  padding: 20px 24px; min-width: 300px; max-width: 380px;
-  font-size: 13px; color: #ccc;
-}
-#pdf-dialog-panel h3 { margin: 0 0 16px; font-size: 14px; color: #eee; font-weight: 600; }
-.pdf-opt { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
-.pdf-opt label { flex: 1; color: #ccc; }
-.pdf-opt select, .pdf-opt input[type=checkbox] { accent-color: #4d9fff; }
-.pdf-opt select {
-  background: #1e1e1e; color: #ccc; border: 1px solid #555;
-  border-radius: 3px; padding: 3px 6px; font-size: 12px;
-}
-.pdf-dialog-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }
-.pdf-dialog-actions button {
-  padding: 5px 14px; border-radius: 3px; border: 1px solid #555;
-  cursor: pointer; font-size: 12px;
-}
-#pdf-dialog-generate {
-  background: #0e639c; color: #fff; border-color: #0e639c;
-}
-#pdf-dialog-generate:hover { background: #1177bb; }
-#pdf-dialog-cancel { background: #3a3a3a; color: #ccc; }
-#pdf-dialog-cancel:hover { background: #4a4a4a; }
-.pdf-dialog-status { font-size: 11px; color: #89d185; margin-top: 6px; min-height: 14px; }
-
-/* ── Toast notification ────────────────────────────────────────────── */
-#wb-toast {
-  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
-  background: #323232; color: #e8e8e8; border-radius: 4px;
-  padding: 8px 16px; font-size: 13px; display: flex; align-items: center;
-  gap: 12px; box-shadow: 0 4px 12px rgba(0,0,0,.5);
-  opacity: 0; pointer-events: none;
-  transition: opacity 0.18s ease;
-  z-index: 9999;
-}
-#wb-toast.show { opacity: 1; pointer-events: auto; }
-.wb-toast-action {
-  background: none; border: 1px solid #aaa; color: #e8e8e8;
-  border-radius: 3px; padding: 2px 10px; cursor: pointer; font-size: 12px;
-}
-.wb-toast-action:hover { background: #444; }
+/* Section highlight */
+.section-highlight { background: rgba(0,102,204,.08); outline: 1px solid rgba(0,102,204,.3); }
 </style>
 </head>
 <body>
-
-<header>
-  <h1>Foundry Intranet</h1>
-  <span class="tag">private</span>
-  <div class="search-wrap">
-    <input type="text" id="search-input" placeholder="Search files…" autocomplete="off" spellcheck="false">
-    <span id="search-status">indexing…</span>
-  </div>
-</header>
-
-<div id="tab-bar"></div>
-
-<div class="layout">
-
-  <div class="sidebar" id="sidebar">
-
-    <div id="sidebar-toolbar">
-      <button id="sb-toggle-btn" class="sb-tool-btn" title="Toggle sidebar (collapse/expand)">☰</button>
-      <button id="sb-hidden-btn" class="sb-tool-btn" title="Toggle hidden files (.agent, .claude, etc.)">👁</button>
+<div id="hdr">
+  <h1>Foundry Workbench</h1>
+  <span id="status-bar">Ready</span>
+  <div class="spacer"></div>
+  <button id="save-btn" onclick="saveFile()">Save</button>
+  <button id="theme-btn" onclick="toggleTheme()" title="Toggle theme">☀</button>
+</div>
+<div id="layout">
+  <aside id="sb">
+    <div id="schema-bar">
+      <button data-schema="files"        class="active">Files</button>
+      <button data-schema="memo"                       >Memo</button>
+      <button data-schema="code"                       >Code</button>
+      <button data-schema="proforma"                   >Proforma</button>
+      <button data-schema="presentation"               >Slides</button>
+      <button data-schema="schedule"                   >Schedule</button>
+      <button data-schema="pdf"                        >PDF</button>
+      <button data-schema="gis"                        >GIS</button>
+      <button data-schema="bim"                        >BIM</button>
     </div>
-
-    <div id="search-panel">
-      <div id="search-results"></div>
+    <div id="tree-wrap">
+      <div id="tree"></div>
     </div>
-
-    <div id="tree-panel">
-
-      <div id="pinned-section">
-        <div class="section-header open" style="cursor:default;">📌 Pinned</div>
-        <div id="pinned-body" class="section-body"></div>
-      </div>
-
-      <div class="section-header open" data-section="sandboxes">
-        <span class="arrow">▶</span> ~/sandbox
-      </div>
-      <div class="section-body" id="section-sandboxes">
-        <div class="tree-node">
-          <div class="tree-item open" data-api="/_api/sandbox-jennifer/" data-browse="/_sandbox-jennifer/" data-type="dir" style="padding-left:14px">
-            <span class="arrow">▶</span><span class="icon">📁</span><span class="label">Jennifer</span>
-          </div>
-          <div class="tree-children" style="padding-left:12px"></div>
-        </div>
-        <div class="tree-node">
-          <div class="tree-item" data-api="/_api/sandbox-mathew/" data-browse="/_sandbox-mathew/" data-type="dir" style="padding-left:14px">
-            <span class="arrow">▶</span><span class="icon">📁</span><span class="label">Mathew</span>
-          </div>
-          <div class="tree-children collapsed" style="padding-left:12px"></div>
-        </div>
-      </div>
-
-      <div class="section-header open" data-section="command">
-        <span class="arrow">▶</span> ~/Foundry
-      </div>
-      <div class="section-body" id="section-command">
-        <div class="tree-node">
-          <div class="tree-item" data-api="/_api/command/" data-browse="/_command/" data-type="dir" style="padding-left:14px">
-            <span class="arrow">▶</span><span class="icon">📁</span><span class="label">~/Foundry</span>
-          </div>
-          <div class="tree-children collapsed" style="padding-left:12px"></div>
-        </div>
-      </div>
-
-      <div class="section-header open" data-section="clones">
-        <span class="arrow">▶</span> 📁 clones/
-      </div>
-      <div class="section-body" id="section-clones">
-        <div class="loading">Loading archives…</div>
-      </div>
-
-      <div class="section-header" data-section="staged">
-        <span class="arrow">▶</span> Staged Outputs
-      </div>
-      <div class="section-body collapsed" id="section-staged">
-        <div class="tree-node">
-          <div class="tree-item" data-api="/_api/staged/bim/" data-browse="/bim/" data-type="dir" style="padding-left:14px">
-            <span class="arrow">▶</span><span class="icon">📁</span><span class="label">bim</span>
-          </div>
-          <div class="tree-children collapsed" style="padding-left:12px"></div>
-        </div>
-        <div class="tree-node">
-          <div class="tree-item" data-api="/_api/staged/bookkeeping/" data-browse="/bookkeeping/" data-type="dir" style="padding-left:14px">
-            <span class="arrow">▶</span><span class="icon">📁</span><span class="label">bookkeeping</span>
-          </div>
-          <div class="tree-children collapsed" style="padding-left:12px"></div>
-        </div>
-        <div class="tree-node">
-          <div class="tree-item" data-api="/_api/staged/legal/" data-browse="/legal/" data-type="dir" style="padding-left:14px">
-            <span class="arrow">▶</span><span class="icon">📁</span><span class="label">legal</span>
-          </div>
-          <div class="tree-children collapsed" style="padding-left:12px"></div>
-        </div>
-        <div class="tree-node">
-          <div class="tree-item" data-api="/_api/staged/staging/" data-browse="/staging/" data-type="dir" style="padding-left:14px">
-            <span class="arrow">▶</span><span class="icon">📁</span><span class="label">staging</span>
-          </div>
-          <div class="tree-children collapsed" style="padding-left:12px"></div>
-        </div>
-      </div>
-
-    </div><!-- /tree-panel -->
-  </div><!-- /sidebar -->
-
-  <div class="resizer" id="resizer"></div>
-
-  <div id="main-area">
-
-    <div class="viewer" id="viewer">
-      <div class="viewer-bar" id="viewer-bar">
-        <span class="bar-path" id="bar-path">No file selected</span>
-      </div>
-      <div class="viewer-placeholder" id="viewer-placeholder">
-        <h2>Select a file to preview</h2>
-        <p>Click any file in the tree on the left, or search by name above.<br>
-           HTML, PDF, markdown, text, images and more open here.<br>
-           Drag the divider to resize. Press <strong>⌘P / Ctrl+P</strong> to print the viewed file.</p>
-      </div>
-      <iframe id="preview-frame" title="Preview"></iframe>
-      <div id="text-viewer"><div id="text-content"></div></div>
-      <div id="image-viewer"><img id="image-el" alt=""></div>
+  </aside>
+  <div class="resizer" id="rsz-sb"></div>
+  <main id="ed">
+    <div id="ed-toolbar">
+      <span id="ed-path">No file open</span>
+      <span id="ed-mtime"></span>
     </div>
-
-    <div class="resizer" id="resizer2" style="display:none"></div>
-
-    <div id="editor-panel">
-      <div class="editor-bar">
-        <span class="editor-title">Editor</span>
-        <span id="editor-cursor"></span>
-        <span id="editor-dirty" style="display:none" title="Unsaved changes">●</span>
-        <span id="editor-status"></span>
-        <button class="bar-btn" id="outline-btn" onclick="showOutline()" title="Document outline (Cmd+Shift+O)">Outline</button>
-        <button class="bar-btn" id="comment-btn" onclick="toggleLineComment()" title="Toggle line comment">Comment</button>
-        <input id="ln-jump-input" type="text" inputmode="numeric" placeholder="Ln" title="Go to line (Enter)" autocomplete="off">
-        <button class="bar-btn" id="save-btn" onclick="saveFile()">Save</button>
-      </div>
-      <div id="goto-bar">
-        <span class="goto-label">Go to line:</span>
-        <input id="goto-input" type="number" min="1" placeholder="…" autocomplete="off">
-        <span class="goto-hint">↵ jump · Esc close</span>
-      </div>
-      <div id="outline-panel">
-        <input id="outline-filter" type="text" placeholder="Filter symbols…" autocomplete="off" spellcheck="false">
-        <div id="outline-list"></div>
-      </div>
-      <div id="find-bar">
-        <div class="find-row">
-          <input id="find-input" type="text" placeholder="Find…" autocomplete="off" spellcheck="false">
-          <span id="find-count"></span>
-          <button class="find-btn" id="find-prev" title="Previous (Shift+Enter)">↑</button>
-          <button class="find-btn" id="find-next" title="Next (Enter)">↓</button>
-          <button class="find-btn" id="find-close" title="Close (Esc)">✕</button>
-        </div>
-        <div class="find-row">
-          <input id="replace-input" type="text" placeholder="Replace with…" autocomplete="off" spellcheck="false">
-          <button class="find-btn" id="replace-one">Replace</button>
-          <button class="find-btn" id="replace-all-btn">All</button>
-        </div>
-      </div>
-      <div id="recovery-bar">
-        <span id="recovery-msg"></span>
-        <button id="recovery-restore">Restore</button>
-        <button id="recovery-discard">Discard</button>
-      </div>
-      <div id="editor-wrap">
-        <div id="editor-gutter"></div>
-        <div id="editor-code-wrap">
-          <pre id="editor-highlight" aria-hidden="true"></pre>
-          <textarea id="editor-textarea" spellcheck="false" autocorrect="off" autocapitalize="off"></textarea>
-        </div>
-      </div>
+    <textarea id="editor" spellcheck="false" placeholder="Select a file to open…"></textarea>
+    <div id="viewer" style="display:none">
+      <iframe id="viewer-frame" sandbox="allow-scripts allow-same-origin"></iframe>
     </div>
-
-  </div><!-- /main-area -->
-
+  </main>
+  <div class="resizer" id="rsz-pv"></div>
+  <aside id="pv">
+    <div id="pv-toolbar">Preview</div>
+    <div id="pv-content"><p style="color:var(--fg3);padding:16px;">No file open.</p></div>
+  </aside>
 </div>
 
 <script>
-// ── State ──────────────────────────────────────────────────────────────────────
-let searchIndex  = [];
-let indexingDone = false;
-let activeTreeEl = null;
-let viewMode     = 'none';  // 'none' | 'iframe' | 'text' | 'image'
-let currentPath  = null;
-
-// Editor state
-let editorPath   = null;   // API path (browse path with leading / stripped)
-let editorMtime  = 0;
-let editorDirty  = false;
-let previewTimer = null;
-let statusTimer  = null;
-let hlTimer      = null;   // syntax-highlight debounce
-let gutterTimer  = null;   // gutter-lines rebuild debounce
-let autosaveRunning = false; // dedup guard for concurrent autosave calls
-
-// Tab state — each tab caches its file content so switching is instant.
-// {path, name, content, mtime, dirty, editorPath, editorMtime, viewMode, scrollTop, writable}
-let tabs         = [];
-let activeTabIdx = -1;
-
-// Git status badges: maps a tree url-path to a status string.
-const gitStatus  = new Map();
-
-// Sidebar collapse state
-let sidebarPinnedWidth = parseInt(sessionStorage.getItem('wb-sidebar-w') || '300');
-
-// Hidden-files toggle (persists across reloads)
-let showHidden = localStorage.getItem('wb-show-hidden') === '1';
-
-// Last undo function — set by showWbToast when an undoFn is provided; cleared on dismiss.
-let lastUndoFn = null;
-
-function logActivity(action, path, meta) {
-  fetch('/_api/edit/activity', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action, path: path || null, meta: meta || {} }),
-  }).catch(() => {});
-}
-
-function showWbToast(msg, undoFn) {
-  const el = document.getElementById('wb-toast');
-  el.innerHTML = '';
-  const text = document.createElement('span');
-  text.textContent = msg;
-  el.appendChild(text);
-  lastUndoFn = undoFn || null;
-  if (undoFn) {
-    const btn = document.createElement('button');
-    btn.className = 'wb-toast-action';
-    btn.textContent = 'Undo';
-    btn.onclick = () => { el.classList.remove('show'); lastUndoFn = null; undoFn(); };
-    el.appendChild(btn);
-  }
-  el.classList.add('show');
-  clearTimeout(el._timer);
-  el._timer = setTimeout(() => { el.classList.remove('show'); lastUndoFn = null; }, undoFn ? 6000 : 2200);
-}
-
-// ── File type routing ─────────────────────────────────────────────────────────
-const IFRAME_EXTS = new Set(['html','htm','pdf']);
-const IMAGE_EXTS  = new Set(['png','jpg','jpeg','gif','svg','webp','ico','bmp','avif']);
-const TEXT_EXTS   = new Set([
-  'md','txt','csv','json','yaml','yml','toml','ini','conf','env','log',
-  'sh','bash','zsh','rs','js','ts','jsx','tsx','css','scss','less',
-  'py','rb','go','java','c','cpp','h','hpp','xml','html','htm',
-]);
-const VIEWABLE_RE  = /\.(html?|pdf|md|txt|csv|json|yaml|yml|toml|ini|conf|env|log|sh|bash|rs|js|ts|jsx|tsx|css|py|png|jpg|jpeg|gif|svg|webp|bmp)$/i;
-const INDEXABLE_RE = /\.(html?|md|txt|pdf|csv|json|yaml|yml)$/i;
-
-// Document types rendered via the server-side /document route.
-// JSON schema detection (proforma, etc.) happens in openFile() after content is fetched.
-const DOCUMENT_EXTS = new Set(['geojson']);
-
-function fileMode(name) {
-  const ext = name.split('.').pop().toLowerCase();
-  if (IFRAME_EXTS.has(ext))    return 'iframe';
-  if (IMAGE_EXTS.has(ext))     return 'image';
-  if (DOCUMENT_EXTS.has(ext))  return 'document';
-  if (TEXT_EXTS.has(ext))      return 'text';
-  return 'text';
-}
-
-// ── Escape HTML ───────────────────────────────────────────────────────────────
-function esc(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
-
-// ── Sidebar collapse ──────────────────────────────────────────────────────────
-function collapseSidebar() {
-  const sb = document.getElementById('sidebar');
-  const w = sb.offsetWidth;
-  if (w > 36) { sidebarPinnedWidth = w; sessionStorage.setItem('wb-sidebar-w', w); }
-  sb.style.width = '32px';
-  sb.classList.add('sb-collapsed');
-}
-function expandSidebar() {
-  const sb = document.getElementById('sidebar');
-  sb.style.width = sidebarPinnedWidth + 'px';
-  sb.classList.remove('sb-collapsed');
-}
-function toggleSidebar() {
-  const sb = document.getElementById('sidebar');
-  if (sb.classList.contains('sb-collapsed')) expandSidebar(); else collapseSidebar();
-}
-
-// ── Hidden-files toggle ───────────────────────────────────────────────────────
-function toggleHiddenFiles() {
-  showHidden = !showHidden;
-  localStorage.setItem('wb-show-hidden', showHidden ? '1' : '0');
-  logActivity('toggle-hidden', null, { show: showHidden });
-  const btn = document.getElementById('sb-hidden-btn');
-  if (btn) btn.classList.toggle('active', showHidden);
-  // Reload all expanded directory nodes so the new filter applies.
-  document.querySelectorAll('.tree-item[data-type="dir"][data-loaded]').forEach(item => {
-    item.removeAttribute('data-loaded');
-    const node = item.closest('.tree-node');
-    const children = node && node.querySelector('.tree-children');
-    if (children && !children.classList.contains('collapsed')) {
-      children.innerHTML = '';
-      const depth = Math.round((parseInt(item.style.paddingLeft) - 14) / 14) + 1;
-      loadChildren(item, children, depth);
-    }
-  });
-}
-
-// ── Markdown renderer ─────────────────────────────────────────────────────────
-function mdToHtml(src) {
-  const codeBlocks = [];
-  src = src.replace(/```([\w]*)\n([\s\S]*?)```/g, (_, lang, code) => {
-    codeBlocks.push({ lang, code });
-    return '\x00CB' + (codeBlocks.length - 1) + '\x00';
-  });
-
-  const inlineCode = [];
-  src = src.replace(/`([^`]+)`/g, (_, c) => {
-    inlineCode.push(c);
-    return '\x00IC' + (inlineCode.length - 1) + '\x00';
-  });
-
-  // inl defined here so it closes over inlineCode
-  function inl(text) {
-    return esc(text)
-      .replace(/\*\*\*([^*]+)\*\*\*/g, '<strong><em>$1</em></strong>')
-      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*([^*\n]+)\*/g, '<em>$1</em>')
-      .replace(/~~([^~]+)~~/g, '<del>$1</del>')
-      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>')
-      .replace(/\x00IC(\d+)\x00/g, (_, n) => `<code>${esc(inlineCode[+n])}</code>`);
-  }
-
-  function splitRow(line) {
-    return line.replace(/^\||\|$/g, '').split('|').map(c => c.trim());
-  }
-
-  const lines = src.split('\n');
-  let out = '';
-  let i = 0;
-
-  while (i < lines.length) {
-    const line = lines[i];
-
-    const hm = line.match(/^(#{1,6}) (.+)/);
-    if (hm) { out += `<h${hm[1].length}>${inl(hm[2])}</h${hm[1].length}>\n`; i++; continue; }
-
-    if (/^---+\s*$/.test(line) || /^\*\*\*+\s*$/.test(line)) { out += '<hr>\n'; i++; continue; }
-
-    if (line.includes('|') && i + 1 < lines.length && /^\|?[\s\-|:]+\|?\s*$/.test(lines[i + 1])) {
-      const headers = splitRow(line);
-      i += 2;
-      out += '<table><thead><tr>' + headers.map(h => `<th>${inl(h)}</th>`).join('') + '</tr></thead><tbody>\n';
-      while (i < lines.length && lines[i].trim() && lines[i].includes('|')) {
-        out += '<tr>' + splitRow(lines[i]).map(c => `<td>${inl(c)}</td>`).join('') + '</tr>\n'; i++;
-      }
-      out += '</tbody></table>\n';
-      continue;
-    }
-
-    if (line.startsWith('> ')) {
-      let bq = '';
-      while (i < lines.length && lines[i].startsWith('> ')) { bq += lines[i].slice(2) + '\n'; i++; }
-      out += `<blockquote>${inl(bq.trim())}</blockquote>\n`;
-      continue;
-    }
-
-    if (/^\s*[\-\*\+] /.test(line)) {
-      out += '<ul>\n';
-      while (i < lines.length && /^\s*[\-\*\+] /.test(lines[i])) {
-        const item = lines[i].replace(/^\s*[\-\*\+] /, '');
-        const task = item.match(/^\[([ xX])\] (.*)/);
-        if (task) {
-          const chk = task[1] !== ' ' ? ' checked' : '';
-          out += `<li><input type="checkbox" disabled${chk}> ${inl(task[2])}</li>\n`;
-        } else {
-          out += `<li>${inl(item)}</li>\n`;
-        }
-        i++;
-      }
-      out += '</ul>\n'; continue;
-    }
-
-    if (/^\d+\. /.test(line)) {
-      out += '<ol>\n';
-      while (i < lines.length && /^\d+\. /.test(lines[i])) {
-        out += `<li>${inl(lines[i].replace(/^\d+\. /, ''))}</li>\n`; i++;
-      }
-      out += '</ol>\n'; continue;
-    }
-
-    if (!line.trim()) { i++; continue; }
-
-    if (line.startsWith('\x00CB')) { out += line + '\n'; i++; continue; }
-
-    let para = '';
-    while (i < lines.length) {
-      const l = lines[i];
-      if (!l.trim()) break;
-      if (/^#{1,6} /.test(l) || /^---+\s*$/.test(l) || l.startsWith('> ') ||
-          /^\s*[\-\*\+] /.test(l) || /^\d+\. /.test(l) ||
-          (l.includes('|') && i + 1 < lines.length && /^\|?[\s\-|:]+\|?\s*$/.test(lines[i + 1])) ||
-          l.startsWith('\x00CB')) break;
-      para += l + ' '; i++;
-    }
-    if (para.trim()) out += `<p>${inl(para.trim())}</p>\n`;
-  }
-
-  out = out.replace(/\x00CB(\d+)\x00/g, (_, n) => {
-    const { lang, code } = codeBlocks[+n];
-    return `<pre><code class="lang-${esc(lang)}">${esc(code.trimEnd())}</code></pre>`;
-  });
-  out = out.replace(/\x00IC(\d+)\x00/g, (_, n) => `<code>${esc(inlineCode[+n])}</code>`);
-  return out;
-}
-
-// ── Editor dirty state ────────────────────────────────────────────────────────
-function setDirty(dirty) {
-  editorDirty = dirty;
-  const dot = document.getElementById('editor-dirty');
-  const btn = document.getElementById('save-btn');
-  dot.style.display = dirty ? 'inline' : 'none';
-  btn.classList.toggle('saved', !dirty);
-  if (activeTabIdx >= 0 && activeTabIdx < tabs.length) {
-    if (tabs[activeTabIdx].dirty !== dirty) {
-      tabs[activeTabIdx].dirty = dirty;
-      renderTabBar();
-    }
-  }
-}
-
-function showEditorStatus(msg, color, ms) {
-  const el = document.getElementById('editor-status');
-  el.textContent = msg;
-  el.style.color = color || '#555';
-  if (statusTimer) clearTimeout(statusTimer);
-  if (ms) statusTimer = setTimeout(() => { el.textContent = ''; }, ms);
-}
-
-// ── Editor panel show/hide ─────────────────────────────────────────────────────
-function showEditorPanel(content) {
-  const panel = document.getElementById('editor-panel');
-  const r2    = document.getElementById('resizer2');
-  const ta    = document.getElementById('editor-textarea');
-  panel.classList.add('visible');
-  r2.style.display = 'block';
-  ta.value = content;
-  setDirty(false);
-  showEditorStatus('', null, 0);
-  updateGutterLines();
-  updateEditorPos();
-  scheduleHighlight();
-  const isMarkdown = editorPath && editorPath.split('.').pop().toLowerCase() === 'md';
-  document.getElementById('text-content').classList.toggle('click-to-edit', isMarkdown);
-}
-
-function hideEditorPanel() {
-  document.getElementById('editor-panel').classList.remove('visible');
-  document.getElementById('resizer2').style.display = 'none';
-  document.getElementById('find-bar').classList.remove('visible');
-  document.getElementById('recovery-bar').classList.remove('visible');
-  editorPath  = null;
-  editorMtime = 0;
-  setDirty(false);
-  const gutter = document.getElementById('editor-gutter');
-  if (gutter) { gutter.innerHTML = ''; gutter.dataset.lineCount = '0'; gutter.dataset.activeLine = '0'; }
-  const hl = document.getElementById('editor-highlight');
-  if (hl) hl.innerHTML = '';
-  document.getElementById('text-content').classList.remove('click-to-edit');
-}
-
-// ── Click-to-source: click rendered preview → jump editor to that line ───────
-const CLICK_BLOCKS = new Set(['h1','h2','h3','h4','h5','h6','p','li','blockquote','pre']);
-
-document.getElementById('text-content').addEventListener('click', e => {
-  if (!editorPath) return;
-  if (editorPath.split('.').pop().toLowerCase() !== 'md') return;
-
-  // Walk up to nearest block element
-  let el = e.target;
-  while (el && el !== e.currentTarget) {
-    if (CLICK_BLOCKS.has(el.tagName.toLowerCase())) break;
-    el = el.parentElement;
-  }
-  if (!el || el === e.currentTarget) return;
-
-  const ta  = document.getElementById('editor-textarea');
-  const src = ta.value;
-  const tag = el.tagName.toLowerCase();
-
-  // Build search string from element content
-  let searchStr;
-  if (/^h[1-6]$/.test(tag)) {
-    const level = parseInt(tag[1]);
-    searchStr = '#'.repeat(level) + ' ' + el.textContent.trim().slice(0, 50);
-  } else if (tag === 'pre') {
-    const langClass = el.querySelector('code') ? el.querySelector('code').className : '';
-    const lang = langClass.replace('lang-', '');
-    searchStr = '```' + lang;
-  } else {
-    searchStr = el.textContent.trim().replace(/\s+/g, ' ').slice(0, 50);
-  }
-
-  // Try progressively shorter matches until one lands
-  let idx = -1;
-  for (let len = searchStr.length; len >= Math.min(10, searchStr.length); len = Math.max(10, Math.floor(len * 0.65))) {
-    idx = src.indexOf(searchStr.slice(0, len));
-    if (idx !== -1) break;
-    if (len === 10) break;
-  }
-  if (idx === -1) return;
-
-  // Flash the element in the preview
-  el.classList.add('preview-click-flash');
-  setTimeout(() => el.classList.remove('preview-click-flash'), 550);
-
-  // Move editor cursor to that position and scroll into view
-  ta.selectionStart = ta.selectionEnd = idx;
-  ta.focus();
-  const tacs   = window.getComputedStyle(ta);
-  const taLineH = parseFloat(tacs.lineHeight) || parseFloat(tacs.fontSize) * 1.6;
-  const taPadT  = parseFloat(tacs.paddingTop) || 0;
-  const lineNum = (src.substring(0, idx).match(/\n/g) || []).length;
-  ta.scrollTop = Math.max(0, taPadT + lineNum * taLineH - ta.clientHeight / 2 + taLineH / 2);
-  updateGutterLines();
-  updateEditorPos();
-});
-
-// ── Click-to-preview: click editor line → scroll viewer to matching element ──
-document.getElementById('editor-textarea').addEventListener('click', () => {
-  if (!editorPath) return;
-  if (editorPath.split('.').pop().toLowerCase() !== 'md') return;
-  const tv = document.getElementById('text-viewer');
-  if (tv.style.display === 'none') return;
-
-  const ta  = document.getElementById('editor-textarea');
-  const pos = ta.selectionStart;
-  const src = ta.value;
-  const lineStart = src.lastIndexOf('\n', pos - 1) + 1;
-  const lineEnd   = src.indexOf('\n', pos);
-  const line = src.substring(lineStart, lineEnd === -1 ? src.length : lineEnd).trim();
-  if (!line) return;
-
-  const tc = document.getElementById('text-content');
-  let target = null;
-
-  const headingMatch = line.match(/^(#{1,6})\s+(.+)/);
-  if (headingMatch) {
-    const tag  = 'h' + headingMatch[1].length;
-    const text = headingMatch[2].trim().slice(0, 40);
-    for (const el of tc.querySelectorAll(tag)) {
-      if (el.textContent.trim().startsWith(text.slice(0, 20))) { target = el; break; }
-    }
-  } else if (line.startsWith('```')) {
-    const lang = line.slice(3).trim();
-    for (const el of tc.querySelectorAll('pre')) {
-      const code = el.querySelector('code');
-      if (!lang || (code && code.className === 'lang-' + lang)) { target = el; break; }
-    }
-  } else {
-    const text = line.replace(/^[>*\-+\d.#]\s*/, '').replace(/\s+/g, ' ').slice(0, 40);
-    if (text.length < 5) return;
-    for (const el of tc.querySelectorAll('p,li,blockquote,td,th')) {
-      if (el.textContent.trim().replace(/\s+/g, ' ').startsWith(text.slice(0, 20))) { target = el; break; }
-    }
-  }
-
-  if (!target) return;
-  target.scrollIntoView({ block: 'center', behavior: 'smooth' });
-  target.classList.add('preview-click-flash');
-  setTimeout(() => target.classList.remove('preview-click-flash'), 550);
-});
-
-// ── Live preview from editor textarea ────────────────────────────────────────
-function applyEditorPreview() {
-  const text = document.getElementById('editor-textarea').value;
-  if (!currentPath) return;
-  const name = currentPath.split('/').pop();
-  const ext  = name.split('.').pop().toLowerCase();
-  if (ext === 'md') {
-    const tc = document.getElementById('text-content');
-    tc.className = 'md-view';
-    tc.innerHTML = mdToHtml(text);
-  } else if (ext === 'html' || ext === 'htm') {
-    document.getElementById('preview-frame').srcdoc = text;
-  } else {
-    const tc = document.getElementById('text-content');
-    tc.textContent = text;
-  }
-}
-
-function schedulePreview() {
-  if (previewTimer) clearTimeout(previewTimer);
-  previewTimer = setTimeout(applyEditorPreview, 350);
-}
-
-// ── Line-number gutter ────────────────────────────────────────────────────────
-function updateGutterLines() {
-  const gutter = document.getElementById('editor-gutter');
-  if (!gutter) return;
-  const ta = document.getElementById('editor-textarea');
-  const lineCount = (ta.value.match(/\n/g) || []).length + 1;
-  if (+gutter.dataset.lineCount === lineCount) return;
-  let html = '';
-  for (let i = 1; i <= lineCount; i++) html += '<div>' + i + '</div>';
-  gutter.innerHTML = html;
-  gutter.dataset.lineCount = String(lineCount);
-}
-
-function updateGutterActive() {
-  const gutter = document.getElementById('editor-gutter');
-  if (!gutter || !gutter.children.length) return;
-  const ta = document.getElementById('editor-textarea');
-  const activeLine = (ta.value.substring(0, ta.selectionStart).match(/\n/g) || []).length + 1;
-  if (+gutter.dataset.activeLine === activeLine) return;
-  const prev = gutter.children[+gutter.dataset.activeLine - 1];
-  if (prev) prev.classList.remove('gl-active');
-  const next = gutter.children[activeLine - 1];
-  if (next) next.classList.add('gl-active');
-  gutter.dataset.activeLine = String(activeLine);
-}
-
-function updateCursorPos() {
-  const el = document.getElementById('editor-cursor');
-  if (!el) return;
-  const ta = document.getElementById('editor-textarea');
-  if (!document.getElementById('editor-panel').classList.contains('visible')) return;
-  const pos = ta.selectionStart;
-  const before = ta.value.substring(0, pos);
-  const line = (before.match(/\n/g) || []).length + 1;
-  const col  = pos - (before.lastIndexOf('\n') + 1) + 1;
-  el.textContent = 'Ln ' + line + ', Col ' + col;
-}
-
-function updateEditorPos() {
-  updateGutterActive();
-  updateCursorPos();
-}
-
-// ── Go-to-line bar ────────────────────────────────────────────────────────────
-function showGotoBar() {
-  const bar = document.getElementById('goto-bar');
-  const inp = document.getElementById('goto-input');
-  bar.classList.add('visible');
-  inp.value = '';
-  inp.focus();
-}
-function hideGotoBar() {
-  document.getElementById('goto-bar').classList.remove('visible');
-  document.getElementById('editor-textarea').focus();
-}
-function applyGotoLine(n) {
-  const ta    = document.getElementById('editor-textarea');
-  const lines = ta.value.split('\n');
-  const idx   = Math.max(0, Math.min(n - 1, lines.length - 1));
-  const pos   = lines.slice(0, idx).reduce((a, l) => a + l.length + 1, 0);
-  ta.selectionStart = ta.selectionEnd = pos;
-  ta.focus();
-  const cs     = window.getComputedStyle(ta);
-  const lineH  = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.6;
-  const padTop = parseFloat(cs.paddingTop) || 0;
-  ta.scrollTop = Math.max(0, padTop + idx * lineH - ta.clientHeight / 2 + lineH / 2);
-  updateGutterLines();
-  updateEditorPos();
-}
-document.getElementById('goto-input').addEventListener('keydown', e => {
-  if (e.key === 'Enter') {
-    const n = parseInt(document.getElementById('goto-input').value, 10);
-    if (!isNaN(n)) { logActivity('goto-line', currentPath, {}); applyGotoLine(n); }
-    hideGotoBar();
-  }
-  if (e.key === 'Escape') hideGotoBar();
-});
-
-document.getElementById('ln-jump-input').addEventListener('keydown', e => {
-  if (e.key === 'Enter') {
-    const n = parseInt(e.target.value, 10);
-    if (!isNaN(n)) { applyGotoLine(n); e.target.value = ''; }
-    document.getElementById('editor-textarea').focus();
-  }
-  if (e.key === 'Escape') {
-    e.target.value = '';
-    document.getElementById('editor-textarea').focus();
-  }
-});
-
-document.getElementById('editor-textarea').addEventListener('input', () => {
-  setDirty(true);
-  schedulePreview();
-  scheduleHighlight();
-  if (gutterTimer) clearTimeout(gutterTimer);
-  gutterTimer = setTimeout(updateGutterLines, 200);
-  updateEditorPos();
-});
-
-document.getElementById('editor-textarea').addEventListener('keyup', updateEditorPos);
-document.getElementById('editor-textarea').addEventListener('click', updateEditorPos);
-document.getElementById('editor-textarea').addEventListener('scroll', () => {
-  const ta = document.getElementById('editor-textarea');
-  const gutter = document.getElementById('editor-gutter');
-  if (gutter) gutter.scrollTop = ta.scrollTop;
-  const hl = document.getElementById('editor-highlight');
-  if (hl) { hl.scrollTop = ta.scrollTop; hl.scrollLeft = ta.scrollLeft; }
-});
-
-// ── Editor keyboard features ──────────────────────────────────────────────────
-const AUTO_PAIRS  = { '(':')', '[':']', '{':'}' };
-const AUTO_CLOSERS = new Set([')', ']', '}']);
-
-document.getElementById('editor-textarea').addEventListener('keydown', e => {
-  const ta = e.target;
-  const s = ta.selectionStart, end = ta.selectionEnd;
-
-  // Ctrl+G — go to line
-  if ((e.metaKey || e.ctrlKey) && e.key === 'g') {
-    e.preventDefault();
-    if (document.getElementById('editor-panel').classList.contains('visible')) showGotoBar();
-    return;
-  }
-
-  // Tab — insert two spaces
-  if (e.key === 'Tab') {
-    e.preventDefault();
-    ta.value = ta.value.substring(0, s) + '  ' + ta.value.substring(end);
-    ta.selectionStart = ta.selectionEnd = s + 2;
-    return;
-  }
-
-  // Bracket auto-close: (, [, {
-  if (AUTO_PAIRS[e.key] && !e.metaKey && !e.ctrlKey && !e.altKey) {
-    e.preventDefault();
-    const closer = AUTO_PAIRS[e.key];
-    if (s !== end) {
-      // Wrap selection
-      const sel = ta.value.substring(s, end);
-      ta.value = ta.value.substring(0, s) + e.key + sel + closer + ta.value.substring(end);
-      ta.selectionStart = s + 1;
-      ta.selectionEnd   = end + 1;
-    } else {
-      // Insert pair, cursor between
-      ta.value = ta.value.substring(0, s) + e.key + closer + ta.value.substring(s);
-      ta.selectionStart = ta.selectionEnd = s + 1;
-    }
-    setDirty(true); schedulePreview(); updateGutterLines(); updateEditorPos();
-    return;
-  }
-
-  // Skip over existing closer when cursor is right before it
-  if (AUTO_CLOSERS.has(e.key) && !e.metaKey && !e.ctrlKey && !e.altKey && s === end) {
-    if (ta.value[s] === e.key) {
-      e.preventDefault();
-      ta.selectionStart = ta.selectionEnd = s + 1;
-      updateEditorPos();
-      return;
-    }
-  }
-
-  // Alt+Up / Alt+Down — move line; Shift+Alt+Down — duplicate line
-  if (e.altKey && !e.metaKey && !e.ctrlKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
-    e.preventDefault();
-    const val    = ta.value;
-    const before = val.substring(0, s);
-    const idx    = (before.match(/\n/g) || []).length;
-    const col    = s - (before.lastIndexOf('\n') + 1);
-    const lines  = val.split('\n');
-
-    if (e.shiftKey && e.key === 'ArrowDown') {
-      // Duplicate line below, place cursor on duplicate at same col
-      lines.splice(idx + 1, 0, lines[idx]);
-      ta.value = lines.join('\n');
-      const newStart = lines.slice(0, idx + 1).reduce((a, l) => a + l.length + 1, 0);
-      ta.selectionStart = ta.selectionEnd = newStart + Math.min(col, lines[idx + 1].length);
-    } else if (e.key === 'ArrowUp' && idx > 0) {
-      [lines[idx - 1], lines[idx]] = [lines[idx], lines[idx - 1]];
-      ta.value = lines.join('\n');
-      const newStart = lines.slice(0, idx - 1).reduce((a, l) => a + l.length + 1, 0);
-      ta.selectionStart = ta.selectionEnd = newStart + Math.min(col, lines[idx - 1].length);
-    } else if (e.key === 'ArrowDown' && idx < lines.length - 1) {
-      [lines[idx], lines[idx + 1]] = [lines[idx + 1], lines[idx]];
-      ta.value = lines.join('\n');
-      const newStart = lines.slice(0, idx + 1).reduce((a, l) => a + l.length + 1, 0);
-      ta.selectionStart = ta.selectionEnd = newStart + Math.min(col, lines[idx + 1].length);
-    }
-    setDirty(true); schedulePreview(); updateGutterLines(); updateEditorPos();
-    return;
-  }
-});
-
-// ── Save file ─────────────────────────────────────────────────────────────────
-async function saveFile() {
-  if (!editorPath) return;
-  const content = document.getElementById('editor-textarea').value;
-  const headers = {
-    'Content-Type': 'text/plain; charset=utf-8',
-    'X-Foundry-Editor': '1',
-  };
-  if (editorMtime) headers['X-Foundry-Mtime'] = String(editorMtime);
-
-  showEditorStatus('Saving…', '#888', 0);
-
-  let res;
-  try {
-    res = await fetch('/_api/edit/file?path=' + encodeURIComponent(editorPath), {
-      method: 'PUT',
-      headers,
-      body: content,
-    });
-  } catch(e) {
-    showEditorStatus('Network error', '#f85149', 4000);
-    return;
-  }
-
-  if (res.status === 409) {
-    logActivity('mtime-conflict', editorPath, {});
-    showEditorStatus('', null, 0);
-    if (!confirm('This file was modified on disk since you opened it.\nOverwrite the disk version with your edits?')) return;
-    const h2 = { 'Content-Type': 'text/plain; charset=utf-8', 'X-Foundry-Editor': '1' };
-    try {
-      const res2 = await fetch('/_api/edit/file?path=' + encodeURIComponent(editorPath), {
-        method: 'PUT', headers: h2, body: content,
-      });
-      if (res2.ok) {
-        const d = await res2.json();
-        editorMtime = d.mtime || editorMtime;
-        if (activeTabIdx >= 0) tabs[activeTabIdx].editorMtime = editorMtime;
-        setDirty(false);
-        showEditorStatus('Saved', '#89d185', 2500);
-        refreshViewerFromEditor();
-        writeCrashBackup();
-        refreshGitStatusForCurrent();
-      } else {
-        showEditorStatus('Save failed', '#f85149', 4000);
-      }
-    } catch(e) { showEditorStatus('Network error', '#f85149', 4000); }
-    return;
-  }
-
-  if (!res.ok) {
-    let msg = 'Save failed';
-    try { const d = await res.json(); msg = d.error || msg; } catch(e) {}
-    logActivity('save-error', editorPath, { error: msg.slice(0, 120) });
-    showEditorStatus(msg, '#f85149', 4000);
-    return;
-  }
-
-  const data = await res.json();
-  editorMtime = data.mtime || editorMtime;
-  if (activeTabIdx >= 0) tabs[activeTabIdx].editorMtime = editorMtime;
-  setDirty(false);
-  showEditorStatus('Saved', '#89d185', 2500);
-  refreshViewerFromEditor();
-  writeCrashBackup();
-  refreshGitStatusForCurrent();
-}
-
-// ── Refresh the viewer from in-memory editor content ─────────────────────────
-// Called after a successful save so the viewer reflects the just-saved content
-// immediately, without waiting for the user to re-open the file and without
-// re-fetching from disk (which may be served stale by the browser/proxy cache).
-function refreshViewerFromEditor() {
-  const ta = document.getElementById('editor-textarea');
-  if (!ta || !currentPath) return;
-  const content = ta.value;
-  const fname = (currentPath.split('/').pop() || '').toLowerCase();
-  const ext = fname.split('.').pop();
-
-  if (viewMode === 'iframe') {
-    const frame = document.getElementById('preview-frame');
-    if (frame) {
-      frame.removeAttribute('src');
-      frame.srcdoc = content;
-    }
-  } else if (viewMode === 'text') {
-    const tc = document.getElementById('text-content');
-    if (!tc) return;
-    if (ext === 'md') {
-      tc.className = 'md-view';
-      tc.innerHTML = mdToHtml(content);
-    } else {
-      tc.className = 'code-view';
-      tc.textContent = content;
-    }
-  }
-  // image mode: editor doesn't author binary images; nothing to refresh
-}
-
-// ── Autosave (every 30 s while dirty) ────────────────────────────────────────
-async function autosaveFile() {
-  if (!editorPath || !editorDirty || autosaveRunning) return;
-  autosaveRunning = true;
-  try {
-    const content = document.getElementById('editor-textarea').value;
-    const headers = {
-      'Content-Type': 'text/plain; charset=utf-8',
-      'X-Foundry-Editor': '1',
-    };
-    if (editorMtime) headers['X-Foundry-Mtime'] = String(editorMtime);
-    try {
-      const res = await fetch('/_api/edit/file?path=' + encodeURIComponent(editorPath), {
-        method: 'PUT', headers, body: content,
-      });
-      if (res.ok) {
-        const data = await res.json();
-        editorMtime = data.mtime || editorMtime;
-        if (activeTabIdx >= 0) tabs[activeTabIdx].editorMtime = editorMtime;
-        setDirty(false);
-        showEditorStatus('Autosaved', '#89d185', 2000);
-        refreshViewerFromEditor();
-        writeCrashBackup();
-        refreshGitStatusForCurrent();
-      }
-      // 409 conflict or other errors: skip silently, let user resolve via manual Save
-    } catch(e) { /* network error — skip */ }
-  } finally { autosaveRunning = false; }
-}
-setInterval(autosaveFile, 30000);
-
-// ── Close current file ────────────────────────────────────────────────────────
-// Delegates to closeTab so the tab system stays in sync.
-function closeFile() {
-  if (activeTabIdx >= 0) {
-    closeTab(activeTabIdx);
-  } else {
-    sessionStorage.removeItem('wb-path');
-    sessionStorage.removeItem('wb-name');
-    currentPath = null;
-    viewMode    = 'none';
-    hideEditorPanel();
-    document.getElementById('viewer-placeholder').style.display = '';
-    document.getElementById('preview-frame').style.display      = 'none';
-    document.getElementById('text-viewer').style.display        = 'none';
-    document.getElementById('image-viewer').style.display       = 'none';
-    document.getElementById('bar-path').textContent = '';
-    document.getElementById('viewer-bar').querySelectorAll('.bar-btn, .bar-link').forEach(el => el.remove());
-    setTreeActive(null);
-  }
-}
-
-// ── Viewer helpers ────────────────────────────────────────────────────────────
-function hideViewerContent() {
-  document.getElementById('viewer-placeholder').style.display = 'none';
-  document.getElementById('preview-frame').style.display      = 'none';
-  document.getElementById('text-viewer').style.display        = 'none';
-  document.getElementById('image-viewer').style.display       = 'none';
-}
-
-function updateBar(name, path) {
-  document.getElementById('bar-path').textContent = name;
-  const bar = document.getElementById('viewer-bar');
-  bar.querySelectorAll('.bar-btn, .bar-link').forEach(el => el.remove());
-
-  const copyBtn = document.createElement('button');
-  copyBtn.className = 'bar-btn';
-  copyBtn.textContent = '⎘ Copy name';
-  copyBtn.title = 'Copy filename to clipboard';
-  copyBtn.addEventListener('click', () => {
-    const confirm = () => {
-      copyBtn.textContent = '✓ Copied';
-      setTimeout(() => { copyBtn.textContent = '⎘ Copy name'; }, 1500);
-    };
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(name).then(confirm);
-    } else {
-      const tmp = document.createElement('textarea');
-      tmp.value = name;
-      tmp.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0';
-      document.body.appendChild(tmp);
-      tmp.select();
-      document.execCommand('copy');
-      document.body.removeChild(tmp);
-      confirm();
-    }
-  });
-  bar.appendChild(copyBtn);
-
-  // Platform PDF button — server-side WeasyPrint rendering (opens config dialog)
-  const pdfExts = new Set(['html','htm','geojson']);
-  const barExt  = name.split('.').pop().toLowerCase();
-  if (pdfExts.has(barExt)) {
-    const apiPath = path.replace(/^\//, '');
-    const pdfBtn = document.createElement('button');
-    pdfBtn.className = 'bar-btn';
-    pdfBtn.textContent = '⬇ PDF';
-    pdfBtn.title = 'Download PDF (platform rendering)';
-    pdfBtn.addEventListener('click', () => showPdfDialog(apiPath, name));
-    bar.appendChild(pdfBtn);
-  }
-
-  const printBtn = document.createElement('button');
-  printBtn.className = 'bar-btn';
-  printBtn.textContent = '⎙ Print';
-  printBtn.addEventListener('click', printCurrent);
-  bar.appendChild(printBtn);
-
-  const dlBtn = document.createElement('a');
-  dlBtn.className = 'bar-btn';
-  dlBtn.href = path;
-  dlBtn.download = name;
-  dlBtn.textContent = '⬇ Download';
-  bar.appendChild(dlBtn);
-
-  const link = document.createElement('a');
-  link.className = 'bar-link';
-  link.href = path;
-  link.target = '_blank';
-  link.rel = 'noreferrer';
-  link.textContent = 'open in new tab ↗';
-  bar.appendChild(link);
-
-  const reloadBtn = document.createElement('button');
-  reloadBtn.className = 'bar-btn';
-  reloadBtn.textContent = '↻ Reload';
-  reloadBtn.title = 'Reload page — reopens this file automatically';
-  reloadBtn.addEventListener('click', () => location.reload());
-  bar.appendChild(reloadBtn);
-
-  const closeBtn = document.createElement('button');
-  closeBtn.className = 'bar-btn';
-  closeBtn.textContent = '✕';
-  closeBtn.title = 'Close file';
-  closeBtn.addEventListener('click', closeFile);
-  bar.appendChild(closeBtn);
-}
-
-// ── Rename + Duplicate — viewer-bar buttons for writable files ───────────────
-// Inserted by openFile() after the editor responds writable:true, so the
-// buttons only appear for files the service will let us mutate. Placed in the
-// viewer bar after the existing "⎘ Copy name" button.
-function addRenameDuplicateButtons() {
-  const bar = document.getElementById('viewer-bar');
-  if (!bar) return;
-  // Anchor: insert after "⎘ Copy name" so writable verbs cluster together
-  const buttons = bar.querySelectorAll('.bar-btn');
-  let anchor = null;
-  for (const b of buttons) {
-    if (b.textContent && b.textContent.indexOf('Copy name') >= 0) { anchor = b; break; }
-  }
-
-  const renameBtn = document.createElement('button');
-  renameBtn.className = 'bar-btn';
-  renameBtn.textContent = '✎ Rename';
-  renameBtn.title = 'Rename this file';
-  renameBtn.addEventListener('click', renameCurrent);
-
-  const dupBtn = document.createElement('button');
-  dupBtn.className = 'bar-btn';
-  dupBtn.textContent = '⧉ Duplicate';
-  dupBtn.title = 'Duplicate this file in place';
-  dupBtn.addEventListener('click', duplicateCurrent);
-
-  if (anchor && anchor.nextSibling) {
-    anchor.parentNode.insertBefore(renameBtn, anchor.nextSibling);
-    anchor.parentNode.insertBefore(dupBtn, renameBtn.nextSibling);
-  } else {
-    bar.appendChild(renameBtn);
-    bar.appendChild(dupBtn);
-  }
-}
-
-function patchTreeItemAfterRename(oldBrowsePath, newBrowsePath, newName) {
-  document.querySelectorAll('.tree-item[data-href]').forEach(item => {
-    if (item.dataset.href === oldBrowsePath) {
-      item.dataset.href   = newBrowsePath;
-      item.dataset.browse = newBrowsePath;
-      item.dataset.label  = newName;
-      const lbl = item.querySelector('.label');
-      if (lbl) lbl.textContent = newName;
-    }
-  });
-}
-
-async function renameCurrent() {
-  if (!editorPath) return;
-  const oldName = editorPath.split('/').pop();
-  const newName = prompt('Rename file to:', oldName);
-  if (newName === null) return;                     // user cancelled
-  const trimmed = newName.trim();
-  if (!trimmed || trimmed === oldName) return;     // no-op
-  if (trimmed.indexOf('/') >= 0 || trimmed.indexOf('\\') >= 0) {
-    alert('Filename must not contain slashes.');
-    return;
-  }
-
-  let res;
-  try {
-    res = await fetch(
-      '/_api/edit/rename?from=' + encodeURIComponent(editorPath) +
-      '&to=' + encodeURIComponent(trimmed),
-      { method: 'POST' },
-    );
-  } catch(e) {
-    alert('Rename failed: network error');
-    return;
-  }
-
-  if (!res.ok) {
-    let msg = 'Rename failed';
-    try { const d = await res.json(); msg = d.error || msg; } catch(e) {}
-    alert(msg);
-    return;
-  }
-
-  const data = await res.json();
-  const newApiPath = data.new_path;
-  const newDisplayName = data.new_name;
-  // The browse path is "/" + api path
-  const newBrowsePath = '/' + newApiPath;
-  const oldBrowsePath = '/' + editorPath;   // capture before state update
-
-  // Update in-memory + sessionStorage state to reflect the rename
-  currentPath = newBrowsePath;
-  editorPath  = newApiPath;
-  if (activeTabIdx >= 0) {
-    tabs[activeTabIdx].path = newBrowsePath;
-    tabs[activeTabIdx].name = newDisplayName;
-    tabs[activeTabIdx].editorPath = newApiPath;
-    renderTabBar();
-  }
-  sessionStorage.setItem('wb-path', newBrowsePath);
-  sessionStorage.setItem('wb-name', newDisplayName);
-
-  // Rebuild the viewer bar with the new name + path, then re-attach the
-  // writable-only buttons (Save / Rename / Duplicate).
-  updateBar(newDisplayName, newBrowsePath);
-  const saveBarBtn = document.createElement('button');
-  saveBarBtn.className = 'bar-btn';
-  saveBarBtn.textContent = '💾 Save';
-  saveBarBtn.addEventListener('click', saveFile);
-  document.getElementById('bar-path').insertAdjacentElement('afterend', saveBarBtn);
-  addRenameDuplicateButtons();
-  patchTreeItemAfterRename(oldBrowsePath, newBrowsePath, newDisplayName);
-
-  showEditorStatus('Renamed', '#89d185', 2500);
-}
-
-async function duplicateCurrent() {
-  if (!editorPath) return;
-
-  let res;
-  try {
-    res = await fetch(
-      '/_api/edit/duplicate?path=' + encodeURIComponent(editorPath),
-      { method: 'POST' },
-    );
-  } catch(e) {
-    alert('Duplicate failed: network error');
-    return;
-  }
-
-  if (!res.ok) {
-    let msg = 'Duplicate failed';
-    try { const d = await res.json(); msg = d.error || msg; } catch(e) {}
-    alert(msg);
-    return;
-  }
-
-  const data = await res.json();
-  // Open the new copy immediately — gives the user a clear signal it worked
-  openFile('/' + data.new_path, data.new_name);
-}
-
-// ── Open file in viewer + optional editor ─────────────────────────────────────
-// ── Cache-bust helper ────────────────────────────────────────────────────────
-// Appends a `_cb=<timestamp>` query param to bypass any browser / proxy cache
-// when re-fetching viewer content. The static-file routes in nginx do not set
-// explicit Cache-Control headers, so browsers may heuristically cache; this
-// guarantees a fresh round-trip after edits.
-function cacheBust(path) {
-  const sep = path.indexOf('?') >= 0 ? '&' : '?';
-  return path + sep + '_cb=' + Date.now();
-}
-
-async function openFile(path, name) {
-  // If already open in a tab, just activate it
-  const existingIdx = tabs.findIndex(t => t.path === path);
-  if (existingIdx >= 0) {
-    if (existingIdx !== activeTabIdx) await switchTab(existingIdx);
-    return;
-  }
-  // Save-on-switch: fire and forget — captures editorPath+value at call time
-  if (editorDirty && editorPath) autosaveFile();
-  // Evict oldest non-dirty tab if at cap (12)
-  if (tabs.length >= 12) {
-    const evictIdx = tabs.findIndex(t => !t.dirty);
-    if (evictIdx >= 0) {
-      tabs.splice(evictIdx, 1);
-      if (activeTabIdx > evictIdx) activeTabIdx--;
-      else if (activeTabIdx === evictIdx) activeTabIdx = -1;
-    }
-  }
-  // Push the new tab
-  const fname0 = name || path.split('/').pop();
-  tabs.push({ path, name: fname0, dirty: false, openedAt: Date.now() });
-  activeTabIdx = tabs.length - 1;
-  renderTabBar();
-
-  currentPath = path;
-  const fname = fname0;
-  sessionStorage.setItem('wb-path', path);
-  sessionStorage.setItem('wb-name', fname);
-  const mode = fileMode(fname);
-  const apiPath = path.replace(/^\//, '');
-  hideViewerContent();
-  updateBar(fname, path);
-
-  if (mode === 'iframe') {
-    viewMode = 'iframe';
-    const frame = document.getElementById('preview-frame');
-    frame.style.display = 'block';
-    frame.src = cacheBust(path);
-
-  } else if (mode === 'image') {
-    viewMode = 'image';
-    const iv = document.getElementById('image-viewer');
-    iv.style.display = 'flex';
-    document.getElementById('image-el').src = cacheBust(path);
-
-  } else if (mode === 'document') {
-    // Server-side document renderer (geojson, etc.)
-    viewMode = 'iframe';
-    const frame = document.getElementById('preview-frame');
-    frame.style.display = 'block';
-    frame.src = '/_api/edit/document?path=' + encodeURIComponent(apiPath);
-
-  } else {
-    viewMode = 'text';
-    const tv = document.getElementById('text-viewer');
-    const tc = document.getElementById('text-content');
-    tv.style.display = 'block';
-    tc.className = '';
-    tc.textContent = 'Loading…';
-    hideEditorPanel();
-    // Fire viewer + editor fetches in parallel — saves one sequential round-trip
-    const viewerP = fetch(cacheBust(path), { cache: 'no-store' }).then(r => r.ok ? r.text() : null).catch(() => null);
-    const editorP = fetch('/_api/edit/file?path=' + encodeURIComponent(apiPath), { headers: { 'X-WB-Source': 'user' } }).then(r => r.ok ? r.json() : null).catch(() => null);
-    const [viewerText, editorData] = await Promise.all([viewerP, editorP]);
-    if (viewerText !== null) {
-      const ext = fname.split('.').pop().toLowerCase();
-
-      // JSON schema detection — peek first 6 KB for known document types
-      if (ext === 'json') {
-        const peek = viewerText.slice(0, 6144);
-        // Schema-versioned formats
-        const isVersionedDoc = peek.includes('"proforma_version"') ||
-            peek.includes('"presentation_version"') ||
-            peek.includes('"schedule_version"');
-        // Bespoke tool-proforma output (entity + date + data section key)
-        const isBespokeProforma = peek.includes('"entity"') && peek.includes('"date"') &&
-            (peek.includes('"income"') || peek.includes('"years"') || peek.includes('"areas"'));
-        if (isVersionedDoc || isBespokeProforma) {
-          // Switch to server-side document renderer
-          viewMode = 'iframe';
-          tv.style.display = 'none';
-          const frame = document.getElementById('preview-frame');
-          frame.style.display = 'block';
-          frame.src = '/_api/edit/document?path=' + encodeURIComponent(apiPath);
-          // Add PDF button for this document type (opens config dialog)
-          const bar = document.getElementById('viewer-bar');
-          if (!bar.querySelector('.doc-pdf-btn')) {
-            const pdfBtn = document.createElement('button');
-            pdfBtn.className = 'bar-btn doc-pdf-btn';
-            pdfBtn.textContent = '⬇ PDF';
-            pdfBtn.title = 'Download PDF (platform rendering)';
-            pdfBtn.addEventListener('click', () => showPdfDialog(apiPath, fname));
-            bar.appendChild(pdfBtn);
-          }
-          // Text viewer is hidden; continue to editor loading below
-        }
-      }
-
-      if (ext === 'md') { tc.className = 'md-view'; tc.innerHTML = mdToHtml(viewerText); }
-      else { tc.className = 'code-view'; tc.textContent = viewerText; }
-    } else {
-      tc.className = 'code-view'; tc.textContent = 'Could not load file';
-    }
-    if (editorData && editorData.writable && typeof editorData.content === 'string') {
-      editorPath  = apiPath;
-      editorMtime = editorData.mtime || 0;
-      if (activeTabIdx >= 0) {
-        tabs[activeTabIdx].content     = editorData.content;
-        tabs[activeTabIdx].editorPath  = apiPath;
-        tabs[activeTabIdx].editorMtime = editorMtime;
-        tabs[activeTabIdx].viewMode    = viewMode;
-        tabs[activeTabIdx].writable    = true;
-      }
-      const saveBarBtn = document.createElement('button');
-      saveBarBtn.className = 'bar-btn';
-      saveBarBtn.textContent = '💾 Save';
-      saveBarBtn.addEventListener('click', saveFile);
-      document.getElementById('bar-path').insertAdjacentElement('afterend', saveBarBtn);
-      addRenameDuplicateButtons();
-      showEditorPanel(editorData.content);
-      maybeShowRecoveryBar(apiPath, editorData.mtime || 0);
-    }
-    return;
-  }
-
-  // Try to load into editor (editor-service returns writable:true only for allowed paths)
-  hideEditorPanel();
-  try {
-    const editRes = await fetch('/_api/edit/file?path=' + encodeURIComponent(apiPath));
-    if (editRes.ok) {
-      const data = await editRes.json();
-      if (data.writable && typeof data.content === 'string') {
-        editorPath  = apiPath;
-        editorMtime = data.mtime || 0;
-        if (activeTabIdx >= 0) {
-          tabs[activeTabIdx].content     = data.content;
-          tabs[activeTabIdx].editorPath  = apiPath;
-          tabs[activeTabIdx].editorMtime = editorMtime;
-          tabs[activeTabIdx].viewMode    = viewMode;
-          tabs[activeTabIdx].writable    = true;
-        }
-        const saveBarBtn = document.createElement('button');
-        saveBarBtn.className = 'bar-btn';
-        saveBarBtn.textContent = '💾 Save';
-        saveBarBtn.addEventListener('click', saveFile);
-        document.getElementById('bar-path').insertAdjacentElement('afterend', saveBarBtn);
-
-        // Rename + Duplicate — only available when the file resolved through a
-        // writable root (same gate as Save). Inserted after the existing
-        // "⎘ Copy name" button so the writable verbs cluster together.
-        addRenameDuplicateButtons();
-
-        showEditorPanel(data.content);
-        maybeShowRecoveryBar(apiPath, data.mtime || 0);
-        // For iframe HTML, set up srcdoc on the same content so live preview works
-        if (mode === 'iframe') {
-          const frame = document.getElementById('preview-frame');
-          frame.removeAttribute('src');
-          frame.srcdoc = data.content;
-          // Inject click→source navigation once iframe finishes loading
-          frame.addEventListener('load', () => {
-            try {
-              frame.contentDocument.addEventListener('click', ev => {
-                const el = ev.target;
-                if (!el || el.tagName === 'BODY' || el.tagName === 'HTML') return;
-                if (el.tagName === 'A') ev.preventDefault();
-                window.postMessage({
-                  type:      'iframe-source-click',
-                  id:        el.id || '',
-                  text:      (el.textContent || '').trim().slice(0, 200),
-                  outerHTML: (el.outerHTML || '').slice(0, 500),
-                }, '*');
-              }, true);
-            } catch(err) {}
-          }, { once: true });
-        }
-      }
-    }
-  } catch(e) { showEditorStatus('⚠ ' + e.message, '#f85149', 6000); }
-}
-
-// ── PDF print configuration dialog ───────────────────────────────────────────
-function showPdfDialog(apiPath, fileName) {
-  logActivity('pdf-dialog', apiPath, {});
-  document.getElementById('pdf-dialog-overlay')?.remove();
-
-  const overlay = document.createElement('div');
-  overlay.id = 'pdf-dialog-overlay';
-
-  const panel = document.createElement('div');
-  panel.id = 'pdf-dialog-panel';
-  panel.innerHTML = `
-    <h3>PDF options</h3>
-    <div class="pdf-opt">
-      <label for="pdf-paper">Paper</label>
-      <select id="pdf-paper">
-        <option value="letter" selected>Letter (8.5×11)</option>
-        <option value="a4">A4</option>
-      </select>
-    </div>
-    <div class="pdf-opt">
-      <label for="pdf-page-numbers">Page numbers</label>
-      <input type="checkbox" id="pdf-page-numbers" checked>
-    </div>
-    <div class="pdf-opt" id="pdf-position-row">
-      <label for="pdf-position">Position</label>
-      <select id="pdf-position">
-        <option value="bottom-center" selected>Bottom center</option>
-        <option value="bottom-right">Bottom right</option>
-        <option value="top-right">Top right</option>
-      </select>
-    </div>
-    <div class="pdf-dialog-actions">
-      <button id="pdf-dialog-cancel">Cancel</button>
-      <button id="pdf-dialog-generate">Generate PDF</button>
-    </div>
-    <div class="pdf-dialog-status" id="pdf-dialog-status"></div>
-  `;
-  overlay.appendChild(panel);
-  document.body.appendChild(overlay);
-
-  // Toggle position row visibility based on page numbers checkbox
-  const pnCheck = panel.querySelector('#pdf-page-numbers');
-  const posRow  = panel.querySelector('#pdf-position-row');
-  pnCheck.addEventListener('change', () => {
-    posRow.style.display = pnCheck.checked ? '' : 'none';
-  });
-
-  panel.querySelector('#pdf-dialog-cancel').addEventListener('click', () => overlay.remove());
-  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
-
-  panel.querySelector('#pdf-dialog-generate').addEventListener('click', async () => {
-    const paper      = panel.querySelector('#pdf-paper').value;
-    const pageNums   = pnCheck.checked;
-    const position   = panel.querySelector('#pdf-position').value;
-    const status     = panel.querySelector('#pdf-dialog-status');
-    const genBtn     = panel.querySelector('#pdf-dialog-generate');
-
-    genBtn.disabled = true;
-    genBtn.textContent = 'Generating…';
-    status.textContent = '';
-
-    const url = '/_api/edit/pdf?path=' + encodeURIComponent(apiPath)
-              + '&page_numbers=' + pageNums
-              + '&pn_position='  + encodeURIComponent(position)
-              + '&paper='        + encodeURIComponent(paper);
-
-    try {
-      const res = await fetch(url);
-      if (!res.ok) {
-        const body = await res.text().catch(() => '');
-        throw new Error('Server error ' + res.status + (body ? ': ' + body : ''));
-      }
-      const blob = await res.blob();
-      const a    = document.createElement('a');
-      a.href     = URL.createObjectURL(blob);
-      a.download = fileName.replace(/\.[^.]+$/, '.pdf');
-      a.click();
-      URL.revokeObjectURL(a.href);
-      overlay.remove();
-    } catch(e) {
-      status.style.color = '#f85149';
-      status.textContent = e.message || 'PDF generation failed';
-      genBtn.disabled = false;
-      genBtn.textContent = 'Generate PDF';
-    }
-  });
-}
-
-// ── Print current file ────────────────────────────────────────────────────────
-function printCurrent() {
-  if (!currentPath) return;
-  if (viewMode === 'iframe') {
-    try {
-      document.getElementById('preview-frame').contentWindow.print();
-    } catch(e) {
-      const w = window.open(currentPath, '_blank', 'width=1000,height=700');
-      if (w) w.addEventListener('load', () => { w.print(); }, { once: true });
-    }
-  } else {
-    window.print();
-  }
-}
-
-// ── Find / Replace ────────────────────────────────────────────────────────────
-let findMatches = [];
-let findIdx     = -1;
-
-function escapeRegex(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
-
-function buildFindMatches() {
-  const term = document.getElementById('find-input').value;
-  const ta   = document.getElementById('editor-textarea');
-  findMatches = [];
-  if (!term) return;
-  const re = new RegExp(escapeRegex(term), 'gi');
-  let m;
-  while ((m = re.exec(ta.value)) !== null) {
-    findMatches.push({ start: m.index, end: m.index + m[0].length });
-  }
-}
-
-function updateFindCount() {
-  const el   = document.getElementById('find-count');
-  const term = document.getElementById('find-input').value;
-  if (!term)              { el.textContent = ''; return; }
-  if (!findMatches.length){ el.textContent = 'No results'; return; }
-  el.textContent = (findIdx + 1) + ' / ' + findMatches.length;
-}
-
-function findGo(dir) {
-  if (!findMatches.length) { updateFindCount(); return; }
-  findIdx = (findIdx + dir + findMatches.length) % findMatches.length;
-  const m  = findMatches[findIdx];
-  const ta = document.getElementById('editor-textarea');
-  ta.focus();
-  ta.selectionStart = m.start;
-  ta.selectionEnd   = m.end;
-  const line = ta.value.substring(0, m.start).split('\n').length - 1;
-  ta.scrollTop = Math.max(0, line * 12 * 1.6 - ta.clientHeight / 3);
-  updateFindCount();
-}
-
-function showFindBar() {
-  logActivity('find-open', currentPath, { ext: (currentPath || '').split('.').pop() });
-  const bar = document.getElementById('find-bar');
-  bar.classList.add('visible');
-  const inp = document.getElementById('find-input');
-  const ta  = document.getElementById('editor-textarea');
-  const sel = ta.value.substring(ta.selectionStart, ta.selectionEnd);
-  if (sel && !sel.includes('\n')) inp.value = sel;
-  inp.focus(); inp.select();
-  buildFindMatches();
-  findIdx = -1;
-  if (findMatches.length) findGo(1); else updateFindCount();
-}
-
-function hideFindBar() {
-  document.getElementById('find-bar').classList.remove('visible');
-  document.getElementById('editor-textarea').focus();
-}
-
-document.getElementById('find-input').addEventListener('input', () => {
-  buildFindMatches(); findIdx = -1;
-  if (findMatches.length) findGo(1); else updateFindCount();
-});
-document.getElementById('find-input').addEventListener('keydown', e => {
-  if (e.key === 'Enter')  { e.preventDefault(); logActivity('find-exec', currentPath, { results: findMatches.length }); findGo(e.shiftKey ? -1 : 1); }
-  if (e.key === 'Escape') { e.preventDefault(); hideFindBar(); }
-});
-document.getElementById('replace-input').addEventListener('keydown', e => {
-  if (e.key === 'Escape') { e.preventDefault(); hideFindBar(); }
-});
-document.getElementById('find-prev').addEventListener('click', () => findGo(-1));
-document.getElementById('find-next').addEventListener('click', () => findGo(1));
-document.getElementById('find-close').addEventListener('click', hideFindBar);
-
-document.getElementById('replace-one').addEventListener('click', () => {
-  if (!findMatches.length) return;
-  if (findIdx < 0) { findGo(1); return; }
-  const ta     = document.getElementById('editor-textarea');
-  const repVal = document.getElementById('replace-input').value;
-  const m      = findMatches[findIdx];
-  ta.focus(); ta.selectionStart = m.start; ta.selectionEnd = m.end;
-  document.execCommand('insertText', false, repVal);
-  setDirty(true); schedulePreview(); updateGutterLines();
-  const savedIdx = findIdx;
-  buildFindMatches();
-  if (!findMatches.length) { findIdx = -1; updateFindCount(); return; }
-  findIdx = Math.min(savedIdx, findMatches.length - 1);
-  const next = findMatches[findIdx];
-  ta.selectionStart = next.start; ta.selectionEnd = next.end;
-  updateFindCount();
-});
-
-document.getElementById('replace-all-btn').addEventListener('click', () => {
-  const findVal = document.getElementById('find-input').value;
-  if (!findVal || !findMatches.length) return;
-  const ta     = document.getElementById('editor-textarea');
-  const repVal = document.getElementById('replace-input').value;
-  const count  = findMatches.length;
-  const newVal = ta.value.replace(new RegExp(escapeRegex(findVal), 'gi'), repVal);
-  ta.focus(); ta.select();
-  document.execCommand('insertText', false, newVal);
-  setDirty(true); schedulePreview(); updateGutterLines();
-  buildFindMatches(); findIdx = -1; updateFindCount();
-  logActivity('replace-all', currentPath, { count });
-});
-
-// ── Toggle line comment ───────────────────────────────────────────────────────
-function commentPrefix() {
-  if (!editorPath) return '# ';
-  const ext = editorPath.split('.').pop().toLowerCase();
-  return ['rs','js','ts','jsx','tsx','css','scss','go','java','c','cpp','h','hpp'].includes(ext)
-    ? '// ' : '# ';
-}
-
-function toggleLineComment() {
-  const ta     = document.getElementById('editor-textarea');
-  const val    = ta.value;
-  const ss     = ta.selectionStart;
-  const se     = ta.selectionEnd;
-  const prefix = commentPrefix();
-  const marker = prefix.trimEnd();
-
-  const lineStart = val.lastIndexOf('\n', ss - 1) + 1;
-  const lineEndRaw = val.indexOf('\n', se);
-  const blockEnd  = lineEndRaw === -1 ? val.length : lineEndRaw;
-
-  const lines = val.substring(lineStart, blockEnd).split('\n');
-  const nonEmpty = lines.filter(l => l.trim());
-  const allCommented = nonEmpty.length > 0 && nonEmpty.every(l => l.trimStart().startsWith(marker));
-
-  const newLines = lines.map(l => {
-    if (allCommented) {
-      const trimmed = l.trimStart();
-      const lead    = l.slice(0, l.length - trimmed.length);
-      if (trimmed.startsWith(prefix))  return lead + trimmed.slice(prefix.length);
-      if (trimmed.startsWith(marker))  return lead + trimmed.slice(marker.length);
-      return l;
-    } else {
-      if (!l.trim()) return l;
-      const lead = l.slice(0, l.length - l.trimStart().length);
-      return lead + prefix + l.trimStart();
-    }
-  });
-
-  const newBlock = newLines.join('\n');
-  ta.focus(); ta.selectionStart = lineStart; ta.selectionEnd = blockEnd;
-  document.execCommand('insertText', false, newBlock);
-
-  const delta = newBlock.length - (blockEnd - lineStart);
-  ta.selectionStart = lineStart;
-  ta.selectionEnd   = Math.max(lineStart, se + delta);
-  setDirty(true); schedulePreview(); updateGutterLines(); updateEditorPos();
-}
-
-// ── Document Outline (Cmd+Shift+O) ───────────────────────────────────────────
-let outlineRawItems = [];
-let outlineFocusIdx = -1;
-
-function buildOutlineRaw() {
-  const ta  = document.getElementById('editor-textarea');
-  const ext = editorPath ? editorPath.split('.').pop().toLowerCase() : '';
-  const lines = ta.value.split('\n');
-  outlineRawItems = [];
-  let offset = 0;
-  for (const line of lines) {
-    if (ext === 'toml') {
-      const m = line.match(/^\[([\w. -]+)\]$/);
-      if (m) outlineRawItems.push({ label: '[' + m[1] + ']', depth: -1, offset });
-    } else {
-      const m = line.match(/^(#{1,6})\s+(.+)/);
-      if (m) outlineRawItems.push({ label: m[2].trim(), depth: m[1].length, offset });
-    }
-    offset += line.length + 1;
-  }
-}
-
-function renderOutline(filter) {
-  const list  = document.getElementById('outline-list');
-  const lower = (filter || '').toLowerCase();
-  const shown = outlineRawItems.filter(it => !lower || it.label.toLowerCase().includes(lower));
-  list.innerHTML = '';
-  if (!shown.length) {
-    list.innerHTML = '<div class="outline-empty">No symbols found</div>';
-    outlineFocusIdx = -1;
-    return;
-  }
-  shown.forEach(item => {
-    const div   = document.createElement('div');
-    div.className = 'outline-item';
-    const tag   = item.depth < 0 ? '§' : 'H' + item.depth;
-    const indent = item.depth > 1 ? (item.depth - 1) * 10 : 0;
-    div.style.paddingLeft = (10 + indent) + 'px';
-    div.innerHTML = `<span class="outline-depth">${tag}</span><span>${item.label}</span>`;
-    div.addEventListener('click', () => {
-      const ta = document.getElementById('editor-textarea');
-      ta.focus();
-      ta.selectionStart = ta.selectionEnd = item.offset;
-      const lineNum = ta.value.substring(0, item.offset).split('\n').length - 1;
-      ta.scrollTop = Math.max(0, lineNum * 12 * 1.6 - ta.clientHeight / 3);
-      hideOutline();
-      updateEditorPos();
-    });
-    list.appendChild(div);
-  });
-  outlineFocusIdx = -1;
-}
-
-function showOutline() {
-  logActivity('outline-open', currentPath, { ext: (currentPath || '').split('.').pop() });
-  buildOutlineRaw();
-  const panel = document.getElementById('outline-panel');
-  panel.classList.add('visible');
-  const inp = document.getElementById('outline-filter');
-  inp.value = '';
-  renderOutline('');
-  inp.focus();
-}
-
-function hideOutline() {
-  document.getElementById('outline-panel').classList.remove('visible');
-  document.getElementById('editor-textarea').focus();
-}
-
-document.getElementById('outline-filter').addEventListener('input', e => {
-  renderOutline(e.target.value);
-});
-
-document.getElementById('outline-filter').addEventListener('keydown', e => {
-  const list  = document.getElementById('outline-list');
-  const items = list.querySelectorAll('.outline-item');
-  if (e.key === 'ArrowDown') {
-    e.preventDefault();
-    if (outlineFocusIdx >= 0) items[outlineFocusIdx].classList.remove('outline-focused');
-    outlineFocusIdx = Math.min(outlineFocusIdx + 1, items.length - 1);
-    if (outlineFocusIdx >= 0) { items[outlineFocusIdx].classList.add('outline-focused'); items[outlineFocusIdx].scrollIntoView({ block: 'nearest' }); }
-  } else if (e.key === 'ArrowUp') {
-    e.preventDefault();
-    if (outlineFocusIdx >= 0) items[outlineFocusIdx].classList.remove('outline-focused');
-    outlineFocusIdx = Math.max(outlineFocusIdx - 1, 0);
-    if (outlineFocusIdx >= 0) { items[outlineFocusIdx].classList.add('outline-focused'); items[outlineFocusIdx].scrollIntoView({ block: 'nearest' }); }
-  } else if (e.key === 'Enter') {
-    e.preventDefault();
-    const focused = list.querySelector('.outline-focused') || list.querySelector('.outline-item');
-    if (focused) focused.click();
-  } else if (e.key === 'Escape') {
-    e.preventDefault();
-    hideOutline();
-  }
-});
-
-// ── Keyboard shortcuts ────────────────────────────────────────────────────────
-window.addEventListener('keydown', e => {
-  if ((e.metaKey || e.ctrlKey) && e.key === 'p') { e.preventDefault(); printCurrent(); }
-  if ((e.metaKey || e.ctrlKey) && e.key === 's') { e.preventDefault(); saveFile(); }
-  if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
-    if (document.getElementById('editor-panel').classList.contains('visible')) {
-      e.preventDefault(); showFindBar();
-    }
-  }
-  if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'O') {
-    if (document.getElementById('editor-panel').classList.contains('visible')) {
-      e.preventDefault(); showOutline();
-    }
-  }
-  if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key === 'z') {
-    const isEditing = document.activeElement === document.getElementById('editor-textarea');
-    if (!isEditing && lastUndoFn) {
-      e.preventDefault();
-      const fn = lastUndoFn;
-      lastUndoFn = null;
-      document.getElementById('wb-toast').classList.remove('show');
-      fn();
-    }
-  }
-});
-
-// ── Mark a tree item active ───────────────────────────────────────────────────
-function setTreeActive(el) {
-  if (activeTreeEl) activeTreeEl.classList.remove('active');
-  activeTreeEl = el;
-  if (el) el.classList.add('active');
-}
-
-// ── File icon ─────────────────────────────────────────────────────────────────
-function iconFor(name, isDir) {
-  if (isDir) return '📁';
-  const ext = name.split('.').pop().toLowerCase();
-  if (ext === 'html' || ext === 'htm') return '🌐';
-  if (ext === 'pdf')  return '📄';
-  if (ext === 'md')   return '📝';
-  if (ext === 'txt')  return '📄';
-  if (ext === 'json') return '{ }';
-  if (ext === 'rs')   return '🦀';
-  if (ext === 'toml' || ext === 'yaml' || ext === 'yml') return '⚙';
-  if (ext === 'sh' || ext === 'bash') return '⚡';
-  if (ext === 'css')  return '🎨';
-  if (ext === 'js' || ext === 'ts')   return '📜';
-  if (['png','jpg','jpeg','svg','gif'].includes(ext)) return '🖼';
-  if (['zip','tar','gz'].includes(ext)) return '🗜';
-  return '📄';
-}
-
-// ── Build a tree item element ─────────────────────────────────────────────────
-function buildItem(entry, apiBase, browseBase, depth) {
-  const isDir      = entry.type === 'directory';
-  const name       = entry.name.replace(/\/$/, '');
-  const indent     = 14 + depth * 14;
-  const isViewable = !isDir && VIEWABLE_RE.test(name);
-
-  const node = document.createElement('div');
-  node.className = 'tree-node';
-
-  const item = document.createElement('div');
-  item.className = 'tree-item' + (isViewable ? ' viewable' : '');
-  item.style.paddingLeft = indent + 'px';
-
-  if (isDir) {
-    item.dataset.api    = apiBase + name + '/';
-    item.dataset.browse = browseBase + name + '/';
-    item.dataset.type   = 'dir';
-    item.innerHTML =
-      `<span class="arrow">▶</span>` +
-      `<span class="icon">${iconFor(name, true)}</span>` +
-      `<span class="label">${name}</span>`;
-  } else {
-    item.dataset.href  = browseBase + name;
-    item.dataset.type  = 'file';
-    item.dataset.label = name;
-    const gs = gitStatus.get(browseBase + name);
-    const badge = gs ? `<span class="tree-git" data-s="${gs}">●</span>` : '';
-    item.innerHTML =
-      `<span class="icon" style="margin-left:14px">${iconFor(name, false)}</span>` +
-      `<span class="label">${name}</span>` + badge;
-  }
-
-  const children = document.createElement('div');
-  children.className = 'tree-children collapsed';
-  children.style.paddingLeft = '12px';
-
-  node.appendChild(item);
-  node.appendChild(children);
-  return node;
-}
-
-// ── Load directory children ───────────────────────────────────────────────────
-async function loadChildren(item, childrenEl, depth) {
-  if (item.dataset.loaded) return;
-  item.dataset.loaded = '1';
-  childrenEl.innerHTML = '<div class="loading">Loading…</div>';
-
-  const browse = item.dataset.browse || '';
-  const cloneMatch = browse.match(/^\/(_clones\/[^/]+)\/$/);
-
-  try {
-    const res = await fetch(item.dataset.api);
-    if (!res.ok) throw new Error(res.status);
-    const entries = await res.json();
-    childrenEl.innerHTML = '';
-    if (!entries.length) { childrenEl.innerHTML = '<div class="empty">Empty</div>'; return; }
-
-    const apiBase    = item.dataset.api;
-    const browseBase = item.dataset.browse;
-
-    const dirs     = entries.filter(e => e.type === 'directory').sort((a,b) => a.name.localeCompare(b.name));
-    const viewable = entries.filter(e => e.type !== 'directory' && VIEWABLE_RE.test(e.name)).sort((a,b) => a.name.localeCompare(b.name));
-    const rest     = entries.filter(e => e.type !== 'directory' && !VIEWABLE_RE.test(e.name)).sort((a,b) => a.name.localeCompare(b.name));
-
-    [...dirs, ...viewable, ...rest].forEach(entry => {
-      if (!showHidden && entry.name.startsWith('.')) return;
-      const node = buildItem(entry, apiBase, browseBase, depth);
-      childrenEl.appendChild(node);
-      wireItem(node.querySelector('.tree-item'), node.querySelector('.tree-children'), depth + 1);
-    });
-    // Fetch git status after tree renders — badges appear ~1s later, non-blocking
-    if (cloneMatch) fetchGitStatus(cloneMatch[1]);
-  } catch(e) {
-    childrenEl.innerHTML = `<div class="err">Error: ${e.message}</div>`;
-  }
-}
-
-// ── Wire click behaviour ──────────────────────────────────────────────────────
-function wireItem(item, childrenEl, depth) {
-  item.addEventListener('click', async (e) => {
-    e.stopPropagation();
-    if (item.dataset.type === 'file') {
-      setTreeActive(item);
-      openFile(item.dataset.href, item.dataset.label);
-      return;
-    }
-    const isOpen = item.classList.toggle('open');
-    childrenEl.classList.toggle('collapsed', !isOpen);
-    if (isOpen) { logActivity('tree-expand', item.dataset.browse || item.dataset.href || '', { depth }); await loadChildren(item, childrenEl, depth); }
-  });
-  attachContextMenu(item);
-}
-
-// ── Wire pre-rendered items ───────────────────────────────────────────────────
-document.querySelectorAll('.tree-item[data-type]').forEach(item => {
-  const children = item.nextElementSibling;
-  const depth = Math.round((parseInt(item.style.paddingLeft) - 14) / 14) + 1;
-  wireItem(item, children, depth);
-  if (item.classList.contains('open') && item.dataset.type === 'dir') {
-    loadChildren(item, children, depth);
-  }
-});
-
-// ── Section collapse ──────────────────────────────────────────────────────────
-document.querySelectorAll('.section-header').forEach(hdr => {
-  const body = document.getElementById('section-' + hdr.dataset.section);
-  hdr.addEventListener('click', () => {
-    const open = hdr.classList.toggle('open');
-    body.classList.toggle('collapsed', !open);
-    if (open) logActivity('section-expand', null, { section: hdr.dataset.section || hdr.textContent.trim().slice(0, 30) });
-  });
-});
-
-// ── Load cluster archive list ─────────────────────────────────────────────────
-(async () => {
-  const container = document.getElementById('section-clones');
-  try {
-    const res = await fetch('/_api/clones/');
-    if (!res.ok) throw new Error(res.status);
-    const entries = await res.json();
-    container.innerHTML = '';
-    entries
-      .filter(e => e.type === 'directory' && !e.name.startsWith('.'))
-      .sort((a,b) => a.name.localeCompare(b.name))
-      .forEach(entry => {
-        const name = entry.name.replace(/\/$/, '');
-        const node = buildItem({ name, type: 'directory' }, '/_api/clones/', '/_clones/', 0);
-        container.appendChild(node);
-        wireItem(node.querySelector('.tree-item'), node.querySelector('.tree-children'), 1);
-      });
-  } catch(e) {
-    container.innerHTML = `<div class="err">Failed: ${e.message}</div>`;
-  }
-})();
-
-// ── Resize sidebar (resizer1) ─────────────────────────────────────────────────
-const resizer  = document.getElementById('resizer');
-const sidebar  = document.getElementById('sidebar');
-let resizing1  = false;
-
-resizer.addEventListener('mousedown', () => {
-  resizing1 = true;
-  resizer.classList.add('active');
-  document.body.style.cursor = 'col-resize';
-  document.body.style.userSelect = 'none';
-  document.getElementById('preview-frame').style.pointerEvents = 'none';
-  // Ensure sidebar is expanded before dragging, and capture current width as restore target.
-  const sb = document.getElementById('sidebar');
-  if (sb.classList.contains('sb-collapsed')) expandSidebar();
-  const w = sb.offsetWidth;
-  if (w > 36) { sidebarPinnedWidth = w; sessionStorage.setItem('wb-sidebar-w', w); }
-});
-document.addEventListener('mousemove', e => {
-  if (!resizing1) return;
-  const w = e.clientX;
-  if (w >= 160 && w <= window.innerWidth - 400) sidebar.style.width = w + 'px';
-});
-document.addEventListener('mouseup', () => {
-  if (!resizing1) return;
-  resizing1 = false;
-  resizer.classList.remove('active');
-  document.body.style.cursor = '';
-  document.body.style.userSelect = '';
-  document.getElementById('preview-frame').style.pointerEvents = '';
-  // Persist the new width as the sidebar restore target.
-  const w = document.getElementById('sidebar').offsetWidth;
-  if (w > 36) { sidebarPinnedWidth = w; sessionStorage.setItem('wb-sidebar-w', w); }
-});
-
-// ── Resize viewer/editor (resizer2) ──────────────────────────────────────────
-const resizer2   = document.getElementById('resizer2');
-const editorPanel = document.getElementById('editor-panel');
-let resizing2    = false;
-
-resizer2.addEventListener('mousedown', () => {
-  resizing2 = true;
-  resizer2.classList.add('active');
-  document.body.style.cursor = 'col-resize';
-  document.body.style.userSelect = 'none';
-  document.getElementById('preview-frame').style.pointerEvents = 'none';
-});
-document.addEventListener('mousemove', e => {
-  if (!resizing2) return;
-  const mainArea = document.getElementById('main-area');
-  const rect     = mainArea.getBoundingClientRect();
-  const available = rect.right - e.clientX;
-  const clamped = Math.max(200, Math.min(available, rect.width - 300));
-  editorPanel.style.width = clamped + 'px';
-});
-document.addEventListener('mouseup', () => {
-  if (!resizing2) return;
-  resizing2 = false;
-  resizer2.classList.remove('active');
-  document.body.style.cursor = '';
-  document.body.style.userSelect = '';
-  document.getElementById('preview-frame').style.pointerEvents = '';
-});
-
-// ── Search index — background build ──────────────────────────────────────────
-
-// Global semaphore: cap background scan at 2 concurrent HTTP requests so
-// Chrome's 6-connection pool stays free for user-initiated clicks.
-const scanSem = (() => {
-  let count = 0, queue = [];
-  return {
-    acquire() {
-      if (count < 2) { count++; return Promise.resolve(); }
-      return new Promise(r => queue.push(r));
-    },
-    release() {
-      count--;
-      if (queue.length) { count++; queue.shift()(); }
-    }
-  };
-})();
-
-// Directory names we never recurse into (source trees, build artefacts)
-const SKIP_DIRS = new Set([
-  'node_modules','vendor','target','build','dist','__pycache__',
-  '.cargo','vendor-sel4-kernel','vendor-seL4','src'
-]);
-
-async function scanDir(apiBase, browseBase, label, subpath, depth, maxDepth) {
-  if (depth >= maxDepth) return;
-  let entries;
-  await scanSem.acquire();
-  try {
-    const res = await fetch(apiBase + subpath);
-    if (!res.ok) return;
-    entries = await res.json();
-  } catch(e) { return; }
-  finally { scanSem.release(); }
-
-  const subdirFns = [];
-  for (const e of entries) {
-    const name = e.name.replace(/\/$/, '');
-    if (name.startsWith('.') && name !== '.agent') continue;
-    if (e.type === 'directory') {
-      if (SKIP_DIRS.has(name)) continue;
-      subdirFns.push(() => scanDir(apiBase, browseBase, label, subpath + name + '/', depth + 1, maxDepth));
-    } else if (INDEXABLE_RE.test(name)) {
-      const folder = subpath ? label + ' / ' + subpath.replace(/\/$/, '') : label;
-      searchIndex.push({ name, path: browseBase + subpath + name, folder, key: (name + ' ' + folder).toLowerCase() });
-    }
-  }
-  // Run subdirectory scans sequentially to stay within semaphore budget
-  for (const fn of subdirFns) await fn();
-}
-
-async function buildSearchIndex() {
-  // Sandboxes first (highest priority for Jennifer)
-  await scanDir('/_api/sandbox-jennifer/', '/_sandbox-jennifer/', 'Jennifer', '', 0, 6);
-  await scanDir('/_api/sandbox-mathew/',   '/_sandbox-mathew/',   'Mathew',   '', 0, 4);
-  await scanDir('/_api/staged/',           '/',                   'Staged',   '', 0, 4);
-
-  // Clones: only .agent/ subfolder + top-level files (skip source trees)
-  try {
-    const res = await fetch('/_api/clones/');
-    if (res.ok) {
-      const archives = await res.json();
-      for (const e of archives.filter(e => e.type === 'directory' && !e.name.startsWith('.'))) {
-        const name = e.name.replace(/\/$/, '');
-        // Top-level files only (depth 1), then .agent/ up to depth 3
-        await scanDir('/_api/clones/', '/_clones/', name, name + '/', 0, 1);
-        await scanDir('/_api/clones/', '/_clones/', name, name + '/.agent/', 0, 3);
-      }
-    }
-  } catch(e) { /* ignore */ }
-
-  indexingDone = true;
-  const status = document.getElementById('search-status');
-  status.textContent = searchIndex.length + ' files';
-  setTimeout(() => { status.textContent = ''; }, 4000);
-}
-
-buildSearchIndex();
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Tabs
-// ─────────────────────────────────────────────────────────────────────────────
-function renderTabBar() {
-  const bar = document.getElementById('tab-bar');
-  bar.innerHTML = '';
-  tabs.forEach((tab, i) => {
-    const el = document.createElement('div');
-    el.className = 'tab' + (i === activeTabIdx ? ' active' : '');
-    el.title = tab.path;
-    const nameEl = document.createElement('span');
-    nameEl.className = 'tab-name';
-    nameEl.textContent = tab.name;
-    el.appendChild(nameEl);
-    if (tab.dirty) {
-      const d = document.createElement('span');
-      d.className = 'tab-dirty';
-      d.textContent = '●';
-      el.appendChild(d);
-    }
-    const closeBtn = document.createElement('button');
-    closeBtn.className = 'tab-close';
-    closeBtn.title = 'Close';
-    closeBtn.textContent = '×';
-    closeBtn.addEventListener('click', e => { e.stopPropagation(); closeTab(i); });
-    el.appendChild(closeBtn);
-    el.addEventListener('click', e => {
-      if (e.target.classList.contains('tab-close')) return;
-      switchTab(i);
-    });
-    bar.appendChild(el);
-  });
-  persistTabs();
-}
-
-function persistTabs() {
-  try {
-    sessionStorage.setItem('wb-tabs', JSON.stringify(tabs.map(t => ({ path: t.path, name: t.name }))));
-    sessionStorage.setItem('wb-active-tab', String(activeTabIdx));
-  } catch(e) {}
-}
-
-async function switchTab(idx) {
-  if (idx === activeTabIdx) return;
-  if (idx < 0 || idx >= tabs.length) return;
-  // Cache current tab state
-  if (activeTabIdx >= 0 && activeTabIdx < tabs.length) {
-    const ta = document.getElementById('editor-textarea');
-    const cur = tabs[activeTabIdx];
-    cur.content     = ta.value;
-    cur.scrollTop   = ta.scrollTop;
-    cur.dirty       = editorDirty;
-    cur.editorPath  = editorPath;
-    cur.editorMtime = editorMtime;
-    cur.viewMode    = viewMode;
-    if (editorDirty && editorPath) autosaveFile();  // fire-and-forget
-  }
-  activeTabIdx = idx;
-  const tab = tabs[idx];
-  // If we have no cached content yet, fall through to a full openFile
-  if (tab.content === undefined) {
-    const path = tab.path;
-    const name = tab.name;
-    // Remove the placeholder tab; openFile will push a new one
-    tabs.splice(idx, 1);
-    if (activeTabIdx >= tabs.length) activeTabIdx = tabs.length - 1;
-    renderTabBar();
-    await openFile(path, name);
-    return;
-  }
-  // Restore tab state
-  currentPath = tab.path;
-  editorPath  = tab.editorPath || null;
-  editorMtime = tab.editorMtime || 0;
-  viewMode    = tab.viewMode || 'text';
-  hideViewerContent();
-  updateBar(tab.name, tab.path);
-  if (viewMode === 'iframe') {
-    const frame = document.getElementById('preview-frame');
-    frame.style.display = 'block';
-    if (tab.editorPath && tab.content !== undefined) {
-      frame.removeAttribute('src');
-      frame.srcdoc = tab.content;
-    } else {
-      frame.src = cacheBust(tab.path);
-    }
-  } else if (viewMode === 'image') {
-    document.getElementById('image-viewer').style.display = 'flex';
-    document.getElementById('image-el').src = cacheBust(tab.path);
-  } else {
-    const tv = document.getElementById('text-viewer');
-    const tc = document.getElementById('text-content');
-    tv.style.display = 'block';
-    if (tab.content !== undefined) {
-      const ext = tab.name.split('.').pop().toLowerCase();
-      if (ext === 'md') { tc.className = 'md-view'; tc.innerHTML = mdToHtml(tab.content); }
-      else { tc.className = 'code-view'; tc.textContent = tab.content; }
-    }
-  }
-  if (tab.editorPath && tab.content !== undefined) {
-    // Re-attach Save / Rename / Duplicate buttons to the viewer bar
-    const saveBarBtn = document.createElement('button');
-    saveBarBtn.className = 'bar-btn';
-    saveBarBtn.textContent = '💾 Save';
-    saveBarBtn.addEventListener('click', saveFile);
-    document.getElementById('bar-path').insertAdjacentElement('afterend', saveBarBtn);
-    addRenameDuplicateButtons();
-    showEditorPanel(tab.content);
-    const ta = document.getElementById('editor-textarea');
-    if (tab.scrollTop) ta.scrollTop = tab.scrollTop;
-  } else {
-    hideEditorPanel();
-  }
-  setDirty(!!tab.dirty);
-  sessionStorage.setItem('wb-path', tab.path);
-  sessionStorage.setItem('wb-name', tab.name);
-  renderTabBar();
-}
-
-async function closeTab(idx) {
-  if (idx < 0 || idx >= tabs.length) return;
-  if (tabs[idx].dirty && !confirm('Close "' + tabs[idx].name + '"? Unsaved changes will be lost.')) return;
-  logActivity('tab-close', tabs[idx].path, { duration_s: Math.round((Date.now() - (tabs[idx].openedAt || Date.now())) / 1000), dirty: tabs[idx].dirty });
-  tabs.splice(idx, 1);
-  if (tabs.length === 0) {
-    activeTabIdx = -1;
-    currentPath = null;
-    viewMode = 'none';
-    hideEditorPanel();
-    document.getElementById('viewer-placeholder').style.display = '';
-    document.getElementById('preview-frame').style.display = 'none';
-    document.getElementById('text-viewer').style.display = 'none';
-    document.getElementById('image-viewer').style.display = 'none';
-    document.getElementById('bar-path').textContent = 'No file selected';
-    document.getElementById('viewer-bar').querySelectorAll('.bar-btn, .bar-link').forEach(el => el.remove());
-    sessionStorage.removeItem('wb-path');
-    sessionStorage.removeItem('wb-name');
-    setTreeActive(null);
-    renderTabBar();
-  } else {
-    if (idx === activeTabIdx) {
-      activeTabIdx = Math.min(idx, tabs.length - 1);
-      // Force the new active tab to render
-      const prevActive = activeTabIdx;
-      activeTabIdx = -1;
-      await switchTab(prevActive);
-    } else if (idx < activeTabIdx) {
-      activeTabIdx--;
-      renderTabBar();
-    } else {
-      renderTabBar();
-    }
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Crash-backup + recovery
-// ─────────────────────────────────────────────────────────────────────────────
-function writeCrashBackup() {
-  if (!editorPath) return;
-  try {
-    const key = 'wb-crash:' + editorPath;
-    const content = document.getElementById('editor-textarea').value;
-    localStorage.setItem(key, JSON.stringify({ content, ts: Date.now() }));
-    const keys = Object.keys(localStorage).filter(k => k.startsWith('wb-crash:'));
-    if (keys.length > 30) {
-      const oldest = keys
-        .map(k => {
-          let ts = 0;
-          try { ts = JSON.parse(localStorage.getItem(k) || '{"ts":0}').ts || 0; } catch(e) {}
-          return { k, ts };
-        })
-        .sort((a, b) => a.ts - b.ts)[0];
-      if (oldest) localStorage.removeItem(oldest.k);
-    }
-  } catch(e) {}
-}
-
-function maybeShowRecoveryBar(apiPath, fileMtimeSecs) {
-  let bk = null;
-  try { bk = JSON.parse(localStorage.getItem('wb-crash:' + apiPath) || 'null'); } catch(e) {}
-  const bar = document.getElementById('recovery-bar');
-  if (!bk || !bk.ts || bk.ts <= (fileMtimeSecs || 0) * 1000) {
-    bar.classList.remove('visible');
-    return;
-  }
-  const mins = Math.round((Date.now() - bk.ts) / 60000);
-  document.getElementById('recovery-msg').textContent =
-    'Unsaved backup from ' + (mins < 1 ? 'just now' : (mins + ' min ago')) + ' found.';
-  bar.classList.add('visible');
-  document.getElementById('recovery-restore').onclick = () => {
-    logActivity('crash-restore', apiPath, { backup_age_s: Math.round((Date.now() - bk.ts) / 1000) });
-    const ta = document.getElementById('editor-textarea');
-    ta.value = bk.content;
-    setDirty(true);
-    applyHighlight();
-    updateGutterLines();
-    updateEditorPos();
-    bar.classList.remove('visible');
-    localStorage.removeItem('wb-crash:' + apiPath);
-  };
-  document.getElementById('recovery-discard').onclick = () => {
-    logActivity('crash-discard', apiPath, {});
-    bar.classList.remove('visible');
-    localStorage.removeItem('wb-crash:' + apiPath);
-  };
-}
-
-// beforeunload guard — warn before navigation/close if anything is dirty
-window.addEventListener('beforeunload', e => {
-  if (editorDirty || tabs.some(t => t.dirty)) {
-    e.preventDefault();
-    e.returnValue = '';
-  }
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Pinned files
-// ─────────────────────────────────────────────────────────────────────────────
-function loadPins() {
-  try { return JSON.parse(localStorage.getItem('wb-pins') || '[]'); } catch(e) { return []; }
-}
-function savePins(pins) {
-  try { localStorage.setItem('wb-pins', JSON.stringify(pins)); } catch(e) {}
-}
-
-function renderPinnedSection() {
-  const pins = loadPins();
-  const section = document.getElementById('pinned-section');
-  const body = document.getElementById('pinned-body');
-  if (!pins.length) { section.classList.remove('visible'); return; }
-  section.classList.add('visible');
-  body.innerHTML = '';
-  pins.forEach((pin, i) => {
-    if (pin.isDir) {
-      // Folder pin — expandable tree node
-      const node = document.createElement('div');
-      node.className = 'tree-node';
-      const item = document.createElement('div');
-      item.className = 'tree-item';
-      item.style.paddingLeft = '14px';
-      item.dataset.type = 'dir';
-      item.dataset.api = pin.apiPath || '';
-      item.dataset.browse = pin.path;
-      item.dataset.label = pin.name;
-      item.dataset.pinIdx = String(i);
-      const arr = document.createElement('span'); arr.className = 'arrow'; arr.textContent = '▶';
-      const ic  = document.createElement('span'); ic.className = 'icon'; ic.textContent = '📁';
-      const lab = document.createElement('span'); lab.className = 'label'; lab.textContent = pin.alias || pin.name;
-      item.appendChild(arr); item.appendChild(ic); item.appendChild(lab);
-      const children = document.createElement('div');
-      children.className = 'pinned-folder-children collapsed';
-      children.style.paddingLeft = '12px';
-      item.addEventListener('click', async e => {
-        e.stopPropagation();
-        const isOpen = item.classList.toggle('open');
-        children.classList.toggle('collapsed', !isOpen);
-        if (isOpen && !item.dataset.loaded) {
-          item.dataset.loaded = '1';
-          children.innerHTML = '<div class="loading">Loading…</div>';
-          try {
-            const res = await fetch(pin.apiPath || '');
-            if (!res.ok) throw new Error(res.status);
-            const entries = await res.json();
-            children.innerHTML = '';
-            if (!entries.length) { children.innerHTML = '<div class="empty">Empty</div>'; return; }
-            const dirs = entries.filter(e => e.type === 'directory').sort((a,b) => a.name.localeCompare(b.name));
-            const vw   = entries.filter(e => e.type !== 'directory' && VIEWABLE_RE.test(e.name)).sort((a,b) => a.name.localeCompare(b.name));
-            const rest = entries.filter(e => e.type !== 'directory' && !VIEWABLE_RE.test(e.name)).sort((a,b) => a.name.localeCompare(b.name));
-            [...dirs, ...vw, ...rest].forEach(entry => {
-              if (!showHidden && entry.name.startsWith('.')) return;
-              const childNode = buildItem(entry, pin.apiPath, pin.path, 1);
-              children.appendChild(childNode);
-              wireItem(childNode.querySelector('.tree-item'), childNode.querySelector('.tree-children'), 2);
-            });
-          } catch(e) { children.innerHTML = `<div class="err">Error: ${e.message}</div>`; }
-        }
-      });
-      attachContextMenu(item);
-      node.appendChild(item);
-      node.appendChild(children);
-      body.appendChild(node);
-    } else {
-      // File pin — single clickable item
-      const item = document.createElement('div');
-      item.className = 'tree-item viewable';
-      item.style.paddingLeft = '14px';
-      item.dataset.href = pin.path;
-      item.dataset.label = pin.name;
-      item.dataset.type = 'file';
-      item.dataset.pinIdx = String(i);
-      const ic = document.createElement('span'); ic.className = 'icon'; ic.style.marginLeft = '14px'; ic.textContent = '📌';
-      const lab = document.createElement('span'); lab.className = 'label'; lab.textContent = pin.alias || pin.name;
-      item.appendChild(ic); item.appendChild(lab);
-      item.addEventListener('click', () => { setTreeActive(item); openFile(pin.path, pin.name); });
-      attachContextMenu(item);
-      body.appendChild(item);
-    }
-  });
-}
-
-function pinFile(path, name) {
-  const alias = prompt('Alias for pinned file (Enter to use filename):', name);
-  if (alias === null) return;
-  const pins = loadPins();
-  if (pins.some(p => p.path === path)) return;
-  pins.push({ path, name, alias: alias || name, isDir: false });
-  savePins(pins);
-  renderPinnedSection();
-  logActivity('pin', path, {});
-}
-
-function pinFolder(browsePath, name, apiPath) {
-  const alias = prompt('Alias for pinned folder (Enter to use folder name):', name);
-  if (alias === null) return;
-  const pins = loadPins();
-  if (pins.some(p => p.path === browsePath)) return;
-  pins.push({ path: browsePath, name, alias: alias || name, isDir: true, apiPath });
-  savePins(pins);
-  renderPinnedSection();
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Context menu
-// ─────────────────────────────────────────────────────────────────────────────
-function showCtxMenu(x, y, items) {
-  const menu = document.getElementById('ctx-menu');
-  menu.innerHTML = '';
-  items.forEach(item => {
-    if (item === '-') {
-      const hr = document.createElement('hr');
-      menu.appendChild(hr);
-      return;
-    }
-    const btn = document.createElement('button');
-    btn.textContent = item.label;
-    btn.addEventListener('click', () => { hideCtxMenu(); item.action(); });
-    menu.appendChild(btn);
-  });
-  menu.style.display = 'block';
-  menu.style.left = Math.min(x, window.innerWidth - 200) + 'px';
-  menu.style.top  = Math.min(y, window.innerHeight - menu.offsetHeight - 10) + 'px';
-}
-function hideCtxMenu() { document.getElementById('ctx-menu').style.display = 'none'; }
-document.addEventListener('click', e => { if (!e.target.closest('#ctx-menu')) hideCtxMenu(); });
-document.addEventListener('contextmenu', e => {
-  if (!e.target.closest('.tree-item')) hideCtxMenu();
-});
-
-function attachContextMenu(item) {
-  item.addEventListener('contextmenu', e => {
-    e.preventDefault();
-    const isFile  = item.dataset.type === 'file';
-    const isDir   = item.dataset.type === 'dir';
-    const isPinned = item.dataset.pinIdx !== undefined;
-    const path  = item.dataset.href;
-    const name  = item.dataset.label;
-    const writable = path && !path.startsWith('/_command/');
-
-    let items = [];
-    if (isPinned) {
-      const idx = parseInt(item.dataset.pinIdx, 10);
-      const pins = loadPins();
-      const pin = pins[idx];
-      const baseItems = [
-        '-',
-        { label: '✎ Edit alias', action: () => {
-            const pins2 = loadPins();
-            const alias = prompt('New alias:', pins2[idx] && pins2[idx].alias || name);
-            if (alias === null) return;
-            if (pins2[idx]) { pins2[idx].alias = alias || name; savePins(pins2); renderPinnedSection(); }
-          }},
-        { label: 'Unpin', action: () => {
-            const pins2 = loadPins(); const unpinPath = pins2[idx] && pins2[idx].path; pins2.splice(idx, 1); savePins(pins2); renderPinnedSection(); logActivity('unpin', unpinPath || '', {});
-          }},
-      ];
-      if (pin && pin.isDir) {
-        items = [{ label: 'Open in tree', action: () => {} }, ...baseItems];
-      } else {
-        items = [{ label: 'Open', action: () => openFile(path, name) }, ...baseItems];
-      }
-    } else if (isFile && writable) {
-      items = [
-        { label: 'Open', action: () => openFile(path, name) },
-        '-',
-        { label: '📌 Pin to top', action: () => pinFile(path, name) },
-        { label: '✎ Rename',    action: () => renameByPath(path, name) },
-        { label: '⧉ Duplicate', action: () => duplicateByPath(path, name) },
-        '-',
-        { label: '🗑 Delete', action: () => deleteFileByPath(path, name, item) },
-      ];
-    } else if (isFile) {
-      items = [
-        { label: 'Open', action: () => openFile(path, name) },
-        { label: '📌 Pin to top', action: () => pinFile(path, name) },
-      ];
-    } else if (isDir) {
-      const browse = item.dataset.browse || '';
-      const api    = item.dataset.api || '';
-      const isWritableDir = browse && !browse.startsWith('/_command/');
-      items = [{ label: '📁 Pin folder', action: () => pinFolder(browse, name, api) }];
-      if (isWritableDir) {
-        items.push('-');
-        items.push({ label: '📄 New file here', action: () => createFileInDir(item) });
-        items.push('-');
-        items.push({ label: '🗑 Delete folder', action: () => deleteFolderByPath(browse, name, item) });
-      }
-    }
-    if (items.length) { logActivity('ctx-menu', path || '', { type: isDir ? 'dir' : 'file', writable: !!writable }); showCtxMenu(e.clientX, e.clientY, items); }
-  });
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// File create / delete / by-path rename / duplicate
-// ─────────────────────────────────────────────────────────────────────────────
-async function createFileInDir(dirItem) {
-  const fname = prompt('New filename (with extension):');
-  if (!fname || !fname.trim()) return;
-  const trimmed = fname.trim();
-  if (trimmed.indexOf('/') >= 0) { alert('Filename must not contain slashes.'); return; }
-  const dirBrowse = (dirItem.dataset.browse || '').replace(/\/$/, '');
-  const newPath   = dirBrowse + '/' + trimmed;
-  const apiPath   = newPath.replace(/^\//, '');
-  try {
-    const res = await fetch('/_api/edit/create?path=' + encodeURIComponent(apiPath), { method: 'POST' });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) { alert(data.error || 'Create failed'); return; }
-    // Best-effort tree refresh: re-expand parent dir
-    const node = dirItem.closest('.tree-node');
-    const childrenEl = node && node.querySelector('.tree-children');
-    if (childrenEl) {
-      dirItem.dataset.loaded = '';
-      childrenEl.innerHTML = '';
-      childrenEl.classList.remove('collapsed');
-      dirItem.classList.add('open');
-      const depth = Math.round((parseInt(dirItem.style.paddingLeft) - 14) / 14) + 1;
-      await loadChildren(dirItem, childrenEl, depth);
-    }
-    openFile(newPath, trimmed);
-  } catch(e) { alert('Create failed: ' + e.message); }
-}
-
-async function deleteFileByPath(path, name, treeItem) {
-  const apiPath = path.replace(/^\//, '');
-  try {
-    const res = await fetch('/_api/edit/trash?path=' + encodeURIComponent(apiPath), { method: 'POST' });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) { alert(data.error || 'Delete failed'); return; }
-    // Close any open tab for this file
-    const tabIdx = tabs.findIndex(t => t.path === path);
-    if (tabIdx >= 0) {
-      tabs.splice(tabIdx, 1);
-      if (activeTabIdx === tabIdx) {
-        if (tabs.length) {
-          activeTabIdx = -1;
-          await switchTab(Math.min(tabIdx, tabs.length - 1));
-        } else {
-          activeTabIdx = -1;
-          currentPath = null;
-          hideEditorPanel();
-          document.getElementById('viewer-placeholder').style.display = '';
-          document.getElementById('preview-frame').style.display = 'none';
-          document.getElementById('text-viewer').style.display = 'none';
-          document.getElementById('image-viewer').style.display = 'none';
-          document.getElementById('bar-path').textContent = 'No file selected';
-          document.getElementById('viewer-bar').querySelectorAll('.bar-btn, .bar-link').forEach(el => el.remove());
-          sessionStorage.removeItem('wb-path');
-          sessionStorage.removeItem('wb-name');
-        }
-      } else if (activeTabIdx > tabIdx) {
-        activeTabIdx--;
-      }
-      renderTabBar();
-    }
-    // Remove from tree
-    const node = treeItem.closest('.tree-node');
-    if (node) node.remove();
-    else treeItem.remove();
-    // Offer undo via toast
-    const trashKey = data.trash_key;
-    const origPath = data.original_path;
-    showWbToast('Deleted "' + name + '"', async () => {
-      const r = await fetch(
-        '/_api/edit/restore?trash_key=' + encodeURIComponent(trashKey) +
-        '&original_path=' + encodeURIComponent(origPath),
-        { method: 'POST' }
-      );
-      if (!r.ok) { const d = await r.json().catch(() => ({})); alert(d.error || 'Undo failed'); return; }
-      // Reload the parent folder in the tree
-      const parentPath = '/' + origPath.split('/').slice(0, -1).join('/');
-      const parentItem = document.querySelector(`.tree-item[data-api="${parentPath.replace(/^\//, '') + '/'}"], .tree-item[data-browse="${parentPath}/"]`);
-      if (parentItem) {
-        const childrenEl = parentItem.closest('.tree-node')?.querySelector('.tree-children');
-        if (childrenEl) {
-          parentItem.dataset.loaded = '';
-          childrenEl.innerHTML = '';
-          childrenEl.classList.remove('collapsed');
-          parentItem.classList.add('open');
-          const depth = Math.round((parseInt(parentItem.style.paddingLeft) - 14) / 14) + 1;
-          await loadChildren(parentItem, childrenEl, depth);
-        }
-      }
-      showWbToast('Restored "' + name + '"');
-    });
-  } catch(e) { alert('Delete failed: ' + e.message); }
-}
-
-async function deleteFolderByPath(browsePath, name, treeItem) {
-  const apiPath = browsePath.replace(/^\//, '').replace(/\/$/, '');
-  try {
-    const res = await fetch('/_api/edit/trash?path=' + encodeURIComponent(apiPath), { method: 'POST' });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) { alert(data.error || 'Delete failed'); return; }
-    // Close any tabs whose paths start with this folder
-    const prefix = browsePath.endsWith('/') ? browsePath : browsePath + '/';
-    const toClose = tabs.map((t, i) => i).filter(i => tabs[i].path.startsWith(prefix));
-    for (let i = toClose.length - 1; i >= 0; i--) {
-      const idx = toClose[i];
-      tabs.splice(idx, 1);
-      if (activeTabIdx === idx) {
-        activeTabIdx = -1;
-      } else if (activeTabIdx > idx) {
-        activeTabIdx--;
-      }
-    }
-    if (activeTabIdx === -1 && tabs.length) {
-      await switchTab(0);
-    } else if (!tabs.length) {
-      currentPath = null;
-      hideEditorPanel();
-      document.getElementById('viewer-placeholder').style.display = '';
-      document.getElementById('preview-frame').style.display = 'none';
-      document.getElementById('text-viewer').style.display = 'none';
-      document.getElementById('image-viewer').style.display = 'none';
-      document.getElementById('bar-path').textContent = 'No file selected';
-      document.getElementById('viewer-bar').querySelectorAll('.bar-btn, .bar-link').forEach(el => el.remove());
-      sessionStorage.removeItem('wb-path');
-      sessionStorage.removeItem('wb-name');
-    } else {
-      renderTabBar();
-    }
-    const node = treeItem.closest('.tree-node');
-    if (node) node.remove();
-    else treeItem.remove();
-    // Offer undo via toast
-    const trashKey = data.trash_key;
-    const origPath = data.original_path;
-    showWbToast('Deleted folder "' + name + '"', async () => {
-      const r = await fetch(
-        '/_api/edit/restore?trash_key=' + encodeURIComponent(trashKey) +
-        '&original_path=' + encodeURIComponent(origPath),
-        { method: 'POST' }
-      );
-      if (!r.ok) { const d = await r.json().catch(() => ({})); alert(d.error || 'Undo failed'); return; }
-      const parentPath = '/' + origPath.split('/').slice(0, -1).join('/');
-      const parentItem = document.querySelector(`.tree-item[data-api="${parentPath.replace(/^\//, '') + '/'}"], .tree-item[data-browse="${parentPath}/"]`);
-      if (parentItem) {
-        const childrenEl = parentItem.closest('.tree-node')?.querySelector('.tree-children');
-        if (childrenEl) {
-          parentItem.dataset.loaded = '';
-          childrenEl.innerHTML = '';
-          childrenEl.classList.remove('collapsed');
-          parentItem.classList.add('open');
-          const depth = Math.round((parseInt(parentItem.style.paddingLeft) - 14) / 14) + 1;
-          await loadChildren(parentItem, childrenEl, depth);
-        }
-      }
-      showWbToast('Restored folder "' + name + '"');
-    });
-  } catch(e) { alert('Delete failed: ' + e.message); }
-}
-
-async function renameByPath(path, name) {
-  const apiPath = path.replace(/^\//, '');
-  const newName = prompt('Rename file to:', name);
-  if (newName === null) return;
-  const trimmed = newName.trim();
-  if (!trimmed || trimmed === name) return;
-  if (trimmed.indexOf('/') >= 0 || trimmed.indexOf('\\') >= 0) {
-    alert('Filename must not contain slashes.'); return;
-  }
-  try {
-    const res = await fetch(
-      '/_api/edit/rename?from=' + encodeURIComponent(apiPath) +
-      '&to=' + encodeURIComponent(trimmed),
-      { method: 'POST' },
-    );
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) { alert(data.error || 'Rename failed'); return; }
-    // If currently open, redirect
-    if (currentPath === path) {
-      currentPath = '/' + data.new_path;
-      editorPath = data.new_path;
-      if (activeTabIdx >= 0) {
-        tabs[activeTabIdx].path = currentPath;
-        tabs[activeTabIdx].name = data.new_name;
-        tabs[activeTabIdx].editorPath = data.new_path;
-      }
-      sessionStorage.setItem('wb-path', currentPath);
-      sessionStorage.setItem('wb-name', data.new_name);
-      updateBar(data.new_name, currentPath);
-      const saveBarBtn = document.createElement('button');
-      saveBarBtn.className = 'bar-btn';
-      saveBarBtn.textContent = '💾 Save';
-      saveBarBtn.addEventListener('click', saveFile);
-      document.getElementById('bar-path').insertAdjacentElement('afterend', saveBarBtn);
-      addRenameDuplicateButtons();
-      renderTabBar();
-    }
-    patchTreeItemAfterRename(path, '/' + data.new_path, data.new_name);
-    // Offer undo: rename back to original name
-    const newApiPath = data.new_path;
-    const newName = data.new_name;
-    showWbToast('Renamed to "' + newName + '"', async () => {
-      const r = await fetch(
-        '/_api/edit/rename?from=' + encodeURIComponent(newApiPath) +
-        '&to=' + encodeURIComponent(name),
-        { method: 'POST' }
-      );
-      const rd = await r.json().catch(() => ({}));
-      if (!r.ok) { alert(rd.error || 'Undo rename failed'); return; }
-      if (currentPath === '/' + newApiPath) {
-        currentPath = '/' + rd.new_path;
-        editorPath = rd.new_path;
-        if (activeTabIdx >= 0) {
-          tabs[activeTabIdx].path = currentPath;
-          tabs[activeTabIdx].name = rd.new_name;
-          tabs[activeTabIdx].editorPath = rd.new_path;
-        }
-        sessionStorage.setItem('wb-path', currentPath);
-        sessionStorage.setItem('wb-name', rd.new_name);
-        updateBar(rd.new_name, currentPath);
-        addRenameDuplicateButtons();
-        renderTabBar();
-      }
-      patchTreeItemAfterRename('/' + newApiPath, '/' + rd.new_path, rd.new_name);
-      showWbToast('Renamed back to "' + name + '"');
-    });
-  } catch(e) { alert('Rename failed: ' + e.message); }
-}
-
-async function duplicateByPath(path, name) {
-  const apiPath = path.replace(/^\//, '');
-  try {
-    const res = await fetch('/_api/edit/duplicate?path=' + encodeURIComponent(apiPath), { method: 'POST' });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) { alert(data.error || 'Duplicate failed'); return; }
-    openFile('/' + data.new_path, data.new_name);
-  } catch(e) { alert('Duplicate failed: ' + e.message); }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Syntax highlighting
-// ─────────────────────────────────────────────────────────────────────────────
-function escHtml(s) {
-  return String(s)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
-
-const HL_KEYWORDS = {
-  rust: new Set(['fn','let','mut','pub','use','mod','struct','enum','trait','impl','for','in','if','else','while','loop','return','match','as','async','await','move','ref','self','Self','crate','super','where','dyn','const','static','type','break','continue','box','unsafe','extern']),
-  js:   new Set(['var','let','const','function','if','else','for','while','do','return','break','continue','switch','case','default','new','delete','typeof','instanceof','this','class','extends','super','import','export','from','as','async','await','yield','try','catch','finally','throw','of','in','null','true','false','undefined','void']),
-  ts:   new Set(['var','let','const','function','if','else','for','while','do','return','break','continue','switch','case','default','new','delete','typeof','instanceof','this','class','extends','super','import','export','from','as','async','await','yield','try','catch','finally','throw','of','in','null','true','false','undefined','void','interface','type','enum','readonly','public','private','protected','implements','declare','namespace','keyof','infer']),
-  python: new Set(['def','class','import','from','as','if','elif','else','for','while','in','not','and','or','is','return','yield','try','except','finally','raise','with','pass','break','continue','lambda','None','True','False','global','nonlocal','async','await']),
-  sh:   new Set(['if','then','else','elif','fi','for','do','done','while','until','case','esac','in','function','return','break','continue','local','export','echo','set','unset','source']),
+'use strict';
+// ---------------------------------------------------------------------------
+// Theme
+// ---------------------------------------------------------------------------
+const ROOT = document.documentElement;
+function applyTheme(t) {
+  ROOT.setAttribute('data-theme', t);
+  document.getElementById('theme-btn').textContent = t === 'dark' ? '🌙' : '☀';
+  localStorage.setItem('wp-theme', t);
+}
+function toggleTheme() {
+  applyTheme(ROOT.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+}
+applyTheme(localStorage.getItem('wp-theme') || 'light');
+
+// ---------------------------------------------------------------------------
+// Schema
+// ---------------------------------------------------------------------------
+const SCHEMAS = {
+  files:        { ext: null,      write: true,  viewer: 'text' },
+  memo:         { ext: '.html',   write: true,  viewer: 'iframe' },
+  code:         { ext: null,      write: true,  viewer: 'text' },
+  proforma:     { ext: '.json',   write: false, viewer: 'json' },
+  presentation: { ext: '.json',   write: false, viewer: 'json' },
+  schedule:     { ext: '.tjp',    write: false, viewer: 'text' },
+  pdf:          { ext: '.pdf',    write: false, viewer: 'pdf' },
+  gis:          { ext: '.geojson',write: false, viewer: 'json' },
+  bim:          { ext: '.bim.json',write: false,viewer: 'json' },
 };
-HL_KEYWORDS.bash = HL_KEYWORDS.sh;
-HL_KEYWORDS.zsh  = HL_KEYWORDS.sh;
-HL_KEYWORDS.jsx  = HL_KEYWORDS.js;
-HL_KEYWORDS.tsx  = HL_KEYWORDS.ts;
-HL_KEYWORDS.py   = HL_KEYWORDS.python;
+let activeSchema = 'files';
+document.getElementById('schema-bar').addEventListener('click', e => {
+  const btn = e.target.closest('[data-schema]');
+  if (!btn) return;
+  activeSchema = btn.dataset.schema;
+  document.querySelectorAll('#schema-bar button').forEach(b => b.classList.toggle('active', b === btn));
+  refreshTree();
+});
 
-function tokenize(code, lang) {
-  if (code == null) return '';
-  if (code.length > 150000) return escHtml(code);
-  switch (lang) {
-    case 'rs':
-    case 'rust':   return tokenizeRust(code);
-    case 'js':
-    case 'jsx':
-    case 'ts':
-    case 'tsx':    return tokenizeJs(code, lang);
-    case 'html':
-    case 'htm':
-    case 'xml':    return tokenizeHtml(code);
-    case 'css':
-    case 'scss':
-    case 'less':   return tokenizeCss(code);
-    case 'json':   return tokenizeJson(code);
-    case 'toml':   return tokenizeToml(code);
-    case 'yaml':
-    case 'yml':    return tokenizeYaml(code);
-    case 'md':
-    case 'markdown': return tokenizeMd(code);
-    case 'py':
-    case 'python': return tokenizePython(code);
-    case 'sh':
-    case 'bash':
-    case 'zsh':    return tokenizeShell(code);
-    default:       return escHtml(code);
-  }
-}
+// ---------------------------------------------------------------------------
+// File tree state
+// ---------------------------------------------------------------------------
+let treeItems = [];   // [{path, name, isDir, depth, expanded, gitStatus}]
+let selectedPath = null;
+let openMtime = 0;
 
-// Generic regex-based tokenizer driver. Pattern is an Array of [regex, className].
-// First match wins per position.
-function genericTokenize(code, patterns) {
-  let out = '';
-  let i = 0;
-  const len = code.length;
-  while (i < len) {
-    let matched = false;
-    for (const [re, cls] of patterns) {
-      re.lastIndex = i;
-      const m = re.exec(code);
-      if (m && m.index === i) {
-        out += '<span class="' + cls + '">' + escHtml(m[0]) + '</span>';
-        i = re.lastIndex;
-        matched = true;
-        break;
-      }
-    }
-    if (!matched) {
-      out += escHtml(code[i]);
-      i++;
-    }
-  }
-  return out;
-}
+const TREE_EL = document.getElementById('tree');
+const ROW_H = 22;
 
-function rustPattern() {
-  const kw = [...HL_KEYWORDS.rust].join('|');
-  return [
-    [/\/\/[^\n]*/g, 'hl-cmt'],
-    [/\/\*[\s\S]*?\*\//g, 'hl-cmt'],
-    [/r#?"(?:[^"\\]|\\.)*"/g, 'hl-str'],
-    [/"(?:[^"\\]|\\.)*"/g, 'hl-str'],
-    [/'(?:[^'\\]|\\.)'/g, 'hl-str'],
-    [/[a-zA-Z_][a-zA-Z0-9_]*!/g, 'hl-macro'],
-    [new RegExp('\\b(?:' + kw + ')\\b', 'g'), 'hl-kw'],
-    [/\b[A-Z][A-Za-z0-9_]*\b/g, 'hl-type'],
-    [/\b[a-z_][A-Za-z0-9_]*(?=\s*\()/g, 'hl-fn'],
-    [/\b\d[\d_]*(?:\.\d[\d_]*)?(?:[eE][+-]?\d+)?(?:[ui](?:8|16|32|64|size)|f(?:32|64))?\b/g, 'hl-num'],
-  ];
-}
-function tokenizeRust(code) { return genericTokenize(code, rustPattern()); }
-
-function jsPattern(lang) {
-  const set = HL_KEYWORDS[lang] || HL_KEYWORDS.js;
-  const kw = [...set].join('|');
-  return [
-    [/\/\/[^\n]*/g, 'hl-cmt'],
-    [/\/\*[\s\S]*?\*\//g, 'hl-cmt'],
-    [/`(?:[^`\\$]|\\.|\$(?!\{))*`/g, 'hl-str'],
-    [/"(?:[^"\\]|\\.)*"/g, 'hl-str'],
-    [/'(?:[^'\\]|\\.)*'/g, 'hl-str'],
-    [new RegExp('\\b(?:' + kw + ')\\b', 'g'), 'hl-kw'],
-    [/\b[A-Z][A-Za-z0-9_]*\b/g, 'hl-type'],
-    [/\b[a-z_$][A-Za-z0-9_$]*(?=\s*\()/g, 'hl-fn'],
-    [/\b\d[\d_]*(?:\.\d[\d_]*)?(?:[eE][+-]?\d+)?\b/g, 'hl-num'],
-  ];
-}
-function tokenizeJs(code, lang) { return genericTokenize(code, jsPattern(lang)); }
-
-function tokenizePython(code) {
-  const kw = [...HL_KEYWORDS.python].join('|');
-  return genericTokenize(code, [
-    [/#[^\n]*/g, 'hl-cmt'],
-    [/"""[\s\S]*?"""/g, 'hl-str'],
-    [/'''[\s\S]*?'''/g, 'hl-str'],
-    [/"(?:[^"\\]|\\.)*"/g, 'hl-str'],
-    [/'(?:[^'\\]|\\.)*'/g, 'hl-str'],
-    [new RegExp('\\b(?:' + kw + ')\\b', 'g'), 'hl-kw'],
-    [/\b[A-Z][A-Za-z0-9_]*\b/g, 'hl-type'],
-    [/\b[a-z_][A-Za-z0-9_]*(?=\s*\()/g, 'hl-fn'],
-    [/\b\d+(?:\.\d+)?\b/g, 'hl-num'],
-  ]);
-}
-
-function tokenizeShell(code) {
-  const kw = [...HL_KEYWORDS.sh].join('|');
-  return genericTokenize(code, [
-    [/#[^\n]*/g, 'hl-cmt'],
-    [/"(?:[^"\\]|\\.)*"/g, 'hl-str'],
-    [/'(?:[^'\\]|\\.)*'/g, 'hl-str'],
-    [/\$\{[^}]+\}/g, 'hl-attr'],
-    [/\$[A-Za-z_][A-Za-z0-9_]*/g, 'hl-attr'],
-    [new RegExp('\\b(?:' + kw + ')\\b', 'g'), 'hl-kw'],
-    [/\b\d+\b/g, 'hl-num'],
-  ]);
-}
-
-function tokenizeHtml(code) {
-  // Manual tokenizer to handle nested attributes
-  let out = '';
-  let i = 0;
-  const len = code.length;
-  while (i < len) {
-    if (code.startsWith('<!--', i)) {
-      const end = code.indexOf('-->', i + 4);
-      const stop = end === -1 ? len : end + 3;
-      out += '<span class="hl-cmt">' + escHtml(code.slice(i, stop)) + '</span>';
-      i = stop;
-      continue;
-    }
-    if (code[i] === '<') {
-      const end = code.indexOf('>', i);
-      const stop = end === -1 ? len : end + 1;
-      const seg = code.slice(i, stop);
-      // Tokenize attribute names and values inside the tag
-      out += seg.replace(/(&|<|>|")/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[m])
-        .replace(/(&lt;\/?)([A-Za-z][\w-]*)/, '$1<span class="hl-tag">$2</span>')
-        .replace(/([A-Za-z][\w:-]*)(=)(&quot;[^&]*?&quot;|&#39;[^&]*?&#39;)/g, (_, a, eq, v) =>
-          '<span class="hl-attr">' + a + '</span>' + eq + '<span class="hl-str">' + v + '</span>');
-      i = stop;
-      continue;
-    }
-    // Plain text until next <
-    const next = code.indexOf('<', i);
-    const stop = next === -1 ? len : next;
-    out += escHtml(code.slice(i, stop));
-    i = stop;
-  }
-  return out;
-}
-
-function tokenizeCss(code) {
-  return genericTokenize(code, [
-    [/\/\*[\s\S]*?\*\//g, 'hl-cmt'],
-    [/"(?:[^"\\]|\\.)*"/g, 'hl-str'],
-    [/'(?:[^'\\]|\\.)*'/g, 'hl-str'],
-    [/#[0-9a-fA-F]{3,8}\b/g, 'hl-num'],
-    [/\b\d+(?:\.\d+)?(?:px|em|rem|%|vh|vw|ms|s|deg|fr)?\b/g, 'hl-num'],
-    [/@[a-zA-Z-]+/g, 'hl-macro'],
-    [/[a-zA-Z-]+(?=\s*:)/g, 'hl-attr'],
-  ]);
-}
-
-function tokenizeJson(code) {
-  return genericTokenize(code, [
-    [/"(?:[^"\\]|\\.)*"\s*:/g, 'hl-attr'],
-    [/"(?:[^"\\]|\\.)*"/g, 'hl-str'],
-    [/\b(?:true|false|null)\b/g, 'hl-kw'],
-    [/-?\b\d+(?:\.\d+)?(?:[eE][+-]?\d+)?\b/g, 'hl-num'],
-  ]);
-}
-
-function tokenizeToml(code) {
-  return genericTokenize(code, [
-    [/#[^\n]*/g, 'hl-cmt'],
-    [/"(?:[^"\\]|\\.)*"/g, 'hl-str'],
-    [/'(?:[^'\\]|\\.)*'/g, 'hl-str'],
-    [/^\s*\[\[?[^\]]+\]\]?/gm, 'hl-tag'],
-    [/^\s*[A-Za-z_][\w.-]*(?=\s*=)/gm, 'hl-attr'],
-    [/\b(?:true|false)\b/g, 'hl-kw'],
-    [/-?\b\d+(?:\.\d+)?\b/g, 'hl-num'],
-  ]);
-}
-
-function tokenizeYaml(code) {
-  return genericTokenize(code, [
-    [/#[^\n]*/g, 'hl-cmt'],
-    [/"(?:[^"\\]|\\.)*"/g, 'hl-str'],
-    [/'(?:[^'\\]|\\.)*'/g, 'hl-str'],
-    [/^[\s-]*[A-Za-z_][\w.-]*(?=\s*:)/gm, 'hl-attr'],
-    [/\b(?:true|false|null|yes|no|~)\b/g, 'hl-kw'],
-    [/-?\b\d+(?:\.\d+)?\b/g, 'hl-num'],
-  ]);
-}
-
-function tokenizeMd(code) {
-  return genericTokenize(code, [
-    [/^#{1,6}\s+.*$/gm, 'hl-tag'],
-    [/```[\s\S]*?```/g, 'hl-str'],
-    [/`[^`]+`/g, 'hl-str'],
-    [/\*\*[^*]+\*\*/g, 'hl-kw'],
-    [/\*[^*]+\*/g, 'hl-fn'],
-    [/\[([^\]]+)\]\(([^)]+)\)/g, 'hl-attr'],
-  ]);
-}
-
-function scheduleHighlight() {
-  if (hlTimer) clearTimeout(hlTimer);
-  hlTimer = setTimeout(applyHighlight, 300);
-}
-
-function applyHighlight() {
-  const hl = document.getElementById('editor-highlight');
-  const ta = document.getElementById('editor-textarea');
-  if (!hl || !ta) return;
-  if (!editorPath) { hl.innerHTML = ''; return; }
-  const ext = editorPath.split('.').pop().toLowerCase();
-  let html = tokenize(ta.value, ext);
-  // Ensure trailing newline so the highlight pre matches the textarea height
-  if (!html.endsWith('\n')) html += '\n';
-  hl.innerHTML = html;
-  hl.scrollTop  = ta.scrollTop;
-  hl.scrollLeft = ta.scrollLeft;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Git status badges
-// ─────────────────────────────────────────────────────────────────────────────
-async function fetchGitStatus(urlPrefix) {
+async function refreshTree() {
   try {
-    const res = await fetch('/_api/edit/git-status?root=' + encodeURIComponent(urlPrefix));
+    const res = await fetch('/file?path=');
     if (!res.ok) return;
     const data = await res.json();
-    const archivePrefix = '/_clones/' + urlPrefix.replace(/^_clones\//, '');
-    // Clear old entries for this prefix
-    for (const k of [...gitStatus.keys()]) {
-      if (k.startsWith(archivePrefix + '/')) gitStatus.delete(k);
-    }
-    for (const [rel, status] of Object.entries(data.files || {})) {
-      gitStatus.set(archivePrefix + '/' + rel, status);
-    }
-    refreshGitBadgesInTree();
+    const schema = SCHEMAS[activeSchema];
+    const items = (data.entries || []).filter(e => {
+      if (e.is_dir) return true;
+      if (!schema.ext) return true;
+      return e.name.endsWith(schema.ext);
+    });
+    treeItems = buildTree(items, '');
+    renderTree();
+  } catch(err) { setStatus('Tree load error: ' + err.message); }
+}
+
+function buildTree(entries, prefix) {
+  return entries.map(e => ({
+    path: (prefix ? prefix + '/' : '') + e.name,
+    name: e.name,
+    isDir: !!e.is_dir,
+    depth: 0,
+    expanded: false,
+    gitStatus: e.git_status || '',
+  }));
+}
+
+function renderTree() {
+  const rows = treeItems;
+  TREE_EL.innerHTML = '';
+  rows.forEach((item, i) => {
+    const div = document.createElement('div');
+    div.className = 'tree-row' + (item.path === selectedPath ? ' selected' : '');
+    if (item.gitStatus) div.classList.add('modified');
+    const indent = '&nbsp;'.repeat(item.depth * 2);
+    const icon = item.isDir ? (item.expanded ? '▾' : '▸') : '·';
+    div.innerHTML = `<span class="indent">${indent}</span><span class="icon">${icon}</span>`
+      + `<span class="name">${esc(item.name)}</span>`
+      + (item.gitStatus ? `<span class="badge">${esc(item.gitStatus)}</span>` : '');
+    div.addEventListener('click', () => onTreeClick(item, i));
+    TREE_EL.appendChild(div);
+  });
+}
+
+async function onTreeClick(item, idx) {
+  if (item.isDir) {
+    item.expanded = !item.expanded;
+    if (item.expanded) await loadDirChildren(item, idx);
+    else removeDirChildren(item, idx);
+    renderTree();
+    return;
+  }
+  selectedPath = item.path;
+  renderTree();
+  openFilePath(item.path);
+}
+
+async function loadDirChildren(dir, idx) {
+  try {
+    const res = await fetch(`/file?path=${encodeURIComponent(dir.path)}`);
+    if (!res.ok) return;
+    const data = await res.json();
+    const schema = SCHEMAS[activeSchema];
+    const children = (data.entries || []).filter(e =>
+      e.is_dir || !schema.ext || e.name.endsWith(schema.ext)
+    ).map(e => ({
+      path: dir.path + '/' + e.name,
+      name: e.name,
+      isDir: !!e.is_dir,
+      depth: dir.depth + 1,
+      expanded: false,
+      gitStatus: e.git_status || '',
+    }));
+    treeItems.splice(idx + 1, 0, ...children);
   } catch(e) {}
 }
 
-function refreshGitBadgesInTree() {
-  document.querySelectorAll('.tree-item[data-href]').forEach(item => {
-    const href = item.dataset.href;
-    const existing = item.querySelector('.tree-git');
-    const gs = gitStatus.get(href);
-    if (gs) {
-      if (existing) {
-        existing.setAttribute('data-s', gs);
-      } else {
-        const span = document.createElement('span');
-        span.className = 'tree-git';
-        span.setAttribute('data-s', gs);
-        span.textContent = '●';
-        item.appendChild(span);
-      }
-    } else if (existing) {
-      existing.remove();
-    }
-  });
+function removeDirChildren(dir, idx) {
+  let i = idx + 1;
+  while (i < treeItems.length && treeItems[i].depth > dir.depth) i++;
+  treeItems.splice(idx + 1, i - idx - 1);
 }
 
-function currentArchivePrefix() {
-  // From currentPath like "/_clones/project-foo/src/main.rs" → "_clones/project-foo"
-  if (!currentPath) return null;
-  const m = currentPath.match(/^\/(_clones\/[^/]+)/);
-  return m ? m[1] : null;
-}
+// ---------------------------------------------------------------------------
+// File open / edit / save
+// ---------------------------------------------------------------------------
+const EDITOR = document.getElementById('editor');
+const VIEWER = document.getElementById('viewer');
+const VIEWER_FRAME = document.getElementById('viewer-frame');
+const ED_PATH = document.getElementById('ed-path');
+const ED_MTIME = document.getElementById('ed-mtime');
+const SAVE_BTN = document.getElementById('save-btn');
+let dirty = false;
 
-function refreshGitStatusForCurrent() {
-  const p = currentArchivePrefix();
-  if (p) fetchGitStatus(p);
-}
+function markDirty(v) { dirty = v; SAVE_BTN.classList.toggle('dirty', v); }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Pinned + restore on startup
-// ─────────────────────────────────────────────────────────────────────────────
-renderPinnedSection();
-
-(async function restoreTabs() {
-  let saved = [];
-  try { saved = JSON.parse(sessionStorage.getItem('wb-tabs') || '[]'); } catch(e) {}
-  let activeIdx = parseInt(sessionStorage.getItem('wb-active-tab') || '0', 10);
-  if (!saved.length) {
-    // Legacy fallback: single-file restoration
-    const p = sessionStorage.getItem('wb-path');
-    const n = sessionStorage.getItem('wb-name');
-    if (p) await openFile(p, n || p.split('/').pop());
-    return;
-  }
-  for (const t of saved) {
-    try { await openFile(t.path, t.name); } catch(e) { /* skip broken tabs */ }
-  }
-  if (activeIdx >= 0 && activeIdx < tabs.length && activeIdx !== activeTabIdx) {
-    try { await switchTab(activeIdx); } catch(e) {}
-  }
-  logActivity('session-start', null, { tabs: tabs.length });
-})();
-
-// ── iframe → editor click navigation ─────────────────────────────────────────
-window.addEventListener('message', e => {
-  if (!e.data || e.data.type !== 'iframe-source-click') return;
-  const ta = document.getElementById('editor-textarea');
-  if (!ta || !ta.value) return;
-  const { id, text, outerHTML } = e.data;
-  const lines = ta.value.split('\n');
-  let found = -1;
-
-  // 1. Match by id attribute (most reliable)
-  if (id) {
-    found = lines.findIndex(l => l.includes('id="' + id + '"') || l.includes("id='" + id + "'"));
-  }
-  // 2. Match by opening tag text (progressively shorter slices of outerHTML)
-  if (found < 0 && outerHTML) {
-    for (let len = Math.min(outerHTML.length, 80); len >= 20 && found < 0; len -= 10) {
-      const s = outerHTML.slice(0, len);
-      found = lines.findIndex(l => l.includes(s));
-    }
-  }
-  // 3. Fallback: match by text content
-  if (found < 0 && text && text.length > 4) {
-    found = lines.findIndex(l => l.includes(text.slice(0, 100)));
-  }
-
-  if (found >= 0) applyGotoLine(found + 1);
-});
-
-// ── Org-chart drag-editor: save relay ────────────────────────────────────────
-window.addEventListener('message', async e => {
-  if (!e.data || e.data.type !== 'wb-save-content') return;
-  if (!editorPath || typeof e.data.content !== 'string') return;
+async function openFilePath(urlPath) {
+  setStatus(`Opening ${urlPath}…`);
   try {
-    const res = await fetch('/_api/edit/file?path=' + encodeURIComponent(editorPath), {
-      method: 'PUT',
-      headers: { 'Content-Type': 'text/html; charset=utf-8', 'X-Foundry-Editor': '1' },
-      body: e.data.content,
-    });
-    if (res.ok) {
-      const data = await res.json();
-      editorMtime = data.mtime || editorMtime;
-      if (activeTabIdx >= 0) {
-        tabs[activeTabIdx].content     = e.data.content;
-        tabs[activeTabIdx].editorMtime = editorMtime;
-      }
-      const ta = document.getElementById('editor-textarea');
-      if (ta && editorPath) ta.value = e.data.content;
-      setDirty(false);
-      showEditorStatus('Drag-saved', '#89d185', 2500);
+    const res = await fetch(`/file?path=${encodeURIComponent(urlPath)}`);
+    if (!res.ok) { setStatus(`Error ${res.status}`); return; }
+    const data = await res.json();
+    const content = data.content ?? '';
+    openMtime = data.mtime ?? 0;
+    ED_PATH.textContent = urlPath;
+    ED_MTIME.textContent = openMtime ? new Date(openMtime * 1000).toLocaleTimeString() : '';
+    localStorage.setItem('wp-tab', urlPath);
+
+    const schema = SCHEMAS[activeSchema];
+    if (schema.viewer === 'iframe' || urlPath.endsWith('.html')) {
+      EDITOR.style.display = 'none';
+      VIEWER.style.display = 'flex';
+      VIEWER_FRAME.srcdoc = content;
+    } else {
+      EDITOR.style.display = '';
+      VIEWER.style.display = 'none';
+      EDITOR.value = content;
     }
-  } catch(err) {}
+    markDirty(false);
+    setStatus('');
+    updatePreview(urlPath, content);
+  } catch(e) { setStatus('Open error: ' + e.message); }
+}
+
+EDITOR.addEventListener('input', () => markDirty(true));
+EDITOR.addEventListener('click', onEditorClick);
+
+async function onEditorClick() {
+  if (!selectedPath) return;
+  const offset = EDITOR.selectionStart;
+  try {
+    const res = await fetch(`/section?path=${encodeURIComponent(selectedPath)}&offset=${offset}`);
+    if (!res.ok) return;
+    const { start, end, block_kind } = await res.json();
+    setStatus(`Block: ${block_kind} [${start}–${end}]`);
+  } catch(e) {}
+}
+
+async function saveFile() {
+  if (!selectedPath || !dirty) return;
+  const content = EDITOR.value;
+  setStatus('Saving…');
+  try {
+    const res = await fetch(`/file?path=${encodeURIComponent(selectedPath)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'text/plain; charset=utf-8',
+                 'X-Foundry-Mtime': String(openMtime) },
+      body: content,
+    });
+    if (res.status === 409) { setStatus('Conflict — file changed externally; reload first.'); return; }
+    if (!res.ok) { setStatus(`Save error ${res.status}`); return; }
+    const data = await res.json();
+    openMtime = data.mtime ?? openMtime;
+    ED_MTIME.textContent = new Date(openMtime * 1000).toLocaleTimeString();
+    markDirty(false);
+    setStatus('Saved');
+    updatePreview(selectedPath, content);
+  } catch(e) { setStatus('Save error: ' + e.message); }
+}
+
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); saveFile(); }
 });
 
-// ── Search UI ─────────────────────────────────────────────────────────────────
-const searchInput   = document.getElementById('search-input');
-const searchPanel   = document.getElementById('search-panel');
-const searchResults = document.getElementById('search-results');
-const treePanel     = document.getElementById('tree-panel');
+// ---------------------------------------------------------------------------
+// Preview pane
+// ---------------------------------------------------------------------------
+const PV_CONTENT = document.getElementById('pv-content');
+const PV_TOOLBAR = document.getElementById('pv-toolbar');
 
-function renderSearch() {
-  const q = searchInput.value.trim().toLowerCase();
-  if (!q) {
-    searchPanel.classList.remove('visible');
-    treePanel.classList.remove('hidden');
-    return;
+function updatePreview(urlPath, content) {
+  if (!content) { PV_CONTENT.innerHTML = '<p style="color:var(--fg3);padding:16px;">Empty file.</p>'; return; }
+  if (urlPath.endsWith('.md')) {
+    PV_CONTENT.innerHTML = `<pre style="white-space:pre-wrap;word-break:break-word">${esc(content)}</pre>`;
+    PV_TOOLBAR.textContent = 'Markdown';
+  } else if (urlPath.endsWith('.html')) {
+    PV_CONTENT.innerHTML = `<iframe srcdoc="${esc(content)}" style="width:100%;height:100%;border:none"></iframe>`;
+    PV_TOOLBAR.textContent = 'HTML Preview';
+  } else if (urlPath.endsWith('.json') || urlPath.endsWith('.geojson')) {
+    try {
+      const obj = JSON.parse(content);
+      PV_CONTENT.innerHTML = `<pre>${esc(JSON.stringify(obj, null, 2))}</pre>`;
+    } catch { PV_CONTENT.innerHTML = `<pre>${esc(content)}</pre>`; }
+    PV_TOOLBAR.textContent = 'JSON';
+  } else {
+    PV_CONTENT.innerHTML = `<pre style="white-space:pre-wrap">${esc(content.slice(0, 4000))}</pre>`;
+    PV_TOOLBAR.textContent = 'Text';
   }
-  searchPanel.classList.add('visible');
-  treePanel.classList.add('hidden');
+}
 
-  if (!searchIndex.length) {
-    searchResults.innerHTML = '<div class="search-msg">Still indexing, try again in a moment…</div>';
-    return;
-  }
-  const matches = searchIndex.filter(f => f.key.includes(q)).slice(0, 80);
-  if (!matches.length) {
-    searchResults.innerHTML = `<div class="search-msg">No files match "${esc(q)}"</div>`;
-    return;
-  }
-  searchResults.innerHTML = '';
-  matches.forEach(m => {
-    const div = document.createElement('div');
-    div.className = 'search-result';
-    div.innerHTML = `<div class="res-name">${esc(m.name)}</div><div class="res-path">${esc(m.folder)}</div>`;
-    div.addEventListener('click', () => {
-      searchResults.querySelectorAll('.search-result.active').forEach(el => el.classList.remove('active'));
-      div.classList.add('active');
-      setTreeActive(null);
-      logActivity('search-open', m.path, { query: q.slice(0, 80), rank: matches.indexOf(m), results: matches.length });
-      openFile(m.path, m.name);
-    });
-    searchResults.appendChild(div);
+// ---------------------------------------------------------------------------
+// SSE — external change notifications
+// ---------------------------------------------------------------------------
+function connectSSE() {
+  const es = new EventSource('/events');
+  es.onmessage = e => {
+    try {
+      const d = JSON.parse(e.data);
+      if (d.event === 'changed' && d.path === selectedPath) {
+        setStatus(`External change detected in ${d.path} — reload?`);
+      }
+    } catch {}
+  };
+  es.onerror = () => setTimeout(connectSSE, 5000);
+}
+connectSSE();
+
+// ---------------------------------------------------------------------------
+// Git status
+// ---------------------------------------------------------------------------
+async function refreshGitStatus() {
+  try {
+    const res = await fetch('/git-status');
+    if (!res.ok) return;
+    const data = await res.json();
+    const byPath = {};
+    (data.files || []).forEach(f => { byPath[f.path] = f.status; });
+    treeItems.forEach(item => { item.gitStatus = byPath[item.path] || ''; });
+    renderTree();
+  } catch {}
+}
+setTimeout(refreshGitStatus, 2000);
+
+// ---------------------------------------------------------------------------
+// Resize handles
+// ---------------------------------------------------------------------------
+function makeResizer(id, getEl, getSize, setSize, minPx) {
+  const rsz = document.getElementById(id);
+  rsz.addEventListener('mousedown', e => {
+    e.preventDefault();
+    rsz.classList.add('dragging');
+    const startX = e.clientX;
+    const startSize = getSize();
+    const move = ev => {
+      const delta = ev.clientX - startX;
+      setSize(Math.max(minPx, startSize + delta));
+    };
+    const up = () => {
+      rsz.classList.remove('dragging');
+      window.removeEventListener('mousemove', move);
+      window.removeEventListener('mouseup', up);
+    };
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', up);
   });
 }
 
-let searchLogTimer = null;
-searchInput.addEventListener('input', () => {
-  renderSearch();
-  clearTimeout(searchLogTimer);
-  const q = searchInput.value.trim();
-  if (q) {
-    searchLogTimer = setTimeout(() => {
-      const matches = searchIndex.filter(f => f.key.includes(q.toLowerCase())).slice(0, 80);
-      logActivity('search', null, { query: q.slice(0, 80), results: matches.length });
-    }, 600);
-  }
-});
-searchInput.addEventListener('keydown', e => {
-  if (e.key === 'Escape') { searchInput.value = ''; renderSearch(); searchInput.blur(); }
-});
+const SB = document.getElementById('sb');
+const PV = document.getElementById('pv');
+makeResizer('rsz-sb', () => SB, () => SB.offsetWidth, w => SB.style.width = w + 'px', 120);
+makeResizer('rsz-pv', () => PV, () => PV.offsetWidth, w => PV.style.width = w + 'px', 80);
 
-(function pollIndex() {
-  if (indexingDone) { if (searchInput.value.trim()) renderSearch(); return; }
-  setTimeout(pollIndex, 500);
-})();
-
-// ── Sidebar toolbar wiring ────────────────────────────────────────────────────
-(function initSidebarToolbar() {
-  // Apply saved sidebar width on startup.
-  const sb = document.getElementById('sidebar');
-  sb.style.width = sidebarPinnedWidth + 'px';
-
-  // Toggle button
-  const toggleBtn = document.getElementById('sb-toggle-btn');
-  if (toggleBtn) toggleBtn.addEventListener('click', e => { e.stopPropagation(); toggleSidebar(); });
-
-  // Hidden-files button — show active state on startup if enabled
-  const hiddenBtn = document.getElementById('sb-hidden-btn');
-  if (hiddenBtn) {
-    hiddenBtn.classList.toggle('active', showHidden);
-    hiddenBtn.addEventListener('click', e => { e.stopPropagation(); toggleHiddenFiles(); });
-  }
-
-  // Clicking anywhere on a collapsed sidebar expands it
-  sb.addEventListener('click', e => {
-    if (sb.classList.contains('sb-collapsed') && !e.target.closest('#sb-toggle-btn')) {
-      expandSidebar();
-    }
-  });
-
-  // Editor textarea focus → collapse sidebar
-  const ta = document.getElementById('editor-textarea');
-  if (ta) {
-    ta.addEventListener('mousedown', () => {
-      const s = document.getElementById('sidebar');
-      if (!s.classList.contains('sb-collapsed')) collapseSidebar();
-    });
-  }
-})();
-</script>
-
-<div id="ctx-menu"></div>
-
-<script>
 // ---------------------------------------------------------------------------
-// Live file-change notifications via SSE
-// Ported from app-workplace-http-prototype/src/assets/workbench/index.html
+// Activity logging
 // ---------------------------------------------------------------------------
-(function() {
-  var sseUrl = '/_api/edit/events';
-  var es;
-  var retryTimer = null;
+function logActivity(action, path) {
+  navigator.sendBeacon('/activity', JSON.stringify({ action, path, ts: Date.now() }));
+}
 
-  function connect() {
-    if (es) { try { es.close(); } catch(e) {} }
-    es = new EventSource(sseUrl);
+// ---------------------------------------------------------------------------
+// Utilities
+// ---------------------------------------------------------------------------
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function setStatus(msg) {
+  document.getElementById('status-bar').textContent = msg;
+}
 
-    es.onmessage = function(e) {
-      var data;
-      try { data = JSON.parse(e.data); } catch(_) { return; }
-      if (!data || data.event !== 'changed') return;
-
-      var changedPath = (data.path || '').replace(/^\/+/, '');
-      var newMtime = data.mtime || 0;
-
-      // Walk open tabs and refresh any that match the changed path.
-      tabs.forEach(function(tab, idx) {
-        var tabPath = (tab.path || '').replace(/^\/+/, '');
-        if (tabPath !== changedPath && changedPath !== '') return;
-
-        if (tab.dirty) {
-          showChangeNotice(idx, changedPath);
-        } else {
-          reloadTabContent(idx, changedPath, newMtime);
-        }
-      });
-    };
-
-    es.onerror = function() {
-      es.close();
-      es = null;
-      if (retryTimer) clearTimeout(retryTimer);
-      retryTimer = setTimeout(connect, 5000);
-    };
-  }
-
-  function reloadTabContent(idx, path, mtime, preloadedData) {
-    var tab = tabs[idx];
-    if (!tab) return;
-    var apiPath = path.replace(/^\/+/, '');
-
-    function paintData(fileData) {
-      if (!fileData) return;
-      logActivity('external-reload', path, {});
-      tab.content = fileData.content;
-      tab.editorMtime = fileData.mtime || mtime;
-      tab.dirty = false;
-      if (idx === activeTabIdx) {
-        if (editorPath && editorPath === apiPath) {
-          var ta = document.getElementById('editor-textarea');
-          if (ta) ta.value = fileData.content;
-          editorMtime = fileData.mtime || editorMtime;
-          setDirty(false);
-          if (typeof updateGutterLines === 'function') updateGutterLines();
-          if (typeof scheduleHighlight === 'function') scheduleHighlight();
-        }
-        if (viewMode === 'iframe') {
-          var frame = document.getElementById('preview-frame');
-          if (frame) {
-            if (frame.src && frame.src !== 'about:blank' && !frame.srcdoc) {
-              // Non-writable HTML loaded via frame.src — bust cache and reload
-              frame.src = '/_api/edit/file?path=' + encodeURIComponent(apiPath) + '&_t=' + Date.now();
-            } else {
-              frame.removeAttribute('src');
-              frame.srcdoc = fileData.content;
-            }
-          }
-        } else if (viewMode === 'text') {
-          var tc = document.getElementById('text-content');
-          if (tc) {
-            var ext = (tab.name || '').split('.').pop().toLowerCase();
-            if (ext === 'md') {
-              tc.className = 'md-view';
-              tc.innerHTML = mdToHtml(fileData.content);
-            } else {
-              tc.className = 'code-view';
-              tc.textContent = fileData.content;
-            }
-          }
-        }
-      }
-    }
-
-    if (preloadedData) {
-      paintData(preloadedData);
-    } else {
-      fetch('/_api/edit/file?path=' + encodeURIComponent(apiPath))
-        .then(function(r) { return r.ok ? r.json() : null; })
-        .then(paintData)
-        .catch(function() {});
-    }
-  }
-
-  // Poll the active tab every 30 s as a fallback for inotify misses.
-  function pollActiveTab() {
-    var idx = activeTabIdx;
-    var tab = tabs && tabs[idx];
-    if (!tab || !tab.path) return;
-    var apiPath = tab.path.replace(/^\/+/, '');
-    fetch('/_api/edit/file?path=' + encodeURIComponent(apiPath))
-      .then(function(r) { return r.ok ? r.json() : null; })
-      .then(function(data) {
-        if (!data || !data.mtime) return;
-        var stored = tab.editorMtime || 0;
-        if (data.mtime === stored) return;
-        if (tab.dirty) {
-          showChangeNotice(idx, apiPath);
-        } else {
-          reloadTabContent(idx, apiPath, data.mtime, data);
-        }
-      })
-      .catch(function() {});
-  }
-
-  setInterval(pollActiveTab, 30000);
-
-  function showChangeNotice(idx, path) {
-    var existing = document.getElementById('sse-change-notice');
-    if (existing) return;
-    logActivity('external-change', path, { dirty: tabs[idx] && tabs[idx].dirty });
-    var bar = document.createElement('div');
-    bar.id = 'sse-change-notice';
-    bar.style.cssText = [
-      'position:fixed', 'bottom:48px', 'left:50%', 'transform:translateX(-50%)',
-      'background:#2d4a6e', 'color:#e8f4ff', 'padding:8px 16px',
-      'border-radius:6px', 'font-size:12px', 'z-index:9999',
-      'box-shadow:0 2px 8px rgba(0,0,0,0.4)', 'cursor:pointer',
-      'white-space:nowrap'
-    ].join(';');
-    var filename = path.split('/').pop();
-    bar.textContent = '⚠️ ' + filename + ' changed on disk — click to reload';
-    bar.addEventListener('click', function() {
-      bar.remove();
-      reloadTabContent(idx, path, 0);
-    });
-    document.body.appendChild(bar);
-    setTimeout(function() { if (bar.parentNode) bar.remove(); }, 8000);
-  }
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', connect);
-  } else {
-    connect();
-  }
-})();
+// ---------------------------------------------------------------------------
+// Boot
+// ---------------------------------------------------------------------------
+refreshTree();
+const lastTab = localStorage.getItem('wp-tab');
+if (lastTab) {
+  selectedPath = lastTab;
+  openFilePath(lastTab);
+}
 </script>
-
-<div id="wb-toast"></div>
-
 </body>
 </html>

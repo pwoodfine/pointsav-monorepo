@@ -18,13 +18,18 @@ use std::{
     net::SocketAddr,
     path::{Path, PathBuf},
     process::{Command, Stdio},
-    sync::{mpsc, Arc},
+    sync::{mpsc, Arc, Mutex},
     thread,
     time::{Duration, UNIX_EPOCH},
 };
 use tokio::net::TcpListener;
 use tokio::sync::broadcast;
 use tokio_stream::{wrappers::BroadcastStream, StreamExt as _};
+
+mod mcp;
+mod schema_gis;
+mod schema_presentation;
+mod schema_schedule;
 
 const SPA_HTML: &str = include_str!("assets/index.html");
 
@@ -78,6 +83,7 @@ struct AppState {
     spa_html: Arc<String>,
     events_tx: broadcast::Sender<String>,
     log_dir: Option<PathBuf>,
+    pending_edits: mcp::PendingEdits,
 }
 
 // ---------------------------------------------------------------------------
@@ -1450,6 +1456,55 @@ pre {{ background: #f6f8fa; border: 1px solid #e1e4e8; border-radius: 6px;
 }
 
 // ---------------------------------------------------------------------------
+// GET /section — AST-aware block snap
+// ---------------------------------------------------------------------------
+
+#[derive(Deserialize)]
+struct SectionQuery {
+    path: String,
+    offset: u64,
+}
+
+/// GET /section?path=<url_path>&offset=<byte_offset>
+/// Returns the block boundaries that contain `offset` in the given text file.
+async fn get_section(State(state): State<AppState>, Query(q): Query<SectionQuery>) -> Response {
+    use moonshot_docengine::{Document, Span};
+
+    let (fs_path, _writable) = match resolve_path(&state.roots, &q.path) {
+        Ok(v) => v,
+        Err(e) => return err(StatusCode::BAD_REQUEST, e.to_string()),
+    };
+
+    if !fs_path.is_file() {
+        return err(StatusCode::NOT_FOUND, "file not found");
+    }
+
+    let src = match fs::read_to_string(&fs_path) {
+        Ok(s) => s,
+        Err(e) => return err(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()),
+    };
+
+    let offset = (q.offset as usize).min(src.len());
+    let doc = Document::parse(&src);
+    let sel = Span::new(offset, offset);
+    let snapped = doc.section_span(sel);
+    let content = src.get(snapped.start..snapped.end).unwrap_or("").to_string();
+    let block_kind = doc
+        .block_at(snapped.start)
+        .and_then(|i| doc.blocks().get(i))
+        .map(|b| format!("{:?}", b.kind))
+        .unwrap_or_else(|| "Unknown".to_string());
+
+    Json(serde_json::json!({
+        "start": snapped.start,
+        "end": snapped.end,
+        "content": content,
+        "block_kind": block_kind,
+    }))
+    .into_response()
+}
+
+// ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 
@@ -1547,6 +1602,7 @@ async fn main() -> Result<()> {
         spa_html: Arc::new(spa_html),
         events_tx,
         log_dir,
+        pending_edits: Arc::new(Mutex::new(HashMap::new())),
     };
 
     let app = Router::new()
@@ -1564,6 +1620,14 @@ async fn main() -> Result<()> {
         .route("/document", get(get_document))
         .route("/pdf", get(get_pdf))
         .route("/events", get(get_events))
+        .route("/mcp", post(mcp::mcp_handler))
+        .route("/section", get(get_section))
+        .route("/api/presentation/files", get(schema_presentation::list_files))
+        .route("/api/presentation/render", get(schema_presentation::render))
+        .route("/api/schedule/files", get(schema_schedule::list_files))
+        .route("/api/schedule/syntax-hints", get(schema_schedule::syntax_hints))
+        .route("/api/gis/files", get(schema_gis::list_files))
+        .route("/api/gis/feature-count", get(schema_gis::feature_count))
         .with_state(state);
 
     let addr: SocketAddr = config.bind.parse().context("parsing bind address")?;
