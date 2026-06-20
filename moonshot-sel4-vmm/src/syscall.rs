@@ -142,3 +142,60 @@ pub unsafe fn recv_mr0(cap: u64) -> (u64, u64, u64) {
 #[cfg(not(target_arch = "aarch64"))]
 #[inline]
 pub unsafe fn recv_mr0(_cap: u64) -> (u64, u64, u64) { (0, 0, 0) }
+
+/// seL4 Send: blocking rendezvous send with MR0–MR3 in x2–x5 (no reply).
+///
+/// # Safety
+/// `cap` must be a valid endpoint cap slot.
+#[cfg(target_arch = "aarch64")]
+#[inline]
+pub unsafe fn send_mrs4(cap: u64, msginfo: u64, mr0: u64, mr1: u64, mr2: u64, mr3: u64) {
+    core::arch::asm!(
+        "svc #0",
+        in("x7") num::SYS_SEND,
+        inlateout("x0") cap => _,
+        in("x1") msginfo,
+        inlateout("x2") mr0 => _,
+        inlateout("x3") mr1 => _,
+        inlateout("x4") mr2 => _,
+        inlateout("x5") mr3 => _,
+        lateout("x6") _,
+        options(nostack)
+    );
+}
+
+#[cfg(not(target_arch = "aarch64"))]
+#[inline]
+pub unsafe fn send_mrs4(_c: u64, _i: u64, _m0: u64, _m1: u64, _m2: u64, _m3: u64) {}
+
+/// seL4 Recv: block on an endpoint; returns (msginfo, badge, MR0–MR3).
+///
+/// # Safety
+/// `cap` must be a valid endpoint cap slot.
+#[cfg(target_arch = "aarch64")]
+#[inline]
+pub unsafe fn recv_mrs4(cap: u64) -> (u64, u64, u64, u64, u64, u64) {
+    let ret_info: u64;
+    let ret_badge: u64;
+    let ret_mr0: u64;
+    let ret_mr1: u64;
+    let ret_mr2: u64;
+    let ret_mr3: u64;
+    core::arch::asm!(
+        "svc #0",
+        in("x7") num::SYS_RECV,
+        inlateout("x0") cap => ret_badge,
+        lateout("x1") ret_info,
+        lateout("x2") ret_mr0,
+        lateout("x3") ret_mr1,
+        lateout("x4") ret_mr2,
+        lateout("x5") ret_mr3,
+        lateout("x6") _,
+        options(nostack)
+    );
+    (ret_info, ret_badge, ret_mr0, ret_mr1, ret_mr2, ret_mr3)
+}
+
+#[cfg(not(target_arch = "aarch64"))]
+#[inline]
+pub unsafe fn recv_mrs4(_cap: u64) -> (u64, u64, u64, u64, u64, u64) { (0, 0, 0, 0, 0, 0) }
