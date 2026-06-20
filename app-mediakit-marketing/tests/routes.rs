@@ -101,6 +101,10 @@ async fn home_renders_full_section_vocabulary() {
     assert!(body.contains(r#"<html lang="en">"#));
     // The legacy fragile client-side pattern must be structurally absent.
     assert!(!body.contains("__bundler/template"));
+    // SEO tags must be present.
+    assert!(body.contains(r#"rel="canonical""#), "missing canonical link");
+    assert!(body.contains(r#"property="og:title""#), "missing og:title");
+    assert!(body.contains("application/ld+json"), "missing ld+json");
 }
 
 #[tokio::test]
@@ -133,6 +137,21 @@ async fn unknown_page_404() {
     let (_dir, app) = fixture();
     let (status, _) = get(app, "/page/nope").await;
     assert_eq!(status, StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
+async fn canonical_url_contains_request_path() {
+    let (_dir, app) = fixture();
+    let (status, body) = get(app.clone(), "/page/contact").await;
+    assert_eq!(status, StatusCode::OK);
+    assert!(
+        body.contains("/page/contact"),
+        "canonical must include slug path"
+    );
+    assert!(
+        body.contains(r#"property="og:url""#),
+        "og:url must be present"
+    );
 }
 
 /// Guard: the shipped (migrated) home manifest must parse against the section

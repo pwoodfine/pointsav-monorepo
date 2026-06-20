@@ -64,6 +64,17 @@ pub struct Brand {
     /// Persistent enquire / click-to-call CTA shown in the header on every
     /// page (mobile research: persistent enquire/click-to-call in header).
     pub header_cta: Option<CtaButton>,
+    // --- SEO ---
+    /// Canonical base URL for this tenant (no trailing slash).
+    pub canonical_base: &'static str,
+    /// Open Graph `og:site_name`.
+    pub og_site_name: &'static str,
+    /// schema.org `@type` for the root LD+JSON block.
+    pub ld_json_type: &'static str,
+    /// Site-level description used in LD+JSON.
+    pub ld_json_description: &'static str,
+    /// Google Search Console verification token (set from env at startup).
+    pub google_verify: Option<String>,
 }
 
 impl Brand {
@@ -93,6 +104,11 @@ impl Brand {
                 label: "Enquire".into(),
                 href: "/page/contact".into(),
             }),
+            canonical_base: "https://home.woodfinegroup.com",
+            og_site_name: "Woodfine Capital Projects",
+            ld_json_type: "Organization",
+            ld_json_description: "A real property developer with 40 years\u{2019} experience in the procurement, development, and management of real property.",
+            google_verify: None,
         }
     }
 
@@ -116,6 +132,11 @@ impl Brand {
             footer_nav: vec![NavLink::internal("Disclaimer", "/page/disclaimer")],
             copyright: "© 2026 PointSav Digital Systems. All rights reserved.".into(),
             header_cta: None,
+            canonical_base: "https://home.pointsav.com",
+            og_site_name: "PointSav Digital Systems",
+            ld_json_type: "SoftwareApplication",
+            ld_json_description: "A fully transferable data management platform for the procurement, development, and management of real properties.",
+            google_verify: None,
         }
     }
 
@@ -179,19 +200,47 @@ fn footer(brand: &Brand) -> Markup {
 ///
 /// `tokens_css` is the active DTCG token bundle (see [`crate::tokens`]); it is
 /// injected first so the canonical design-system bundle can override the
-/// built-in fallback. No client-side bundler/template DOM-swap is used — the
+/// built-in fallback. `path` is the request path used to build canonical URLs
+/// and Open Graph tags. No client-side bundler/template DOM-swap is used — the
 /// document is fully server-rendered (this is the clean-sheet replacement for
 /// the legacy 1.2 MB single-file monolith).
-pub fn render_page(brand: &Brand, page: &Page, tokens_css: &str) -> String {
+pub fn render_page(brand: &Brand, page: &Page, tokens_css: &str, path: &str) -> String {
+    let canonical_url = format!("{}{}", brand.canonical_base, path);
+    let page_title = format!("{} \u{2014} {}", page.title, brand.site_title);
+    let ld_json = format!(
+        r#"{{"@context":"https://schema.org","@type":"{}","name":"{}","url":"{}","description":"{}"}}"#,
+        brand.ld_json_type,
+        brand.og_site_name,
+        brand.canonical_base,
+        brand.ld_json_description,
+    );
     let markup = html! {
         (DOCTYPE)
         html lang=(page.lang) {
             head {
                 meta charset="utf-8";
                 meta name="viewport" content="width=device-width, initial-scale=1";
-                title { (page.title) " — " (brand.site_title) }
+                title { (page_title) }
                 @if let Some(desc) = &page.description {
                     meta name="description" content=(desc);
+                }
+                link rel="canonical" href=(canonical_url);
+                meta name="robots" content="index, follow";
+                meta property="og:type" content="website";
+                meta property="og:site_name" content=(brand.og_site_name);
+                meta property="og:title" content=(page_title);
+                @if let Some(desc) = &page.description {
+                    meta property="og:description" content=(desc);
+                }
+                meta property="og:url" content=(canonical_url);
+                meta name="twitter:card" content="summary";
+                meta name="twitter:title" content=(page_title);
+                @if let Some(desc) = &page.description {
+                    meta name="twitter:description" content=(desc);
+                }
+                script type="application/ld+json" { (PreEscaped(&ld_json)) }
+                @if let Some(token) = &brand.google_verify {
+                    meta name="google-site-verification" content=(token);
                 }
                 style { (PreEscaped(tokens_css)) }
                 style { (PreEscaped(SHELL_CSS)) }
@@ -222,7 +271,7 @@ mod tests {
     fn renders_full_document_without_bundler_template() {
         let page =
             Page::from_yaml("title: Home\nsections:\n  - type: hero\n    headline: Hi\n").unwrap();
-        let html = render_page(&Brand::woodfine(), &page, DEFAULT_TOKENS_CSS);
+        let html = render_page(&Brand::woodfine(), &page, DEFAULT_TOKENS_CSS, "/");
         assert!(html.starts_with("<!DOCTYPE html>"));
         assert!(html.contains("topnav"));
         assert!(html.contains("hero-headline"));
@@ -230,6 +279,10 @@ mod tests {
         // The legacy fragile pattern must be structurally absent.
         assert!(!html.contains("__bundler/template"));
         assert!(html.contains("width=device-width"));
+        // SEO tags must be present.
+        assert!(html.contains(r#"rel="canonical""#));
+        assert!(html.contains(r#"property="og:title""#));
+        assert!(html.contains("application/ld+json"));
     }
 
     #[test]
