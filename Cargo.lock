@@ -5133,6 +5133,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "moonshot-bim-engine"
+version = "0.1.0"
+dependencies = [
+ "wasm-bindgen",
+]
+
+[[package]]
+name = "moonshot-docengine"
+version = "0.1.0"
+dependencies = [
+ "wasm-bindgen",
+]
+
+[[package]]
 name = "moonshot-fs-watch"
 version = "0.1.0"
 dependencies = [
