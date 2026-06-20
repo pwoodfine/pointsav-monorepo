@@ -1,0 +1,105 @@
+title: Home
+slug: home
+description: A fully transferable data management and customer service platform for the procurement, development, and management of real properties.
+lang: en
+sections:
+  - type: hero
+    headline: A fully transferable data management platform
+    subhead: >-
+      PointSav Digital Systems builds sovereign software for independent
+      property operators. Runs on hardware you control. No per-seat fees.
+      No vendor lock-in.
+
+  - type: card-grid
+    columns: 4
+    cards:
+      - title: Portability
+        body: >-
+          Operational data, tenant records, and building telemetry are portable
+          by design. Standard exports and open formats allow customers to move
+          workloads, replicate environments, or hand off to a successor without
+          PointSav's involvement.
+      - title: Predictable Fees
+        body: >-
+          Partners pay a single platform fee calculated on assets under
+          management rather than per-seat or per-module licensing. The fee
+          structure does not scale with usage growth, keeping marginal cost
+          predictable as operations expand.
+      - title: Partner-Governed Roadmap
+        body: >-
+          The product roadmap is governed by a closed council of operating
+          partners. New modules ship into the existing license envelope;
+          functionality is added without requiring migration to a new version or
+          payment of additional license fees.
+      - title: ToteBox Archive
+        body: >-
+          Every document, drawing, contract, and sensor stream is captured into
+          ToteBox, a tamper-evident, version-controlled archive. Records are
+          retained for the full life of the asset and are exportable on demand
+          in open formats.
+      - title: GIS Engine
+        body: >-
+          A built-in geographic information engine ties every record to a
+          parcel, building, floor, and room. Spatial queries, site analytics,
+          and portfolio-wide overlays run natively against live operational
+          data without a separate GIS subscription.
+      - title: Open Integrations
+        body: >-
+          PointSav uses open file formats and standard protocols — BACnet,
+          MQTT, IFC, OAuth — with documented schemas. Integrations replace,
+          rather than wrap, legacy point-solutions, and partners retain full
+          ownership of their data and configuration.
+      - title: Digital Twin
+        body: >-
+          Specifications, design system, API references, and source code
+          repositories are maintained in a single repository accessible to
+          operating partners. Every module ships with the documentation a
+          successor team would need to operate independently.
+      - title: Real Property Infrastructure
+        href: https://home.woodfinegroup.com
+        body: >-
+          PointSav partners with Woodfine Management Corp. to deliver the
+          digital infrastructure underpinning each Woodfine-sponsored
+          direct-hold solution — BIM tokenization, location intelligence, and
+          operational systems integrated across the project lifecycle.
+
+  - type: card-grid
+    columns: 3
+    cards:
+      - title: Source
+        href: https://github.com/pointsav
+      - title: Documentation
+        href: https://documentation.pointsav.com/
+      - title: Software
+        href: https://software.pointsav.com/
+
+  - type: prose
+    body: |
+      **Intellectual property.** The PointSav name, marks, wordmark, product
+      names (including ToteBox, GIS Engine, Keys Console, Command Centre,
+      Workplace OS, and Business Applications), software, source code,
+      documentation, design system, and all related materials are proprietary
+      to PointSav, Inc. and its parent, Woodfine Capital Projects Inc., unless
+      otherwise identified as open source.
+
+      **Open source components.** Portions of the platform are made available
+      under permissive open-source licenses identified in the accompanying
+      repository. Use of those components is governed by their respective
+      license terms.
+
+      **Trademarks.** POINTSAV, the PointSav diamond mark, and the product
+      names referenced on this page are trademarks or registered trademarks of
+      PointSav, Inc. in Canada, the United States, the European Union, and
+      other jurisdictions.
+
+      **No warranty; informational use.** Information on this page is provided
+      for general informational purposes only and does not constitute a
+      representation, warranty, or commitment with respect to product
+      functionality, availability, pricing, or roadmap. Product descriptions
+      describe intended capabilities; actual feature availability may vary by
+      release and partner agreement.
+
+      © 2011–2026 Woodfine Capital Projects Inc. All rights reserved.
+      Woodfine Capital Projects, Woodfine Management Corp., PointSav Digital
+      Systems, Totebox Orchestration, and Totebox Archive are trademarks owned
+      by Woodfine Capital Projects Inc.
