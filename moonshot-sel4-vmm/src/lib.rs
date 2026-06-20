@@ -5,14 +5,15 @@
 //! - `types`:   MsgInfo and ChannelId IPC types
 //! - `debug`:   DebugPutChar serial output for PD development
 //!
-//! Phase H1 target: rootserver ELF that prints via DebugPutChar.
-//! Phase H2 target: full Microkit PD event loop (notified / protected callbacks).
+//! Phase H1: rootserver ELF that prints via DebugPutChar.
+//! Phase H2b: two seL4 threads + Endpoint IPC (counter → receiver).
 //!
 //! Build target: aarch64-unknown-none (bare metal, no OS).
-//! No heap allocator required for phase H1.
 
 #![no_std]
 
+pub mod bootinfo;
+pub mod bootstrap;
 pub mod debug;
 pub mod pd;
 pub mod syscall;
