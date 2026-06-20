@@ -62,6 +62,11 @@ _BINARY_MARKERS = ("GIT binary patch", "Binary files ")
 # Minimum useful single-file diff length (chars). Below this it is a rename-only
 # or mode-only stub with no content to learn from.
 _MIN_SEGMENT_CHARS = 40
+# Maximum single-file diff length (chars). Above this is almost always a generated
+# or vendored file (Cargo.lock, minified bundle, snapshot) — not edit-skill signal,
+# and it would truncate past the SFT max_length=2048 (~8000 chars) anyway. Dropping
+# these keeps targets within the trainer's window. (Opus audit: drop generated-file noise.)
+_MAX_SEGMENT_CHARS = 8000
 
 
 def split_per_file(full_diff: str) -> list[tuple[str, str]]:
@@ -141,6 +146,7 @@ def main() -> None:
     skipped_big_commit = 0
     skipped_binary = 0
     skipped_short = 0
+    skipped_huge = 0
     seen = set()  # (path, sha of segment) — dedup identical file diffs across commits
     rows = []
 
@@ -198,6 +204,9 @@ def main() -> None:
             if len(segment) < _MIN_SEGMENT_CHARS:
                 skipped_short += 1
                 continue
+            if len(segment) > _MAX_SEGMENT_CHARS:
+                skipped_huge += 1
+                continue
             key = (path, hashlib.sha256(segment.encode("utf-8", "replace")).hexdigest())
             if key in seen:
                 continue
@@ -220,6 +229,7 @@ def main() -> None:
     print(f"  skipped (>{args.max_files_per_commit} files):       {skipped_big_commit}")
     print(f"  skipped (binary):          {skipped_binary}")
     print(f"  skipped (segment <{_MIN_SEGMENT_CHARS}c):    {skipped_short}")
+    print(f"  skipped (segment >{_MAX_SEGMENT_CHARS}c):  {skipped_huge}")
 
     if args.dry_run:
         print("  (dry run; no output written)")
