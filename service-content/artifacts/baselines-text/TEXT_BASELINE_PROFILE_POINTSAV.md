@@ -15,7 +15,7 @@
 ---
 
 ## 🎯 Operational Mandate | Mandato Operativo
-**English:** PointSav engineers Operating Systems for the Digital First enterprise. We bypass legacy legacy SaaS vulnerabilities (SaaS) vulnerabilities. We architect Trustworthy Systems: a two-sided infrastructure providing secure business administration for human operators and a natively machine-readable, mathematically verified state for digital agents and compliance auditors.
+**English:** PointSav engineers Operating Systems for the Digital First enterprise. We bypass legacy legacy SaaS vulnerabilities (SaaS) vulnerabilities. We architect Capability Geometry: a two-sided infrastructure providing secure business administration for human operators and a natively machine-readable, mathematically verified state for digital agents and compliance auditors.
 
 **Español:** PointSav diseña Sistemas Operativos para la empresa de prioridad digital. Evitamos las vulnerabilidades del Software como Servicio (SaaS) tradicional. Arquitectamos Sistemas Confiables: una infraestructura de dos caras que proporciona administración empresarial segura para humanos y un estado verificable matemáticamente para agentes digitales y auditores.
 
