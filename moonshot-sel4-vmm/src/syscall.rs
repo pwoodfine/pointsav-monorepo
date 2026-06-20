@@ -199,3 +199,12 @@ pub unsafe fn recv_mrs4(cap: u64) -> (u64, u64, u64, u64, u64, u64) {
 #[cfg(not(target_arch = "aarch64"))]
 #[inline]
 pub unsafe fn recv_mrs4(_cap: u64) -> (u64, u64, u64, u64, u64, u64) { (0, 0, 0, 0, 0, 0) }
+
+/// Bare send with no message registers (used by pd::notify).
+#[cfg(target_arch = "aarch64")]
+#[inline]
+pub unsafe fn send(cap: u64, msginfo: u64) { send_mr0(cap, msginfo, 0) }
+
+#[cfg(not(target_arch = "aarch64"))]
+#[inline]
+pub unsafe fn send(_cap: u64, _msginfo: u64) {}
