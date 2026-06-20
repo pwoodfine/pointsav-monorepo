@@ -316,3 +316,71 @@ All Phase 8+9+10+T0 commits + 2026-06-19 need `bin/promote.sh` from Command Sess
 - [x] **Trademark Phase 3 — TOPIC/GUIDE content wikis** — MCorp™ + Capability Geometry™ applied across all three sub-clones; 3 commits (3e3579b, ac6379f, f1451e9) [2026-06-19 totebox@claude-code]
 - [x] **M7 snapshot dating** — corrected 7,594 → 6,493 in index.md; commit 4649f95 [2026-06-19 totebox@claude-code]
 - [x] **M9 EN/ES parity sweep** — all 53 ES articles in media-knowledge-projects at 84%+; 5 passes (7fa466b) [2026-06-19 totebox@claude-code]
+# NEXT.md — project-gis (Totebox)
+
+Hot open items. ≤200 lines. Backlog at `.agent/next-backlog.md`.
+> **Scope: this archive only.** Cross-repo and workspace-level items live at `~/Foundry/NEXT.md`.
+
+Last updated: 2026-06-20
+
+---
+
+## Active (Totebox scope)
+
+- [ ] **GFWED wildfire — Night 6 verification** — GFWED variable name bug fixed (`:FWI` → `:GPM.LATE.v5_FWI`).
+      Next `build-aec-flood.sh` run should produce layer15-wildfire-global.pmtiles.
+      Verify: `ls -lh /srv/foundry/deployments/gateway-orchestration-gis-1/www/tiles/layer15*.pmtiles`
+      [2026-06-19 totebox@claude-code]
+- [ ] **EU seismic fallback** — `maps.efehr.org` is NXDOMAIN (subdomain removed upstream).
+      Parent `efehr.org` resolves (129.132.116.17). Investigate:
+      (a) `git clone --depth 1 https://gitlab.seismo.ethz.ch/efehr/eshm20.git` to see if
+          actual hazard shapefiles are in the repo (vs tarball's metadata-only GeoJSON);
+      (b) GSHAP GeoTIFF from gfz.de as fallback (coarser 1999 data; documented in
+          sample-eshm20-api.py fallback section).
+      [2026-06-19 totebox@claude-code]
+- [ ] **FEMA US SFHA (layer12-fema-sfha-us.pmtiles)** — Not refreshed in Night 5 (clusters.geojson
+      missing). Check why FEMA REST step was skipped; old Jun 17 tile (2.8 MB) still deployed.
+      [2026-06-19 totebox@claude-code]
+- [ ] **F-series tracking** — F1–F7 content repair requests sent to project-editorial 2026-06-14;
+      track responses; update artifact-registry.md Status column when returned.
+      [2026-06-16 totebox]
+
+## Blocked — Command Session (route via outbox)
+
+- [ ] **Performance — nginx gzip + cache-control on foundry-prod** — Two nginx changes must be
+      applied on foundry-prod via SSH. Exact diffs in outbox msg
+      `project-gis-20260619-perf-nginx-prod`. Expected impact: maplibre-gl.js 784 KB → ~200 KB;
+      clusters-meta.json 19 MB → ~2.1 MB; repeat visits near-instant for cached assets.
+      [2026-06-19 totebox@claude-code]
+- [ ] **Stage 6 READY** — 5 commits ahead of origin:
+      - `b1f2514d` fix(gis): numpy 2.x compat
+      - `b881c640` fix(gis): OGR_GEOJSON_MAX_OBJ_SIZE 0 for large IT flood GeoJSON
+      - `bb5e4e8d` docs(gis): NEXT.md updated — Night 5 flood build
+      - `d7602bc7` fix(gis): GFWED NetCDF variable name + gitignore + briefs README fix
+      - `de977b4b` perf(gis): preload hints + preconnect for map libs
+      - (+ shutdown repair commit once landed)
+      Outbox msg queued. [2026-06-19 totebox@claude-code]
+- [ ] **push-to-prod.sh gis** — after Stage 6; deploys preload hints to live site.
+      [2026-06-17 totebox@claude-code]
+- [ ] **check --strict gate** — F2/F3 dead links at project-editorial must resolve first.
+      [2026-06-17 command@claude-code]
+
+## Completed (Sessions 84+)
+
+- [x] **Performance — preload hints + preconnect** — `<link rel="preconnect">` for
+      openfreemap.org + `<link rel="preload">` for maplibre-gl.js/pmtiles.js/CSS added to both
+      deployment www/index.html and archive source; ships with next push-to-prod.sh gis.
+      [2026-06-19 totebox@claude-code]
+- [x] **Post-overnight build verification** — PKS T1=692 ✓, park_ride=22,514 ✓,
+      layer10 ✓, layer11 (120 MB) ✓, layer12-EU (151 KB) ✓, flood_hazard=855 ✓.
+      [2026-06-19 totebox@claude-code]
+- [x] **GFWED variable name fix** — NetCDF variable is `GPM.LATE.v5_FWI` not `FWI`;
+      fixed in build-aec-flood.sh. [2026-06-19 totebox@claude-code]
+- [x] **Log file cleanup** — `*.log` added to .gitignore (root + app-orchestration-gis).
+      [2026-06-19 totebox@claude-code]
+- [x] **Briefs README contamination** — restored to correct GIS briefs.
+      [2026-06-19 totebox@claude-code]
+- [x] **build-aec-flood.sh OGR_GEOJSON_MAX_OBJ_SIZE fix** (b881c640).
+- [x] **build-aec-flood.sh numpy 2.x / USGS_TIF fix** (b1f2514d).
+- [x] **AEC flood build Night 5** — layer11 ✓, layer12-EU ✓.
+- [x] **overnight-aec-builds.sh path fix** / **build-aec-seismic.sh EU join fix**.
