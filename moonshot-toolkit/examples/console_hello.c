@@ -50,7 +50,7 @@ static const char banner[] =
     "=== os-console seL4 rootserver ===\r\n"
     "Hello from os-console seL4 PD\r\n"
     "moonshot-toolkit Phase H1 milestone\r\n"
-    "Geometric Protection: this PD is isolated by seL4 capability tokens\r\n"
+    "Capability Geometry: this PD is isolated by the seL4 capability DAG\r\n"
     "===================================\r\n"
     "\r\n";
 

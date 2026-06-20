@@ -1,0 +1,123 @@
+# os-totebox seL4 system image — 7-PD Sovereign WORM Data Vault spec.
+#
+# Build from monorepo root:
+#   cargo run --manifest-path moonshot-toolkit/Cargo.toml -- build moonshot-toolkit/examples/os-totebox.toml
+#
+# Validate + plan (no compiler needed):
+#   cargo run --manifest-path moonshot-toolkit/Cargo.toml -- validate moonshot-toolkit/examples/os-totebox.toml
+#   cargo run --manifest-path moonshot-toolkit/Cargo.toml -- plan    moonshot-toolkit/examples/os-totebox.toml
+#
+# Capability Geometry invariant enforced at build time:
+#   service-fs-pd is the ONLY protection domain that receives a block-device
+#   capability grant. All other PDs access durable storage solely through
+#   the watch-drop Notification channel to service-fs-pd, or (for Ring 2
+#   read access) via service-extraction writing corpus files through service-fs.
+#
+# Priorities follow seL4 convention: higher value = higher scheduling priority.
+# Phase H1 binaries are C stubs (os-totebox/src/pd_stub.c). Rust PD binaries
+# replace them in Phase H2 when moonshot-toolkit gains CompileRustPd support.
+
+# ── Ring 0: Supervisor ────────────────────────────────────────────────────────
+
+[[protection_domains]]
+name        = "watchdog-pd"
+binary      = "os-totebox/src/pd_stub.c"
+priority    = 250
+stack_bytes = 65536
+
+# ── Ring 1: Storage-touching PDs ──────────────────────────────────────────────
+
+[[protection_domains]]
+name        = "service-fs-pd"
+binary      = "os-totebox/src/pd_stub.c"
+priority    = 200
+stack_bytes = 131072
+
+[[protection_domains]]
+name        = "network-pd"
+binary      = "os-totebox/src/pd_stub.c"
+priority    = 180
+stack_bytes = 131072
+
+[[protection_domains]]
+name        = "service-extraction-pd"
+binary      = "os-totebox/src/pd_stub.c"
+priority    = 110
+stack_bytes = 65536
+
+# ── Ring 2: Deterministic processing PDs ──────────────────────────────────────
+
+[[protection_domains]]
+name        = "service-content-pd"
+binary      = "os-totebox/src/pd_stub.c"
+priority    = 150
+stack_bytes = 262144
+
+[[protection_domains]]
+name        = "service-people-pd"
+binary      = "os-totebox/src/pd_stub.c"
+priority    = 130
+stack_bytes = 65536
+
+[[protection_domains]]
+name        = "service-slm-pd"
+binary      = "os-totebox/src/pd_stub.c"
+priority    = 120
+stack_bytes = 131072
+
+# ── Channels ───────────────────────────────────────────────────────────────────
+# watchdog-pd connects to all six service PDs via a Notification channel each.
+# service-extraction-pd notifies service-fs-pd on each watch-drop write.
+#
+# Local channel ID assignment (per PD, in order of appearance below):
+#   watchdog-pd:          WD_SERVICE_FS=0, WD_NETWORK_PD=1, WD_SERVICE_CONTENT=2,
+#                         WD_SERVICE_PEOPLE=3, WD_SERVICE_SLM=4, WD_SERVICE_EXTRACTION=5
+#   service-fs-pd:        FS_WATCHDOG=0, FS_FROM_EXTRACTION=1
+#   network-pd:           NETWORK_WATCHDOG=0
+#   service-content-pd:   CONTENT_WATCHDOG=0
+#   service-people-pd:    PEOPLE_WATCHDOG=0
+#   service-slm-pd:       SLM_WATCHDOG=0
+#   service-extraction-pd:EXTRACTION_WATCHDOG=0, EXTRACTION_TO_FS=1
+# These match the constants in moonshot-sel4-vmm/src/pd.rs `channels` module.
+
+[[channels]]
+name  = "wd-fs-hb"
+end_a = "watchdog-pd"
+end_b = "service-fs-pd"
+kind  = "notification"
+
+[[channels]]
+name  = "wd-network-hb"
+end_a = "watchdog-pd"
+end_b = "network-pd"
+kind  = "notification"
+
+[[channels]]
+name  = "wd-content-hb"
+end_a = "watchdog-pd"
+end_b = "service-content-pd"
+kind  = "notification"
+
+[[channels]]
+name  = "wd-people-hb"
+end_a = "watchdog-pd"
+end_b = "service-people-pd"
+kind  = "notification"
+
+[[channels]]
+name  = "wd-slm-hb"
+end_a = "watchdog-pd"
+end_b = "service-slm-pd"
+kind  = "notification"
+
+[[channels]]
+name  = "wd-extraction-hb"
+end_a = "watchdog-pd"
+end_b = "service-extraction-pd"
+kind  = "notification"
+
+[[channels]]
+name  = "extraction-fs-drop"
+end_a = "service-extraction-pd"
+end_b = "service-fs-pd"
+kind  = "notification"
