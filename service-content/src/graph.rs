@@ -3,6 +3,24 @@ use lbug::{Connection, Database, SystemConfig, Value};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
+/// Build the canonical node key for an entity name so trivial surface variants
+/// collapse onto the SAME graph node on upsert (`MERGE` dedupes on id).
+///
+/// Without this, `Woodfine Management Corp.` and `Woodfine Management Corp`
+/// (trailing period) become two distinct nodes, inflating the entity count with
+/// duplicates and splitting a single real entity's context across rows (audit
+/// 2026-06-19). Normalisation: lowercase, collapse internal whitespace, strip
+/// trailing punctuation (`.,;:`), then `' ' -> '_'`. Conservative — it does NOT
+/// attempt alias resolution (`Peter` vs `Peter M.`); that needs a canonical
+/// alias table and is out of scope here.
+pub(crate) fn normalize_entity_key(entity_name: &str) -> String {
+    let collapsed = entity_name.split_whitespace().collect::<Vec<_>>().join(" ");
+    let trimmed = collapsed
+        .trim_end_matches(['.', ',', ';', ':', ' '])
+        .to_lowercase();
+    trimmed.replace(' ', "_")
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GraphEntity {
     pub entity_name: String,
@@ -117,11 +135,7 @@ impl GraphStore for LbugGraphStore {
         let mut count = 0usize;
 
         for entity in entities {
-            let id = format!(
-                "{}__{}",
-                module_id,
-                entity.entity_name.to_lowercase().replace(' ', "_")
-            );
+            let id = format!("{}__{}", module_id, normalize_entity_key(&entity.entity_name));
 
             conn.execute(
                 &mut stmt,
@@ -382,4 +396,28 @@ fn rows_to_entities(result: lbug::QueryResult<'_>) -> Result<Vec<GraphEntity>> {
         });
     }
     Ok(out)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::normalize_entity_key;
+
+    #[test]
+    fn normalize_collapses_trailing_period_and_whitespace() {
+        // The Corp./Corp duplication the audit flagged collapses to one key.
+        assert_eq!(
+            normalize_entity_key("Woodfine Management Corp."),
+            normalize_entity_key("Woodfine Management Corp")
+        );
+        // Internal whitespace and case are normalised.
+        assert_eq!(
+            normalize_entity_key("  Woodfine   Management  Corp  "),
+            "woodfine_management_corp"
+        );
+        // Distinct real entities are NOT merged (no alias resolution).
+        assert_ne!(
+            normalize_entity_key("Peter Woodfine"),
+            normalize_entity_key("Peter M. Woodfine")
+        );
+    }
 }
