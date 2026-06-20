@@ -1,0 +1,24 @@
+title: Disclaimer
+slug: disclaimer
+description: Legal disclaimer for PointSav Digital Systems.
+lang: en
+sections:
+  - type: hero
+    headline: Disclaimer
+
+  - type: prose
+    body: |
+      ## Disclaimer
+
+      The content on this site is provided for general information only and
+      does not constitute an offer, solicitation, or recommendation in any
+      jurisdiction. Product descriptions describe intended capabilities and may
+      change without notice. Nothing here should be relied upon as financial,
+      legal, investment, or technical advice.
+
+      Software products and platform features described on this site are
+      subject to the applicable Master Services Agreement and Documentation
+      License. Source code made available under open-source licenses is
+      governed by those respective licenses.
+
+      © 2026 Woodfine Capital Projects Inc. All rights reserved.
