@@ -1,0 +1,22 @@
+# os-console seL4 Phase H2b — two threads + IPC gate.
+#
+# Build from monorepo root:
+#   CARGO_TARGET_DIR=/tmp/moonshot-h2b-build cargo run \
+#     --manifest-path moonshot-toolkit/Cargo.toml \
+#     -- build moonshot-toolkit/examples/os-console-ipc.toml
+#
+# Boot with:
+#   qemu-system-aarch64 -machine virt -cpu cortex-a53 -m 1G -display none \
+#     -serial file:/tmp/sel4-ipc.log -kernel build/system-image.bin \
+#     && grep "IPC gate" /tmp/sel4-ipc.log
+#
+# Gate: "IPC gate: PASSED" on QEMU serial.
+# Demonstrates: Untyped_Retype, TCB_Configure, TCB_SetPriority,
+#               TCB_WriteRegisters, TCB_Resume, seL4_Send, seL4_Recv.
+
+[[protection_domains]]
+name        = "os-console-ipc"
+binary      = "moonshot-sel4-vmm"
+rust_bin    = "ipc_main"
+priority    = 100
+stack_bytes = 65536

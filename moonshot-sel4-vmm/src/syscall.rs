@@ -7,14 +7,16 @@
 // For host-target cargo check, stub implementations are provided.
 
 pub mod num {
-    pub const SYS_CALL: i64 = -31;
-    pub const SYS_REPLY_RECV: i64 = -33;
-    pub const SYS_REPLY: i64 = -34;
-    pub const SYS_SEND: i64 = -35;
-    pub const SYS_RECV: i64 = -40;
+    pub const SYS_CALL: i64 = -1;
+    pub const SYS_REPLY_RECV: i64 = -2;
+    pub const SYS_SEND: i64 = -3;
+    pub const SYS_NB_SEND: i64 = -4;
+    pub const SYS_RECV: i64 = -5;
+    pub const SYS_REPLY: i64 = -6;
     pub const SYS_YIELD: i64 = -7;
-    pub const SYS_DEBUG_PUT_CHAR: i64 = -9;
-    pub const SYS_DEBUG_HALT: i64 = -8;
+    pub const SYS_NB_RECV: i64 = -8;
+    pub const SYS_DEBUG_PUT_CHAR: i64 = -9;     // requires KernelPrinting=ON
+    pub const SYS_DEBUG_HALT: i64 = -11;         // requires CONFIG_DEBUG_BUILD
 }
 
 /// Write a single byte to the seL4 kernel's debug serial channel.
@@ -63,85 +65,80 @@ pub unsafe fn yield_cpu() {
 #[inline]
 pub unsafe fn yield_cpu() {}
 
-/// seL4 Call: send a message to `cap_slot` and block for reply.
-///
-/// Returns (reply_msginfo_raw, badge).
+/// seL4 Call: send message to `cap` and block for reply.
+/// Passes MR0-MR3 in x2-x5; returns result msgInfo from x1.
+/// Used for kernel object invocations (Untyped_Retype, TCB ops, etc.).
 ///
 /// # Safety
-/// `cap_slot` must be a valid CNode index in the current PD's CSpace.
+/// `cap` must be a valid CNode slot in the current PD's CSpace.
 #[cfg(target_arch = "aarch64")]
 #[inline]
-pub unsafe fn call(cap_slot: u64, msginfo: u64) -> (u64, u64) {
+pub unsafe fn call_mrs(cap: u64, msginfo: u64, mr0: u64, mr1: u64, mr2: u64, mr3: u64) -> u64 {
     let ret_info: u64;
-    let ret_badge: u64;
     core::arch::asm!(
         "svc #0",
         in("x7") num::SYS_CALL,
-        in("x0") cap_slot,
-        in("x1") msginfo,
-        lateout("x0") ret_info,
-        lateout("x1") ret_badge,
-        lateout("x2") _, lateout("x3") _,
-        lateout("x4") _, lateout("x5") _, lateout("x6") _,
-        options(nostack, preserves_flags)
+        inlateout("x0") cap => _,
+        inlateout("x1") msginfo => ret_info,
+        inlateout("x2") mr0 => _,
+        inlateout("x3") mr1 => _,
+        inlateout("x4") mr2 => _,
+        inlateout("x5") mr3 => _,
+        lateout("x6") _,
+        options(nostack)
     );
-    (ret_info, ret_badge)
+    ret_info
 }
 
 #[cfg(not(target_arch = "aarch64"))]
 #[inline]
-pub unsafe fn call(_cap_slot: u64, _msginfo: u64) -> (u64, u64) {
-    (0, 0)
-}
+pub unsafe fn call_mrs(_c: u64, _i: u64, _m0: u64, _m1: u64, _m2: u64, _m3: u64) -> u64 { 0 }
 
-/// seL4 Recv: block on an endpoint or notification.
-///
-/// Returns (msginfo_raw, badge_or_sender).
+/// seL4 Send: blocking rendezvous send with MR0 in x2.
+/// Blocks until a receiver is ready (synchronous endpoint send).
 ///
 /// # Safety
-/// `cap_slot` must be valid.
+/// `cap` must be a valid endpoint cap slot.
 #[cfg(target_arch = "aarch64")]
 #[inline]
-pub unsafe fn recv(cap_slot: u64) -> (u64, u64) {
-    let ret_info: u64;
-    let ret_badge: u64;
-    core::arch::asm!(
-        "svc #0",
-        in("x7") num::SYS_RECV,
-        in("x0") cap_slot,
-        lateout("x0") ret_info,
-        lateout("x1") ret_badge,
-        lateout("x2") _, lateout("x3") _,
-        lateout("x4") _, lateout("x5") _, lateout("x6") _,
-        options(nostack, preserves_flags)
-    );
-    (ret_info, ret_badge)
-}
-
-#[cfg(not(target_arch = "aarch64"))]
-#[inline]
-pub unsafe fn recv(_cap_slot: u64) -> (u64, u64) {
-    (0, 0)
-}
-
-/// seL4 Send: fire-and-forget message on an endpoint.
-///
-/// # Safety
-/// Invokes an seL4 kernel syscall.
-#[cfg(target_arch = "aarch64")]
-#[inline]
-pub unsafe fn send(cap_slot: u64, msginfo: u64) {
+pub unsafe fn send_mr0(cap: u64, msginfo: u64, mr0: u64) {
     core::arch::asm!(
         "svc #0",
         in("x7") num::SYS_SEND,
-        in("x0") cap_slot,
+        inlateout("x0") cap => _,
         in("x1") msginfo,
-        lateout("x0") _, lateout("x1") _, lateout("x2") _,
+        inlateout("x2") mr0 => _,
         lateout("x3") _, lateout("x4") _, lateout("x5") _, lateout("x6") _,
-        options(nostack, preserves_flags)
+        options(nostack)
     );
 }
 
 #[cfg(not(target_arch = "aarch64"))]
 #[inline]
-pub unsafe fn send(_cap_slot: u64, _msginfo: u64) {}
+pub unsafe fn send_mr0(_c: u64, _i: u64, _mr0: u64) {}
+
+/// seL4 Recv: block on an endpoint; returns (msginfo, badge, MR0).
+///
+/// # Safety
+/// `cap` must be a valid endpoint cap slot.
+#[cfg(target_arch = "aarch64")]
+#[inline]
+pub unsafe fn recv_mr0(cap: u64) -> (u64, u64, u64) {
+    let ret_info: u64;
+    let ret_badge: u64;
+    let ret_mr0: u64;
+    core::arch::asm!(
+        "svc #0",
+        in("x7") num::SYS_RECV,
+        inlateout("x0") cap => ret_badge,
+        lateout("x1") ret_info,
+        lateout("x2") ret_mr0,
+        lateout("x3") _, lateout("x4") _, lateout("x5") _, lateout("x6") _,
+        options(nostack)
+    );
+    (ret_info, ret_badge, ret_mr0)
+}
+
+#[cfg(not(target_arch = "aarch64"))]
+#[inline]
+pub unsafe fn recv_mr0(_cap: u64) -> (u64, u64, u64) { (0, 0, 0) }
