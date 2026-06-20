@@ -90,19 +90,25 @@ v0.3.0 plan at `/home/jennifer/.claude/plans/no-make-a-plan-abundant-forest.md`.
 - [x] DESIGN-RESEARCH intake (cb8b2a2) — design-system-2030-vision + knowledge-platform UX audit committed to dtcg-vault/research/ `[2026-06-20 command@claude-code]`
 - [x] ASSET intake (cb8b2a2) — woodfine-org-chart-color-sample reference committed to assets/reference/ `[2026-06-20 command@claude-code]`
 
-### Phase 3 (Command — pending)
+### Phase 3 (Command — complete 2026-06-20)
 
-- [ ] Stage 6 promote: pointsav-design-system df81d5b, af51d86, 9c8155c, 36295c3, cb8b2a2 (5 commits)
-- [ ] Binary rebuild + deploy after Stage 6 (rust-embed bakes templates at compile time)
-- [ ] sudo systemctl restart local-design.service
+- [x] Stage 6 promote: pointsav-design-system df81d5b..cb8b2a2 (5 commits) — canonical push successful
+- [x] Vendor mirror pulled (cb8b2a2); sync-design-tokens.sh ran; research/ synced to vault
+- [x] sudo systemctl restart local-design.service; healthz ok
 
-### Phase 4 (Totebox — after Phase 3 Command)
+### Phase 4 (Totebox — complete 2026-06-20)
 
-- [ ] DTCG correctness fixes: invalid `$type: "string"` ×4 + `$type: "boolean"` ×1 → $extensions.foundry
-- [ ] Legacy string form → DTCG 2025.10 object form (dimension/duration/number tokens)
-- [ ] Composite token groups: semantic.typography, semantic.elevation, semantic.border, semantic.transition, semantic.opacity
-- [ ] component.document.legal.* namespace (subscription + prospectus)
+- [x] DTCG correctness fixes: invalid `$type: "string"` ×4 (dtcg-bundle.json) + boolean×3 (main-page.dtcg.json) → $extensions.foundry (commit dc9eca1)
+- [ ] Legacy string→object form migration (dimension/duration/number) — DEFERRED to v0.4.0; 64 dimension group headers + 100+ leaf values; too large for this phase
+- [x] Composite token groups: semantic.typography + elevation + transition + opacity (commit de6fbab)
+- [x] component.document.legal.* namespace (subscription + prospectus) (commit de6fbab)
 - [ ] DESIGN-TOKEN-CHANGE-wcp-finance-bundle — awaiting jwoodfine cosign; leave in drafts-outbound
+
+### Phase 5 (Command — after Phase 4 outbox pickup)
+
+- [ ] Stage 6 promote: pointsav-design-system dc9eca1 + de6fbab (2 commits)
+- [ ] Binary rebuild + deploy + sudo systemctl restart local-design.service
+- [ ] Smoke test: composite token groups visible in token browser
 
 ### Phase 6 (Totebox — after Phase 5 Command)
 
