@@ -71,7 +71,7 @@ input { background: var(--bg); color: var(--fg); border: 1px solid var(--border)
 .resizer:hover, .resizer.dragging { background: var(--accent); }
 
 /* Editor pane */
-#ed { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 200px; }
+#ed { width: var(--pv-w); flex-shrink: 0; display: flex; flex-direction: column; overflow: hidden; min-width: 200px; }
 
 /* Tab bar */
 #tab-bar { display: flex; background: var(--bg2); border-bottom: 1px solid var(--border);
@@ -126,8 +126,8 @@ input { background: var(--bg); color: var(--fg); border: 1px solid var(--border)
 #pdf-pane iframe { width: 100%; height: 100%; border: none; }
 
 /* Preview pane */
-#pv { width: var(--pv-w); background: var(--bg); border-left: 1px solid var(--border);
-      display: flex; flex-direction: column; overflow: hidden; min-width: 100px; }
+#pv { flex: 1; background: var(--bg); border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; overflow: hidden; min-width: 200px; }
 #pv-toolbar { background: var(--bg2); border-bottom: 1px solid var(--border);
               padding: 4px 8px; font-size: 11px; color: var(--fg3); flex-shrink: 0; }
 #pv-content { flex: 1; overflow: auto; padding: 12px 16px; font-size: 13px; }
@@ -180,6 +180,11 @@ input { background: var(--bg); color: var(--fg); border: 1px solid var(--border)
     <div id="tree"></div>
   </aside>
   <div class="resizer" id="rsz-sb"></div>
+  <aside id="pv">
+    <div id="pv-toolbar">Preview</div>
+    <div id="pv-content"><p style="color:var(--fg3);padding:16px;">No file open.</p></div>
+  </aside>
+  <div class="resizer" id="rsz-pv"></div>
   <main id="ed">
     <div id="tab-bar"></div>
     <div id="ed-toolbar">
@@ -222,11 +227,6 @@ input { background: var(--bg); color: var(--fg); border: 1px solid var(--border)
       <iframe id="pdf-frame"></iframe>
     </div>
   </main>
-  <div class="resizer" id="rsz-pv"></div>
-  <aside id="pv">
-    <div id="pv-toolbar">Preview</div>
-    <div id="pv-content"><p style="color:var(--fg3);padding:16px;">No file open.</p></div>
-  </aside>
 </div>
 
 <div id="ctx-menu"></div>
@@ -1309,7 +1309,7 @@ function makeResizer(id, getEl, getSize, setSize, minPx, sign = 1) {
 const SB = document.getElementById('sb');
 const PV = document.getElementById('pv');
 makeResizer('rsz-sb', () => SB, () => SB.offsetWidth, w => SB.style.width = w + 'px', 120);
-makeResizer('rsz-pv', () => PV, () => PV.offsetWidth, w => PV.style.width = w + 'px', 80, -1);
+makeResizer('rsz-pv', () => ED, () => ED.offsetWidth, w => ED.style.width = w + 'px', 200, 1);
 
 // ---------------------------------------------------------------------------
 // Activity logging
