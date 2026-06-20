@@ -156,21 +156,26 @@ v0.3.0 plan at `/home/jennifer/.claude/plans/no-make-a-plan-abundant-forest.md`.
 > **Scope: this archive only.** Cross-repo and workspace-level items live at `~/Foundry/NEXT.md`.
 > Hot open items. ≤200 lines. Backlog at `.agent/next-backlog.md`.
 
-Last updated: 2026-06-19
+Last updated: 2026-06-20
 
 ---
 
 ## Active (Totebox scope)
 
-- [ ] **Stage 6 pending** — Command: media-knowledge-projects (7fa466b + trademark commit 3e3579b), media-knowledge-corporate (ac6379f), media-knowledge-documentation (f1451e9) — 4 commits total since last promote [2026-06-19 totebox@claude-code]
-- [ ] **media-knowledge-documentation M9** — ES parity sweep not yet run for documentation sub-clone [2026-06-19 totebox@claude-code]
+- [ ] **Stage 6 pending** — Command: media-knowledge-projects (7fa466b + trademark commit 3e3579b), media-knowledge-corporate (ac6379f), media-knowledge-documentation (f1451e9) — also new TOPIC intake commits from this session [2026-06-20 totebox@claude-code]
 - [ ] **F2/F3 dead links** — check --strict gate blocked; dead wikilinks in project-editorial [carried]
-- [ ] **Track 2d / project-console** — Command routing pending for PROSE-RESEARCH-ppn-architecture-phd-thesis + knowledge-platform-rewrite; 13 artifacts awaiting Command ACK (msg-id: command-20260619-drafts-outbound-pickup-editorial-researc) [2026-06-19 totebox@claude-code]
 
 ## Blocked — Command Session (route via outbox)
 
 - [ ] **Trademark Phase 1a** — factory-release-engineering (TRADEMARK.md, tokens/legal-tokens-*.yaml, readmes/footer-*.md, policies/DISCLAIMER.md, README.md, PLAYBOOK.md); outbox message sent [2026-06-19 totebox@claude-code]
 - [ ] **Trademark Phase 4** — woodfine-fleet-deployment GUIDEs (~80 files), workspace governance docs (CLAUDE.md, AGENT.md, conventions/); admin-tier [2026-06-19 totebox@claude-code]
+
+## Completed (2026-06-20)
+
+- [x] **TOPIC intake — Phase B** — 9 TOPICs editorial clearing + EN+ES committed to media-knowledge-documentation [2026-06-20 totebox@claude-code]
+- [x] **Inbox actioning** — trademark pivot messages actioned; zero content-wiki edits needed [2026-06-20 totebox@claude-code]
+- [x] **Non-TOPIC routing** — outbox messages sent to project-design, project-documents, project-data, Command [2026-06-20 totebox@claude-code]
+- [x] **media-knowledge-documentation M9** — ES parity sweep complete [2026-06-20 totebox@claude-code]
 
 ## Completed (2026-06-19)
 
@@ -307,3 +312,6 @@ All Phase 8+9+10+T0 commits + 2026-06-19 need `bin/promote.sh` from Command Sess
 - **moonshot-toolkit v0.3.1** — Rust-only seL4 build orchestrator; TOML spec → bootable image; QEMU gate passed 2026-05-29
 - **moonshot-sel4-vmm Phase H1** — `#![no_std]` PD runtime; QEMU gate passed 2026-06-19
 - **wiki leg** — 9 TOPICs on canonical media-knowledge-documentation; confirmed 2026-06-19
+- [x] **Trademark Phase 3 — TOPIC/GUIDE content wikis** — MCorp™ + Capability Geometry™ applied across all three sub-clones; 3 commits (3e3579b, ac6379f, f1451e9) [2026-06-19 totebox@claude-code]
+- [x] **M7 snapshot dating** — corrected 7,594 → 6,493 in index.md; commit 4649f95 [2026-06-19 totebox@claude-code]
+- [x] **M9 EN/ES parity sweep** — all 53 ES articles in media-knowledge-projects at 84%+; 5 passes (7fa466b) [2026-06-19 totebox@claude-code]
