@@ -4,7 +4,6 @@
 > **Scope: this archive only.** Cross-repo and workspace-level items live at `~/Foundry/NEXT.md`.
 
 Last updated: 2026-06-20
-Last updated: 2026-06-19 (Session 26 — drain dispatch fix + Opus audit improvements)
 
 ---
 
@@ -84,9 +83,10 @@ v0.3.0 plan at `/home/jennifer/.claude/plans/no-make-a-plan-abundant-forest.md`.
 
 - [x] `moonshot-toolkit` v0.3.1 — build pipeline functional; `os-console-hello.toml` spec exists; QEMU gate passed
 - [x] `moonshot-sel4-vmm` Phase H1 — `#![no_std]` PD runtime complete (syscall, types, debug modules)
-- [ ] Confirm project-data PD target (os-totebox or os-orchestration-slm) — outbox sent 2026-06-20 `[2026-06-20 totebox@project-system]`
-- [ ] Create `moonshot-toolkit/examples/os-totebox-hello.toml` once project-data confirms target `[2026-06-20 totebox@project-system]`
+- [x] Confirm project-data PD target — `os-totebox` confirmed via `BRIEF-os-totebox-build-out` (owner: project-data) `[2026-06-20 totebox@project-system]`
+- [x] Create `moonshot-toolkit/examples/os-totebox-hello.toml` + `totebox_hello.c` — committed `23b7026d5` `[2026-06-20 totebox@project-system]`
 - [ ] NOTE: moonshot-toolkit + moonshot-sel4-vmm both declare `[workspace]` — cannot be monorepo workspace members; use `--manifest-path` for toolkit, path deps for vmm in PD crates
+- [ ] Stage 6 pending: commit `23b7026d5` (os-totebox Phase H1 seL4 spec) — route to Command `[2026-06-20 totebox@project-system]`
 
 ### Clippy gate verification
 
