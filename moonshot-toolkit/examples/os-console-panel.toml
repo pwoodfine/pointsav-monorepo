@@ -1,0 +1,6 @@
+[[protection_domains]]
+name        = "os-console-panel"
+binary      = "moonshot-sel4-vmm"
+rust_bin    = "panel_main"
+priority    = 100
+stack_bytes = 65536

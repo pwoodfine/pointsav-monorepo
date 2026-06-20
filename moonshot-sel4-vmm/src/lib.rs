@@ -12,6 +12,7 @@
 
 #![no_std]
 
+pub mod ansi;
 pub mod bootinfo;
 pub mod bootstrap;
 pub mod debug;
