@@ -764,10 +764,27 @@ function autoSaveCancel() { clearTimeout(autoSaveTimer); autoSaveTimer = null; }
 // ---------------------------------------------------------------------------
 // File operations
 // ---------------------------------------------------------------------------
+function copyToClipboard(text) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).catch(() => copyToClipboardFallback(text));
+  } else {
+    copyToClipboardFallback(text);
+  }
+}
+function copyToClipboardFallback(text) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0';
+  document.body.appendChild(ta);
+  ta.select();
+  document.execCommand('copy');
+  document.body.removeChild(ta);
+}
 function copyFileName() {
   const t = tabs[activeTabIdx];
   if (!t) return;
-  navigator.clipboard.writeText(t.name).then(() => setStatus('Filename copied'));
+  copyToClipboard(t.name);
+  setStatus('Filename copied');
 }
 
 function downloadFile() {
