@@ -265,6 +265,7 @@ pub mod test_helpers {
             doctrine_version: "0.0.1".to_string(),
             tenant: "test-tenant".to_string(),
             tier_a_first: false,
+            yoyo_dispatch_label: None,
         };
 
         let brief_cache = Arc::new(BriefCache::default());
