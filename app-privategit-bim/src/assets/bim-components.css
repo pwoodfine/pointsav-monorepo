@@ -92,13 +92,15 @@ cds-side-nav-menu-item a.bim-nav-link {
   margin-top: 1rem;
 }
 
-/* Visual property editor table */
-.bim-prop-table {
+/* Visual property editor table + token category table */
+.bim-prop-table,
+.bim-token-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.875rem;
 }
-.bim-prop-table th {
+.bim-prop-table th,
+.bim-token-table th {
   background: #f4f4f4;
   text-align: left;
   padding: 0.5rem 0.75rem;
@@ -106,7 +108,8 @@ cds-side-nav-menu-item a.bim-nav-link {
   border-bottom: 2px solid #dde;
   color: #333;
 }
-.bim-prop-table td {
+.bim-prop-table td,
+.bim-token-table td {
   padding: 0.375rem 0.75rem;
   border-bottom: 1px solid #e8e8e8;
   vertical-align: middle;
