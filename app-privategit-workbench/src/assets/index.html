@@ -41,7 +41,7 @@ input { background: var(--bg); color: var(--fg); border: 1px solid var(--border)
 
 /* Sidebar */
 #sb { width: var(--sb-w); background: var(--bg2); border-right: 1px solid var(--border);
-      display: flex; flex-direction: column; flex-shrink: 0; min-width: 140px; transition: width .1s; }
+      display: flex; flex-direction: column; flex-shrink: 0; min-width: 140px; }
 #sb.collapsed { width: 0 !important; overflow: hidden; }
 #sb-hdr { display: flex; align-items: center; gap: 4px; padding: 4px 6px;
            border-bottom: 1px solid var(--border); flex-shrink: 0; }
@@ -122,6 +122,8 @@ input { background: var(--bg); color: var(--fg); border: 1px solid var(--border)
 #viewer iframe { width: 100%; height: 100%; border: none; }
 #viewer pre { margin: 0; padding: 12px 16px; overflow: auto; height: 100%;
               font: 12px/1.5 "Fira Code",monospace; white-space: pre-wrap; word-break: break-word; }
+#pdf-pane { flex: 1; overflow: hidden; display: none; }
+#pdf-pane iframe { width: 100%; height: 100%; border: none; }
 
 /* Preview pane */
 #pv { width: var(--pv-w); background: var(--bg); border-left: 1px solid var(--border);
@@ -182,16 +184,16 @@ input { background: var(--bg); color: var(--fg); border: 1px solid var(--border)
     <div id="tab-bar"></div>
     <div id="ed-toolbar">
       <span id="ed-path">No file open</span>
-      <button id="tb-copy" class="tb-btn" onclick="copyFileName()" title="Copy filename" style="display:none">⎘</button>
+      <button id="tb-copy" class="tb-btn" onclick="copyFileName()" title="Copy filename" style="display:none">⎘ Copy</button>
       <button id="tb-save" class="tb-btn" onclick="saveFile()" title="Save (Ctrl+S)" style="display:none">💾 Save</button>
-      <button id="tb-rename" class="tb-btn" onclick="renameFile()" title="Rename" style="display:none">✎</button>
-      <button id="tb-dup" class="tb-btn" onclick="duplicateFile()" title="Duplicate" style="display:none">⧉</button>
-      <button id="tb-dl" class="tb-btn" onclick="downloadFile()" title="Download">⬇</button>
-      <button id="tb-print" class="tb-btn" onclick="window.print()" title="Print (Ctrl+P)" style="display:none">⎙</button>
-      <button id="tb-newtab" class="tb-btn" onclick="openInNewTab()" title="Open in new tab" style="display:none">↗</button>
-      <button id="tb-reload" class="tb-btn" onclick="reloadFile()" title="Reload" style="display:none">↻</button>
-      <button id="tb-close" class="tb-btn" onclick="closeCurrentTab()" title="Close" style="display:none">✕</button>
-      <button id="tb-del" class="tb-btn danger" onclick="deleteFile()" title="Delete" style="display:none">🗑</button>
+      <button id="tb-rename" class="tb-btn" onclick="renameFile()" title="Rename" style="display:none">✎ Rename</button>
+      <button id="tb-dup" class="tb-btn" onclick="duplicateFile()" title="Duplicate" style="display:none">⧉ Duplicate</button>
+      <button id="tb-dl" class="tb-btn" onclick="downloadFile()" title="Download">⬇ Download</button>
+      <button id="tb-print" class="tb-btn" onclick="window.print()" title="Print (Ctrl+P)" style="display:none">⎙ Print</button>
+      <button id="tb-newtab" class="tb-btn" onclick="openInNewTab()" title="Open in new tab" style="display:none">↗ New Tab</button>
+      <button id="tb-reload" class="tb-btn" onclick="reloadFile()" title="Reload" style="display:none">↻ Reload</button>
+      <button id="tb-close" class="tb-btn" onclick="closeCurrentTab()" title="Close" style="display:none">✕ Close</button>
+      <button id="tb-del" class="tb-btn danger" onclick="deleteFile()" title="Delete" style="display:none">🗑 Delete</button>
       <span style="flex:1"></span>
       <span style="font-size:10px;color:var(--fg3)" id="ed-mtime"></span>
       <label style="font-size:11px;color:var(--fg3)">Ln:<input id="ln-input" class type="number" min="1" title="Go to line (Ctrl+G)" oninput="goToLine(+this.value)"></label>
@@ -215,6 +217,9 @@ input { background: var(--bg); color: var(--fg); border: 1px solid var(--border)
     <textarea id="editor" spellcheck="false" placeholder="Select a file to open…"></textarea>
     <div id="viewer" style="display:none">
       <iframe id="viewer-frame" sandbox="allow-scripts allow-same-origin"></iframe>
+    </div>
+    <div id="pdf-pane">
+      <iframe id="pdf-frame"></iframe>
     </div>
   </main>
   <div class="resizer" id="rsz-pv"></div>
@@ -520,6 +525,17 @@ function loadTabIntoEditor(t) {
   ED_PATH.textContent = urlPath;
   ED_MTIME.textContent = t.mtime ? new Date(t.mtime * 1000).toLocaleTimeString() : '';
   updateToolbarButtons(urlPath, t.writable);
+  if (t.isPdf) {
+    EDITOR.style.display = 'none';
+    VIEWER.style.display = 'none';
+    PDF_PANE.style.display = 'flex';
+    PDF_FRAME.src = `/raw?path=${encodeURIComponent(urlPath)}`;
+    PV_CONTENT.innerHTML = `<p style="padding:12px"><a href="/raw?path=${esc(urlPath)}" target="_blank" style="color:var(--accent)">Open PDF in new tab</a></p>`;
+    PV_TOOLBAR.textContent = 'PDF';
+    localStorage.setItem('wb-tab', urlPath);
+    return;
+  }
+  PDF_PANE.style.display = 'none';
   if (urlPath.endsWith('.html')) {
     EDITOR.style.display = 'none';
     VIEWER.style.display = 'flex';
@@ -540,6 +556,8 @@ function clearEditor() {
   EDITOR.value = '';
   EDITOR.style.display = '';
   VIEWER.style.display = 'none';
+  PDF_PANE.style.display = 'none';
+  PDF_FRAME.src = '';
   ED_PATH.textContent = 'No file open';
   ED_MTIME.textContent = '';
   updateToolbarButtons(null, false);
@@ -574,6 +592,8 @@ function updateToolbarButtons(path, writable) {
 const EDITOR = document.getElementById('editor');
 const VIEWER = document.getElementById('viewer');
 const VIEWER_FRAME = document.getElementById('viewer-frame');
+const PDF_PANE = document.getElementById('pdf-pane');
+const PDF_FRAME = document.getElementById('pdf-frame');
 const ED_PATH = document.getElementById('ed-path');
 const ED_MTIME = document.getElementById('ed-mtime');
 
@@ -581,6 +601,24 @@ async function openFilePath(urlPath) {
   // If already open, switch to that tab
   const existing = tabs.findIndex(t => t.path === urlPath);
   if (existing >= 0) { switchTab(existing); return; }
+
+  // PDFs are binary — serve via /raw; skip text fetch entirely
+  if (urlPath.toLowerCase().endsWith('.pdf')) {
+    if (activeTabIdx >= 0 && tabs[activeTabIdx]) {
+      tabs[activeTabIdx].scrollTop = EDITOR.scrollTop;
+      tabs[activeTabIdx].content = EDITOR.value;
+    }
+    const tab = { path: urlPath, name: urlPath.split('/').pop(),
+                  content: null, mtime: 0, dirty: false, writable: false,
+                  scrollTop: 0, isPdf: true };
+    tabs.push(tab);
+    activeTabIdx = tabs.length - 1;
+    loadTabIntoEditor(tab);
+    renderTabBar();
+    renderTree();
+    setStatus('');
+    return;
+  }
 
   setStatus(`Opening ${urlPath}…`);
   try {
@@ -630,7 +668,12 @@ EDITOR.addEventListener('input', () => {
   autoSaveSchedule();
 });
 
-EDITOR.addEventListener('click', onEditorClick);
+let sectionTimer = null;
+EDITOR.addEventListener('click', () => {
+  updateLnInput();
+  clearTimeout(sectionTimer);
+  sectionTimer = setTimeout(onEditorClick, 400);
+});
 EDITOR.addEventListener('scroll', () => {
   const t = tabs[activeTabIdx];
   if (t) t.scrollTop = EDITOR.scrollTop;
@@ -641,7 +684,6 @@ async function onEditorClick() {
   const t = tabs[activeTabIdx];
   if (!t) return;
   const offset = EDITOR.selectionStart;
-  updateLnInput();
   try {
     const res = await fetch(`/section?path=${encodeURIComponent(t.path)}&offset=${offset}`);
     if (!res.ok) return;
@@ -732,7 +774,9 @@ function downloadFile() {
   const t = tabs[activeTabIdx];
   if (!t) return;
   const a = document.createElement('a');
-  a.href = `/file?path=${encodeURIComponent(t.path)}`;
+  a.href = t.isPdf
+    ? `/raw?path=${encodeURIComponent(t.path)}`
+    : `/file?path=${encodeURIComponent(t.path)}`;
   a.download = t.name;
   a.click();
 }
@@ -1208,12 +1252,10 @@ function updatePreview(urlPath, content) {
     PV_CONTENT.innerHTML = `<pre style="white-space:pre-wrap;word-break:break-word">${esc(content)}</pre>`;
     PV_TOOLBAR.textContent = 'Markdown';
   } else if (urlPath.endsWith('.html')) {
-    PV_CONTENT.innerHTML = `<iframe srcdoc="${esc(content)}" style="width:100%;height:100%;border:none"></iframe>`;
-    PV_TOOLBAR.textContent = 'HTML Preview';
+    PV_CONTENT.innerHTML = `<pre style="white-space:pre-wrap;word-break:break-word;font:12px/1.5 'Fira Code',monospace">${esc(content.slice(0, 8000))}</pre>`;
+    PV_TOOLBAR.textContent = 'HTML Source';
   } else if (urlPath.endsWith('.json') || urlPath.endsWith('.geojson')) {
-    try {
-      PV_CONTENT.innerHTML = `<pre>${esc(JSON.stringify(JSON.parse(content), null, 2))}</pre>`;
-    } catch { PV_CONTENT.innerHTML = `<pre>${esc(content)}</pre>`; }
+    PV_CONTENT.innerHTML = `<pre>${esc(content.slice(0, 8000))}</pre>`;
     PV_TOOLBAR.textContent = 'JSON';
   } else {
     PV_CONTENT.innerHTML = `<pre style="white-space:pre-wrap">${esc(content.slice(0, 4000))}</pre>`;
@@ -1235,7 +1277,7 @@ setTimeout(refreshGitStatus, 2000);
 // ---------------------------------------------------------------------------
 // Resize handles
 // ---------------------------------------------------------------------------
-function makeResizer(id, getEl, getSize, setSize, minPx) {
+function makeResizer(id, getEl, getSize, setSize, minPx, sign = 1) {
   const rsz = document.getElementById(id);
   if (!rsz) return;
   rsz.addEventListener('mousedown', e => {
@@ -1243,7 +1285,7 @@ function makeResizer(id, getEl, getSize, setSize, minPx) {
     rsz.classList.add('dragging');
     const startX = e.clientX;
     const startSize = getSize();
-    const move = ev => setSize(Math.max(minPx, startSize + (ev.clientX - startX)));
+    const move = ev => setSize(Math.max(minPx, startSize + sign * (ev.clientX - startX)));
     const up = () => { rsz.classList.remove('dragging'); window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up); };
     window.addEventListener('mousemove', move);
     window.addEventListener('mouseup', up);
@@ -1252,7 +1294,7 @@ function makeResizer(id, getEl, getSize, setSize, minPx) {
 const SB = document.getElementById('sb');
 const PV = document.getElementById('pv');
 makeResizer('rsz-sb', () => SB, () => SB.offsetWidth, w => SB.style.width = w + 'px', 120);
-makeResizer('rsz-pv', () => PV, () => PV.offsetWidth, w => PV.style.width = w + 'px', 80);
+makeResizer('rsz-pv', () => PV, () => PV.offsetWidth, w => PV.style.width = w + 'px', 80, -1);
 
 // ---------------------------------------------------------------------------
 // Activity logging
