@@ -1,0 +1,19 @@
+# os-totebox seL4 system image — Phase H1 hello milestone.
+#
+# Build from monorepo root:
+#   cargo run --manifest-path moonshot-toolkit/Cargo.toml -- build moonshot-toolkit/examples/os-totebox-hello.toml
+#
+# Produces build/system-image.bin (elfloader ELF, AArch64).
+# Boot with:
+#   qemu-system-aarch64 -machine virt -cpu cortex-a53 -m 1G -display none \
+#     -serial file:/tmp/sel4-serial.log -kernel build/system-image.bin \
+#     && cat /tmp/sel4-serial.log
+# Note: use -m 1G (not 512M) — the DTB reports 1 GiB RAM; mismatch causes Data Abort.
+#
+# Gate: "Hello from os-totebox seL4 PD" appears on serial output.
+
+[[protection_domains]]
+name        = "os-totebox"
+binary      = "moonshot-toolkit/examples/totebox_hello.c"
+priority    = 100
+stack_bytes = 65536
