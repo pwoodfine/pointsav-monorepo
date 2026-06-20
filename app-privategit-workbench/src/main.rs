@@ -27,6 +27,7 @@ use tokio::sync::broadcast;
 use tokio_stream::{wrappers::BroadcastStream, StreamExt as _};
 
 mod mcp;
+mod schema_bim;
 mod schema_gis;
 mod schema_presentation;
 mod schema_schedule;
@@ -1628,6 +1629,9 @@ async fn main() -> Result<()> {
         .route("/api/schedule/syntax-hints", get(schema_schedule::syntax_hints))
         .route("/api/gis/files", get(schema_gis::list_files))
         .route("/api/gis/feature-count", get(schema_gis::feature_count))
+        .route("/api/bim/files", get(schema_bim::list_files))
+        .route("/api/bim/parse", get(schema_bim::parse_file))
+        .route("/api/bim/instances", get(schema_bim::list_instances))
         .with_state(state);
 
     let addr: SocketAddr = config.bind.parse().context("parsing bind address")?;
