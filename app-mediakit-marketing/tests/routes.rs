@@ -102,7 +102,10 @@ async fn home_renders_full_section_vocabulary() {
     // The legacy fragile client-side pattern must be structurally absent.
     assert!(!body.contains("__bundler/template"));
     // SEO tags must be present.
-    assert!(body.contains(r#"rel="canonical""#), "missing canonical link");
+    assert!(
+        body.contains(r#"rel="canonical""#),
+        "missing canonical link"
+    );
     assert!(body.contains(r#"property="og:title""#), "missing og:title");
     assert!(body.contains("application/ld+json"), "missing ld+json");
 }

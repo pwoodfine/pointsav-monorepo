@@ -209,10 +209,7 @@ pub fn render_page(brand: &Brand, page: &Page, tokens_css: &str, path: &str) -> 
     let page_title = format!("{} \u{2014} {}", page.title, brand.site_title);
     let ld_json = format!(
         r#"{{"@context":"https://schema.org","@type":"{}","name":"{}","url":"{}","description":"{}"}}"#,
-        brand.ld_json_type,
-        brand.og_site_name,
-        brand.canonical_base,
-        brand.ld_json_description,
+        brand.ld_json_type, brand.og_site_name, brand.canonical_base, brand.ld_json_description,
     );
     let markup = html! {
         (DOCTYPE)

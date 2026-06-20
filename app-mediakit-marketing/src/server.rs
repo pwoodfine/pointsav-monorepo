@@ -69,9 +69,7 @@ async fn page_es(
 /// Render a slug to a full HTML document (or an error response).
 fn render(state: &AppState, slug: &str, lang: &str, path: &str) -> Response {
     match content::load_page_lang(&state.content_dir, slug, lang) {
-        Ok(page) => {
-            Html(render_page(&state.brand, &page, &state.tokens_css, path)).into_response()
-        }
+        Ok(page) => Html(render_page(&state.brand, &page, &state.tokens_css, path)).into_response(),
         Err(LoadError::NotFound) => (StatusCode::NOT_FOUND, "Not found").into_response(),
         Err(LoadError::InvalidSlug) => (StatusCode::BAD_REQUEST, "Invalid path").into_response(),
         Err(LoadError::Invalid(e)) => {
