@@ -331,3 +331,6 @@ mod tests {
         assert_eq!(top.start, 0);
     }
 }
+
+#[cfg(feature = "wasm")]
+pub mod wasm;

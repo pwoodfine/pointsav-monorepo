@@ -348,3 +348,6 @@ mod tests {
         assert!(full.iter().any(|t| t.kind == TokenKind::Comment));
     }
 }
+
+#[cfg(feature = "wasm")]
+pub mod wasm;
