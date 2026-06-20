@@ -1,6 +1,6 @@
-# NEXT.md — project-design (Totebox)
+# NEXT.md — project-system (Totebox)
 
-> Totebox Session — starts in `/srv/foundry/clones/project-design/`
+> Totebox Session — starts in `/srv/foundry/clones/project-system`
 > **Scope: this archive only.** Cross-repo and workspace-level items live at `~/Foundry/NEXT.md`.
 
 Last updated: 2026-06-20
@@ -8,7 +8,7 @@ Last updated: 2026-06-19 (Session 26 — drain dispatch fix + Opus audit improve
 
 ---
 
-## Active (Phase 2 complete — Phase 4 next)
+## Active
 
 v0.3.0 plan at `/home/jennifer/.claude/plans/no-make-a-plan-abundant-forest.md`.
 - [ ] **Stage 6 + Doorman rebuild** — outbox updated (msg-id project-intelligence-20260620-session26c-stage6-prompt-fix);
@@ -80,15 +80,15 @@ v0.3.0 plan at `/home/jennifer/.claude/plans/no-make-a-plan-abundant-forest.md`.
       populated; Tier B structured grammar path code-complete but drain sends plain prompts not
       grammar-constrained extraction; medium priority after Tier B basic enrichment is stable
       [2026-06-19 totebox@project-intelligence]
+### seL4 Phase H1 — moonshot-toolkit integration
 
-### Phase 2 completed (2026-06-20)
+- [x] `moonshot-toolkit` v0.3.1 — build pipeline functional; `os-console-hello.toml` spec exists; QEMU gate passed
+- [x] `moonshot-sel4-vmm` Phase H1 — `#![no_std]` PD runtime complete (syscall, types, debug modules)
+- [ ] Confirm project-data PD target (os-totebox or os-orchestration-slm) — outbox sent 2026-06-20 `[2026-06-20 totebox@project-system]`
+- [ ] Create `moonshot-toolkit/examples/os-totebox-hello.toml` once project-data confirms target `[2026-06-20 totebox@project-system]`
+- [ ] NOTE: moonshot-toolkit + moonshot-sel4-vmm both declare `[workspace]` — cannot be monorepo workspace members; use `--manifest-path` for toolkit, path deps for vmm in PD crates
 
-- [x] Archive contamination repair — CLAUDE.md, manifest.md, brief-discipline.md, artifact-registry.md (all 4 fixed) `[2026-06-20 command@claude-code]`
-- [x] app-privategit-design-recovered/ deleted (untracked; safe rm) `[2026-06-20 command@claude-code]`
-- [x] Foreign BRIEFs archived — 18 BRIEFs set to status: archived `[2026-06-20 command@claude-code]`
-- [x] Outbox triage — 3 messages marked actioned (stage6-phase-d, contamination-flag, DESIGN-BUNDLE ratification request) `[2026-06-20 command@claude-code]`
-- [x] DESIGN-RESEARCH intake (cb8b2a2) — design-system-2030-vision + knowledge-platform UX audit committed to dtcg-vault/research/ `[2026-06-20 command@claude-code]`
-- [x] ASSET intake (cb8b2a2) — woodfine-org-chart-color-sample reference committed to assets/reference/ `[2026-06-20 command@claude-code]`
+### Clippy gate verification
 
 ### Phase 3 (Command — complete 2026-06-20)
 
@@ -130,15 +130,20 @@ v0.3.0 plan at `/home/jennifer/.claude/plans/no-make-a-plan-abundant-forest.md`.
 - [ ] Smoke tests: /healthz ok; MARKETING + BUNDLE elements render correctly; /elements/:slug/download returns ZIP
 - [ ] CHANGELOG.md v0.3.0 entry
 - [ ] binary-ledger sha256 verify
+- [x] `cargo clippy -p system-vm-fleet-types -- -D warnings` — CLEAN; carry-forward was stale `[2026-06-20 totebox@project-system]`
+- [x] `cargo clippy -p os-console -- -D warnings` — CLEAN; carry-forward was stale `[2026-06-20 totebox@project-system]`
+
+### Archive identity repair (ongoing)
+
+- [ ] CLAUDE.md header still says "project-design — Archive Guide" — needs correction to project-system `[2026-06-19 command@claude-code]`
+- [ ] `.agent/manifest.md` `cluster:` field says "project-design" — needs correction to project-system `[2026-06-19 command@claude-code]`
+- [ ] `.agent/briefs/README.md` contains project-marketing content — needs rewrite `[2026-06-20 totebox@project-system]`
 
 ---
 
-## Carry-forward
+## Blocked — Command Session
 
-- [ ] DESIGN-RESEARCH-design-system-2030-vision — route to project-marketing (outbox msg-id project-design-20260614-design-research-2030-routing still pending; project-marketing needs to pick it up)
-- [ ] DESIGN-TOKEN-CHANGE-woodfine-chart-css and woodfine-yellow-magenta — already applied in woodfine-media-assets (commits 17001af, 1b0db90); drafts can be marked superseded in drafts-outbound
-- [ ] DESIGN-doc-header-component and DESIGN-docs-sidenav-component drafts — already committed (229c719); drafts-outbound stubs can be archived
-- [ ] DESIGN-wireframe-home-header-v2c.draft.html — check destination; likely project-marketing scope
+- [ ] drafts-outbound contamination — 24 foreign files pending redistribution (outbox msg-id: project-system-20260614-drafts-outbound-contamination; attempts: 3)
 
 ---
 
@@ -296,3 +301,9 @@ All Phase 8+9+10+T0 commits + 2026-06-19 need `bin/promote.sh` from Command Sess
 - F10 mesh cartridge — gated on `app-console-mesh` activation; Phase 1 scope when ready: poll `service-vm-fleet :9203` GET /v1/nodes → read-only table (node ID | hostname | ip | status | last_heartbeat | preferred role); no writes
 - F11 → :9202 endpoint — currently polls :9201; will connect to `service-ppn-pairing :9202` when project-infrastructure deploys it (PPN Phase 1)
 - Phase 12 (AI marginalia) — gated on SYS-ADR-07/10/19 review
+- **os-totebox Phase 2** — Veriexec strict=1, wm0 NIC fix, SSH via SLIRP validated; Stage 6 complete 2026-06-14 (canonical commit 090a090c)
+- **service-vm-tenant v0.1.0** — Bearer auth + quota + WORM audit; 11 tests; Stage 6 complete 2026-06-14
+- **service-vm-fleet + service-vm-host** — PPN fleet controller + heartbeat agent; Stage 6 complete 2026-06-14
+- **moonshot-toolkit v0.3.1** — Rust-only seL4 build orchestrator; TOML spec → bootable image; QEMU gate passed 2026-05-29
+- **moonshot-sel4-vmm Phase H1** — `#![no_std]` PD runtime; QEMU gate passed 2026-06-19
+- **wiki leg** — 9 TOPICs on canonical media-knowledge-documentation; confirmed 2026-06-19
