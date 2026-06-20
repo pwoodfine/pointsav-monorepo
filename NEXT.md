@@ -59,11 +59,23 @@ v0.3.0 plan at `/home/jennifer/.claude/plans/no-make-a-plan-abundant-forest.md`.
       interactive /v1/extract; resolves automatically when yoyo-batch restores (queue → Tier B);
       workaround: limit queue to 1 in-flight via SLM_BATCH_CONCURRENCY=1 when Tier B down
       [2026-06-19 totebox@project-intelligence]
-- [ ] **DPO corpus: only 229/1,021 pairs survive training filters** — 77.5% filtered at load time
-      (MAX_LENGTH_RATIO=8.0 gate); legacy pairs have extreme ratios (p50=20x, p90=180x); effective
-      training set far below LIMA 1,000 threshold; will improve as Tier B enrichment produces
-      real-diff pairs with reasonable ratios; re-audit after first 500 Tier B pairs written
-      [2026-06-19 totebox@project-intelligence]
+- [x] **DPO corpus: only ~168/1,021 pairs survive — task unlearnable as framed** — 2026-06-19
+      four-agent Opus audit: prompt=bare commit subject (no file ctx), chosen=whole-repo diff,
+      rejected=OLMo fragment (93x ratio). SFT-first pivot (commit `3ee7eaaa`): export-sft.py
+      per-file split + canonical envelope → 2,585 clean SFT records (15x); run-dpo-training.py
+      --mode sft + max_length=512 truncation fix. See BRIEF-training-pipeline-10x.
+      [2026-06-20 totebox@project-intelligence]
+- [ ] **SFT-first follow-ups** (BRIEF-training-pipeline-10x §Decisions open):
+      (a) file-grounded prompts — git post-commit hook to capture SHA + pre-edit blobs (Rust/hook);
+      (b) wire SFT stage into lora-update.sh/nightly before the preference stage;
+      (c) DPO-format fix in verdict.rs (both sides canonical envelope) for the later pref phase;
+      (d) verify SFTTrainer/SFTConfig API on yoyo-batch trl 1.5.1 before first real run.
+      [2026-06-20 totebox@project-intelligence]
+- [ ] **DataGraph NULL vectors — prompt/schema contradiction** — service-content/src/main.rs:55
+      extraction prompt says "exactly two fields" while schema (main.rs:869-885) declares 5
+      (incl. 3 vectors); prompt actively forbids vectors. Fix: add vectors to prompt + few-shot,
+      or delete from schema. Plus: no entity resolution (Corp./Corp dupes). See BRIEF §DataGraph.
+      [2026-06-20 totebox@project-intelligence]
 - [ ] **Entity vectors all null** — role_vector/location_vector on LadybugDB entities never
       populated; Tier B structured grammar path code-complete but drain sends plain prompts not
       grammar-constrained extraction; medium priority after Tier B basic enrichment is stable
