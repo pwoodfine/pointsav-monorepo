@@ -1,0 +1,6 @@
+[[protection_domains]]
+name        = "os-console-virtio-net"
+binary      = "moonshot-sel4-vmm"
+rust_bin    = "virtio_net_init"
+priority    = 100
+stack_bytes = 65536
