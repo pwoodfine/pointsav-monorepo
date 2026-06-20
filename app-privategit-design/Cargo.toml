@@ -1,6 +1,6 @@
 [package]
 name = "app-privategit-design"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 
 [[bin]]
@@ -29,6 +29,8 @@ moonshot-index = { path = "../moonshot-index" }
 reqwest = { version = "0.12", default-features = false, features = ["stream", "rustls-tls", "json"] }
 # Runtime HTML templates; path_loader enables disk-backed auto-reload (sovereign target: moonshot-template)
 minijinja = { version = "2", features = ["loader"] }
+# Bundle ZIP packaging (sovereign target: moonshot-archive; no in-house zip yet)
+zip = "2"
 
 # --- "We Own It" dep map (BRIEF-app-privategit-design.md §D8) ---
 # askama (compile-time templates)   → moonshot-template  (stub added 2026-06-15)

@@ -18,6 +18,7 @@ pub fn build_router(state: AppState) -> Router {
         .route("/healthz", get(healthz))
         .route("/", get(browse::index))
         .route("/elements/:slug", get(browse::element_redirect))
+        .route("/elements/:slug/download", get(browse::bundle_download))
         .route("/elements/:slug/:tab", get(browse::element_tab))
         .route("/tokens/search", get(search::token_search))
         .route("/sidebar/sse", get(sse::sidebar_sse))
