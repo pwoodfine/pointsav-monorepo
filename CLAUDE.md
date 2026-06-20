@@ -1,8 +1,8 @@
 @~/Foundry/AGENT.md
 
-# project-proforma — Archive Guide
+# project-design — Archive Guide
 
-> **State:** active | **Last updated:** 2026-06-19
+> **State:** active | **Last updated:** 2026-06-20
 > **Cluster manifest:** `.agent/manifest.md`
 > **Workspace AGENT.md takes precedence on conflict.**
 
@@ -10,17 +10,14 @@
 
 ## Cluster mission
 
-Editorial gateway for all three content platforms (documentation, projects, corporate).
-Responsibilities: language pass (banned-vocab + BCSC compliance), bilingual EN+ES review,
-TOPIC/GUIDE routing to content-wiki-* and woodfine-fleet-deployment, wiki commit pipeline.
-Manages media-knowledge-documentation, media-knowledge-projects, and media-knowledge-corporate
-as canonical sub-clones (DOCTRINE §IV.e exception — commits go directly to canonical; GitHub
-is downstream mirror).
+Design system cluster for PointSav. Two main components:
+1. **`app-privategit-design`** — Rust/axum SSR browser serving design.pointsav.com (port 9094). Schema-aware rendering for COMPONENT, TOKEN, RESEARCH, MARKETING, and BUNDLE artifact types. Phases A–D live (routes split, inotify watcher, SSE sidebar, AI bridge).
+2. **`pointsav-design-system`** (sub-clone) — DTCG 2025.10 token repository. `dtcg-bundle.json` is the canonical token file; `components/`, `research/`, `assets/` hold DESIGN-* artifacts.
 
-**Active cartridges:** F2 People, F4 Content, F9 SLM, F11 System, F12 Input (Anchor), F3 Email, F6 Bookkeeper.
-**Phase 10 complete 2026-06-16:** F2 PeopleCartridge scaffold, Rgb color helpers, session persistence, chassis reconnect watchdog.
-**Phase H1 complete 2026-06-19:** moonshot-sel4-vmm `#![no_std]` PD runtime + console_hello.c seL4 rootserver; QEMU gate passed ("Hello from os-console seL4 PD"). Use `-m 1G` (DTB reports 1 GiB).
-**Next:** Phase 11 — F7 BIM cartridge (`app-console-bim`); blocked on project-bim Phase 1 service. Phase H2 — VirtIO serial PD + ratatui on seL4.
+Also manages design asset pipelines: `woodfine-media-assets`, `pointsav-media-assets` (staging-tier commit + promote).
+
+**Live service:** `app-privategit-design` v0.2.0 at `local-design.service` port 9094. Binary: `/usr/local/bin/app-privategit-design` (sha256 `1883110e`, deployed 2026-06-20).
+**v0.3.0 in progress:** marketing.rs + bundle.rs renderers + composite token groups. Plan: `/home/jennifer/.claude/plans/no-make-a-plan-abundant-forest.md`.
 
 ## Tetrad
 
@@ -34,9 +31,22 @@ Per `~/Foundry/AGENT.md` § Session roles:
 1. Confirm role: `~/Foundry/bin/foundry-role.sh` (Totebox Session expected)
 2. Write session lock: `.agent/engines/<engine-id>/session.lock`
 3. Read `.agent/manifest.md` — cluster mission + tetrad
-4. Call `get_session_brief(role="totebox", archive="project-proforma")` — replaces inbox, NOTAM, session-context reads
+4. Call `get_session_brief(role="totebox", archive="project-design")` — replaces inbox, NOTAM, session-context reads
 5. Read `~/Foundry/NOTAM.md` — workspace warnings
-6. Read `.agent/rules/*.md` if present (may be absent for newer archives)
+6. Read `.agent/rules/*.md` if present
+
+## Build / test / lint
+
+```bash
+# from /srv/foundry/clones/project-design/
+cargo check -p app-privategit-design
+cargo test -p app-privategit-design
+cargo clippy -p app-privategit-design -- -D warnings
+cargo fmt -p app-privategit-design
+cargo build --release -p app-privategit-design
+```
+
+Binary output: `$CARGO_TARGET_DIR/release/app-privategit-design` (CARGO_TARGET_DIR=/srv/foundry/cargo-target/jennifer).
 
 ## Hard rules (workspace-level, do not duplicate; reference only)
 
@@ -47,20 +57,14 @@ Per `~/Foundry/AGENT.md` § Session roles:
 
 ## Commit + promote
 
-Commits to media-knowledge-* go directly to canonical (DOCTRINE §IV.e).
-Commits to woodfine-fleet-deployment use admin-tier: `~/Foundry/bin/commit-as-next.sh --admin woodfine "<msg>"`.
-Commits to pointsav-monorepo use: `~/Foundry/bin/commit-as-next.sh "<msg>"`.
+Commits to pointsav-design-system sub-clone use: `~/Foundry/bin/commit-as-next.sh "<msg>"` from within `pointsav-design-system/`.
+Commits to archive root (CLAUDE.md, BRIEFs, etc.) use: `~/Foundry/bin/commit-as-next.sh "<msg>"` from `clones/project-design/`.
 Stage 6 promotion via `~/Foundry/bin/promote.sh` from Command Session.
-**Stage 6 pending:** commits through `fc4d0978` (Phase 10) need promote; git divergence on main is a Command-side blocker.
-
-## Conflicts
-
-If a workspace rule conflicts with anything stated here, **stop and surface
-the conflict via outbox to command session** — do not silently override.
+**Stage 6 pending after Phase 2:** new design-system intake commits need promote.
 
 ## MCP tools — `foundry` server (use at startup)
 
-`get_session_brief(role="totebox", archive="project-proforma")` replaces manually reading
+`get_session_brief(role="totebox", archive="project-design")` replaces manually reading
 inbox.md, outbox.md, NOTAM.md, session-context.md. Call it first.
 
 | Tool | When to use |
@@ -70,8 +74,10 @@ inbox.md, outbox.md, NOTAM.md, session-context.md. Call it first.
 | `query_datagraph` | Entity lookup before answering about people/projects |
 | `ask_local` | OLMo 7B local inference — free, SYS-ADR-07-safe |
 
-## Artifact types — bright-line rules
+## Artifact types — project-design scope
 
-TOPIC = explains WHAT/WHY; public wiki; bilingual EN+ES.
-GUIDE = instructs HOW-NOW; woodfine-fleet-deployment/<name>/; English-only.
-CODE = runs our systems; no customer license; internal deploy only.
+DESIGN-COMPONENT = component guide (CSS+HTML recipe, not DTCG tokens).
+DESIGN-TOKEN-CHANGE = delta to dtcg-bundle.json; requires master_cosign if touching legal/semantic groups.
+DESIGN-RESEARCH = design system research; routes to pointsav-design-system/research/.
+DESIGN-BUNDLE = TOKEN + STYLESHEET + TEMPLATE bundle (ratified 2026-06-20); namespace: component.document.legal.*.
+ASSET = raw asset file (SVG, PNG, YAML palette).
