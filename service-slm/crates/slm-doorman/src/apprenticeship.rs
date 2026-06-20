@@ -555,6 +555,40 @@ Rules:\n\
 - self_confidence: your certainty (0.0 = none, 1.0 = certain).\n\
 - The diff MUST be a valid unified diff (--- a/ +++ b/ @@ lines).";
 
+/// Render a response in the exact canonical envelope the apprentice emits at
+/// inference (frontmatter + `## Reasoning` + fenced `## Diff`). Used by the
+/// verdict path to store DPO `chosen`/`rejected` sides in the SAME output space
+/// the model is trained to produce, so preference optimisation compares
+/// like-for-like rather than rewarding a raw `diff --git` blob the model is
+/// instructed never to emit (2026-06-19 Opus audit, DPO-format finding).
+/// Mirrors the envelope built by `scripts/export-sft.py` — keep in sync.
+pub fn render_canonical_response(
+    self_confidence: f32,
+    escalate: bool,
+    reasoning: &str,
+    diff: &str,
+) -> String {
+    let reasoning = if reasoning.trim().is_empty() {
+        "(no reasoning captured)"
+    } else {
+        reasoning.trim()
+    };
+    format!(
+        "---\n\
+         self_confidence: {self_confidence:.2}\n\
+         escalate: {escalate}\n\
+         ---\n\
+         \n\
+         ## Reasoning\n\
+         {reasoning}\n\
+         \n\
+         ## Diff\n\
+         ```diff\n\
+         {diff}\n\
+         ```\n",
+    )
+}
+
 /// Build the apprentice user-prompt body from a brief.
 pub fn apprentice_prompt(cfg: &ApprenticeshipConfig, brief: &ApprenticeshipBrief) -> String {
     let resolved = resolve_citations(&cfg.citations_path, &brief.doctrine_citations);

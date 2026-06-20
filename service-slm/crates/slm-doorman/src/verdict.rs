@@ -356,13 +356,25 @@ impl VerdictDispatcher {
         // DPO pair on refine / reject. We need the attempt diff for this;
         // prefer the BriefCache (in-flight); fall back to the on-disk corpus
         // tuple (post-restart recovery path).
-        let attempt_diff = self
-            .cache
-            .get(&parsed.brief_id, &attempt_id)
-            .map(|c| c.attempt.diff.clone())
-            .unwrap_or_else(|| {
-                read_attempt_diff_from_corpus(&self.corpus_root, &task_type, &parsed.brief_id)
-            });
+        // Recover the apprentice's attempt — the diff plus the metadata needed
+        // to render its DPO side in the canonical envelope (self_confidence,
+        // escalate, reasoning). Cache is the in-flight path; the on-disk corpus
+        // tuple is the post-restart fallback (metadata defaults there).
+        let (attempt_diff, attempt_confidence, attempt_escalate, attempt_reasoning) =
+            match self.cache.get(&parsed.brief_id, &attempt_id) {
+                Some(c) => (
+                    c.attempt.diff.clone(),
+                    c.attempt.self_confidence,
+                    c.attempt.escalate,
+                    c.attempt.reasoning.clone(),
+                ),
+                None => (
+                    read_attempt_diff_from_corpus(&self.corpus_root, &task_type, &parsed.brief_id),
+                    0.5,
+                    false,
+                    String::new(),
+                ),
+            };
 
         let dpo_pair_path = if parsed.verdict.produces_dpo_pair() {
             Some(write_dpo_pair(
@@ -374,6 +386,9 @@ impl VerdictDispatcher {
                 &parsed.brief_id,
                 &attempt_id,
                 &tier_used_str,
+                attempt_confidence,
+                attempt_escalate,
+                &attempt_reasoning,
             )?)
         } else {
             None
@@ -564,13 +579,38 @@ fn write_dpo_pair(
     brief_id: &str,
     attempt_id: &str,
     tier_used: &str,
+    attempt_confidence: f32,
+    attempt_escalate: bool,
+    attempt_reasoning: &str,
 ) -> Result<PathBuf> {
     let chosen_s = sanitize(chosen_diff);
     let rejected_s = sanitize(rejected_diff);
 
-    // Quality gate: template-echo, min-length, length-ratio, max-length, DoNotUse.
+    // Quality gate runs on the RAW diffs — template-echo, example-echo, min-length
+    // (both sides), length-ratio, max-length, DoNotUse all need the bare content.
     // Returns CorpusGateRejected on failure — same error type as shadow tuple gate.
     crate::corpus_gate::check_dpo_pair(&rejected_s, &chosen_s)?;
+
+    // Store both sides in the canonical envelope the apprentice emits at
+    // inference (frontmatter + reasoning + fenced diff). Without this, `chosen`
+    // is a raw `diff --git` blob the model is instructed never to emit and
+    // `rejected` is a stripped hunk — DPO then rewards surface form, not quality
+    // (2026-06-19 Opus audit, DPO-format finding). The senior's reasoning is the
+    // verdict note; the apprentice's confidence/escalate/reasoning come from its
+    // recovered attempt.
+    let chosen_reasoning = if doctrine_violation_tag.trim().is_empty() {
+        "Senior-approved correction."
+    } else {
+        doctrine_violation_tag
+    };
+    let chosen_full =
+        crate::apprenticeship::render_canonical_response(0.95, false, chosen_reasoning, &chosen_s);
+    let rejected_full = crate::apprenticeship::render_canonical_response(
+        attempt_confidence,
+        attempt_escalate,
+        attempt_reasoning,
+        &rejected_s,
+    );
 
     let prompt = read_brief_prompt_from_corpus(corpus_root, task_type, brief_id);
     let dir = corpus_root
@@ -587,15 +627,17 @@ fn write_dpo_pair(
         Uuid::now_v7().simple()
     );
     let path = dir.join(&filename);
-    // Capture lengths before moving chosen_s/rejected_s into the JSON macro.
-    let chosen_len = chosen_s.len();
-    let rejected_len = rejected_s.len();
+    // Lengths/ratio are diagnostics on the STORED (enveloped) sides — what TRL
+    // actually trains on. The gate's ratio check already ran on the raw diffs.
+    let chosen_len = chosen_full.len();
+    let rejected_len = rejected_full.len();
     let length_ratio = if rejected_len == 0 {
         f64::INFINITY
     } else {
         chosen_len as f64 / rejected_len as f64
     };
     // TRL DPOTrainer format: prompt + chosen (preferred) + rejected (dispreferred).
+    // Both sides are in the canonical-envelope-v1 format (see render_canonical_response).
     // chosen_len / rejected_len / length_ratio are diagnostic fields — not used by
     // TRL but checked by run-dpo-training.py and audit tooling.
     let record = serde_json::json!({
@@ -604,9 +646,10 @@ fn write_dpo_pair(
         "brief_id": brief_id,
         "attempt_id": attempt_id,
         "tier_used": tier_used,
+        "format": "canonical-envelope-v1",
         "prompt": sanitize(&prompt),
-        "chosen": chosen_s,
-        "rejected": rejected_s,
+        "chosen": chosen_full,
+        "rejected": rejected_full,
         "chosen_len": chosen_len,
         "rejected_len": rejected_len,
         "length_ratio": (length_ratio * 100.0).round() / 100.0,
@@ -884,9 +927,13 @@ mod tests {
              notes: LGTM\n\
              ---\n\
              \n\
-             # Verdict\n\
-             \n\
-             LGTM.\n"
+             diff --git a/Cargo.toml b/Cargo.toml\n\
+             --- a/Cargo.toml\n\
+             +++ b/Cargo.toml\n\
+             @@ -1,3 +1,3 @@\n\
+             [package]\n\
+             -version = \"0.0.1\"\n\
+             +version = \"0.1.0\"\n"
         )
     }
 

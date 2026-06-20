@@ -72,6 +72,16 @@ const TEMPLATE_ECHO_PREFIXES: &[&str] = &[
 /// `<unified diff:` (with colon) is caught earlier as a TEMPLATE_ECHO_PREFIX.
 const REAL_DIFF_MARKERS: &[&str] = &["diff --git", "--- a/", "+++ b/", "@@ "];
 
+/// Verbatim tokens from the `APPRENTICE_SYSTEM_PROMPT` diff example. When a
+/// rejected side contains two or more of these, OLMo copied the example rather
+/// than producing a real diff — a stub that nonetheless carries `--- a/`/`@@`
+/// markers and so slips past `REAL_DIFF_MARKERS`. Two-marker co-occurrence
+/// keeps the false-positive rate near zero (a real diff touching a file
+/// literally named `path/to/file` AND containing the lines `old line`/`new
+/// line` is effectively impossible). Mirrors run-dpo-training.py.
+const SYSTEM_PROMPT_EXAMPLE_MARKERS: &[&str] =
+    &["path/to/file", "-old line", "+new line", " context line"];
+
 /// Forward-looking-information qualifiers per BCSC posture
 /// (`conventions/bcsc-disclosure-posture.md`). When "Sovereign Data
 /// Foundation" appears without one of these markers in the same sentence,
@@ -151,9 +161,18 @@ pub enum CorpusGateReject {
     /// Rejected side is shorter than MIN_REJECTED_CHARS — likely a template
     /// stub or empty attempt; would teach the model "longer = better".
     RejectedTooShort { len: usize, min: usize },
+    /// Chosen side is shorter than MIN_REJECTED_CHARS — an empty/near-empty
+    /// chosen produces an INVERTED preference (the model learns to prefer no
+    /// output). Symmetric guard to RejectedTooShort (2026-06-19 audit).
+    ChosenTooShort { len: usize, min: usize },
     /// Rejected side contains a template-echo prefix indicating the attempt
     /// was never executed (e.g. the field contains a placeholder string).
     TemplateEchoRejected { prefix: String },
+    /// Rejected side echoes the verbatim system-prompt diff EXAMPLE
+    /// (`path/to/file` + `old line`/`new line` ...) rather than a real diff —
+    /// the post-0506d359 failure mode that passes every other gate as a
+    /// "real diff" because it contains `--- a/` / `@@` markers (2026-06-19 audit).
+    SystemPromptExampleEcho { markers: usize },
     /// Chosen is more than MAX_LENGTH_RATIO × longer than rejected — DPO
     /// cannot distinguish quality from token count at this ratio.
     LengthRatioTooExtreme { chosen_len: usize, rejected_len: usize, ratio: f64, max: f64 },
@@ -189,8 +208,14 @@ impl From<CorpusGateReject> for DoormanError {
             CorpusGateReject::RejectedTooShort { len, min } => format!(
                 "rejected side too short ({len} chars < {min} min); template stub would teach length-discrimination"
             ),
+            CorpusGateReject::ChosenTooShort { len, min } => format!(
+                "chosen side too short ({len} chars < {min} min); empty/near-empty chosen creates an inverted preference"
+            ),
             CorpusGateReject::TemplateEchoRejected { prefix } => format!(
                 "rejected side is a template placeholder (starts with '{prefix}'); no real OLMo attempt captured"
+            ),
+            CorpusGateReject::SystemPromptExampleEcho { markers } => format!(
+                "rejected side echoes the system-prompt diff example ({markers} marker tokens); not a real attempt"
             ),
             CorpusGateReject::LengthRatioTooExtreme { chosen_len, rejected_len, ratio, max } => format!(
                 "DPO length ratio {ratio:.1}× exceeds {max:.1}× max (chosen={chosen_len} chars, rejected={rejected_len} chars); would teach token-count not quality"
@@ -425,10 +450,35 @@ pub fn check_dpo_pair(rejected: &str, chosen: &str) -> Result<CorpusGateOutcome>
         .into());
     }
 
+    // 1b. System-prompt example echo: the rejected side copied the verbatim
+    // diff example from APPRENTICE_SYSTEM_PROMPT. Caught by ≥2 marker
+    // co-occurrence (a single marker could appear in a legitimate diff).
+    let example_markers = SYSTEM_PROMPT_EXAMPLE_MARKERS
+        .iter()
+        .filter(|m| rejected.contains(*m))
+        .count();
+    if example_markers >= 2 {
+        return Err(CorpusGateReject::SystemPromptExampleEcho {
+            markers: example_markers,
+        }
+        .into());
+    }
+
     // 2. Minimum length on rejected side.
     if rejected.len() < MIN_REJECTED_CHARS {
         return Err(CorpusGateReject::RejectedTooShort {
             len: rejected.len(),
+            min: MIN_REJECTED_CHARS,
+        }
+        .into());
+    }
+
+    // 2b. Minimum length on CHOSEN side — symmetric guard. An empty or
+    // near-empty chosen with a real rejected diff is an inverted pair that
+    // teaches the model to prefer producing nothing.
+    if chosen.len() < MIN_REJECTED_CHARS {
+        return Err(CorpusGateReject::ChosenTooShort {
+            len: chosen.len(),
             min: MIN_REJECTED_CHARS,
         }
         .into());
@@ -746,6 +796,31 @@ mod tests {
         assert!(
             matches!(err, DoormanError::CorpusGateRejected { reason } if reason.contains("template placeholder")),
             "placeholder with embedded real markers must be rejected by template-echo check"
+        );
+    }
+
+    #[test]
+    fn dpo_pair_rejects_short_chosen() {
+        // A real rejected diff but an empty/near-empty chosen — an inverted pair
+        // that teaches the model to prefer producing nothing.
+        let rejected = "A rejected attempt of sufficient length to clear the minimum-character floor on the rejected side.";
+        let err = check_dpo_pair(rejected, "ok").unwrap_err();
+        assert!(
+            matches!(err, DoormanError::CorpusGateRejected { reason } if reason.contains("chosen side too short")),
+            "near-empty chosen must be rejected; got {err:?}"
+        );
+    }
+
+    #[test]
+    fn dpo_pair_rejects_system_prompt_example_echo() {
+        // OLMo copied the verbatim system-prompt diff example. It carries
+        // "--- a/" and "@@ " so REAL_DIFF_MARKERS would pass it — the
+        // ≥2-marker co-occurrence check must catch it first.
+        let echo = "--- a/path/to/file\n+++ b/path/to/file\n@@ -1,3 +1,3 @@\n context line\n-old line\n+new line\n";
+        let err = check_dpo_pair(echo, decent_chosen()).unwrap_err();
+        assert!(
+            matches!(err, DoormanError::CorpusGateRejected { reason } if reason.contains("system-prompt diff example")),
+            "verbatim system-prompt example echo must be rejected; got {err:?}"
         );
     }
 }
