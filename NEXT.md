@@ -110,16 +110,26 @@ v0.3.0 plan at `/home/jennifer/.claude/plans/no-make-a-plan-abundant-forest.md`.
 - [ ] Binary rebuild + deploy + sudo systemctl restart local-design.service
 - [ ] Smoke test: composite token groups visible in token browser
 
-### Phase 6 (Totebox — after Phase 5 Command)
+### Phase 6 (Totebox — complete 2026-06-20)
 
-- [ ] src/schema/mod.rs — add SchemaType::Marketing enum + detect arm + render arm + pub mod marketing
-- [ ] src/schema/marketing.rs — new file (sections: hero, feature-grid, cta, pricing, logo-wall)
-- [ ] src/templates/marketing.html — new minijinja template
-- [ ] src/schema/bundle.rs — replace stub with full implementation (DESIGN-BUNDLE ratified 2026-06-20)
-- [ ] src/routes/mod.rs — bundle download route
-- [ ] src/templates/bundle.html — new minijinja template
-- [ ] Cargo.toml: zip = "2"; version → 0.3.0
-- [ ] cargo fmt + clippy -D warnings + cargo test (all clean before Stage 6)
+- [x] src/schema/mod.rs — SchemaType::Marketing + detect/render dispatch (commit 5cbf6ced)
+- [x] src/schema/marketing.rs — new: :::block-type parser, hero/feature-grid/cta/pricing/logo-wall (commit 5cbf6ced)
+- [x] src/schema/bundle.rs — full implementation: identity header, member list, metadata dl (commit 5cbf6ced)
+- [x] src/routes/browse.rs — bundle_download handler: in-memory ZIP via zip v2.4.2 (commit 5cbf6ced)
+- [x] src/routes/mod.rs — /elements/:slug/download route (commit 5cbf6ced)
+- [x] Cargo.toml: zip = "2.4.2"; version → 0.3.0 (commit 5cbf6ced)
+- [x] cargo fmt ✓ + clippy -D warnings ✓ + cargo test ✓
+- Note: marketing.html + bundle.html templates not needed — renderers produce HTML strings directly (pattern: component.rs, research.rs)
+
+### Phase 7 (Command — Stage 6 + final deploy)
+
+- [ ] Pick up Stage 6 outbox: project-design-20260620-stage6-v030-code
+- [ ] promote.sh from clones/project-design (or direct sub-clone push if dirty tree blocks)
+- [ ] cargo build --release -p app-privategit-design (must build with zip v2 dep)
+- [ ] bin/deploy-binary.sh app-privategit-design + sudo systemctl restart local-design.service
+- [ ] Smoke tests: /healthz ok; MARKETING + BUNDLE elements render correctly; /elements/:slug/download returns ZIP
+- [ ] CHANGELOG.md v0.3.0 entry
+- [ ] binary-ledger sha256 verify
 
 ---
 
