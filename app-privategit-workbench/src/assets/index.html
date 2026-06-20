@@ -536,16 +536,10 @@ function loadTabIntoEditor(t) {
     return;
   }
   PDF_PANE.style.display = 'none';
-  if (urlPath.endsWith('.html')) {
-    EDITOR.style.display = 'none';
-    VIEWER.style.display = 'flex';
-    VIEWER_FRAME.srcdoc = t.content;
-  } else {
-    EDITOR.style.display = '';
-    VIEWER.style.display = 'none';
-    EDITOR.value = t.content;
-    EDITOR.scrollTop = t.scrollTop || 0;
-  }
+  VIEWER.style.display = 'none';
+  EDITOR.style.display = '';
+  EDITOR.value = t.content;
+  EDITOR.scrollTop = t.scrollTop || 0;
   updateLnInput();
   updatePreview(urlPath, t.content);
   localStorage.setItem('wb-tab', urlPath);
@@ -658,6 +652,7 @@ async function reloadFile() {
   await openFilePath(t.path);
 }
 
+let previewTimer = null;
 EDITOR.addEventListener('input', () => {
   const t = tabs[activeTabIdx];
   if (!t) return;
@@ -666,6 +661,11 @@ EDITOR.addEventListener('input', () => {
   renderTabBar();
   updateToolbarButtons(t.path, t.writable);
   autoSaveSchedule();
+  // Debounced live preview update for HTML files
+  if (t.path.endsWith('.html')) {
+    clearTimeout(previewTimer);
+    previewTimer = setTimeout(() => updatePreview(t.path, t.content), 600);
+  }
 });
 
 let sectionTimer = null;
@@ -791,9 +791,7 @@ function downloadFile() {
   const t = tabs[activeTabIdx];
   if (!t) return;
   const a = document.createElement('a');
-  a.href = t.isPdf
-    ? `/raw?path=${encodeURIComponent(t.path)}`
-    : `/file?path=${encodeURIComponent(t.path)}`;
+  a.href = `/raw?path=${encodeURIComponent(t.path)}`;
   a.download = t.name;
   a.click();
 }
@@ -1269,8 +1267,8 @@ function updatePreview(urlPath, content) {
     PV_CONTENT.innerHTML = `<pre style="white-space:pre-wrap;word-break:break-word">${esc(content)}</pre>`;
     PV_TOOLBAR.textContent = 'Markdown';
   } else if (urlPath.endsWith('.html')) {
-    PV_CONTENT.innerHTML = `<pre style="white-space:pre-wrap;word-break:break-word;font:12px/1.5 'Fira Code',monospace">${esc(content.slice(0, 8000))}</pre>`;
-    PV_TOOLBAR.textContent = 'HTML Source';
+    PV_CONTENT.innerHTML = `<iframe srcdoc="${esc(content)}" style="width:100%;height:100%;border:none" sandbox="allow-scripts allow-same-origin"></iframe>`;
+    PV_TOOLBAR.textContent = 'Preview';
   } else if (urlPath.endsWith('.json') || urlPath.endsWith('.geojson')) {
     PV_CONTENT.innerHTML = `<pre>${esc(content.slice(0, 8000))}</pre>`;
     PV_TOOLBAR.textContent = 'JSON';

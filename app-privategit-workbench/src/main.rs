@@ -1672,12 +1672,18 @@ async fn get_raw(State(state): State<AppState>, Query(q): Query<FileQuery>) -> R
         .unwrap_or("")
         .to_lowercase();
     let content_type = match ext.as_str() {
-        "pdf" => "application/pdf",
-        "png" => "image/png",
+        "pdf"  => "application/pdf",
+        "png"  => "image/png",
         "jpg" | "jpeg" => "image/jpeg",
-        "gif" => "image/gif",
-        "svg" => "image/svg+xml",
+        "gif"  => "image/gif",
+        "svg"  => "image/svg+xml",
         "webp" => "image/webp",
+        "html" => "text/html; charset=utf-8",
+        "md"   => "text/markdown; charset=utf-8",
+        "json" | "geojson" => "application/json",
+        "js"   => "text/javascript; charset=utf-8",
+        "css"  => "text/css; charset=utf-8",
+        "rs" | "toml" | "yaml" | "yml" | "txt" | "sh" | "tjp" | "ifc" => "text/plain; charset=utf-8",
         _ => "application/octet-stream",
     };
     let bytes = match tokio::fs::read(&fs_path).await {
