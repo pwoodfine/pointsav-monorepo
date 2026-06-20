@@ -52,11 +52,11 @@ Country names: when a country appears as an entity, classify it as Location, NEV
 Hard constraint: entity_name must be a short proper noun or proper-noun phrase. Maximum eight words.\n\
 A token that looks like a proper noun is not automatically an entity. If it is a licence, a format, a generic descriptor, or a code identifier, omit it rather than forcing it into Company or Location.\n\
 If an entity does not clearly fit one category, omit it rather than guessing.\n\
-Return only a JSON array. Each element must have exactly two fields: \"classification\" and \"entity_name\".\n\
+Return only a JSON array. Each element MUST have \"classification\" and \"entity_name\". You MAY add \"role_vector\" (a person's stated title or role), \"location_vector\" (a stated place of work or residence), or \"contact_vector\" (a stated email or phone) — but ONLY when the text explicitly states that attribute for that entity. Omit the field otherwise. NEVER invent a vector value; an absent attribute is omitted, not guessed.\n\
 \n\
 Examples:\n\
 Text: Jennifer Woodfine is managing director at Woodfine Management Corp. in Vancouver, Canada.\n\
-Output: [{\"classification\":\"Person\",\"entity_name\":\"Jennifer Woodfine\"},{\"classification\":\"Company\",\"entity_name\":\"Woodfine Management Corp.\"},{\"classification\":\"Location\",\"entity_name\":\"Vancouver\"}]\n\
+Output: [{\"classification\":\"Person\",\"entity_name\":\"Jennifer Woodfine\",\"role_vector\":\"managing director\"},{\"classification\":\"Company\",\"entity_name\":\"Woodfine Management Corp.\"},{\"classification\":\"Location\",\"entity_name\":\"Vancouver\"}]\n\
 \n\
 Text: The cluster contains service-fs, not service-research. Let me explore the actual structure.\n\
 Output: [{\"classification\":\"Project\",\"entity_name\":\"service-fs\"}]\n\
