@@ -156,13 +156,13 @@ v0.3.0 plan at `/home/jennifer/.claude/plans/no-make-a-plan-abundant-forest.md`.
 > **Scope: this archive only.** Cross-repo and workspace-level items live at `~/Foundry/NEXT.md`.
 > Hot open items. ≤200 lines. Backlog at `.agent/next-backlog.md`.
 
-Last updated: 2026-06-20
+Last updated: 2026-06-20 (Phase B complete)
 
 ---
 
 ## Active (Totebox scope)
 
-- [ ] **Stage 6 pending** — Command: media-knowledge-projects (7fa466b + trademark commit 3e3579b), media-knowledge-corporate (ac6379f), media-knowledge-documentation (f1451e9) — also new TOPIC intake commits from this session [2026-06-20 totebox@claude-code]
+- [ ] **Stage 6 pending** — Command: media-knowledge-projects (7fa466b + trademark commit 3e3579b), media-knowledge-corporate (ac6379f), media-knowledge-documentation (f1451e9 + a971310 Phase B TOPIC intake) [2026-06-20 totebox@claude-code]
 - [ ] **F2/F3 dead links** — check --strict gate blocked; dead wikilinks in project-editorial [carried]
 
 ## Blocked — Command Session (route via outbox)
