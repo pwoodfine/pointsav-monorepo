@@ -441,8 +441,29 @@ async fn shadow(
     //
     // See `queue::ShadowQueueEntry` and `queue::enqueue_shadow()` added in
     // this iter.
+    // Auto-populate acceptance_test from diff headers if the caller left it
+    // empty. Empty acceptance_test means OLMo has no self-evaluation criteria,
+    // driving the ~21% empty-attempt rate in shadow tuples.
+    let enriched_brief = if wire.brief.acceptance_test.is_empty() && !wire.actual_diff.is_empty() {
+        let changed: Vec<&str> = wire.actual_diff.lines()
+            .filter(|l| l.starts_with("diff --git"))
+            .filter_map(|l| l.split(" b/").nth(1))
+            .collect();
+        if !changed.is_empty() {
+            let mut b = wire.brief.clone();
+            b.acceptance_test = format!(
+                "Diff must cover all hunks for: {}. Include diff --git, --- a/, +++ b/ headers.",
+                changed.join(", ")
+            );
+            b
+        } else {
+            wire.brief.clone()
+        }
+    } else {
+        wire.brief.clone()
+    };
     let shadow_entry = crate::queue::ShadowQueueEntry {
-        brief: wire.brief.clone(),
+        brief: enriched_brief,
         actual_diff: wire.actual_diff.clone(),
     };
     let entry =

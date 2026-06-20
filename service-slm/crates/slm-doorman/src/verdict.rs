@@ -237,16 +237,18 @@ impl VerdictDispatcher {
         // The cache key is (brief_id, attempt_id). We don't know
         // attempt_id until we've parsed the verdict frontmatter above,
         // so we check cache here after parsing.
-        let (task_type, self_confidence, attempt_id) =
+        let (task_type, self_confidence, attempt_id, tier_used_str) =
             match self.cache.get(&parsed.brief_id, &parsed.attempt_id) {
                 Some(cached) => {
                     // Happy path: cache hit. Proceed directly.
                     let task_type = cached.brief.task_type.clone();
                     let self_confidence = cached.attempt.self_confidence;
+                    let tier_str = cached.attempt.tier.as_str().to_string();
                     (
                         task_type,
                         self_confidence,
                         cached.attempt.attempt_id.clone(),
+                        tier_str,
                     )
                 }
                 None => {
@@ -262,13 +264,14 @@ impl VerdictDispatcher {
                     match found {
                         Some((task_type, sc, att_id)) => {
                             // Tuple found on disk; can promote it.
+                            // Tier not recoverable from disk tuple — record unknown.
                             info!(
                                 target: "slm_doorman::verdict",
                                 brief_id = %parsed.brief_id,
                                 task_type = %task_type,
                                 "BriefCache miss — recovering from corpus tuple on disk"
                             );
-                            (task_type, sc, att_id)
+                            (task_type, sc, att_id, "unknown".to_string())
                         }
                         None => {
                             // Neither cache nor disk has the tuple.
@@ -370,6 +373,7 @@ impl VerdictDispatcher {
                 parsed.notes.as_deref().unwrap_or(""),
                 &parsed.brief_id,
                 &attempt_id,
+                &tier_used_str,
             )?)
         } else {
             None
@@ -558,6 +562,7 @@ fn write_dpo_pair(
     doctrine_violation_tag: &str,
     brief_id: &str,
     attempt_id: &str,
+    tier_used: &str,
 ) -> Result<PathBuf> {
     let chosen_s = sanitize(chosen_diff);
     let rejected_s = sanitize(rejected_diff);
@@ -597,6 +602,7 @@ fn write_dpo_pair(
         "task_type": task_type,
         "brief_id": brief_id,
         "attempt_id": attempt_id,
+        "tier_used": tier_used,
         "prompt": sanitize(&prompt),
         "chosen": chosen_s,
         "rejected": rejected_s,
