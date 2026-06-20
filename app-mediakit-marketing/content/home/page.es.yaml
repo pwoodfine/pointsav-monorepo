@@ -1,0 +1,119 @@
+title: Inicio
+slug: home
+description: Una empresa de desarrollo inmobiliario con 40 años de experiencia en la adquisición, desarrollo y gestión de inmuebles.
+lang: es
+sections:
+  - type: hero
+    headline: Una empresa de desarrollo inmobiliario con 40 años de experiencia
+    subhead: >-
+      La empresa patrocina soluciones de tenencia directa que mantienen cuatro
+      Clases de Desarrollo de propiedades con certificación ambiental ubicadas
+      en o cerca de Centros Comerciales de Poder en mercados seleccionados de
+      América del Norte y Europa.
+
+  - type: card-grid
+    columns: 4
+    cards:
+      - title: Alineación de Intereses
+        body: >-
+          Nuestra estructura de comisiones única alinea directamente los
+          intereses de los inversores y la dirección. La participación de
+          Woodfine en cada una de nuestras soluciones de tenencia directa se
+          mantiene exclusivamente a través de la titularidad de las unidades.
+      - title: Libre Transferibilidad
+        body: >-
+          Dado que nuestras soluciones de tenencia directa están reguladas como
+          sociedades públicas, sus unidades son libremente transferibles y pueden
+          comprarse y venderse en cualquier momento sin el consentimiento de
+          Woodfine ni de otros titulares de unidades.
+      - title: Bajas Comisiones
+        body: >-
+          Nuestros socios pagan una única Tarifa de Asesoría — un cargo único
+          que cubre todos los aspectos del negocio inmobiliario. Se calcula
+          sobre el valor bruto financiado, no sobre el Valor Liquidativo (NAV),
+          lo que mantiene el interés del gestor plenamente alineado con el del
+          socio.
+      - title: Anti-Dilución
+        body: >-
+          Nuestras soluciones de tenencia directa son de capital fijo con un
+          valor bruto financiado determinado, una característica que impulsa el
+          rendimiento creciente con el tiempo, tras un período inicial. Los
+          incrementos en el capital máximo suscrito no están permitidos en
+          virtud de los estatutos universales que rigen la sociedad.
+      - title: Volatilidad Reducida
+        body: >-
+          El Valor Liquidativo (NAV) de cada solución de tenencia directa no
+          está correlacionado con el mercado bursátil. Los Valores Liquidativos
+          se publican trimestralmente y son determinados por tasadores
+          inmobiliarios independientes.
+      - title: Sin Deuda Bancaria
+        body: >-
+          Como emisores que presentan informes, nuestras soluciones de tenencia
+          directa pueden emitir sus propios Títulos de Hipoteca Garantizada
+          Preferente para financiar nuevas construcciones, en lugar de recurrir
+          a deuda bancaria de terceros sobre las propiedades.
+      - title: Inversiones Calificadas
+        body: >-
+          Los terrenos y edificios candidatos deben cumplir parámetros
+          específicos antes de que cualquier proyecto pueda ser aprobado por un
+          consejo de administración independiente.
+      - title: Sistemas Digitales
+        href: https://home.pointsav.com
+        body: >-
+          Woodfine colabora con PointSav Digital Systems para proporcionar la
+          infraestructura digital que sustenta cada proyecto — tokenización BIM,
+          inteligencia de localización y sistemas operativos integrados a lo
+          largo del ciclo de vida de la solución de tenencia directa.
+
+  - type: card-grid
+    columns: 3
+    cards:
+      - title: Manifiesto
+        href: https://github.com/woodfine/woodfine-fleet-deployment
+      - title: Biblioteca BIM
+        href: https://bim.woodfinegroup.com/
+      - title: Inteligencia de Localización
+        href: https://gis.woodfinegroup.com/
+
+  - type: prose
+    body: |
+      **Oferta de valores.** Los valores de las soluciones de tenencia directa
+      patrocinadas por Woodfine se ofrecen únicamente a inversores calificados
+      de conformidad con las exenciones de prospecto aplicables bajo el
+      Instrumento Nacional 45-106 — Exenciones de Prospecto. La información en
+      esta página se proporciona únicamente con fines informativos generales y
+      no constituye una oferta de venta ni una solicitud de oferta de compra de
+      ningún valor. Los inversores potenciales deben revisar el memorando de
+      oferta aplicable y consultar con sus propios asesores profesionales antes
+      de invertir.
+
+      1. La información en esta página describe la empresa y sus actividades a
+      alto nivel y está calificada en su totalidad por el memorando de oferta
+      aplicable y los estatutos universales que rigen la sociedad.
+
+      2. La inversión en soluciones de tenencia directa de inmuebles implica
+      riesgos significativos, incluida la posible pérdida de capital. El
+      rendimiento pasado no es indicativo de resultados futuros. Las referencias
+      a características estructurales como las comisiones de asesoría, la
+      transferibilidad y la metodología del valor liquidativo describen los
+      términos contractuales de las soluciones de tenencia directa y no
+      constituyen representaciones sobre resultados o rendimientos de la
+      inversión.
+
+      **Declaraciones prospectivas.** Las declaraciones que no son hechos
+      históricos pueden constituir información prospectiva en el sentido de las
+      leyes canadienses aplicables en materia de valores. Tales declaraciones
+      están sujetas a riesgos, incertidumbres y supuestos conocidos y
+      desconocidos, y los resultados reales pueden diferir materialmente.
+      Woodfine no asume ninguna obligación de actualizar dichas declaraciones
+      excepto cuando lo exija la ley.
+
+      **Registro.** Woodfine Capital Projects y sus filiales realizan
+      actividades registrables, donde sea requerido, bajo las categorías
+      relevantes prescritas por la Comisión de Valores de la Columbia Británica
+      y otros reguladores canadienses de valores. Los detalles específicos de
+      registro están disponibles a petición.
+
+      Woodfine Capital Projects, Woodfine Management Corp, PointSav Digital
+      Systems, Totebox Orchestration y Totebox Archive son marcas comerciales
+      propiedad de Woodfine Capital Projects Inc.

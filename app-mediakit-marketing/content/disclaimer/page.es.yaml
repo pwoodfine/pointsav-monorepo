@@ -1,0 +1,19 @@
+title: Aviso Legal
+slug: disclaimer
+description: Aviso legal de Woodfine Capital Projects.
+lang: es
+sections:
+  - type: hero
+    headline: Aviso Legal
+
+  - type: prose
+    body: |
+      ## Aviso Legal
+
+      El contenido de este sitio se proporciona únicamente con fines
+      informativos generales y no constituye una oferta, solicitud ni
+      recomendación en ninguna jurisdicción. Las declaraciones prospectivas
+      describen planes previstos y pueden cambiar. Nada de lo aquí contenido
+      debe interpretarse como asesoramiento financiero, legal o de inversión.
+
+      © 2026 Woodfine Capital Projects Inc. Todos los derechos reservados.

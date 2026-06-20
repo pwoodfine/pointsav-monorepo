@@ -1,0 +1,114 @@
+title: Inicio
+slug: home
+description: Una plataforma de gestión de datos totalmente transferible para la adquisición, desarrollo y gestión de inmuebles.
+lang: es
+sections:
+  - type: hero
+    headline: Una plataforma de gestión de datos totalmente transferible
+    subhead: >-
+      PointSav Digital Systems desarrolla software soberano para operadores
+      inmobiliarios independientes. Se ejecuta en hardware de su propiedad. Sin
+      tarifas por usuario. Sin dependencia del proveedor.
+
+  - type: card-grid
+    columns: 4
+    cards:
+      - title: Portabilidad
+        body: >-
+          Los datos operativos, los registros de inquilinos y la telemetría de
+          edificios son portátiles por diseño. Los formatos abiertos y las
+          exportaciones estándar permiten a los clientes migrar cargas de
+          trabajo, replicar entornos o transferirlos a un sucesor sin la
+          intervención de PointSav.
+      - title: Tarifas Predecibles
+        body: >-
+          Los socios pagan una única tarifa de plataforma calculada sobre los
+          activos bajo gestión, en lugar de licencias por usuario o por módulo.
+          La estructura de tarifas no escala con el crecimiento del uso, lo que
+          mantiene el costo marginal predecible a medida que las operaciones se
+          expanden.
+      - title: Hoja de Ruta Gobernada por Socios
+        body: >-
+          La hoja de ruta del producto es gobernada por un consejo cerrado de
+          socios operativos. Los nuevos módulos se incorporan dentro del
+          contrato de licencia existente; la funcionalidad se añade sin
+          necesidad de migrar a una nueva versión ni pagar tarifas de licencia
+          adicionales.
+      - title: Archivo ToteBox
+        body: >-
+          Cada documento, plano, contrato y flujo de sensores queda capturado
+          en ToteBox, un archivo con control de versiones y a prueba de
+          manipulaciones. Los registros se conservan durante toda la vida del
+          activo y son exportables a demanda en formatos abiertos.
+      - title: Motor GIS
+        body: >-
+          Un motor de información geográfica integrado vincula cada registro a
+          una parcela, edificio, planta y habitación. Las consultas espaciales,
+          el análisis de emplazamientos y las superposiciones a escala de
+          cartera se ejecutan de forma nativa sobre datos operativos en tiempo
+          real sin necesidad de una suscripción GIS independiente.
+      - title: Integraciones Abiertas
+        body: >-
+          PointSav utiliza formatos de archivo abiertos y protocolos estándar
+          — BACnet, MQTT, IFC, OAuth — con esquemas documentados. Las
+          integraciones reemplazan, en lugar de envolver, las soluciones
+          puntuales heredadas, y los socios conservan la plena propiedad de sus
+          datos y configuración.
+      - title: Gemelo Digital
+        body: >-
+          Las especificaciones, el sistema de diseño, las referencias de API y
+          los repositorios de código fuente se mantienen en un único repositorio
+          accesible a los socios operativos. Cada módulo se entrega con la
+          documentación que un equipo sucesor necesitaría para operar de forma
+          independiente.
+      - title: Infraestructura Inmobiliaria
+        href: https://home.woodfinegroup.com
+        body: >-
+          PointSav colabora con Woodfine Management Corp. para proporcionar la
+          infraestructura digital que sustenta cada solución de tenencia directa
+          patrocinada por Woodfine — tokenización BIM, inteligencia de
+          localización y sistemas operativos integrados a lo largo del ciclo de
+          vida del proyecto.
+
+  - type: card-grid
+    columns: 3
+    cards:
+      - title: Código Fuente
+        href: https://github.com/pointsav
+      - title: Documentación
+        href: https://documentation.pointsav.com/
+      - title: Software
+        href: https://software.pointsav.com/
+
+  - type: prose
+    body: |
+      **Propiedad intelectual.** El nombre PointSav, las marcas, el logotipo,
+      los nombres de producto (incluidos ToteBox, Motor GIS, Keys Console,
+      Command Centre, Workplace OS y Aplicaciones de Negocio), el software, el
+      código fuente, la documentación, el sistema de diseño y todos los
+      materiales relacionados son propiedad de PointSav, Inc. y su empresa
+      matriz, Woodfine Capital Projects Inc., salvo que se identifiquen
+      expresamente como código abierto.
+
+      **Componentes de código abierto.** Partes de la plataforma están
+      disponibles bajo licencias de código abierto permisivas identificadas en
+      el repositorio correspondiente. El uso de dichos componentes se rige por
+      sus respectivos términos de licencia.
+
+      **Marcas comerciales.** POINTSAV, el símbolo diamond de PointSav y los
+      nombres de producto referenciados en esta página son marcas comerciales o
+      marcas registradas de PointSav, Inc. en Canadá, los Estados Unidos, la
+      Unión Europea y otras jurisdicciones.
+
+      **Sin garantía; uso informativo.** La información en esta página se
+      proporciona únicamente con fines informativos generales y no constituye
+      una representación, garantía ni compromiso en relación con la
+      funcionalidad del producto, su disponibilidad, precio o hoja de ruta. Las
+      descripciones de productos describen capacidades previstas; la
+      disponibilidad real de funciones puede variar según la versión y el
+      acuerdo con el socio.
+
+      © 2011–2026 Woodfine Capital Projects Inc. Todos los derechos reservados.
+      Woodfine Capital Projects, Woodfine Management Corp., PointSav Digital
+      Systems, Totebox Orchestration y Totebox Archive son marcas comerciales
+      propiedad de Woodfine Capital Projects Inc.

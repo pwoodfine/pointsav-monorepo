@@ -46,28 +46,32 @@ async fn healthz() -> &'static str {
 }
 
 async fn home(State(state): State<Arc<AppState>>) -> impl IntoResponse {
-    render(&state, "home", "en")
+    render(&state, "home", "en", "/")
 }
 
 async fn page(State(state): State<Arc<AppState>>, Path(slug): Path<String>) -> impl IntoResponse {
-    render(&state, &slug, "en")
+    let path = format!("/page/{slug}");
+    render(&state, &slug, "en", &path)
 }
 
 async fn home_es(State(state): State<Arc<AppState>>) -> impl IntoResponse {
-    render(&state, "home", "es")
+    render(&state, "home", "es", "/es")
 }
 
 async fn page_es(
     State(state): State<Arc<AppState>>,
     Path(slug): Path<String>,
 ) -> impl IntoResponse {
-    render(&state, &slug, "es")
+    let path = format!("/es/page/{slug}");
+    render(&state, &slug, "es", &path)
 }
 
 /// Render a slug to a full HTML document (or an error response).
-fn render(state: &AppState, slug: &str, lang: &str) -> Response {
+fn render(state: &AppState, slug: &str, lang: &str, path: &str) -> Response {
     match content::load_page_lang(&state.content_dir, slug, lang) {
-        Ok(page) => Html(render_page(&state.brand, &page, &state.tokens_css)).into_response(),
+        Ok(page) => {
+            Html(render_page(&state.brand, &page, &state.tokens_css, path)).into_response()
+        }
         Err(LoadError::NotFound) => (StatusCode::NOT_FOUND, "Not found").into_response(),
         Err(LoadError::InvalidSlug) => (StatusCode::BAD_REQUEST, "Invalid path").into_response(),
         Err(LoadError::Invalid(e)) => {

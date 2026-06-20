@@ -1,0 +1,18 @@
+title: Contáctenos
+slug: contact
+description: Contacte a PointSav Digital Systems.
+lang: es
+sections:
+  - type: hero
+    headline: Contáctenos
+    subhead: Para consultas sobre productos y asociaciones de PointSav Digital Systems.
+
+  - type: prose
+    body: |
+      ## Póngase en contacto
+
+      PointSav Digital Systems opera desde Vancouver, Columbia Británica.
+
+      Correo electrónico: [open.source@pointsav.com](mailto:open.source@pointsav.com)
+
+      Código fuente: [github.com/pointsav](https://github.com/pointsav)
