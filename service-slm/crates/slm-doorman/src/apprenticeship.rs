@@ -185,13 +185,16 @@ impl<'a> ApprenticeshipDispatcher<'a> {
                     role: "user".into(),
                     content: prompt,
                 },
-                // Assistant pre-fill: force the model to start with the YAML fence.
-                // Without this, instruct models begin with prose reasoning and never
-                // write the frontmatter, causing parse_attempt_content to default
-                // escalate=true and blank the diff.
+                // Assistant pre-fill: force the model past the frontmatter opener
+                // and straight into the first required value. Prefilling through
+                // "self_confidence: " (rather than just "---\n") guarantees the
+                // model's first generated token is the confidence number and the
+                // frontmatter structure cannot drift — instruct models otherwise
+                // begin with prose reasoning, causing parse_attempt_content to
+                // default escalate=true and blank the diff.
                 ChatMessage {
                     role: "assistant".into(),
-                    content: "---\n".to_string(),
+                    content: "---\nself_confidence: ".to_string(),
                 },
             ],
             complexity: match tier_hint {
@@ -201,12 +204,13 @@ impl<'a> ApprenticeshipDispatcher<'a> {
             tier_hint: Some(tier_hint),
             stream: false,
             // Tier B (OLMo 3 32B-Think): 2048 tokens ≈ 228 s at 9 tok/s.
-            // Tier A (OLMo 2 7B Q4): raised from 512 → 1024.
-            // 512 was too tight: the 7B model used ~230 tokens for reasoning,
-            // leaving only 280 for the diff — not enough for non-trivial diffs.
+            // Tier A (OLMo 7B Q4): raised 512 → 1024 → 1536. The canonical
+            // envelope (frontmatter + one-line reasoning + fenced diff) plus a
+            // real multi-hunk diff routinely exceeds 1024 tokens; truncation
+            // there produced unterminated diffs that poisoned the corpus.
             max_tokens: Some(match tier_hint {
                 Tier::Yoyo => 2048,
-                _ => 1024,
+                _ => 1536,
             }),
             temperature: None,
             sanitised_outbound: true,
@@ -222,7 +226,7 @@ impl<'a> ApprenticeshipDispatcher<'a> {
             tools: None,
             // Stop at the natural end of the diff code block.
             stop_sequences: Some(vec![
-                "```\n\n".to_string(),
+                "\n```\n".to_string(),
                 "<|endoftext|>".to_string(),
                 "<|im_end|>".to_string(),
             ]),
@@ -243,7 +247,7 @@ impl<'a> ApprenticeshipDispatcher<'a> {
         let full_content = if resp.content.trim_start().starts_with("---") {
             resp.content.clone()
         } else {
-            format!("---\n{}", resp.content)
+            format!("---\nself_confidence: {}", resp.content)
         };
         let parsed = parse_attempt_content(&full_content);
         let attempt = build_attempt(brief, &resp, parsed);
@@ -319,7 +323,7 @@ impl<'a> ApprenticeshipDispatcher<'a> {
                 },
                 ChatMessage {
                     role: "assistant".into(),
-                    content: "---\n".to_string(),
+                    content: "---\nself_confidence: ".to_string(),
                 },
             ],
             complexity: match tier_hint {
@@ -330,7 +334,7 @@ impl<'a> ApprenticeshipDispatcher<'a> {
             stream: false,
             max_tokens: Some(match tier_hint {
                 Tier::Yoyo => 2048,
-                _ => 1024,
+                _ => 1536,
             }),
             temperature: None,
             sanitised_outbound: true,
@@ -345,7 +349,7 @@ impl<'a> ApprenticeshipDispatcher<'a> {
             graph_context_enabled: None,
             tools: None,
             stop_sequences: Some(vec![
-                "```\n\n".to_string(),
+                "\n```\n".to_string(),
                 "<|endoftext|>".to_string(),
                 "<|im_end|>".to_string(),
             ]),
@@ -364,7 +368,7 @@ impl<'a> ApprenticeshipDispatcher<'a> {
         let full_content = if resp.content.trim_start().starts_with("---") {
             resp.content.clone()
         } else {
-            format!("---\n{}", resp.content)
+            format!("---\nself_confidence: {}", resp.content)
         };
         let parsed = parse_attempt_content(&full_content);
         let attempt = build_attempt(brief, &resp, parsed);
@@ -819,6 +823,7 @@ mod tests {
             doctrine_version: "0.0.7".into(),
             tenant: "pointsav".into(),
             tier_a_first: false,
+            yoyo_dispatch_label: None,
         }
     }
 
@@ -1165,18 +1170,23 @@ ok
         let body: serde_json::Value =
             serde_json::from_slice(&reqs[0].body).expect("request body is JSON");
 
-        // Tier A caps generation at 1024 tokens (raised from 512 — 7B needs room for diff).
+        // Tier A caps generation at 1536 tokens (raised from 1024 — the canonical
+        // envelope frontmatter+reasoning+fenced diff needs headroom; 1024 truncated
+        // multi-hunk diffs mid-fence, poisoning the corpus with partial captures).
         assert_eq!(
             body["max_tokens"].as_u64(),
-            Some(1024),
-            "Tier A shadow request must cap max_tokens at 1024"
+            Some(1536),
+            "Tier A shadow request must cap max_tokens at 1536"
         );
         // Fix 2: stop sequences present, including the diff-fence terminator.
+        // The terminator is "\n```\n" (single trailing newline) — the prior
+        // "```\n\n" rarely matched (the format ends with a single newline after
+        // the fence), so generation ran to max_tokens instead of stopping cleanly.
         let stop = body["stop"]
             .as_array()
             .expect("stop must be a top-level array");
         assert!(
-            stop.iter().any(|s| s.as_str() == Some("```\n\n")),
+            stop.iter().any(|s| s.as_str() == Some("\n```\n")),
             "stop sequences must include the diff code-fence terminator; got {stop:?}"
         );
     }
