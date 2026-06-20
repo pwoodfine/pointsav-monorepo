@@ -63,6 +63,11 @@ pub struct ApprenticeshipConfig {
     /// The default-true guard prevents git-commit briefs from auto-escalating
     /// to Cloud Run and accruing GPU charges without operator intent.
     pub tier_a_first: bool,
+    /// When routing to the Yoyo tier, target this named node.
+    /// `None` uses the router default. The drain worker sets this to
+    /// `Some("trainer")` so queue items land on the L4 GPU node rather
+    /// than the default node (which may be a different VM class).
+    pub yoyo_dispatch_label: Option<String>,
 }
 
 impl ApprenticeshipConfig {
@@ -103,6 +108,7 @@ impl ApprenticeshipConfig {
             doctrine_version,
             tenant,
             tier_a_first,
+            yoyo_dispatch_label: None,
         }
     }
 }
@@ -205,7 +211,11 @@ impl<'a> ApprenticeshipDispatcher<'a> {
             temperature: None,
             sanitised_outbound: true,
             tier_c_label: None,
-            yoyo_label: None,
+            yoyo_label: if matches!(tier_hint, Tier::Yoyo) {
+                self.config.yoyo_dispatch_label.clone()
+            } else {
+                None
+            },
             grammar: None,
             speculation: None,
             graph_context_enabled: None,
@@ -325,7 +335,11 @@ impl<'a> ApprenticeshipDispatcher<'a> {
             temperature: None,
             sanitised_outbound: true,
             tier_c_label: None,
-            yoyo_label: None,
+            yoyo_label: if matches!(tier_hint, Tier::Yoyo) {
+                self.config.yoyo_dispatch_label.clone()
+            } else {
+                None
+            },
             grammar: None,
             speculation: None,
             graph_context_enabled: None,
