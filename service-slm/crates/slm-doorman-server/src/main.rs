@@ -279,14 +279,25 @@ async fn main() -> anyhow::Result<()> {
             .and_then(|s| s.parse().ok())
             .unwrap_or(16 * 1024);
 
-        // Clone only what the drain worker needs.
+        // Number of concurrent drain workers. The queue uses file-level locking
+        // (QueueLockFailed → 2s back-off) so N workers race safely — each grabs
+        // a different lease file. With Tier B GPU, 4 workers × 227s/item ≈ 18h
+        // to drain 1,128 items; 1 worker ≈ 71h. Default 1 for safe rollout;
+        // set SLM_DRAIN_CONCURRENCY=4 in systemd override once Tier B is stable.
+        let drain_concurrency: usize = std::env::var("SLM_DRAIN_CONCURRENCY")
+            .ok()
+            .and_then(|s| s.parse::<usize>().ok())
+            .unwrap_or(1)
+            .max(1);
+
+        for drain_worker_num in 0..drain_concurrency {
         let drain_cfg = queue_cfg.clone();
         let drain_doorman_arc = Arc::clone(&state);
 
         tokio::spawn(async move {
-            // Worker identifier — use the process PID so lease filenames are
-            // unique across Doorman restarts without any coordination.
-            let worker_id = format!("drain-{}", std::process::id());
+            // Worker identifier — PID + worker number makes lease filenames
+            // unique across Doorman restarts and concurrent workers.
+            let worker_id = format!("drain-{}-{}", std::process::id(), drain_worker_num);
             info!(
                 %worker_id,
                 drain_interval_secs,
@@ -569,7 +580,8 @@ async fn main() -> anyhow::Result<()> {
                     }
                 }
             }
-        });
+        }); // end tokio::spawn
+        } // end for drain_worker_num in 0..drain_concurrency
 
         // ── Reaper task ───────────────────────────────────────────────────
         let reap_interval = Duration::from_secs(60);
