@@ -12,6 +12,7 @@ members = [
     "service-fs",
     "system-security",
     "xtask",
+    "console-core",
     "app-console-keys",
     "app-console-system",
     "app-console-email",
