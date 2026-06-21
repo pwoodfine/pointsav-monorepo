@@ -135,7 +135,11 @@ impl GraphStore for LbugGraphStore {
         let mut count = 0usize;
 
         for entity in entities {
-            let id = format!("{}__{}", module_id, normalize_entity_key(&entity.entity_name));
+            let id = format!(
+                "{}__{}",
+                module_id,
+                normalize_entity_key(&entity.entity_name)
+            );
 
             conn.execute(
                 &mut stmt,

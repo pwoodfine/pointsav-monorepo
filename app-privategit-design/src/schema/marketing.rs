@@ -69,9 +69,7 @@ pub fn render(frontmatter: Option<&HashMap<String, String>>, body: &str) -> Stri
         .unwrap_or("pointsav");
 
     let mut out = String::new();
-    out.push_str(
-        "<div class=\"schema-badge schema-badge--marketing\">DESIGN-MARKETING</div>\n",
-    );
+    out.push_str("<div class=\"schema-badge schema-badge--marketing\">DESIGN-MARKETING</div>\n");
     out.push_str(&format!(
         "<div class=\"marketing-page\" data-theme=\"{}\" data-brand=\"{}\">\n",
         html_escape(theme),
