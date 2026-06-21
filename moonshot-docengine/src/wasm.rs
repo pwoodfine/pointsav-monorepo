@@ -1,5 +1,5 @@
-use wasm_bindgen::prelude::*;
 use crate::{Document, Edit, Span};
+use wasm_bindgen::prelude::*;
 
 /// WASM-exposed wrapper around [`Document`]. Owns the source and block index.
 #[wasm_bindgen]

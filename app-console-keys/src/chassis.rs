@@ -197,7 +197,11 @@ impl AppConsoleKeys {
                     self.pairing_state = PairingState::Error(e);
                 }
             }
-            PairingEvent::InitSuccess { code, request_id, fingerprint } => {
+            PairingEvent::InitSuccess {
+                code,
+                request_id,
+                fingerprint,
+            } => {
                 self.pairing_state = PairingState::AwaitingApproval {
                     code: code.clone(),
                     request_id: request_id.clone(),

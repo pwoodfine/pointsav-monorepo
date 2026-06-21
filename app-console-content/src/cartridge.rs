@@ -1,8 +1,8 @@
 use std::sync::mpsc;
 use std::thread;
 
-use app_console_keys::{Cartridge, CartridgeAction, FKey};
 use app_console_keys::session::SessionState;
+use app_console_keys::{Cartridge, CartridgeAction, FKey};
 use crossterm::event::{Event, KeyCode, KeyModifiers};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
@@ -1353,7 +1353,11 @@ impl ContentCartridge {
             }
             ContentState::DraftingNew { title, .. } => {
                 let t: String = title.chars().take(10).collect();
-                if t.is_empty() { "Draft".into() } else { t }
+                if t.is_empty() {
+                    "Draft".into()
+                } else {
+                    t
+                }
             }
             ContentState::Results { .. } => "Results".into(),
             ContentState::PdfView { path, .. } => path
@@ -1502,7 +1506,13 @@ impl Cartridge for ContentCartridge {
         }
     }
 
-    fn set_graphics_caps(&mut self, kitty: bool, sixel: bool, font_size: (u16, u16), truecolor: bool) {
+    fn set_graphics_caps(
+        &mut self,
+        kitty: bool,
+        sixel: bool,
+        font_size: (u16, u16),
+        truecolor: bool,
+    ) {
         self.pdf_kitty = kitty;
         self.pdf_sixel = sixel;
         self.pdf_font_size = font_size;
@@ -1823,7 +1833,6 @@ impl Cartridge for ContentCartridge {
                 .and_then(|s| s.execute(Print(osc8)));
         }
     }
-
 }
 
 #[cfg(test)]

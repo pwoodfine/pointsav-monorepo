@@ -88,7 +88,9 @@ impl PeopleCartridge {
         let accent = tc_accent(self.truecolor);
         let status_text = self.status.clone();
 
-        let outer = Block::default().title(" F2 — People ").borders(Borders::ALL);
+        let outer = Block::default()
+            .title(" F2 — People ")
+            .borders(Borders::ALL);
         let inner = outer.inner(area);
         frame.render_widget(outer, area);
 
@@ -138,7 +140,12 @@ impl PeopleCartridge {
         frame.render_widget(Paragraph::new(hint), chunks[1]);
     }
 
-    fn render_detail_inner(frame: &mut Frame, area: Rect, person: Option<&Person>, truecolor: bool) {
+    fn render_detail_inner(
+        frame: &mut Frame,
+        area: Rect,
+        person: Option<&Person>,
+        truecolor: bool,
+    ) {
         let muted = tc_muted(truecolor);
         let accent = tc_accent(truecolor);
 

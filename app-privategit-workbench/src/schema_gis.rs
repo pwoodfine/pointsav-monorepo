@@ -37,10 +37,7 @@ pub async fn list_files(State(state): State<AppState>) -> Response {
 /// Counts the number of GeoJSON `Feature` objects by scanning raw bytes.
 /// Does not parse the full JSON (SYS-ADR-07 — no AI layer; but also no
 /// need to build a full DOM for a count).
-pub async fn feature_count(
-    State(state): State<AppState>,
-    Query(q): Query<GisQuery>,
-) -> Response {
+pub async fn feature_count(State(state): State<AppState>, Query(q): Query<GisQuery>) -> Response {
     let (fs_path, _) = match resolve_path(&state.roots, &q.path) {
         Ok(v) => v,
         Err(e) => return err(StatusCode::BAD_REQUEST, e.to_string()),

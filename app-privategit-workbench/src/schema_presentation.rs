@@ -57,7 +57,12 @@ pub async fn render(State(state): State<AppState>, Query(q): Query<PresentationQ
 
     let deck: Value = match serde_json::from_str(&content) {
         Ok(v) => v,
-        Err(e) => return err(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON parse error: {}", e)),
+        Err(e) => {
+            return err(
+                StatusCode::UNPROCESSABLE_ENTITY,
+                format!("JSON parse error: {}", e),
+            )
+        }
     };
 
     let title = deck["title"].as_str().unwrap_or("Presentation").to_string();

@@ -446,7 +446,13 @@ impl Cartridge for InputCartridge {
         "Input"
     }
 
-    fn set_graphics_caps(&mut self, _kitty: bool, _sixel: bool, _font_size: (u16, u16), truecolor: bool) {
+    fn set_graphics_caps(
+        &mut self,
+        _kitty: bool,
+        _sixel: bool,
+        _font_size: (u16, u16),
+        truecolor: bool,
+    ) {
         self.truecolor = truecolor;
     }
 

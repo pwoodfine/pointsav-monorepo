@@ -57,9 +57,19 @@ fn adr07_blocked(path: &Path) -> Option<String> {
     }
     if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
         match ext.to_lowercase().as_str() {
-            "json" => return Some("ADR-07: .json structured data is not eligible for AI editing".into()),
-            "geojson" => return Some("ADR-07: .geojson structured data is not eligible for AI editing".into()),
-            "schedule" => return Some("ADR-07: .schedule structured data is not eligible for AI editing".into()),
+            "json" => {
+                return Some("ADR-07: .json structured data is not eligible for AI editing".into())
+            }
+            "geojson" => {
+                return Some(
+                    "ADR-07: .geojson structured data is not eligible for AI editing".into(),
+                )
+            }
+            "schedule" => {
+                return Some(
+                    "ADR-07: .schedule structured data is not eligible for AI editing".into(),
+                )
+            }
             _ => {}
         }
     }
@@ -121,19 +131,18 @@ fn rpc_err(id: &Value, code: i64, message: &str) -> Value {
 // Tool: read_selection
 // ---------------------------------------------------------------------------
 
-fn tool_read_selection(
-    state: &AppState,
-    args: &Value,
-) -> Result<Value, (i64, String)> {
+fn tool_read_selection(state: &AppState, args: &Value) -> Result<Value, (i64, String)> {
     let file_url = args["file"]
         .as_str()
         .ok_or_else(|| (-32602i64, "missing 'file' argument".to_string()))?;
     let start_byte = args["start_byte"]
         .as_u64()
-        .ok_or_else(|| (-32602i64, "missing 'start_byte' argument".to_string()))? as usize;
+        .ok_or_else(|| (-32602i64, "missing 'start_byte' argument".to_string()))?
+        as usize;
     let end_byte = args["end_byte"]
         .as_u64()
-        .ok_or_else(|| (-32602i64, "missing 'end_byte' argument".to_string()))? as usize;
+        .ok_or_else(|| (-32602i64, "missing 'end_byte' argument".to_string()))?
+        as usize;
 
     let (fs_path, _writable) = crate::resolve_path(&state.roots, file_url)
         .map_err(|e| (-32602i64, format!("path error: {}", e)))?;
@@ -142,8 +151,8 @@ fn tool_read_selection(
         return Err((-32600, msg));
     }
 
-    let src = fs::read_to_string(&fs_path)
-        .map_err(|e| (-32603i64, format!("read error: {}", e)))?;
+    let src =
+        fs::read_to_string(&fs_path).map_err(|e| (-32603i64, format!("read error: {}", e)))?;
 
     let doc = Document::parse(&src);
     let sel = Span::new(start_byte.min(src.len()), end_byte.min(src.len()));
@@ -183,10 +192,12 @@ fn tool_propose_edit(
         .ok_or_else(|| (-32602i64, "missing 'file' argument".to_string()))?;
     let start_byte = args["start_byte"]
         .as_u64()
-        .ok_or_else(|| (-32602i64, "missing 'start_byte' argument".to_string()))? as usize;
+        .ok_or_else(|| (-32602i64, "missing 'start_byte' argument".to_string()))?
+        as usize;
     let end_byte = args["end_byte"]
         .as_u64()
-        .ok_or_else(|| (-32602i64, "missing 'end_byte' argument".to_string()))? as usize;
+        .ok_or_else(|| (-32602i64, "missing 'end_byte' argument".to_string()))?
+        as usize;
     let new_text = args["new_text"]
         .as_str()
         .ok_or_else(|| (-32602i64, "missing 'new_text' argument".to_string()))?
@@ -206,19 +217,16 @@ fn tool_propose_edit(
     let mtime_secs = file_mtime(&fs_path);
     let proposal_id = new_proposal_id();
 
-    pending
-        .lock()
-        .unwrap()
-        .insert(
-            proposal_id.clone(),
-            PendingEdit {
-                fs_path,
-                start: start_byte,
-                end: end_byte,
-                new_text,
-                mtime_secs,
-            },
-        );
+    pending.lock().unwrap().insert(
+        proposal_id.clone(),
+        PendingEdit {
+            fs_path,
+            start: start_byte,
+            end: end_byte,
+            new_text,
+            mtime_secs,
+        },
+    );
 
     Ok(json!({ "proposal_id": proposal_id }))
 }
@@ -244,11 +252,14 @@ fn tool_commit_edit(
 
     let current_mtime = file_mtime(&edit.fs_path);
     if current_mtime != edit.mtime_secs {
-        return Err((-32600, "conflict: file was modified since the proposal was made".to_string()));
+        return Err((
+            -32600,
+            "conflict: file was modified since the proposal was made".to_string(),
+        ));
     }
 
-    let src = fs::read_to_string(&edit.fs_path)
-        .map_err(|e| (-32603i64, format!("read error: {}", e)))?;
+    let src =
+        fs::read_to_string(&edit.fs_path).map_err(|e| (-32603i64, format!("read error: {}", e)))?;
 
     let end = edit.end.min(src.len());
     let start = edit.start.min(end);
@@ -258,10 +269,7 @@ fn tool_commit_edit(
         .map_err(|e| (-32603i64, format!("write error: {}", e)))?;
 
     // Broadcast SSE change event
-    let rel_path = edit
-        .fs_path
-        .to_string_lossy()
-        .to_string();
+    let rel_path = edit.fs_path.to_string_lossy().to_string();
     let _ = state.events_tx.send(format!(
         r#"{{"event":"changed","path":"{}","mtime":{}}}"#,
         rel_path, new_mtime
@@ -321,19 +329,19 @@ fn tools_list() -> Value {
 // MCP HTTP handler
 // ---------------------------------------------------------------------------
 
-pub async fn mcp_handler(
-    State(state): State<AppState>,
-    Json(body): Json<Value>,
-) -> Json<Value> {
+pub async fn mcp_handler(State(state): State<AppState>, Json(body): Json<Value>) -> Json<Value> {
     let id = body.get("id").cloned().unwrap_or(Value::Null);
     let method = body["method"].as_str().unwrap_or("");
 
     let response = match method {
-        "initialize" => rpc_ok(&id, json!({
-            "protocolVersion": "2024-11-05",
-            "capabilities": { "tools": {} },
-            "serverInfo": { "name": "workbench", "version": "0.0.1" }
-        })),
+        "initialize" => rpc_ok(
+            &id,
+            json!({
+                "protocolVersion": "2024-11-05",
+                "capabilities": { "tools": {} },
+                "serverInfo": { "name": "workbench", "version": "0.0.1" }
+            }),
+        ),
         "initialized" => {
             return Json(Value::Null);
         }
@@ -342,18 +350,12 @@ pub async fn mcp_handler(
             let name = body["params"]["name"].as_str().unwrap_or("");
             let args = &body["params"]["arguments"];
             let result = match name {
-                "read_selection" => {
-                    tool_read_selection(&state, args)
-                        .map(|v| json!({ "content": [{ "type": "text", "text": v.to_string() }] }))
-                }
-                "propose_edit" => {
-                    tool_propose_edit(&state, &state.pending_edits, args)
-                        .map(|v| json!({ "content": [{ "type": "text", "text": v.to_string() }] }))
-                }
-                "commit_edit" => {
-                    tool_commit_edit(&state, &state.pending_edits, args)
-                        .map(|v| json!({ "content": [{ "type": "text", "text": v.to_string() }] }))
-                }
+                "read_selection" => tool_read_selection(&state, args)
+                    .map(|v| json!({ "content": [{ "type": "text", "text": v.to_string() }] })),
+                "propose_edit" => tool_propose_edit(&state, &state.pending_edits, args)
+                    .map(|v| json!({ "content": [{ "type": "text", "text": v.to_string() }] })),
+                "commit_edit" => tool_commit_edit(&state, &state.pending_edits, args)
+                    .map(|v| json!({ "content": [{ "type": "text", "text": v.to_string() }] })),
                 other => Err((-32601i64, format!("unknown tool: {}", other))),
             };
             match result {
