@@ -18,9 +18,10 @@ pub fn request_shutdown() {
 }
 
 use anyhow::Result;
+use console_core::{IntentArgs, IntentId, IntentRegistry, IntentScope, Keymap};
 use crossterm::{
     cursor,
-    event::{self, Event, KeyCode, KeyModifiers},
+    event::{self, Event, KeyCode, KeyEvent, KeyModifiers},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
@@ -29,7 +30,7 @@ use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Paragraph},
+    widgets::{Block, Borders, Clear, Paragraph},
     Frame, Terminal,
 };
 use ratatui_image::{
@@ -80,6 +81,38 @@ impl TerminalCaps {
     }
 }
 
+/// Command-palette overlay state (Phase I-1). The palette is the universal
+/// keyboard floor: every enabled, in-scope intent is reachable here whether or
+/// not it has a chord. Entries are a *view* of the intent registry.
+struct Palette {
+    query: String,
+    entries: Vec<(IntentId, String)>,
+    selected: usize,
+}
+
+impl Palette {
+    fn filtered(&self) -> Vec<&(IntentId, String)> {
+        let q = self.query.to_ascii_lowercase();
+        self.entries
+            .iter()
+            .filter(|(_, t)| q.is_empty() || t.to_ascii_lowercase().contains(&q))
+            .collect()
+    }
+
+    fn move_sel(&mut self, delta: i32) {
+        let n = self.filtered().len() as i32;
+        if n == 0 {
+            self.selected = 0;
+            return;
+        }
+        self.selected = (self.selected as i32 + delta).rem_euclid(n) as usize;
+    }
+
+    fn selected_id(&self) -> Option<IntentId> {
+        self.filtered().get(self.selected).map(|(id, _)| *id)
+    }
+}
+
 pub struct AppConsoleKeys {
     cartridges: BTreeMap<FKey, Box<dyn Cartridge>>,
     active: FKey,
@@ -99,6 +132,10 @@ pub struct AppConsoleKeys {
     qr_state: Option<StatefulProtocol>,
     // Terminal capability snapshot — populated in run_local() after enable_raw_mode + probe.
     caps: TerminalCaps,
+    // --- Intent system (Phase I-1) ---
+    registry: IntentRegistry,
+    keymap: Keymap,
+    palette: Option<Palette>,
 }
 
 impl AppConsoleKeys {
@@ -122,6 +159,151 @@ impl AppConsoleKeys {
                 sixel: false,
                 truecolor: false,
             },
+            registry: IntentRegistry::new(),
+            keymap: Keymap::default(),
+            palette: None,
+        }
+    }
+
+    /// Build the live intent registry (seed vocabulary + each cartridge's
+    /// `intents()`) and the keymap. Called once after all cartridges are
+    /// registered, at the start of the run loop.
+    fn build_intents(&mut self) {
+        let mut reg = console_core::seed::console_seed();
+        for c in self.cartridges.values() {
+            reg.extend(c.intents());
+        }
+        self.keymap = Keymap::from_registry(&reg);
+        self.registry = reg;
+    }
+
+    /// Scope id of the focused cartridge for keymap/palette filtering.
+    fn focused_scope(&self) -> Option<&'static str> {
+        self.cartridges.get(&self.active).and_then(|c| c.intent_scope())
+    }
+
+    fn is_global_or_pane(&self, id: IntentId) -> bool {
+        matches!(
+            self.registry.get(id).map(|s| s.scope),
+            Some(IntentScope::Global) | Some(IntentScope::Pane)
+        )
+    }
+
+    fn switch_to(&mut self, fkey: FKey) {
+        if self.active != fkey {
+            self.previous = self.active;
+        }
+        self.active = fkey;
+    }
+
+    fn open_palette(&mut self) {
+        let focused = self.focused_scope();
+        let entries: Vec<(IntentId, String)> = self
+            .registry
+            .palette_entries(focused)
+            .iter()
+            .map(|s| (s.id, s.title.to_string()))
+            .collect();
+        self.palette = Some(Palette {
+            query: String::new(),
+            entries,
+            selected: 0,
+        });
+    }
+
+    /// Route a resolved intent: chassis-global verbs are handled here; anything
+    /// else is dispatched to the active cartridge's `dispatch()`.
+    fn dispatch_intent(&mut self, id: IntentId) -> ChassisAction {
+        match id.0 {
+            "console.quit" => return ChassisAction::Quit,
+            "console.palette" => {
+                self.open_palette();
+                return ChassisAction::None;
+            }
+            "console.help" => {
+                self.switch_to(FKey::F1);
+                return ChassisAction::None;
+            }
+            "view.switch.search" => {
+                self.switch_to(FKey::F5);
+                return ChassisAction::None;
+            }
+            "view.switch.content" => {
+                self.switch_to(FKey::F4);
+                return ChassisAction::None;
+            }
+            "view.switch.system" => {
+                self.switch_to(FKey::F11);
+                return ChassisAction::None;
+            }
+            "input.anchor.open" => {
+                self.switch_to(FKey::F12);
+                return ChassisAction::None;
+            }
+            _ => {}
+        }
+        // Cartridge-scoped intent: hand to the active cartridge.
+        let args = IntentArgs::default();
+        if let Some(c) = self.cartridges.get_mut(&self.active) {
+            match c.dispatch(id, &args) {
+                CartridgeAction::Quit => return ChassisAction::Quit,
+                CartridgeAction::GoBack => self.active = self.previous,
+                CartridgeAction::Consumed | CartridgeAction::None => {}
+            }
+        }
+        ChassisAction::None
+    }
+
+    fn handle_palette_event(&mut self, event: &Event) -> ChassisAction {
+        let Event::Key(key) = event else {
+            return ChassisAction::None;
+        };
+        enum Outcome {
+            Stay,
+            Close,
+            Run(IntentId),
+        }
+        let outcome = {
+            let Some(p) = self.palette.as_mut() else {
+                return ChassisAction::None;
+            };
+            match key.code {
+                KeyCode::Esc => Outcome::Close,
+                KeyCode::Up => {
+                    p.move_sel(-1);
+                    Outcome::Stay
+                }
+                KeyCode::Down => {
+                    p.move_sel(1);
+                    Outcome::Stay
+                }
+                KeyCode::Enter => match p.selected_id() {
+                    Some(id) => Outcome::Run(id),
+                    None => Outcome::Close,
+                },
+                KeyCode::Backspace => {
+                    p.query.pop();
+                    p.selected = 0;
+                    Outcome::Stay
+                }
+                KeyCode::Char(ch) if !key.modifiers.contains(KeyModifiers::CONTROL) => {
+                    p.query.push(ch);
+                    p.selected = 0;
+                    Outcome::Stay
+                }
+                _ => Outcome::Stay,
+            }
+        };
+        match outcome {
+            Outcome::Stay => ChassisAction::None,
+            Outcome::Close => {
+                self.palette = None;
+                ChassisAction::None
+            }
+            Outcome::Run(id) => {
+                self.palette = None;
+                self.dispatch_intent(id)
+            }
         }
     }
 
@@ -254,10 +436,29 @@ impl AppConsoleKeys {
             elapsed,
             pending_pairs,
         );
+
+        // Command palette overlay (Phase I-1) — drawn on top of everything.
+        if let Some(p) = self.palette.as_ref() {
+            render_palette(frame, area, p);
+        }
     }
 
     pub fn handle_event(&mut self, event: &Event) -> ChassisAction {
+        // The command palette captures all input while open.
+        if self.palette.is_some() {
+            return self.handle_palette_event(event);
+        }
+
+        // Ctrl-K (resolved through the keymap) opens the palette.
         if let Event::Key(key) = event {
+            if let Some(chord) = key_to_chord(key) {
+                if self.keymap.resolve(&chord, self.focused_scope()) == Some(IntentId("console.palette"))
+                {
+                    self.open_palette();
+                    return ChassisAction::None;
+                }
+            }
+            // F12 anchor pre-empt (SYS-ADR-10) — unchanged, immovable.
             if key.code == KeyCode::F(12) {
                 if self.active != FKey::F12 {
                     self.previous = self.active;
@@ -280,6 +481,16 @@ impl AppConsoleKeys {
         }
 
         if let Event::Key(key) = event {
+            // Global/pane intents the focused cartridge did not consume resolve
+            // through the keymap (cartridge-scoped chords are left to the
+            // cartridge's own handler above, so no behavior is overridden).
+            if let Some(chord) = key_to_chord(key) {
+                if let Some(id) = self.keymap.resolve(&chord, self.focused_scope()) {
+                    if self.is_global_or_pane(id) {
+                        return self.dispatch_intent(id);
+                    }
+                }
+            }
             if key.code == KeyCode::Char('q')
                 || (key.code == KeyCode::Char('c') && key.modifiers.contains(KeyModifiers::CONTROL))
             {
@@ -610,6 +821,7 @@ impl AppConsoleKeys {
         mut terminal: ratatui::Terminal<CrosstermBackend<W>>,
         rx: mpsc::Receiver<u8>,
     ) {
+        self.build_intents();
         let mut parser = crate::input_bytes::ByteParser::new();
         loop {
             self.drain_pair_events();
@@ -646,6 +858,7 @@ impl AppConsoleKeys {
         for c in self.cartridges.values_mut() {
             c.set_graphics_caps(kitty, sixel, font_size, truecolor);
         }
+        self.build_intents();
         let mut stdout = io::stdout();
         execute!(stdout, EnterAlternateScreen, cursor::Hide)?;
 
@@ -677,4 +890,103 @@ impl AppConsoleKeys {
 
         run_result
     }
+}
+
+/// Translate a crossterm key event into a canonical console-core chord string.
+fn key_to_chord(key: &KeyEvent) -> Option<String> {
+    let base = match key.code {
+        KeyCode::Char(c) => c.to_ascii_lowercase().to_string(),
+        KeyCode::Enter => "enter".to_string(),
+        KeyCode::Esc => "esc".to_string(),
+        KeyCode::Tab | KeyCode::BackTab => "tab".to_string(),
+        KeyCode::Backspace => "backspace".to_string(),
+        KeyCode::Left => "left".to_string(),
+        KeyCode::Right => "right".to_string(),
+        KeyCode::Up => "up".to_string(),
+        KeyCode::Down => "down".to_string(),
+        KeyCode::F(n) => format!("f{n}"),
+        _ => return None,
+    };
+    let mut s = String::new();
+    if key.modifiers.contains(KeyModifiers::CONTROL) {
+        s.push_str("ctrl-");
+    }
+    if key.modifiers.contains(KeyModifiers::ALT) {
+        s.push_str("alt-");
+    }
+    if key.modifiers.contains(KeyModifiers::SHIFT) {
+        s.push_str("shift-");
+    }
+    s.push_str(&base);
+    Some(console_core::intent::normalize_chord(&s))
+}
+
+/// Render the command-palette overlay: a centered box with the query line and
+/// the filtered, scope-aware entries (selected highlighted). The entries are a
+/// view of the intent registry — the palette cannot list an action the keyboard
+/// cannot reach.
+fn render_palette(frame: &mut Frame, area: Rect, p: &Palette) {
+    let want_w = (area.width / 5).saturating_mul(3);
+    let min_w = 40u16.min(area.width);
+    let max_w = area.width.saturating_sub(2).max(min_w);
+    let w = want_w.clamp(min_w, max_w);
+    let want_h = (area.height / 3).saturating_mul(2);
+    let min_h = 8u16.min(area.height);
+    let max_h = area.height.saturating_sub(2).max(min_h);
+    let h = want_h.clamp(min_h, max_h);
+    let x = area.x + area.width.saturating_sub(w) / 2;
+    let y = area.y + area.height.saturating_sub(h) / 2;
+    let rect = Rect {
+        x,
+        y,
+        width: w,
+        height: h,
+    };
+
+    frame.render_widget(Clear, rect);
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD))
+        .title(" Command palette  (type to filter · ↑↓ · Enter · Esc) ");
+    let inner = block.inner(rect);
+    frame.render_widget(block, rect);
+
+    let mut lines: Vec<Line> = Vec::new();
+    lines.push(Line::from(vec![
+        Span::styled("  › ", Style::default().fg(Color::Cyan)),
+        Span::styled(
+            if p.query.is_empty() {
+                "type to filter…".to_string()
+            } else {
+                p.query.clone()
+            },
+            Style::default().fg(if p.query.is_empty() {
+                Color::DarkGray
+            } else {
+                Color::White
+            }),
+        ),
+    ]));
+    lines.push(Line::from(""));
+
+    let filtered = p.filtered();
+    let max_rows = inner.height.saturating_sub(2) as usize;
+    for (i, (id, title)) in filtered.iter().enumerate().take(max_rows) {
+        let selected = i == p.selected;
+        let style = if selected {
+            Style::default()
+                .fg(Color::Black)
+                .bg(Color::Cyan)
+                .add_modifier(Modifier::BOLD)
+        } else {
+            Style::default().fg(Color::Gray)
+        };
+        let marker = if selected { " ▌ " } else { "   " };
+        lines.push(Line::from(vec![
+            Span::styled(marker, style),
+            Span::styled(format!("{:<32}", title), style),
+            Span::styled(format!(" {}", id.0), Style::default().fg(Color::DarkGray)),
+        ]));
+    }
+    frame.render_widget(Paragraph::new(lines), inner);
 }
