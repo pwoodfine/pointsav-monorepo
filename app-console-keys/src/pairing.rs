@@ -81,7 +81,11 @@ pub fn post_pair_request(
     } else {
         "x86_64"
     };
-    let bottom: &'static str = if arch == "aarch64" { "seL4" } else { "netbsd-compat" };
+    let bottom: &'static str = if arch == "aarch64" {
+        "seL4"
+    } else {
+        "netbsd-compat"
+    };
     let client = reqwest::blocking::Client::builder()
         .timeout(Duration::from_secs(10))
         .build()?;
@@ -163,25 +167,24 @@ pub fn spawn_pair_init(
     fingerprint: String,
 ) -> mpsc::Receiver<PairingEvent> {
     let (tx, rx) = mpsc::channel::<PairingEvent>();
-    std::thread::spawn(move || {
-        loop {
-            std::thread::sleep(Duration::from_secs(3));
-            match post_pair_request(&base_url, &username, &tenant, &public_key, &fingerprint) {
-                Ok((request_id, code)) => {
-                    let _ = tx.send(PairingEvent::InitSuccess {
-                        code,
-                        request_id,
-                        fingerprint: fingerprint.clone(),
-                    });
-                    break;
-                }
-                Err(e) => {
-                    let port_bound = std::net::TcpStream::connect_timeout(
-                        &"127.0.0.1:9205".parse().unwrap(),
-                        std::time::Duration::from_millis(200),
-                    ).is_ok();
-                    eprintln!("os-console: pair: POST failed (9205 bound={port_bound}): {e:?}");
-                }
+    std::thread::spawn(move || loop {
+        std::thread::sleep(Duration::from_secs(3));
+        match post_pair_request(&base_url, &username, &tenant, &public_key, &fingerprint) {
+            Ok((request_id, code)) => {
+                let _ = tx.send(PairingEvent::InitSuccess {
+                    code,
+                    request_id,
+                    fingerprint: fingerprint.clone(),
+                });
+                break;
+            }
+            Err(e) => {
+                let port_bound = std::net::TcpStream::connect_timeout(
+                    &"127.0.0.1:9205".parse().unwrap(),
+                    std::time::Duration::from_millis(200),
+                )
+                .is_ok();
+                eprintln!("os-console: pair: POST failed (9205 bound={port_bound}): {e:?}");
             }
         }
     });

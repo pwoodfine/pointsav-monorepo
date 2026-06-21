@@ -48,7 +48,10 @@ async fn tunnel_loop(config: TunnelConfig) {
     let max_delay = Duration::from_secs(60);
     loop {
         run_tunnel(&config).await;
-        eprintln!("os-console: tunnel: disconnected; retrying in {:.0}s", delay.as_secs_f32());
+        eprintln!(
+            "os-console: tunnel: disconnected; retrying in {:.0}s",
+            delay.as_secs_f32()
+        );
         tokio::time::sleep(delay).await;
         delay = (delay * 2).min(max_delay);
     }
@@ -58,7 +61,10 @@ async fn run_tunnel(config: &TunnelConfig) {
     let key = match load_secret_key(&config.key_path, None) {
         Ok(k) => k,
         Err(e) => {
-            eprintln!("os-console: tunnel: key load failed ({}): {e}", config.key_path);
+            eprintln!(
+                "os-console: tunnel: key load failed ({}): {e}",
+                config.key_path
+            );
             tokio::time::sleep(Duration::from_secs(5)).await;
             return;
         }

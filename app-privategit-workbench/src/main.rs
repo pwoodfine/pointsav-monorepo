@@ -315,9 +315,7 @@ async fn get_file(
                 Some(DirEntry { name, is_dir })
             })
             .collect();
-        entries.sort_by(|a, b| {
-            b.is_dir.cmp(&a.is_dir).then(a.name.cmp(&b.name))
-        });
+        entries.sort_by(|a, b| b.is_dir.cmp(&a.is_dir).then(a.name.cmp(&b.name)));
         return Json(DirResponse { entries }).into_response();
     }
 
@@ -1537,7 +1535,10 @@ async fn get_section(State(state): State<AppState>, Query(q): Query<SectionQuery
     let doc = Document::parse(&src);
     let sel = Span::new(offset, offset);
     let snapped = doc.section_span(sel);
-    let content = src.get(snapped.start..snapped.end).unwrap_or("").to_string();
+    let content = src
+        .get(snapped.start..snapped.end)
+        .unwrap_or("")
+        .to_string();
     let block_kind = doc
         .block_at(snapped.start)
         .and_then(|i| doc.blocks().get(i))
@@ -1671,10 +1672,16 @@ async fn main() -> Result<()> {
         .route("/events", get(get_events))
         .route("/mcp", post(mcp::mcp_handler))
         .route("/section", get(get_section))
-        .route("/api/presentation/files", get(schema_presentation::list_files))
+        .route(
+            "/api/presentation/files",
+            get(schema_presentation::list_files),
+        )
         .route("/api/presentation/render", get(schema_presentation::render))
         .route("/api/schedule/files", get(schema_schedule::list_files))
-        .route("/api/schedule/syntax-hints", get(schema_schedule::syntax_hints))
+        .route(
+            "/api/schedule/syntax-hints",
+            get(schema_schedule::syntax_hints),
+        )
         .route("/api/gis/files", get(schema_gis::list_files))
         .route("/api/gis/feature-count", get(schema_gis::feature_count))
         .route("/api/bim/files", get(schema_bim::list_files))

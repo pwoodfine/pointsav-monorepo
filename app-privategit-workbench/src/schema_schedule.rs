@@ -65,8 +65,7 @@ pub async fn syntax_hints(
         }
     }
 
-    Json(serde_json::json!({ "hints": hints, "line_count": src.lines().count() }))
-        .into_response()
+    Json(serde_json::json!({ "hints": hints, "line_count": src.lines().count() })).into_response()
 }
 
 fn collect_by_ext(dir: &str, prefix: &str, ext: &str, out: &mut Vec<String>) {

@@ -154,7 +154,13 @@ impl Cartridge for SystemCartridge {
         "F11: System"
     }
 
-    fn set_graphics_caps(&mut self, _kitty: bool, _sixel: bool, _font_size: (u16, u16), truecolor: bool) {
+    fn set_graphics_caps(
+        &mut self,
+        _kitty: bool,
+        _sixel: bool,
+        _font_size: (u16, u16),
+        truecolor: bool,
+    ) {
         self.truecolor = truecolor;
     }
 
@@ -220,7 +226,10 @@ impl Cartridge for SystemCartridge {
                     let marker = if i == self.selected { ">" } else { " " };
                     let ts = req.created_at.get(..19).unwrap_or(&req.created_at);
                     let line = Line::from(vec![
-                        Span::styled(format!(" {marker} "), Style::default().fg(self.accent_color())),
+                        Span::styled(
+                            format!(" {marker} "),
+                            Style::default().fg(self.accent_color()),
+                        ),
                         Span::styled(
                             format!("{:<14}", req.code),
                             Style::default()

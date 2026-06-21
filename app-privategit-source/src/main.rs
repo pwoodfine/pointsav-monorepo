@@ -282,7 +282,9 @@ async fn binary(
                         (header::CONTENT_TYPE, "application/octet-stream"),
                         (
                             header::CONTENT_DISPOSITION,
-                            Box::leak(format!("attachment; filename=\"{filename}\"").into_boxed_str()),
+                            Box::leak(
+                                format!("attachment; filename=\"{filename}\"").into_boxed_str(),
+                            ),
                         ),
                     ],
                     body,

@@ -64,8 +64,15 @@ pub async fn parse_file(State(state): State<AppState>, Query(q): Query<BimQuery>
             Err(e) => return err(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()),
         };
         match serde_json::from_str::<serde_json::Value>(&content) {
-            Ok(v) => return Json(serde_json::json!({ "format": "bim.json", "data": v })).into_response(),
-            Err(e) => return err(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON parse error: {}", e)),
+            Ok(v) => {
+                return Json(serde_json::json!({ "format": "bim.json", "data": v })).into_response()
+            }
+            Err(e) => {
+                return err(
+                    StatusCode::UNPROCESSABLE_ENTITY,
+                    format!("JSON parse error: {}", e),
+                )
+            }
         }
     }
 
@@ -77,7 +84,12 @@ pub async fn parse_file(State(state): State<AppState>, Query(q): Query<BimQuery>
 
     let step = match bim::parse(&source) {
         Ok(s) => s,
-        Err(e) => return err(StatusCode::UNPROCESSABLE_ENTITY, format!("IFC parse error: {:?}", e)),
+        Err(e) => {
+            return err(
+                StatusCode::UNPROCESSABLE_ENTITY,
+                format!("IFC parse error: {:?}", e),
+            )
+        }
     };
 
     // Build header metadata from HEADER records
@@ -87,7 +99,11 @@ pub async fn parse_file(State(state): State<AppState>, Query(q): Query<BimQuery>
         match rec.keyword.as_str() {
             "FILE_SCHEMA" => {
                 // params: (('IFC4',))  — extract inner string
-                let s = rec.params.trim_matches(|c| c == '(' || c == ')').trim().to_string();
+                let s = rec
+                    .params
+                    .trim_matches(|c| c == '(' || c == ')')
+                    .trim()
+                    .to_string();
                 schema_identifiers.push(s);
             }
             "FILE_DESCRIPTION" => {
@@ -98,7 +114,8 @@ pub async fn parse_file(State(state): State<AppState>, Query(q): Query<BimQuery>
     }
 
     // Count entity types
-    let mut entity_counts: std::collections::HashMap<&str, usize> = std::collections::HashMap::new();
+    let mut entity_counts: std::collections::HashMap<&str, usize> =
+        std::collections::HashMap::new();
     for inst in &step.data {
         *entity_counts.entry(inst.entity.as_str()).or_insert(0) += 1;
     }
@@ -107,7 +124,10 @@ pub async fn parse_file(State(state): State<AppState>, Query(q): Query<BimQuery>
         .map(|(k, v)| serde_json::json!({"entity": k, "count": v}))
         .collect();
     entity_list.sort_by(|a, b| {
-        b["count"].as_u64().unwrap_or(0).cmp(&a["count"].as_u64().unwrap_or(0))
+        b["count"]
+            .as_u64()
+            .unwrap_or(0)
+            .cmp(&a["count"].as_u64().unwrap_or(0))
     });
 
     Json(serde_json::json!({
@@ -145,7 +165,12 @@ pub async fn list_instances(
 
     let step = match bim::parse(&source) {
         Ok(s) => s,
-        Err(e) => return err(StatusCode::UNPROCESSABLE_ENTITY, format!("IFC parse error: {:?}", e)),
+        Err(e) => {
+            return err(
+                StatusCode::UNPROCESSABLE_ENTITY,
+                format!("IFC parse error: {:?}", e),
+            )
+        }
     };
 
     let entity_upper = q.entity.to_uppercase();
@@ -153,11 +178,13 @@ pub async fn list_instances(
         .data
         .iter()
         .filter(|inst| inst.entity.eq_ignore_ascii_case(&entity_upper))
-        .map(|inst| serde_json::json!({
-            "id": inst.id,
-            "entity": inst.entity,
-            "params": inst.params,
-        }))
+        .map(|inst| {
+            serde_json::json!({
+                "id": inst.id,
+                "entity": inst.entity,
+                "params": inst.params,
+            })
+        })
         .collect();
 
     Json(serde_json::json!({
@@ -173,7 +200,11 @@ fn collect_bim(dir: &str, prefix: &str, out: &mut Vec<serde_json::Value>) {
         for entry in entries.flatten() {
             let p = entry.path();
             if p.is_file() {
-                let name = p.file_name().and_then(|n| n.to_str()).unwrap_or("").to_string();
+                let name = p
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or("")
+                    .to_string();
                 let is_ifc = name.ends_with(".ifc");
                 let is_bim_json = name.ends_with(".bim.json");
                 if is_ifc || is_bim_json {

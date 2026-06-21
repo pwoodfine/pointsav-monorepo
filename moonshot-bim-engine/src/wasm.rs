@@ -1,5 +1,5 @@
-use wasm_bindgen::prelude::*;
 use crate::{parse, StepFile};
+use wasm_bindgen::prelude::*;
 
 fn escape_json_str(s: &str) -> String {
     let mut out = String::with_capacity(s.len() + 2);
