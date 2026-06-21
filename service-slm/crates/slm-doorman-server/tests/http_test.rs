@@ -336,6 +336,7 @@ async fn error_brief_cache_miss_returns_410() {
         doctrine_version: "0.0.1".to_string(),
         tenant: "test".to_string(),
         tier_a_first: false,
+        yoyo_dispatch_label: None,
     };
     let brief_cache = Arc::new(BriefCache::default()); // empty
     let verdict_dispatcher = VerdictDispatcher {
@@ -775,6 +776,8 @@ fn doorman_error_to_status(e: &DoormanError) -> StatusCode {
         DoormanError::TierBTimeout | DoormanError::TierBCircuitOpen => {
             StatusCode::SERVICE_UNAVAILABLE
         }
+        // RequestTimeout → 503 SERVICE_UNAVAILABLE (mirrors http.rs map).
+        DoormanError::RequestTimeout => StatusCode::SERVICE_UNAVAILABLE,
         DoormanError::FlowGateClosed { .. } => StatusCode::SERVICE_UNAVAILABLE,
         DoormanError::PriorityQueueIo { .. } => StatusCode::INTERNAL_SERVER_ERROR,
         DoormanError::GcpApi { .. } => StatusCode::BAD_GATEWAY,
