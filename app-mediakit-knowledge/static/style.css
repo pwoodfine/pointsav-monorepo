@@ -310,6 +310,7 @@ kbd { border: 1px solid var(--fg-4); box-shadow: 0 1px 0 var(--fg-4); }
   margin: 0 auto;
   padding: 0 var(--sp-4);
 }
+.docs-sidenav { display: none; } /* mobile default; desktop override is in the @media below (order matters) */
 @media (min-width: 1024px) {
   .shell {
     grid-template-columns: var(--sidenav-w) minmax(0, 1fr);
@@ -317,7 +318,6 @@ kbd { border: 1px solid var(--fg-4); box-shadow: 0 1px 0 var(--fg-4); }
   }
   .docs-sidenav { display: block; }
 }
-.docs-sidenav { display: none; }
 
 .main { padding: var(--sp-10) 0 var(--sp-16) var(--sp-10); min-width: 0; }
 @media (max-width: 1024px) { .main { padding: var(--sp-8) 0; } }
@@ -615,6 +615,7 @@ a.lang-toggle:hover { color: var(--navy); }
   .topnav { padding: 0 var(--sp-4); }
   .topnav-center { display: none; }
   .topnav .left { display: none; }
+  .topnav .right { display: none; } /* desktop link cluster -> hamburger drawer on mobile; was forcing ~461px overflow */
 }
 
 /* --- Article tabs (Wikipedia Vector 2022 style) --- */
