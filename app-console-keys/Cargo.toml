@@ -5,6 +5,7 @@ edition = "2021"
 description = "os-console base chassis — Cartridge trait, F-key navigation, tab strip, status bar"
 
 [dependencies]
+console-core = { path = "../console-core" }
 ratatui = "0.29"
 crossterm = { version = "0.28", features = ["event-stream"] }
 anyhow = "1"

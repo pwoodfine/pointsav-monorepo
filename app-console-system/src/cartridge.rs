@@ -3,7 +3,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use app_console_keys::{Cartridge, CartridgeAction, FKey};
+use app_console_keys::{Cartridge, CartridgeAction, FKey, IntentArgs, IntentId};
 use crossterm::event::{Event, KeyCode};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
@@ -170,6 +170,41 @@ impl Cartridge for SystemCartridge {
 
     fn pending_badge(&self) -> u16 {
         self.pending_count()
+    }
+
+    // --- Intent system (Phase I-1): System is the migration template. The seed
+    // vocabulary declares system.* (already dual-input), so this cartridge only
+    // needs to advertise its scope and act on the intents. Keyboard via
+    // handle_event still works; the command palette drives the same actions
+    // through dispatch — both paths converge on the same methods. ---
+
+    fn intent_scope(&self) -> Option<&'static str> {
+        Some("system")
+    }
+
+    fn dispatch(&mut self, id: IntentId, _args: &IntentArgs) -> CartridgeAction {
+        match id.0 {
+            "system.approve" => {
+                self.do_approve();
+                CartridgeAction::Consumed
+            }
+            "system.deny" => {
+                self.do_deny();
+                CartridgeAction::Consumed
+            }
+            "system.show_fingerprint" => {
+                if !self.pending.is_empty() {
+                    self.show_fingerprint = !self.show_fingerprint;
+                }
+                CartridgeAction::Consumed
+            }
+            "system.revoke" => {
+                // Revocation arrives with cert-based identity (rebuild Phase D-A/C).
+                self.feedback = Some("Revoke: planned (cert-based identity)".to_string());
+                CartridgeAction::Consumed
+            }
+            _ => CartridgeAction::None,
+        }
     }
 
     fn render(&mut self, frame: &mut Frame, area: Rect) {
