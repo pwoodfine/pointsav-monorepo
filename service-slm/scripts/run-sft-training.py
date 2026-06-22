@@ -42,17 +42,42 @@ from pathlib import Path
 FOUNDRY_ROOT = os.environ.get("FOUNDRY_ROOT", "/srv/foundry")
 GCS_BUCKET = os.environ.get("SLM_YOYO_WEIGHTS_GCS_BUCKET", "")
 
+
+def canonical_base_model() -> str:
+    """Read the pinned base model from data/base-registry.yaml (single source of truth).
+
+    The base MUST match the served GGUF (Tier A) so a trained adapter is servable.
+    Falls back to the canonical default if the registry is unreadable.
+    """
+    default = "allenai/OLMo-3-7B-Instruct"
+    candidates = [
+        Path(__file__).resolve().parent.parent / "data" / "base-registry.yaml",
+        Path(FOUNDRY_ROOT) / "data" / "base-registry.yaml",
+    ]
+    for registry in candidates:
+        try:
+            for line in registry.read_text().splitlines():
+                s = line.strip()
+                if s.startswith("canonical_base:"):
+                    val = s.split(":", 1)[1].strip().strip("\"'")
+                    if val:
+                        return val
+        except OSError:
+            continue
+    return default
+
+
 # LoRA hyperparameters — same as run-dpo-training.py for A/B comparability
 LORA_R = 16
 LORA_ALPHA = 32
 LORA_DROPOUT = 0.05
 LORA_TARGET_MODULES = ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
-MAX_LENGTH = 512
+MAX_LENGTH = 2048   # was 512 — truncated the majority of diffs mid-hunk (median chosen ~1000+ tok)
 BATCH_SIZE = 2
 GRAD_ACCUM = 8
-# SFT uses a higher LR than DPO (no KL penalty / reference model divergence term).
-# OLMo 2 reference: Tülu 3 SFT uses 5e-6 for 7B; 2e-5 is conservative for LoRA.
-LEARNING_RATE = 2e-5
+# SFT-LoRA wants a hotter LR than full fine-tune or DPO. 2e-5 is a full-FT default and
+# under-fits an adapter; 1e-4..3e-4 is the LoRA-SFT band (verified research 2026-06-20).
+LEARNING_RATE = 2e-4
 NUM_EPOCHS = 1
 
 # Minimum actual_diff length — very short diffs carry no useful signal.
@@ -186,6 +211,21 @@ def run_training(records: list[dict], base_model: str, output_dir: str,
         tokenizer.pad_token = tokenizer.eos_token
         model.config.pad_token_id = tokenizer.eos_token_id
 
+    # Fail-closed assertion: verify target_modules exist before peft attaches them.
+    # HF Olmo2/Olmo3ForCausalLM use LLaMA-style names (q_proj/k_proj/...); the legacy
+    # att_proj/ff_proj names match zero modules and silently train a no-op adapter.
+    _model_module_names = {name.split(".")[-1] for name, _ in model.named_modules()}
+    _matched = [m for m in LORA_TARGET_MODULES if m in _model_module_names]
+    if not _matched:
+        print(
+            f"[ERROR] LORA_TARGET_MODULES {LORA_TARGET_MODULES} matched 0 modules in model.\n"
+            f"        Model leaf module names (sample): {sorted(_model_module_names)[:20]}\n"
+            f"        Training would produce a no-op adapter. Aborting.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    print(f"[train] LoRA target assertion: {len(_matched)}/{len(LORA_TARGET_MODULES)} modules matched: {_matched}")
+
     peft_config = LoraConfig(
         r=LORA_R,
         lora_alpha=LORA_ALPHA,
@@ -297,8 +337,8 @@ def main() -> None:
     )
     parser.add_argument(
         "--base-model",
-        default="allenai/OLMo-2-1124-7B-Instruct",
-        help="HuggingFace model ID for the OLMo base model (OLMo-only policy)",
+        default=canonical_base_model(),
+        help="OLMo base model ID; default read from data/base-registry.yaml (OLMo-only policy)",
     )
     parser.add_argument(
         "--adapter-name",

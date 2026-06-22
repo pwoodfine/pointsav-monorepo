@@ -18,8 +18,9 @@ GCS variant (Yo-Yo trainer VM, picking up marker):
     python3 run-dpo-training.py --from-gcs --adapter apprenticeship-pointsav
 
 Notes:
-  - Default base model: /data/weights/olmo-3-7b-think-hf (OLMo 3 7B Think, pre-loaded on
-    persistent weights disk by vllm-weights-prep.sh — no re-download needed each run)
+  - Default base model: read from data/base-registry.yaml (canonical = OLMo 3 7B Instruct,
+    matching the served GGUF so the adapter is servable). Pre-load it on the persistent
+    weights disk via vllm-weights-prep.sh to avoid re-download.
   - adapter output goes to ./adapters/<adapter_name>-wip/ by default; daily cycle overrides
     to /data/weights/adapters/<name>/ (persistent disk, survives all VM cycles)
   - Workspace VM pulls adapter via rsync after training; workspace uploads to GCS (yoyo-batch
@@ -41,14 +42,41 @@ from pathlib import Path
 FOUNDRY_ROOT = os.environ.get("FOUNDRY_ROOT", "/srv/foundry")
 GCS_BUCKET = os.environ.get("SLM_YOYO_WEIGHTS_GCS_BUCKET", "")
 
+
+def canonical_base_model(default: str = "allenai/OLMo-3-7B-Instruct") -> str:
+    """Read the pinned base model from data/base-registry.yaml (single source of truth).
+
+    The base MUST match the served GGUF so a trained adapter is servable. Falls back to
+    the canonical default if the registry is unreadable.
+    """
+    candidates = [
+        os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                     "data", "base-registry.yaml"),
+        os.path.join(FOUNDRY_ROOT, "data", "base-registry.yaml"),
+    ]
+    for registry in candidates:
+        try:
+            with open(registry) as fh:
+                for line in fh:
+                    s = line.strip()
+                    if s.startswith("canonical_base:"):
+                        val = s.split(":", 1)[1].strip().strip("\"'")
+                        if val:
+                            return val
+        except OSError:
+            continue
+    return default
+
+
 # LoRA hyperparameters for OLMo 7B
-# r=32/alpha=64: research on 7B extraction tasks shows meaningful gains over r=16 (clinical
-# extraction: 10-20pt F1 improvement at r=32; r=16 underfits narrow-task preference signal).
-# Adapter size doubles (~200 MB → ~400 MB) but stays well within persistent disk budget.
+# r=32/alpha=64: a sound default for 7B preference LoRA (r=16-32, alpha=2r). Rank is a minor
+# lever vs all-linear targeting / LR / data quality (verified research 2026-06-20).
 LORA_R = 32
 LORA_ALPHA = 64
 LORA_DROPOUT = 0.05
-LORA_TARGET_MODULES = ["att_proj", "ff_proj", "ff_out", "attn_out"]
+# HF Olmo2/Olmo3ForCausalLM use LLaMA-style leaf names — the legacy att_proj/ff_proj names
+# match ZERO modules on an HF OLMo base (silent/aborting no-op). Kept in sync with run-sft.
+LORA_TARGET_MODULES = ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
 MAX_PROMPT_LENGTH = 512
 BATCH_SIZE = 2
 GRAD_ACCUM = 8   # raised 4→8; effective batch 16; damps gradient noise at low per-device batch
@@ -64,7 +92,7 @@ BETA = 0.1  # DPO default. Prior 0.5 justification (empty-"[]" rejected) is obso
 # on-policy DPO/SimPO is layered on afterward once the model emits valid diffs.
 # SFT needs a HOTTER LR than DPO (DPO LR 2e-6 is 5-10× too cold for SFT) and 2-3
 # epochs on a ~1-2k example corpus.
-SFT_LEARNING_RATE = 2e-5
+SFT_LEARNING_RATE = 2e-4   # was 2e-5 (full-FT default); LoRA-SFT band is 1e-4..3e-4
 SFT_NUM_EPOCHS = 2
 
 # System message wrapped around every SFT example so the training prompt matches
@@ -392,11 +420,20 @@ def run_training(records: list[dict], base_model: str, output_dir: str, dry_run:
         from trl import DPOConfig, DPOTrainer
         if loss_type == "simpo":
             try:
-                from trl import SimPOConfig, SimPOTrainer
+                from trl import SimPOConfig, SimPOTrainer  # noqa: F401
             except ImportError:
-                print("[WARN] SimPOConfig not found in this trl version — falling back to DPO loss", file=sys.stderr)
-                print("[WARN] To enable SimPO: pip install --upgrade trl>=1.4", file=sys.stderr)
-                loss_type = "dpo"
+                print(
+                    "[ERROR] --loss-type simpo requested but SimPOConfig/SimPOTrainer are not\n"
+                    "        available in the installed trl. SimPO (reference-free) is the\n"
+                    "        load-bearing objective for affordable on-policy training; silently\n"
+                    "        degrading to DPO would defeat that and re-introduce the ref-model\n"
+                    "        memory cost. Aborting.\n"
+                    "        Fix: install a trl with SimPO, OR wire CPOTrainer(loss_type='simpo',\n"
+                    "        cpo_alpha=0.0) after verifying the installed trl API, OR pass\n"
+                    "        --loss-type dpo explicitly to opt into standard DPO.",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
     except ImportError as e:
         print(f"[ERROR] Missing training library: {e}", file=sys.stderr)
         print("Install: pip install trl peft transformers datasets bitsandbytes", file=sys.stderr)
@@ -431,9 +468,9 @@ def run_training(records: list[dict], base_model: str, output_dir: str, dry_run:
     )
     model.config.use_cache = False
 
-    # Startup assertion: verify target_modules exist in this model before
-    # peft applies them. OLMo 2 uses att_proj/ff_proj/ff_out/attn_out;
-    # LLaMA names (q_proj/v_proj etc.) silently attach to zero modules.
+    # Startup assertion: verify target_modules exist before peft applies them.
+    # HF Olmo2/Olmo3ForCausalLM use LLaMA-style names (q_proj/k_proj/...); the legacy
+    # att_proj/ff_proj names match zero modules and would train a no-op adapter.
     _model_module_names = {name.split(".")[-1] for name, _ in model.named_modules()}
     _matched = [m for m in LORA_TARGET_MODULES if m in _model_module_names]
     if not _matched:
@@ -496,6 +533,30 @@ def run_training(records: list[dict], base_model: str, output_dir: str, dry_run:
         print(f"[train] 32B memory mode: batch=1, grad_ckpt=True, max_len={_max_length}, grad_accum={_grad_accum}")
     else:
         print(f"[train] 7B memory mode: batch={_batch_size}, grad_ckpt=True, max_len={_max_length}, loss={loss_type}")
+
+    # Fail-closed truncation pre-check: if the majority of `chosen` completions exceed the
+    # sequence cap, training learns on diffs cut mid-hunk (the documented truncation +
+    # length-confound defect). Refuse rather than silently train on truncated targets.
+    # Override with SLM_ALLOW_TRUNCATION=1 when intentionally training a length-capped pass.
+    _chosen_est_tokens = sorted(len(r.get("chosen", "")) // 4 for r in records)
+    if _chosen_est_tokens:
+        _p50 = _chosen_est_tokens[len(_chosen_est_tokens) // 2]
+        _over = sum(1 for t in _chosen_est_tokens if t > _max_length)
+        _pct_over = _over / len(_chosen_est_tokens)
+        print(f"[train] truncation check: max_length={_max_length}, chosen est-tokens "
+              f"p50={_p50}, over-cap={_over}/{len(_chosen_est_tokens)} ({_pct_over:.0%})")
+        if _p50 > _max_length or _pct_over > 0.5:
+            _allow = os.environ.get("SLM_ALLOW_TRUNCATION", "").lower() in ("1", "true")
+            print(
+                f"[ERROR] {_pct_over:.0%} of chosen completions exceed max_length={_max_length} "
+                f"(p50 est-tokens={_p50}). Training would learn on truncated diffs.\n"
+                f"        Fix: raise max_length (SimPO single-forward fits more), curate the corpus\n"
+                f"        to fit, or set SLM_ALLOW_TRUNCATION=1 to override. Aborting.",
+                file=sys.stderr,
+            )
+            if not _allow:
+                sys.exit(1)
+            print("[WARN] SLM_ALLOW_TRUNCATION set — proceeding despite truncation", file=sys.stderr)
 
     # expandable_segments avoids fragmentation-caused OOM on CUDA
     os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
@@ -758,10 +819,10 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="LoRA SFT/DPO training for apprenticeship adapter")
     parser.add_argument("--corpus", default=os.path.join(FOUNDRY_ROOT, "data", "training-corpus", "feedback"),
                         help="Path to feedback/ directory containing apprenticeship-*.jsonl files")
-    parser.add_argument("--base-model", default="/data/weights/olmo-3-7b-think-hf",
-                        help="HuggingFace model ID or local path for the OLMo base model (OLMo-only policy). "
-                             "Default points to OLMo 3 7B Think weights pre-loaded on the yoyo-batch "
-                             "persistent weights disk by vllm-weights-prep.sh — avoids re-downloading.")
+    parser.add_argument("--base-model", default=canonical_base_model(),
+                        help="OLMo base model ID or local path (OLMo-only policy). Default read "
+                             "from data/base-registry.yaml (canonical = OLMo 3 7B Instruct, the served "
+                             "base). Pre-load on the yoyo-batch weights disk to avoid re-downloading.")
     parser.add_argument("--adapter-name", default="apprenticeship-pointsav",
                         help="Name for the output adapter")
     parser.add_argument("--output-dir", default=None,
