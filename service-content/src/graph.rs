@@ -88,8 +88,10 @@ pub trait GraphStore: Send + Sync {
     fn delete_entity(&self, module_id: &str, entity_name: &str) -> Result<()>;
     /// Write typed directed edges between existing Entity nodes. Idempotent
     /// (checks existence before CREATE). Returns the number of edges written.
+    #[allow(dead_code)]
     fn upsert_edges(&self, module_id: &str, edges: &[RelatedToEdge]) -> Result<usize>;
     /// Count alias records in entity_aliases. Used by /healthz + tests.
+    #[allow(dead_code)]
     fn count_aliases(&self) -> Result<usize>;
 }
 
@@ -281,7 +283,7 @@ impl GraphStore for LbugGraphStore {
             )
             .map_err(|e| anyhow!("prepare er_review_queue upsert: {}", e))?;
 
-        for (_bk, members) in &block_map {
+        for members in block_map.values() {
             if members.len() < 2 {
                 continue;
             }
