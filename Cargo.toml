@@ -1,5 +1,9 @@
 [workspace]
 resolver = "2"
+# system-core and system-ledger declare their own [workspace] (standalone-extractable pattern;
+# see .agent/rules/cleanup-log.md open question). Exclude prevents multi-workspace-root error
+# when they are used as path dependencies from within this workspace.
+exclude = ["system-core", "system-ledger"]
 members = [
     "service-people",
     "service-content",
