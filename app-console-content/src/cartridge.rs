@@ -263,7 +263,7 @@ impl ContentCartridge {
             restored_hint,
             tabs: vec![TabSnapshot::fresh_input()],
             active_tab_idx: 0,
-            last_search: saved_session.content_query,
+            last_search: saved_session.content_query.unwrap_or_default(),
         }
     }
 
@@ -1063,10 +1063,6 @@ impl ContentCartridge {
             KeyCode::Esc | KeyCode::Char('q') => {
                 if let ContentState::SearchResults { ref query, .. } = self.state {
                     self.last_search = query.clone();
-                    let session = SessionState {
-                        content_query: query.clone(),
-                    };
-                    session.save();
                 }
                 self.reset_textarea(DEFAULT_PROTOCOL_IDX);
                 self.save_session();
