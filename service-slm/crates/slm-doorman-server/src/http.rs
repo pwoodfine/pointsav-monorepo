@@ -245,6 +245,19 @@ struct ChatCompletionsBody {
     session_context: Option<slm_core::SessionContext>,
 }
 
+/// Default module_id for callers that omit `X-Foundry-Module-ID`. Configurable via
+/// `SLM_DEFAULT_MODULE_ID` so the default scope can point at the live data namespace
+/// instead of the empty `foundry` scope (the dead-default-scope no-op, where graph-context
+/// injection silently returns nothing). Falls back to `foundry` on an unset/invalid value.
+fn default_module_id() -> ModuleId {
+    let raw = std::env::var("SLM_DEFAULT_MODULE_ID").unwrap_or_default();
+    let id = if raw.trim().is_empty() { "foundry" } else { raw.trim() };
+    ModuleId::from_str(id).unwrap_or_else(|e| {
+        tracing::warn!("invalid SLM_DEFAULT_MODULE_ID {id:?} ({e}); falling back to 'foundry'");
+        ModuleId::from_str("foundry").expect("compile-time-valid default moduleId")
+    })
+}
+
 async fn chat_completions(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
@@ -256,7 +269,13 @@ async fn chat_completions(
     {
         Some(s) => ModuleId::from_str(s)
             .map_err(|e| ApiError::bad_request(format!("invalid X-Foundry-Module-ID: {e}")))?,
-        None => ModuleId::from_str("foundry").expect("compile-time-valid default moduleId"),
+        None => {
+            tracing::warn!(
+                "request omitted X-Foundry-Module-ID; using default module scope \
+                 (set SLM_DEFAULT_MODULE_ID to your live data namespace)"
+            );
+            default_module_id()
+        }
     };
     let request_id = match headers
         .get("x-foundry-request-id")
@@ -2049,7 +2068,13 @@ async fn anthropic_messages(
     {
         Some(s) => ModuleId::from_str(s)
             .map_err(|e| ApiError::bad_request(format!("invalid X-Foundry-Module-ID: {e}")))?,
-        None => ModuleId::from_str("foundry").expect("compile-time-valid default moduleId"),
+        None => {
+            tracing::warn!(
+                "request omitted X-Foundry-Module-ID; using default module scope \
+                 (set SLM_DEFAULT_MODULE_ID to your live data namespace)"
+            );
+            default_module_id()
+        }
     };
     let request_id = RequestId::new();
     let model = body.model.clone();
