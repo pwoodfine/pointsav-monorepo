@@ -417,14 +417,14 @@ mod tests {
 
     #[test]
     fn atomic_write_round_trips() {
-        let dir = std::env::temp_dir().join("workbench-mcp-test");
+        let dir = std::env::temp_dir().join(format!("workbench-mcp-test-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("test-roundtrip.md");
         let content = "# Hello\n\nWorld.\n";
         atomic_write(&path, content).unwrap();
         let read_back = fs::read_to_string(&path).unwrap();
         assert_eq!(read_back, content);
-        let _ = fs::remove_file(&path);
+        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]
