@@ -162,6 +162,53 @@ def load_sft_pairs(queue_done_path: str) -> list[dict]:
     return records
 
 
+def load_engineering_pairs(eng_root: str) -> list[dict]:
+    """Load SFT pairs from the engineering edit corpus (commit_msg → diff).
+
+    Wires the previously-orphaned engineering/** tree (no trainer read it) into SFT to
+    break the single-task git-commit collapse. Filters bookkeeping-only (.agent/.claude)
+    and oversized/truncated diffs so the added signal stays code-edit-focused.
+    """
+    pattern = os.path.join(eng_root, "**", "*.jsonl")
+    files = sorted(glob.glob(pattern, recursive=True))
+    print(f"[corpus] scanning {len(files)} engineering files in {eng_root}")
+    records: list[dict] = []
+    skipped = 0
+    max_diff_chars = MAX_LENGTH * 4  # keep within the sequence budget (chars/4 heuristic)
+    for f in files:
+        try:
+            with open(f) as fh:
+                row = json.load(fh)
+        except Exception:
+            skipped += 1
+            continue
+        diff = (row.get("diff") or "").strip()
+        msg = (row.get("commit_msg") or "").strip()
+        if not diff or not msg or len(diff) < MIN_DIFF_CHARS or row.get("diff_truncated"):
+            skipped += 1
+            continue
+        if len(diff) > max_diff_chars:
+            skipped += 1
+            continue
+        # Drop bookkeeping-only edits (.agent//.claude churn) — low engineering signal.
+        changed = [ln for ln in diff.splitlines() if ln.startswith("diff --git")]
+        if changed and all(("/.agent/" in p or "/.claude/" in p) for p in changed):
+            skipped += 1
+            continue
+        instruction = msg
+        scope = row.get("scope")
+        if scope and str(scope).strip():
+            instruction += f"\n\n## Scope\n{scope}"
+        records.append({
+            "text": format_alpaca_prompt(instruction, diff),
+            "_task_type": "engineering-edit",
+            "_brief_id": row.get("source_commit"),
+            "_senior": row.get("author"),
+        })
+    print(f"[corpus] loaded {len(records)} engineering pairs (skipped {skipped})")
+    return records
+
+
 def run_training(records: list[dict], base_model: str, output_dir: str,
                  dry_run: bool, max_runtime_seconds: int = 0, resume: bool = False) -> None:
     """Fine-tune base_model with SFT on records; save LoRA adapter to output_dir."""
@@ -336,6 +383,11 @@ def main() -> None:
         help="Path to shadow queue-done directory containing *.brief.jsonl files",
     )
     parser.add_argument(
+        "--engineering-corpus",
+        default=os.path.join(FOUNDRY_ROOT, "data", "training-corpus", "engineering"),
+        help="Engineering edit corpus (commit_msg→diff) wired into SFT for task diversity; '' disables",
+    )
+    parser.add_argument(
         "--base-model",
         default=canonical_base_model(),
         help="OLMo base model ID; default read from data/base-registry.yaml (OLMo-only policy)",
@@ -369,6 +421,8 @@ def main() -> None:
     args = parser.parse_args()
 
     records = load_sft_pairs(args.queue_done)
+    if args.engineering_corpus and os.path.isdir(args.engineering_corpus):
+        records += load_engineering_pairs(args.engineering_corpus)
     if not records:
         print("[ERROR] No valid SFT pairs found — check queue-done path", file=sys.stderr)
         print(f"[ERROR] Tried: {args.queue_done}", file=sys.stderr)
