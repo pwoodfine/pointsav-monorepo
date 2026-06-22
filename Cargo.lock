@@ -7845,8 +7845,6 @@ dependencies = [
 [[package]]
 name = "tantivy"
 version = "0.24.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "64a966cb0e76e311f09cf18507c9af192f15d34886ee43d7ba7c7e3803660c43"
 dependencies = [
  "aho-corasick",
  "arc-swap",
@@ -7906,8 +7904,6 @@ dependencies = [
 [[package]]
 name = "tantivy-columnar"
 version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6300428e0c104c4f7db6f95b466a6f5c1b9aece094ec57cdd365337908dc7344"
 dependencies = [
  "downcast-rs",
  "fastdivide",
