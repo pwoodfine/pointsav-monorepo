@@ -458,4 +458,9 @@ mod tests {
         // Two-letter ambiguous abbreviations are NOT stripped (no false merges).
         assert_eq!(normalize_entity_key("Costco"), "costco");
     }
+    // NOTE: a DB-backed upsert→query alias-collapse integration test was attempted here
+    // but cannot link on this VM — the installed /usr/local/lib/liblbug.so is ABI-mismatched
+    // with the lbug 0.16.1 crate (SystemConfig 11-arg vs 12-arg). Restore once the lbug
+    // native lib is rebuilt to match the crate (infra item routed to Command). The D5
+    // alias-collapse is unit-verified above via normalize_entity_key.
 }
