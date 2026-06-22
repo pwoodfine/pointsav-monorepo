@@ -51,3 +51,4 @@ pub extern "C" fn notified(ch: u64) {
 fn panic(_info: &core::panic::PanicInfo) -> ! {
     loop {}
 }
+
