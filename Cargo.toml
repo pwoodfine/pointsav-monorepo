@@ -81,3 +81,5 @@ strip = "symbols"
 
 [patch.crates-io]
 tantivy-common = { path = "vendor-tantivy-common" }
+tantivy-columnar = { path = "vendor-tantivy-columnar" }
+tantivy = { path = "vendor-tantivy" }
