@@ -427,7 +427,7 @@ fn rows_to_entities(result: lbug::QueryResult<'_>) -> Result<Vec<GraphEntity>> {
 
 #[cfg(test)]
 mod tests {
-    use super::normalize_entity_key;
+    use super::*;
 
     #[test]
     fn normalize_collapses_trailing_period_and_whitespace() {
@@ -470,9 +470,47 @@ mod tests {
         // Two-letter ambiguous abbreviations are NOT stripped (no false merges).
         assert_eq!(normalize_entity_key("Costco"), "costco");
     }
-    // NOTE: a DB-backed upsert→query alias-collapse integration test was attempted here
-    // but cannot link on this VM — the installed /usr/local/lib/liblbug.so is ABI-mismatched
-    // with the lbug 0.16.1 crate (SystemConfig 11-arg vs 12-arg). Restore once the lbug
-    // native lib is rebuilt to match the crate (infra item routed to Command). The D5
-    // alias-collapse is unit-verified above via normalize_entity_key.
+
+    fn company(name: &str) -> GraphEntity {
+        GraphEntity {
+            entity_name: name.into(),
+            classification: "Company".into(),
+            role_vector: None,
+            location_vector: None,
+            contact_vector: None,
+            module_id: "ertest".into(),
+            confidence: 0.9,
+        }
+    }
+
+    /// End-to-end against a real LadybugDB store: the surface variants the audit measured
+    /// (™, Inc., bare) MERGE onto ONE canonical node rather than fragmenting (the D5 fix).
+    /// Restored after Command fixed the lbug native ABI (LBUG_SHARED removed; prebuilt .a).
+    #[test]
+    fn upsert_collapses_alias_variants_to_one_node() {
+        let dir = std::env::temp_dir().join(format!("sc-graph-ertest-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let store = LbugGraphStore::new(dir.to_str().unwrap()).expect("open temp lbug store");
+        store.init_schema().expect("init_schema");
+
+        let variants = vec![
+            company("Woodfine Capital Projects"),
+            company("Woodfine Capital Projects Inc."),
+            company("Woodfine Capital Projects™"),
+        ];
+        store.upsert_entities("ertest", &variants).expect("upsert");
+
+        let hits = store
+            .query_context("ertest", "Woodfine", 10)
+            .expect("query_context");
+        assert_eq!(
+            hits.len(),
+            1,
+            "3 surface variants should collapse to 1 canonical node, got {:?}",
+            hits.iter().map(|e| e.entity_name.clone()).collect::<Vec<_>>()
+        );
+        assert_eq!(store.count_all().expect("count"), 1);
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 }
