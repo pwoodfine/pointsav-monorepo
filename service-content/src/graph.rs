@@ -6,19 +6,34 @@ use std::sync::Arc;
 /// Build the canonical node key for an entity name so trivial surface variants
 /// collapse onto the SAME graph node on upsert (`MERGE` dedupes on id).
 ///
-/// Without this, `Woodfine Management Corp.` and `Woodfine Management Corp`
-/// (trailing period) become two distinct nodes, inflating the entity count with
-/// duplicates and splitting a single real entity's context across rows (audit
-/// 2026-06-19). Normalisation: lowercase, collapse internal whitespace, strip
-/// trailing punctuation (`.,;:`), then `' ' -> '_'`. Conservative — it does NOT
-/// attempt alias resolution (`Peter` vs `Peter M.`); that needs a canonical
-/// alias table and is out of scope here.
+/// Without this, surface variants of one entity become distinct nodes, splitting a
+/// single real entity's context across rows (audit 2026-06-19/06-21 measured the
+/// Woodfine Capital Projects org fragmented 5-6 ways). Normalisation: lowercase,
+/// collapse internal whitespace, strip trailing punctuation + trademark/registered
+/// symbols, strip a trailing corporate/legal suffix, then `' ' -> '_'`.
+///
+/// This is a cheap partial entity-resolution layer (collapses surface variants). It
+/// does NOT do alias resolution across genuinely different surface forms (`Peter` vs
+/// `Peter M.`) — that is the embedding+fuzzy matcher in the `er` module, applied via a
+/// canonical alias table (additive migration, see BRIEF-flow-build-plan).
 pub(crate) fn normalize_entity_key(entity_name: &str) -> String {
     let collapsed = entity_name.split_whitespace().collect::<Vec<_>>().join(" ");
-    let trimmed = collapsed
-        .trim_end_matches(['.', ',', ';', ':', ' '])
+    let mut s = collapsed
+        .trim_end_matches(['.', ',', ';', ':', ' ', '™', '®', '©'])
         .to_lowercase();
-    trimmed.replace(' ', "_")
+    // Strip ONE unambiguous trailing corporate/legal suffix so e.g. "… Inc." / "… Corp"
+    // collapse onto the base name. Two-letter ambiguous abbreviations (co/sa/ag/bv) are
+    // deliberately excluded to avoid false strips on persons/locations.
+    for suffix in [
+        " incorporated", " inc", " corporation", " corp", " company",
+        " limited", " ltd", " llc", " gmbh", " plc",
+    ] {
+        if let Some(stripped) = s.strip_suffix(suffix) {
+            s = stripped.trim_end_matches([' ', '.', ',']).to_string();
+            break;
+        }
+    }
+    s.split_whitespace().collect::<Vec<_>>().join("_")
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -413,15 +428,34 @@ mod tests {
             normalize_entity_key("Woodfine Management Corp."),
             normalize_entity_key("Woodfine Management Corp")
         );
-        // Internal whitespace and case are normalised.
+        // Internal whitespace + case normalised; the "Corp" suffix is now stripped.
         assert_eq!(
             normalize_entity_key("  Woodfine   Management  Corp  "),
-            "woodfine_management_corp"
+            "woodfine_management"
         );
-        // Distinct real entities are NOT merged (no alias resolution).
+        // Distinct real entities are NOT merged (surface-variant collapse only).
         assert_ne!(
             normalize_entity_key("Peter Woodfine"),
             normalize_entity_key("Peter M. Woodfine")
         );
+    }
+
+    #[test]
+    fn normalize_collapses_trademark_and_legal_suffix_variants() {
+        // The Woodfine Capital Projects 5-6-way Company fragmentation collapses to one key.
+        let canonical = normalize_entity_key("Woodfine Capital Projects");
+        assert_eq!(canonical, "woodfine_capital_projects");
+        for variant in [
+            "Woodfine Capital Projects™",
+            "Woodfine Capital Projects®",
+            "Woodfine Capital Projects Inc.",
+            "Woodfine Capital Projects, Inc.",
+            "woodfine capital projects llc",
+            "Woodfine Capital Projects Incorporated",
+        ] {
+            assert_eq!(normalize_entity_key(variant), canonical, "variant: {variant}");
+        }
+        // Two-letter ambiguous abbreviations are NOT stripped (no false merges).
+        assert_eq!(normalize_entity_key("Costco"), "costco");
     }
 }
