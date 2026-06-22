@@ -84,12 +84,8 @@ pub struct RelatedToEdge {
 pub trait GraphStore: Send + Sync {
     fn init_schema(&self) -> Result<()>;
     fn upsert_entities(&self, module_id: &str, entities: &[GraphEntity]) -> Result<usize>;
-    fn query_context(
-        &self,
-        module_id: &str,
-        query: &str,
-        limit: usize,
-    ) -> Result<Vec<GraphEntity>>;
+    fn query_context(&self, module_id: &str, query: &str, limit: usize)
+        -> Result<Vec<GraphEntity>>;
     #[allow(dead_code)]
     fn list_entities(&self, module_id: &str) -> Result<Vec<GraphEntity>>;
     /// Delete all entities matching module_id + classification. Returns count deleted.
@@ -957,6 +953,7 @@ fn val_to_f64(v: &Value) -> f64 {
 
 /// Convert a `QueryResult` iterator into `Vec<GraphEntity>`.
 /// Each row yields 8 columns in RETURN order:
+/// 0 entity_name, 1 classification, 2 role_vector, 3 location_vector,
 /// 4 contact_vector, 5 module_id, 6 confidence, 7 source_doc
 fn row_to_entity(row: &[Value]) -> Option<GraphEntity> {
     if row.len() < 7 {
@@ -1228,11 +1225,9 @@ mod tests {
     /// Restored after Command fixed the lbug native ABI (LBUG_SHARED removed; prebuilt .a).
     #[test]
     fn upsert_collapses_alias_variants_to_one_node() {
-        let dir = std::env::temp_dir()
-            .join(format!("sc-graph-ertest-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("sc-graph-ertest-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
-        let store =
-            LbugGraphStore::new(dir.to_str().unwrap()).expect("open temp lbug store");
+        let store = LbugGraphStore::new(dir.to_str().unwrap()).expect("open temp lbug store");
         store.init_schema().expect("init_schema");
 
         let variants = vec![
