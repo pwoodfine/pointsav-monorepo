@@ -1,0 +1,12 @@
+# base-registry.yaml — single source of truth for the canonical base model.
+# Decided 2026-06-21 (BRIEF-flow-build-plan). Asserted equal at Doorman boot across:
+#   SFT base == DPO base == ref_model == served GGUF == Doorman SLM_LOCAL_MODEL.
+# This is the highest-leverage flow decision; every reader must match it.
+canonical_base: allenai/OLMo-3-7B-Instruct
+served_gguf: Olmo-3-7B-Instruct-Q4_K_M.gguf
+slm_local_model: OLMo-3-7B-Instruct
+# Notes:
+#   - HF Olmo3ForCausalLM uses LLaMA-style LoRA target_modules
+#     (q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj) — NOT the legacy
+#     att_proj/ff_proj names, which match zero modules on an HF OLMo base.
+#   - llama-server serves served_gguf; Doorman SLM_LOCAL_MODEL must equal slm_local_model.
