@@ -327,7 +327,12 @@ async fn get_file(
                     .map(|d| d.as_secs())
                     .unwrap_or(0);
                 let size = if is_dir { 0 } else { meta.len() };
-                Some(DirEntry { name, is_dir, mtime, size })
+                Some(DirEntry {
+                    name,
+                    is_dir,
+                    mtime,
+                    size,
+                })
             })
             .collect();
         entries.sort_by(|a, b| b.is_dir.cmp(&a.is_dir).then(a.name.cmp(&b.name)));
@@ -1613,9 +1618,10 @@ async fn zip_download(State(state): State<AppState>, Query(q): Query<FileQuery>)
                 continue;
             }
             // Skip hidden files/dirs
-            if rel.components().any(|c| {
-                c.as_os_str().to_str().unwrap_or("").starts_with('.')
-            }) {
+            if rel
+                .components()
+                .any(|c| c.as_os_str().to_str().unwrap_or("").starts_with('.'))
+            {
                 continue;
             }
 
@@ -1672,18 +1678,20 @@ async fn get_raw(State(state): State<AppState>, Query(q): Query<FileQuery>) -> R
         .unwrap_or("")
         .to_lowercase();
     let content_type = match ext.as_str() {
-        "pdf"  => "application/pdf",
-        "png"  => "image/png",
+        "pdf" => "application/pdf",
+        "png" => "image/png",
         "jpg" | "jpeg" => "image/jpeg",
-        "gif"  => "image/gif",
-        "svg"  => "image/svg+xml",
+        "gif" => "image/gif",
+        "svg" => "image/svg+xml",
         "webp" => "image/webp",
         "html" => "text/html; charset=utf-8",
-        "md"   => "text/markdown; charset=utf-8",
+        "md" => "text/markdown; charset=utf-8",
         "json" | "geojson" => "application/json",
-        "js"   => "text/javascript; charset=utf-8",
-        "css"  => "text/css; charset=utf-8",
-        "rs" | "toml" | "yaml" | "yml" | "txt" | "sh" | "tjp" | "ifc" => "text/plain; charset=utf-8",
+        "js" => "text/javascript; charset=utf-8",
+        "css" => "text/css; charset=utf-8",
+        "rs" | "toml" | "yaml" | "yml" | "txt" | "sh" | "tjp" | "ifc" => {
+            "text/plain; charset=utf-8"
+        }
         _ => "application/octet-stream",
     };
     let bytes = match tokio::fs::read(&fs_path).await {

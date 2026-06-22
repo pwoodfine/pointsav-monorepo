@@ -82,10 +82,6 @@ pub async fn create(
         return err(StatusCode::INTERNAL_SERVER_ERROR, e.to_string());
     }
 
-    let path = format!(
-        "{}/{}",
-        root.url_prefix.trim_end_matches('/'),
-        name
-    );
+    let path = format!("{}/{}", root.url_prefix.trim_end_matches('/'), name);
     Json(CreateResponse { ok: true, path }).into_response()
 }
