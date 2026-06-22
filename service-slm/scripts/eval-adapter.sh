@@ -33,7 +33,7 @@ set -euo pipefail
 # ── Defaults ─────────────────────────────────────────────────────────
 
 FOUNDRY_ROOT="${FOUNDRY_ROOT:-/srv/foundry}"
-ARCHIVE_ROOT="${ARCHIVE_ROOT:-${FOUNDRY_ROOT}/clones/project-intelligence}"
+ARCHIVE_ROOT="${ARCHIVE_ROOT:-${FOUNDRY_ROOT}/clones/project-totebox}"
 REGISTRY="${ARCHIVE_ROOT}/data/adapters/registry.yaml"
 HELD_OUT="${FOUNDRY_ROOT}/data/training-corpus/eval/holdout-v1.jsonl"
 ADAPTER_DIR=""

@@ -18,10 +18,12 @@ Adapter buckets and thresholds:
 """
 
 import argparse
+import hashlib
 import json
 import os
 import subprocess
 import sys
+from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -43,6 +45,64 @@ ADAPTER_SPECS: dict = {
         "description": "Apprenticeship shadow + verdict tuples; DPO requires signed verdicts",
     },
 }
+
+
+# Composition gate — replaces the raw file count as the readiness signal. The gold
+# standard is a clean, diverse, contrastive pair floor (not a raw count); a single-task,
+# placeholder-heavy, near-duplicate corpus is "unlearnable as framed" (audit 2026-06-21).
+CLEAN_PAIR_FLOOR = int(os.environ.get("SLM_CLEAN_PAIR_FLOOR", "3000"))
+MAX_TASK_SHARE = 0.50          # no single task_type should exceed this share
+SCORECARD_CAP_TOKENS = 1024    # chars/4 heuristic vs the single-forward sequence budget
+
+
+def _placeholder_rejected(rej: str) -> bool:
+    r = (rej or "").strip().lower()
+    if not r:
+        return True
+    return any(m in r for m in
+               ("<unified diff", "<no diff", "no diff provided", "+new line", "-old line"))
+
+
+def compute_scorecard(files: list, method: str) -> dict:
+    """Composition scorecard: task histogram, near-dup rate, clean-pair count, truncation.
+
+    Replaces a raw file count. 'clean' = real contrastive signal (non-placeholder rejected,
+    chosen != rejected) for DPO; non-trivial completion for SFT.
+    """
+    tasks: Counter = Counter()
+    seen_hashes: set = set()
+    near_dups = clean = over_cap = total = 0
+    for path in files:
+        try:
+            with open(path) as f:
+                row = json.loads(f.readline().strip() or "{}")
+        except (OSError, json.JSONDecodeError):
+            continue
+        total += 1
+        tasks[row.get("task_type") or row.get("tuple_type") or "unknown"] += 1
+        chosen = row.get("chosen") or (row.get("attempt") or {}).get("diff") or ""
+        rejected = row.get("rejected", "")
+        h = hashlib.md5(chosen[:300].encode("utf-8", "ignore")).hexdigest()
+        if h in seen_hashes:
+            near_dups += 1
+        else:
+            seen_hashes.add(h)
+        if len(chosen) // 4 > SCORECARD_CAP_TOKENS:
+            over_cap += 1
+        if method == "dpo":
+            if chosen and not _placeholder_rejected(rejected) and rejected != chosen:
+                clean += 1
+        elif len(chosen) >= 20:
+            clean += 1
+    top_share = (max(tasks.values()) / total) if total else 0.0
+    return {
+        "total": total,
+        "clean": clean,
+        "near_dup_rate": (near_dups / total) if total else 0.0,
+        "over_cap_rate": (over_cap / total) if total else 0.0,
+        "task_histogram": dict(tasks.most_common()),
+        "top_task_share": top_share,
+    }
 
 
 def count_files(glob_pattern: str) -> list:
@@ -227,21 +287,33 @@ def main() -> None:
             degenerate = len(all_files) - len(files)
         else:
             files = count_files(spec["glob"])
+            all_files = files
             degenerate = 0
         count = len(files)
-        threshold = spec["threshold"]
-        at_threshold = count >= threshold
+
+        # Composition scorecard over the FULL glob — clean-pair count gates readiness now.
+        scorecard = compute_scorecard(all_files, spec["method"])
+        at_threshold = scorecard["clean"] >= CLEAN_PAIR_FLOOR
 
         print(f"  [{adapter_name}]")
-        print(f"    tuples:      {count} / {threshold} threshold (valid DPO signal)")
+        print(f"    tuples:      {count} valid / {len(all_files)} total")
+        print(f"    scorecard:   clean={scorecard['clean']}/{CLEAN_PAIR_FLOOR} floor  "
+              f"near-dup={scorecard['near_dup_rate']:.0%}  >{SCORECARD_CAP_TOKENS}tok={scorecard['over_cap_rate']:.0%}  "
+              f"top-task={scorecard['top_task_share']:.0%}")
+        print(f"    tasks:       {scorecard['task_histogram']}")
         if degenerate:
             print(f"    degenerate:  {degenerate} skipped (attempt.diff empty — Tier B was unavailable)")
+        if scorecard["total"] and scorecard["top_task_share"] > MAX_TASK_SHARE:
+            print(f"    [WARN] single task-type is {scorecard['top_task_share']:.0%} (> {MAX_TASK_SHARE:.0%}) — corpus too homogeneous")
+        if scorecard["clean"] < CLEAN_PAIR_FLOOR:
+            print(f"    [WARN] clean pairs {scorecard['clean']} < floor {CLEAN_PAIR_FLOOR} — below stable-training floor")
         print(f"    method:      {spec['method']}")
         print(f"    description: {spec['description']}")
 
         trigger = at_threshold or args.force
         if not trigger:
-            print(f"    status:      accumulating — {threshold - count} more tuples needed")
+            print(f"    status:      accumulating — need {CLEAN_PAIR_FLOOR - scorecard['clean']} more clean pairs "
+                  f"(or --force / lower SLM_CLEAN_PAIR_FLOOR)")
             print()
             continue
 

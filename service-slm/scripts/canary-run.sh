@@ -32,7 +32,7 @@ set -euo pipefail
 ENDPOINT="${SLM_CANARY_ENDPOINT:-http://127.0.0.1:9090}"
 ADAPTER_VERSION="${SLM_CANARY_ADAPTER:-baseline}"
 FOUNDRY_ROOT="${FOUNDRY_ROOT:-/srv/foundry}"
-ARCHIVE_ROOT="${FOUNDRY_ROOT}/clones/project-intelligence"
+ARCHIVE_ROOT="${FOUNDRY_ROOT}/clones/project-totebox"
 TASK_SET="${ARCHIVE_ROOT}/service-slm/data/canary/v1.yaml"
 DATE_STAMP="$(date -u +%Y-%m-%dT%H%M%SZ)"
 OUT_PATH=""

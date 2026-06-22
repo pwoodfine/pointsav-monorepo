@@ -1,6 +1,6 @@
 [Unit]
 Description=SLM canary — Tier A throughput/throttle gate + drain liveness (one-shot)
-Documentation=file:///srv/foundry/clones/project-intelligence/service-slm/scripts/slm-canary.sh
+Documentation=file:///srv/foundry/clones/project-totebox/service-slm/scripts/slm-canary.sh
 # Catches the regression classes that slipped through for 10 days (2026-06):
 #   - throughput collapse (cgroup repack/MemoryMax thrash, 4 -> 0.3 tok/s)
 #   - drain stalls (empty-diff OLMo hang; infinite-retry brief)
@@ -13,7 +13,7 @@ Group=foundry
 WorkingDirectory=/srv/foundry
 # NOTE (Command): copy the three scripts to a stable deployed path and point
 # ExecStart there, or run from the canonical mirror. Reference (archive) path:
-ExecStart=/srv/foundry/clones/project-intelligence/service-slm/scripts/slm-canary.sh
+ExecStart=/srv/foundry/clones/project-totebox/service-slm/scripts/slm-canary.sh
 StandardOutput=journal
 StandardError=journal
 PrivateTmp=true

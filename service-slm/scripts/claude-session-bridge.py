@@ -15,7 +15,7 @@ Or as systemd unit: local-claude-bridge.service
 
 Environment:
   CLAUDE_PROJECTS_DIR   default: ~/.claude/projects
-  CORPUS_WATCH_DIR      default: /srv/foundry/clones/project-intelligence/data/corpus-watch
+  CORPUS_WATCH_DIR      default: /srv/foundry/clones/project-totebox/data/corpus-watch
   POLL_INTERVAL_SECS    default: 10
 """
 
@@ -34,7 +34,7 @@ CLAUDE_PROJECTS_DIR = Path(os.environ.get(
 ))
 CORPUS_WATCH_DIR = Path(os.environ.get(
     "CORPUS_WATCH_DIR",
-    "/srv/foundry/clones/project-intelligence/data/corpus-watch"
+    "/srv/foundry/clones/project-totebox/data/corpus-watch"
 ))
 POLL_INTERVAL_SECS = int(os.environ.get("POLL_INTERVAL_SECS", "10"))
 

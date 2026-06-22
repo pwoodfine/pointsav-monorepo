@@ -1,6 +1,6 @@
 [Unit]
 Description=SLM canary timer — hourly throughput + drain health check
-Documentation=file:///srv/foundry/clones/project-intelligence/service-slm/scripts/slm-canary.sh
+Documentation=file:///srv/foundry/clones/project-totebox/service-slm/scripts/slm-canary.sh
 
 [Timer]
 # Hourly, with jitter to avoid colliding with the top-of-hour drain/report load.

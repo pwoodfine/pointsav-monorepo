@@ -44,7 +44,7 @@
 set -euo pipefail
 
 FOUNDRY_ROOT="${FOUNDRY_ROOT:-/srv/foundry}"
-ARCHIVE_ROOT="${FOUNDRY_ROOT}/clones/project-intelligence"
+ARCHIVE_ROOT="${FOUNDRY_ROOT}/clones/project-totebox"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DATE_STAMP="$(date -u +%Y-%m-%d)"
 

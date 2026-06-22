@@ -879,6 +879,21 @@ def main() -> None:
                          max_runtime_seconds=args.max_runtime_seconds,
                          resume=args.resume)
     else:
+        # SFT-first discipline (audit 2026-06-19/06-21): preference optimisation must train
+        # ON TOP of an SFT-tuned policy, never a raw/off-distribution base. Require an SFT
+        # adapter to exist before a pref run. (Loading it as the PeftModel policy-init is a
+        # GPU-validated step — see the activation hand-off.) Override: SLM_ALLOW_NO_SFT=1.
+        if not args.dry_run and os.environ.get("SLM_ALLOW_NO_SFT", "").lower() not in ("1", "true"):
+            import glob as _glob
+            if not _glob.glob("./adapters/*sft*/adapter_model.safetensors"):
+                print(
+                    "[ERROR] --mode pref requires an SFT adapter first (SFT-first discipline).\n"
+                    "        No ./adapters/*sft*/adapter_model.safetensors found — run\n"
+                    "        run-sft-training.py first, then re-run pref. Override (not\n"
+                    "        recommended): SLM_ALLOW_NO_SFT=1.",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
         run_training(records, args.base_model, output_dir, dry_run=args.dry_run,
                      max_runtime_seconds=args.max_runtime_seconds,
                      resume=args.resume,
