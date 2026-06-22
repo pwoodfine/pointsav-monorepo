@@ -12,6 +12,11 @@ name = "service-fs"
 path = "src/main.rs"
 test = false
 
+[[bin]]
+name = "service-fs"
+path = "src/main.rs"
+test = false
+
 [dependencies]
 # Pure bare-metal enclave. Zero OS dependencies permitted.
 
