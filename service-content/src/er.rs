@@ -39,7 +39,11 @@ pub struct ErConfig {
 
 impl Default for ErConfig {
     fn default() -> Self {
-        Self { auto_merge: 0.95, review: 0.85, block_prefix_len: 3 }
+        Self {
+            auto_merge: 0.95,
+            review: 0.85,
+            block_prefix_len: 3,
+        }
     }
 }
 

@@ -25,8 +25,16 @@ pub(crate) fn normalize_entity_key(entity_name: &str) -> String {
     // collapse onto the base name. Two-letter ambiguous abbreviations (co/sa/ag/bv) are
     // deliberately excluded to avoid false strips on persons/locations.
     for suffix in [
-        " incorporated", " inc", " corporation", " corp", " company",
-        " limited", " ltd", " llc", " gmbh", " plc",
+        " incorporated",
+        " inc",
+        " corporation",
+        " corp",
+        " company",
+        " limited",
+        " ltd",
+        " llc",
+        " gmbh",
+        " plc",
     ] {
         if let Some(stripped) = s.strip_suffix(suffix) {
             s = stripped.trim_end_matches([' ', '.', ',']).to_string();
@@ -453,7 +461,11 @@ mod tests {
             "woodfine capital projects llc",
             "Woodfine Capital Projects Incorporated",
         ] {
-            assert_eq!(normalize_entity_key(variant), canonical, "variant: {variant}");
+            assert_eq!(
+                normalize_entity_key(variant),
+                canonical,
+                "variant: {variant}"
+            );
         }
         // Two-letter ambiguous abbreviations are NOT stripped (no false merges).
         assert_eq!(normalize_entity_key("Costco"), "costco");
