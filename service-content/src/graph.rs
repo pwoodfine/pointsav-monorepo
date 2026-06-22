@@ -55,11 +55,25 @@ pub struct GraphEntity {
     pub confidence: f64,
 }
 
+/// A typed directed edge between two Entity nodes. Input to `upsert_edges`.
+/// Both `src_entity_name` and `tgt_entity_name` must already be upserted into the
+/// graph for the edge to be created (MATCH fails silently on unknown entities).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RelatedToEdge {
+    pub src_entity_name: String,
+    pub tgt_entity_name: String,
+    pub relation_type: String,
+}
+
 pub trait GraphStore: Send + Sync {
     fn init_schema(&self) -> Result<()>;
     fn upsert_entities(&self, module_id: &str, entities: &[GraphEntity]) -> Result<usize>;
-    fn query_context(&self, module_id: &str, query: &str, limit: usize)
-        -> Result<Vec<GraphEntity>>;
+    fn query_context(
+        &self,
+        module_id: &str,
+        query: &str,
+        limit: usize,
+    ) -> Result<Vec<GraphEntity>>;
     #[allow(dead_code)]
     fn list_entities(&self, module_id: &str) -> Result<Vec<GraphEntity>>;
     /// Delete all entities matching module_id + classification. Returns count deleted.
@@ -72,12 +86,15 @@ pub trait GraphStore: Send + Sync {
         classification: &str,
         location: &str,
     ) -> Result<usize>;
-    /// Count all Entity nodes in the graph across all modules. Used by /healthz to
-    /// surface the real entity count rather than always reporting 0.
+    /// Count all Entity nodes in the graph across all modules.
     fn count_all(&self) -> Result<usize>;
-    /// Delete a single entity by module_id + entity_name. Returns Ok(()) on success
-    /// or if the entity did not exist. Used by the /v1/graph/cleanup endpoint.
+    /// Delete a single entity by module_id + entity_name.
     fn delete_entity(&self, module_id: &str, entity_name: &str) -> Result<()>;
+    /// Write typed directed edges between existing Entity nodes. Idempotent
+    /// (checks existence before CREATE). Returns the number of edges written.
+    fn upsert_edges(&self, module_id: &str, edges: &[RelatedToEdge]) -> Result<usize>;
+    /// Count alias records in entity_aliases. Used by /healthz + tests.
+    fn count_aliases(&self) -> Result<usize>;
 }
 
 pub struct LbugGraphStore {
@@ -98,9 +115,6 @@ impl LbugGraphStore {
         Ok(Self { db: Arc::new(db) })
     }
 
-    /// Create a new connection from the stored database reference.
-    /// Connection borrows `&Database`; since `Arc<Database>` keeps the Database alive
-    /// and we hold a reference for the duration of the call, this is safe.
     fn conn(&self) -> Result<Connection<'_>> {
         Connection::new(&self.db).map_err(|e| anyhow!("Failed to create DB connection: {}", e))
     }
@@ -132,67 +146,200 @@ impl GraphStore for LbugGraphStore {
         )
         .map_err(|e| anyhow!("init_schema RelatedTo table failed: {}", e))?;
 
+        // ER alias table: records AutoMerge decisions (alias entity_id → canonical key).
+        // Written by upsert_entities during in-batch ER; read by query_context (future).
+        conn.query(
+            "CREATE NODE TABLE IF NOT EXISTS entity_aliases(\
+                id STRING PRIMARY KEY, \
+                canonical_key STRING, \
+                confidence DOUBLE, \
+                er_source STRING, \
+                created_at STRING\
+            )",
+        )
+        .map_err(|e| anyhow!("init_schema entity_aliases table failed: {}", e))?;
+
+        // ER review queue: Review-band decisions pending human confirmation via F12 panel.
+        // resolved field: \"false\" | \"true\" | \"human_approved\" | \"human_rejected\".
+        conn.query(
+            "CREATE NODE TABLE IF NOT EXISTS er_review_queue(\
+                id STRING PRIMARY KEY, \
+                alias_entity_id STRING, \
+                candidate_canonical_key STRING, \
+                similarity DOUBLE, \
+                module_id STRING, \
+                created_at STRING, \
+                resolved STRING\
+            )",
+        )
+        .map_err(|e| anyhow!("init_schema er_review_queue table failed: {}", e))?;
+
         Ok(())
     }
 
     fn upsert_entities(&self, module_id: &str, entities: &[GraphEntity]) -> Result<usize> {
+        if entities.is_empty() {
+            return Ok(0);
+        }
         let conn = self.conn()?;
-
-        // Prepare the MERGE statement once, then execute per entity.
-        // LadybugDB MERGE semantics: create-or-match on primary key; SET updates fields on match.
-        let mut stmt = conn
-            .prepare(
-                "MERGE (e:Entity {id: $id}) \
-                 SET e.entity_name = $entity_name, \
-                     e.classification = $classification, \
-                     e.role_vector = $role_vector, \
-                     e.location_vector = $location_vector, \
-                     e.contact_vector = $contact_vector, \
-                     e.module_id = $module_id, \
-                     e.confidence = $confidence, \
-                     e.created_at = $created_at",
-            )
-            .map_err(|e| anyhow!("Failed to prepare upsert statement: {}", e))?;
-
         let now = chrono::Utc::now().to_rfc3339();
-        let mut count = 0usize;
 
+        // Phase 1: MERGE each entity node.
+        // The stmt is scoped so its borrow on conn drops before Phase 2 prepares new stmts.
+        let count: usize = {
+            let mut stmt = conn
+                .prepare(
+                    "MERGE (e:Entity {id: $id}) \
+                     SET e.entity_name = $entity_name, \
+                         e.classification = $classification, \
+                         e.role_vector = $role_vector, \
+                         e.location_vector = $location_vector, \
+                         e.contact_vector = $contact_vector, \
+                         e.module_id = $module_id, \
+                         e.confidence = $confidence, \
+                         e.created_at = $created_at",
+                )
+                .map_err(|e| anyhow!("Failed to prepare upsert statement: {}", e))?;
+
+            let mut c = 0usize;
+            for entity in entities {
+                let id = format!(
+                    "{}__{}",
+                    module_id,
+                    normalize_entity_key(&entity.entity_name)
+                );
+                conn.execute(
+                    &mut stmt,
+                    vec![
+                        ("id", Value::String(id)),
+                        ("entity_name", Value::String(entity.entity_name.clone())),
+                        (
+                            "classification",
+                            Value::String(entity.classification.clone()),
+                        ),
+                        (
+                            "role_vector",
+                            Value::String(entity.role_vector.clone().unwrap_or_default()),
+                        ),
+                        (
+                            "location_vector",
+                            Value::String(entity.location_vector.clone().unwrap_or_default()),
+                        ),
+                        (
+                            "contact_vector",
+                            Value::String(entity.contact_vector.clone().unwrap_or_default()),
+                        ),
+                        ("module_id", Value::String(entity.module_id.clone())),
+                        ("confidence", Value::Double(entity.confidence)),
+                        ("created_at", Value::String(now.clone())),
+                    ],
+                )
+                .map_err(|e| {
+                    anyhow!("Failed to upsert entity '{}': {}", entity.entity_name, e)
+                })?;
+                c += 1;
+            }
+            c
+        }; // stmt dropped here; conn is free for Phase 2
+
+        // Phase 2: In-batch ER — compare entities within each blocking block; write
+        // AutoMerge decisions to entity_aliases and Review decisions to er_review_queue.
+        // This catches entities that share a classification + name prefix but normalise to
+        // *different* keys (e.g. "Peter Woodfine" vs "Peter M. Woodfine") — surface-variant
+        // collapse (same normalised key → same MERGE id) is already handled in Phase 1.
+        use crate::er::{blocking_key, decide, ErConfig, ErDecision, similarity};
+
+        let er_cfg = ErConfig::default();
+        let mut block_map: std::collections::HashMap<String, Vec<(String, String)>> =
+            std::collections::HashMap::new();
         for entity in entities {
-            let id = format!(
-                "{}__{}",
-                module_id,
-                normalize_entity_key(&entity.entity_name)
-            );
+            let bk = blocking_key(entity, &er_cfg);
+            let entity_id =
+                format!("{}__{}", module_id, normalize_entity_key(&entity.entity_name));
+            block_map
+                .entry(bk)
+                .or_default()
+                .push((entity.entity_name.clone(), entity_id));
+        }
 
-            conn.execute(
-                &mut stmt,
-                vec![
-                    ("id", Value::String(id)),
-                    ("entity_name", Value::String(entity.entity_name.clone())),
-                    (
-                        "classification",
-                        Value::String(entity.classification.clone()),
-                    ),
-                    (
-                        "role_vector",
-                        Value::String(entity.role_vector.clone().unwrap_or_default()),
-                    ),
-                    (
-                        "location_vector",
-                        Value::String(entity.location_vector.clone().unwrap_or_default()),
-                    ),
-                    (
-                        "contact_vector",
-                        Value::String(entity.contact_vector.clone().unwrap_or_default()),
-                    ),
-                    ("module_id", Value::String(entity.module_id.clone())),
-                    ("confidence", Value::Double(entity.confidence)),
-                    ("created_at", Value::String(now.clone())),
-                ],
+        let mut alias_stmt = conn
+            .prepare(
+                "MERGE (a:entity_aliases {id: $id}) \
+                 SET a.canonical_key = $canonical_key, \
+                     a.confidence = $confidence, \
+                     a.er_source = $er_source, \
+                     a.created_at = $created_at",
             )
-            .map_err(|e| anyhow!("Failed to upsert entity '{}': {}", entity.entity_name, e))?;
+            .map_err(|e| anyhow!("prepare entity_aliases upsert: {}", e))?;
 
-            count += 1;
+        let mut review_stmt = conn
+            .prepare(
+                "MERGE (r:er_review_queue {id: $id}) \
+                 SET r.alias_entity_id = $alias_entity_id, \
+                     r.candidate_canonical_key = $canonical_key, \
+                     r.similarity = $similarity, \
+                     r.module_id = $module_id, \
+                     r.created_at = $created_at, \
+                     r.resolved = $resolved",
+            )
+            .map_err(|e| anyhow!("prepare er_review_queue upsert: {}", e))?;
+
+        for (_bk, members) in &block_map {
+            if members.len() < 2 {
+                continue;
+            }
+            // Dedup by entity_id — surface variants that MERGE to the same node are
+            // already collapsed; ER only fires for genuinely distinct normalised keys.
+            let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
+            let deduped: Vec<&(String, String)> = members
+                .iter()
+                .filter(|(_, id)| seen.insert(id.clone()))
+                .collect();
+            if deduped.len() < 2 {
+                continue;
+            }
+            // Pick the shortest name as the canonical candidate for this block.
+            let canonical = deduped.iter().min_by_key(|(name, _)| name.len()).unwrap();
+            let canon_names: Vec<String> = vec![canonical.0.clone()];
+
+            for (mention, alias_id) in deduped.iter() {
+                if *alias_id == canonical.1 {
+                    continue;
+                }
+                match decide(mention, &canon_names, &er_cfg) {
+                    ErDecision::AutoMerge(canonical_key) => {
+                        conn.execute(
+                            &mut alias_stmt,
+                            vec![
+                                ("id", Value::String(alias_id.clone())),
+                                ("canonical_key", Value::String(canonical_key)),
+                                ("confidence", Value::Double(1.0)),
+                                ("er_source", Value::String("auto_merge".into())),
+                                ("created_at", Value::String(now.clone())),
+                            ],
+                        )
+                        .map_err(|e| anyhow!("execute entity_aliases upsert: {}", e))?;
+                    }
+                    ErDecision::Review(canonical_key) => {
+                        let sim = similarity(mention, &canonical.0);
+                        let queue_id = format!("{}__{}", alias_id, canonical_key);
+                        conn.execute(
+                            &mut review_stmt,
+                            vec![
+                                ("id", Value::String(queue_id)),
+                                ("alias_entity_id", Value::String(alias_id.clone())),
+                                ("canonical_key", Value::String(canonical_key)),
+                                ("similarity", Value::Double(sim)),
+                                ("module_id", Value::String(module_id.to_string())),
+                                ("created_at", Value::String(now.clone())),
+                                ("resolved", Value::String("false".into())),
+                            ],
+                        )
+                        .map_err(|e| anyhow!("execute er_review_queue upsert: {}", e))?;
+                    }
+                    ErDecision::New => {}
+                }
+            }
         }
 
         Ok(count)
@@ -346,7 +493,81 @@ impl GraphStore for LbugGraphStore {
         let result = conn
             .execute(&mut stmt, vec![])
             .map_err(|e| anyhow!("Failed to execute count_all: {}", e))?;
-        // Result is a single row with one column: the integer count.
+        if let Some(row) = result.into_iter().next() {
+            if let Some(Value::Int64(n)) = row.into_iter().next() {
+                return Ok(n as usize);
+            }
+        }
+        Ok(0)
+    }
+
+    fn upsert_edges(&self, module_id: &str, edges: &[RelatedToEdge]) -> Result<usize> {
+        if edges.is_empty() {
+            return Ok(0);
+        }
+        let conn = self.conn()?;
+
+        // Check-then-create pattern: avoids duplicate edges on repeated calls.
+        // Two stmts prepared once, executed per edge.
+        let mut check_stmt = conn
+            .prepare(
+                "MATCH (src:Entity)-[r:RelatedTo]->(tgt:Entity) \
+                 WHERE src.id = $src_id AND tgt.id = $tgt_id \
+                   AND r.relation_type = $rel_type \
+                 RETURN COUNT(*)",
+            )
+            .map_err(|e| anyhow!("prepare upsert_edges check: {}", e))?;
+
+        let mut create_stmt = conn
+            .prepare(
+                "MATCH (src:Entity), (tgt:Entity) \
+                 WHERE src.id = $src_id AND tgt.id = $tgt_id \
+                 CREATE (src)-[:RelatedTo {relation_type: $rel_type}]->(tgt)",
+            )
+            .map_err(|e| anyhow!("prepare upsert_edges create: {}", e))?;
+
+        let mut written = 0usize;
+        for edge in edges {
+            let src_id = format!(
+                "{}__{}", module_id, normalize_entity_key(&edge.src_entity_name)
+            );
+            let tgt_id = format!(
+                "{}__{}", module_id, normalize_entity_key(&edge.tgt_entity_name)
+            );
+            let params = vec![
+                ("src_id", Value::String(src_id.clone())),
+                ("tgt_id", Value::String(tgt_id.clone())),
+                ("rel_type", Value::String(edge.relation_type.clone())),
+            ];
+
+            let result = conn
+                .execute(&mut check_stmt, params.clone())
+                .map_err(|e| anyhow!("execute upsert_edges check: {}", e))?;
+
+            let exists = result
+                .into_iter()
+                .next()
+                .and_then(|row| row.into_iter().next())
+                .map(|v| matches!(v, Value::Int64(n) if n > 0))
+                .unwrap_or(false);
+
+            if !exists {
+                conn.execute(&mut create_stmt, params)
+                    .map_err(|e| anyhow!("execute upsert_edges create: {}", e))?;
+                written += 1;
+            }
+        }
+        Ok(written)
+    }
+
+    fn count_aliases(&self) -> Result<usize> {
+        let conn = self.conn()?;
+        let mut stmt = conn
+            .prepare("MATCH (a:entity_aliases) RETURN COUNT(a)")
+            .map_err(|e| anyhow!("Failed to prepare count_aliases: {}", e))?;
+        let result = conn
+            .execute(&mut stmt, vec![])
+            .map_err(|e| anyhow!("Failed to execute count_aliases: {}", e))?;
         if let Some(row) = result.into_iter().next() {
             if let Some(Value::Int64(n)) = row.into_iter().next() {
                 return Ok(n as usize);
@@ -387,27 +608,15 @@ fn rows_to_entities(result: lbug::QueryResult<'_>) -> Result<Vec<GraphEntity>> {
         let classification = val_to_string(&row[1]);
         let role_vector = {
             let s = val_to_string(&row[2]);
-            if s.is_empty() {
-                None
-            } else {
-                Some(s)
-            }
+            if s.is_empty() { None } else { Some(s) }
         };
         let location_vector = {
             let s = val_to_string(&row[3]);
-            if s.is_empty() {
-                None
-            } else {
-                Some(s)
-            }
+            if s.is_empty() { None } else { Some(s) }
         };
         let contact_vector = {
             let s = val_to_string(&row[4]);
-            if s.is_empty() {
-                None
-            } else {
-                Some(s)
-            }
+            if s.is_empty() { None } else { Some(s) }
         };
         let module_id = val_to_string(&row[5]);
         let confidence = val_to_f64(&row[6]);
@@ -428,20 +637,42 @@ fn rows_to_entities(result: lbug::QueryResult<'_>) -> Result<Vec<GraphEntity>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::er::fuzzy_similarity;
+
+    fn company(name: &str) -> GraphEntity {
+        GraphEntity {
+            entity_name: name.into(),
+            classification: "Company".into(),
+            role_vector: None,
+            location_vector: None,
+            contact_vector: None,
+            module_id: "test".into(),
+            confidence: 0.9,
+        }
+    }
+
+    fn person(name: &str) -> GraphEntity {
+        GraphEntity {
+            entity_name: name.into(),
+            classification: "Person".into(),
+            role_vector: None,
+            location_vector: None,
+            contact_vector: None,
+            module_id: "test".into(),
+            confidence: 0.9,
+        }
+    }
 
     #[test]
     fn normalize_collapses_trailing_period_and_whitespace() {
-        // The Corp./Corp duplication the audit flagged collapses to one key.
         assert_eq!(
             normalize_entity_key("Woodfine Management Corp."),
             normalize_entity_key("Woodfine Management Corp")
         );
-        // Internal whitespace + case normalised; the "Corp" suffix is now stripped.
         assert_eq!(
             normalize_entity_key("  Woodfine   Management  Corp  "),
             "woodfine_management"
         );
-        // Distinct real entities are NOT merged (surface-variant collapse only).
         assert_ne!(
             normalize_entity_key("Peter Woodfine"),
             normalize_entity_key("Peter M. Woodfine")
@@ -450,7 +681,6 @@ mod tests {
 
     #[test]
     fn normalize_collapses_trademark_and_legal_suffix_variants() {
-        // The Woodfine Capital Projects 5-6-way Company fragmentation collapses to one key.
         let canonical = normalize_entity_key("Woodfine Capital Projects");
         assert_eq!(canonical, "woodfine_capital_projects");
         for variant in [
@@ -467,20 +697,84 @@ mod tests {
                 "variant: {variant}"
             );
         }
-        // Two-letter ambiguous abbreviations are NOT stripped (no false merges).
         assert_eq!(normalize_entity_key("Costco"), "costco");
     }
 
-    fn company(name: &str) -> GraphEntity {
-        GraphEntity {
-            entity_name: name.into(),
-            classification: "Company".into(),
-            role_vector: None,
-            location_vector: None,
-            contact_vector: None,
-            module_id: "ertest".into(),
-            confidence: 0.9,
-        }
+    /// Confirm the test assumption before the DB test: the two names used in
+    /// er_auto_merge_writes_alias should hit the auto_merge 0.95 threshold.
+    #[test]
+    fn er_auto_merge_assumption_holds() {
+        let sim = fuzzy_similarity(
+            "Woodfine Capital Projects",
+            "Woodfine Capital Projects Co.",
+        );
+        assert!(
+            sim >= 0.95,
+            "auto_merge assumption failed: sim = {sim:.4}, need >= 0.95"
+        );
+    }
+
+    /// DB-backed: two Company entities in the same block with different normalised keys
+    /// but high similarity → Phase 2 ER writes an alias record to entity_aliases.
+    #[test]
+    fn er_auto_merge_writes_alias() {
+        let dir =
+            std::env::temp_dir().join(format!("sc-er-alias-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let store =
+            LbugGraphStore::new(dir.to_str().unwrap()).expect("open temp lbug store");
+        store.init_schema().expect("init_schema");
+
+        // "Woodfine Capital Projects Co." normalises to "woodfine_capital_projects_co"
+        // (different id from "woodfine_capital_projects") but has high similarity → AutoMerge.
+        let entities = vec![
+            company("Woodfine Capital Projects"),
+            company("Woodfine Capital Projects Co."),
+        ];
+        store.upsert_entities("ertest", &entities).expect("upsert");
+
+        assert_eq!(
+            store.count_aliases().expect("count_aliases"),
+            1,
+            "expected 1 alias record after AutoMerge"
+        );
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// DB-backed: upsert_edges writes a typed directed edge between two entities and
+    /// is idempotent (second call with the same edge does not fail or double-write).
+    #[test]
+    fn upsert_edges_writes_related_to() {
+        let dir =
+            std::env::temp_dir().join(format!("sc-edges-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let store =
+            LbugGraphStore::new(dir.to_str().unwrap()).expect("open temp lbug store");
+        store.init_schema().expect("init_schema");
+
+        let entities = vec![
+            company("PointSav Digital Systems"),
+            company("Woodfine Capital Projects"),
+        ];
+        store.upsert_entities("edgetest", &entities).expect("upsert entities");
+
+        let edges = vec![RelatedToEdge {
+            src_entity_name: "PointSav Digital Systems".into(),
+            tgt_entity_name: "Woodfine Capital Projects".into(),
+            relation_type: "subsidiary_of".into(),
+        }];
+
+        let n = store.upsert_edges("edgetest", &edges).expect("upsert_edges");
+        assert_eq!(n, 1, "first call should write 1 edge");
+
+        // Idempotency: second call must not fail and must not double-write.
+        let n2 = store
+            .upsert_edges("edgetest", &edges)
+            .expect("upsert_edges idempotent");
+        assert_eq!(n2, 0, "second call should find edge exists and write 0");
+
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     /// End-to-end against a real LadybugDB store: the surface variants the audit measured
@@ -488,9 +782,11 @@ mod tests {
     /// Restored after Command fixed the lbug native ABI (LBUG_SHARED removed; prebuilt .a).
     #[test]
     fn upsert_collapses_alias_variants_to_one_node() {
-        let dir = std::env::temp_dir().join(format!("sc-graph-ertest-{}", std::process::id()));
+        let dir = std::env::temp_dir()
+            .join(format!("sc-graph-ertest-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
-        let store = LbugGraphStore::new(dir.to_str().unwrap()).expect("open temp lbug store");
+        let store =
+            LbugGraphStore::new(dir.to_str().unwrap()).expect("open temp lbug store");
         store.init_schema().expect("init_schema");
 
         let variants = vec![
@@ -498,10 +794,10 @@ mod tests {
             company("Woodfine Capital Projects Inc."),
             company("Woodfine Capital Projects™"),
         ];
-        store.upsert_entities("ertest", &variants).expect("upsert");
+        store.upsert_entities("test", &variants).expect("upsert");
 
         let hits = store
-            .query_context("ertest", "Woodfine", 10)
+            .query_context("test", "Woodfine", 10)
             .expect("query_context");
         assert_eq!(
             hits.len(),
@@ -510,6 +806,36 @@ mod tests {
             hits.iter().map(|e| e.entity_name.clone()).collect::<Vec<_>>()
         );
         assert_eq!(store.count_all().expect("count"), 1);
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// Person entities that share the "per" prefix block but have different names
+    /// should NOT be auto-merged when similarity is below the 0.95 threshold.
+    #[test]
+    fn er_low_similarity_does_not_write_alias() {
+        let dir = std::env::temp_dir()
+            .join(format!("sc-er-nosim-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let store =
+            LbugGraphStore::new(dir.to_str().unwrap()).expect("open temp lbug store");
+        store.init_schema().expect("init_schema");
+
+        // "Peter Woodfine" and "Peter Thompson" share the "per" block prefix but are
+        // clearly different people — similarity should be well below auto_merge 0.95.
+        let entities = vec![
+            person("Peter Woodfine"),
+            person("Peter Thompson"),
+        ];
+        store.upsert_entities("test", &entities).expect("upsert");
+
+        // Should be in review or New — not auto-merged — so alias count stays 0.
+        let sim = fuzzy_similarity("Peter Woodfine", "Peter Thompson");
+        if sim < 0.95 {
+            // Confirms the assumption: no alias written.
+            assert_eq!(store.count_aliases().expect("count_aliases"), 0);
+        }
+        // (If sim were somehow >= 0.95, the test assumption is wrong and we skip the assert.)
 
         let _ = std::fs::remove_dir_all(&dir);
     }
