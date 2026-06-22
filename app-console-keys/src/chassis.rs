@@ -13,7 +13,6 @@ static SHUTDOWN_REQUESTED: AtomicBool = AtomicBool::new(false);
 
 /// Signal the chassis to exit cleanly on the next event-loop tick.
 /// Call this from a SIGTERM or SIGINT handler registered before `run_local()`.
-
 pub fn request_shutdown() {
     SHUTDOWN_REQUESTED.store(true, Ordering::SeqCst);
 }
