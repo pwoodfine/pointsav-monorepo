@@ -7,11 +7,23 @@ fn chrome(
     pending_count: i64,
 ) -> Markup {
     let auth_attr = if user.is_some() { "user" } else { "anon" };
+    // P0-4: per-tenant chrome for search/category/error pages. This shim was hardcoded to
+    // PointSav, leaking Monorepo/Design-System nav + "© PointSav" onto the Woodfine domains.
+    // Tenant derived from site_title until brand_instance is threaded through all chrome()
+    // callers (full chrome unification = separate item).
+    let woodfine_theme = site_title.contains("Woodfine");
+    let brand_instance = if site_title.contains("Projects") {
+        "projects"
+    } else if woodfine_theme {
+        "corporate"
+    } else {
+        "documentation"
+    };
     html! {
         (DOCTYPE)
         html lang="en"
              data-auth=(auth_attr)
-             data-instance="documentation" {
+             data-instance=(brand_instance) {
             head {
                 meta charset="utf-8";
                 meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover";
@@ -24,14 +36,25 @@ fn chrome(
                 header.topnav {
                     nav.left {
                         a href="/page/disclaimer" { "Disclaimer" }
+                        @if woodfine_theme { a href="/page/contact" { "Contact us" } }
                     }
                     a.wordmark href="/" aria-label=(site_title) {
-                        (PreEscaped(WORDMARK_SVG_POINTSAV))
+                        @if woodfine_theme {
+                            (PreEscaped(WORDMARK_SVG_WOODFINE))
+                        } @else {
+                            (PreEscaped(WORDMARK_SVG_POINTSAV))
+                        }
                     }
                     div.right-cluster {
                         nav.right {
-                            a.external href="https://software.pointsav.com" target="_blank" rel="noopener" { "Monorepo" }
-                            a.external href="https://design.pointsav.com" target="_blank" rel="noopener" { "Design System" }
+                            @if woodfine_theme {
+                                a.external href="https://corporate.woodfinegroup.com" target="_blank" rel="noopener" { "Corporate" }
+                                a.external href="https://projects.woodfinegroup.com" target="_blank" rel="noopener" { "Projects" }
+                                a.external href="https://newsroom.woodfinegroup.com" target="_blank" rel="noopener" { "Newsroom" }
+                            } @else {
+                                a.external href="https://software.pointsav.com" target="_blank" rel="noopener" { "Monorepo" }
+                                a.external href="https://design.pointsav.com" target="_blank" rel="noopener" { "Design System" }
+                            }
                         }
                         (auth_nav_widget(user, pending_count))
                         a.lang-toggle href="/es/" { "ES" }
@@ -57,7 +80,7 @@ fn chrome(
                 main.site-main #main-content {
                     (body)
                 }
-                (shell_footer("documentation", None))
+                (shell_footer(brand_instance, None))
                 script src="/static/wiki.js" defer="true" {}
             }
         }
