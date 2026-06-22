@@ -38,6 +38,10 @@ woodfine-fleet-deployment/
 .DS_Store
 ~$*
 
+# Python cache
+__pycache__/
+*.pyc
+
 # Log files — pipeline output; never committed
 *.log
 
