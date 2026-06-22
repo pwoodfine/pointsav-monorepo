@@ -68,12 +68,8 @@ pub struct RelatedToEdge {
 pub trait GraphStore: Send + Sync {
     fn init_schema(&self) -> Result<()>;
     fn upsert_entities(&self, module_id: &str, entities: &[GraphEntity]) -> Result<usize>;
-    fn query_context(
-        &self,
-        module_id: &str,
-        query: &str,
-        limit: usize,
-    ) -> Result<Vec<GraphEntity>>;
+    fn query_context(&self, module_id: &str, query: &str, limit: usize)
+        -> Result<Vec<GraphEntity>>;
     #[allow(dead_code)]
     fn list_entities(&self, module_id: &str) -> Result<Vec<GraphEntity>>;
     /// Delete all entities matching module_id + classification. Returns count deleted.
@@ -234,9 +230,7 @@ impl GraphStore for LbugGraphStore {
                         ("created_at", Value::String(now.clone())),
                     ],
                 )
-                .map_err(|e| {
-                    anyhow!("Failed to upsert entity '{}': {}", entity.entity_name, e)
-                })?;
+                .map_err(|e| anyhow!("Failed to upsert entity '{}': {}", entity.entity_name, e))?;
                 c += 1;
             }
             c
@@ -247,15 +241,18 @@ impl GraphStore for LbugGraphStore {
         // This catches entities that share a classification + name prefix but normalise to
         // *different* keys (e.g. "Peter Woodfine" vs "Peter M. Woodfine") — surface-variant
         // collapse (same normalised key → same MERGE id) is already handled in Phase 1.
-        use crate::er::{blocking_key, decide, ErConfig, ErDecision, similarity};
+        use crate::er::{blocking_key, decide, similarity, ErConfig, ErDecision};
 
         let er_cfg = ErConfig::default();
         let mut block_map: std::collections::HashMap<String, Vec<(String, String)>> =
             std::collections::HashMap::new();
         for entity in entities {
             let bk = blocking_key(entity, &er_cfg);
-            let entity_id =
-                format!("{}__{}", module_id, normalize_entity_key(&entity.entity_name));
+            let entity_id = format!(
+                "{}__{}",
+                module_id,
+                normalize_entity_key(&entity.entity_name)
+            );
             block_map
                 .entry(bk)
                 .or_default()
@@ -529,10 +526,14 @@ impl GraphStore for LbugGraphStore {
         let mut written = 0usize;
         for edge in edges {
             let src_id = format!(
-                "{}__{}", module_id, normalize_entity_key(&edge.src_entity_name)
+                "{}__{}",
+                module_id,
+                normalize_entity_key(&edge.src_entity_name)
             );
             let tgt_id = format!(
-                "{}__{}", module_id, normalize_entity_key(&edge.tgt_entity_name)
+                "{}__{}",
+                module_id,
+                normalize_entity_key(&edge.tgt_entity_name)
             );
             let params = vec![
                 ("src_id", Value::String(src_id.clone())),
@@ -608,15 +609,27 @@ fn rows_to_entities(result: lbug::QueryResult<'_>) -> Result<Vec<GraphEntity>> {
         let classification = val_to_string(&row[1]);
         let role_vector = {
             let s = val_to_string(&row[2]);
-            if s.is_empty() { None } else { Some(s) }
+            if s.is_empty() {
+                None
+            } else {
+                Some(s)
+            }
         };
         let location_vector = {
             let s = val_to_string(&row[3]);
-            if s.is_empty() { None } else { Some(s) }
+            if s.is_empty() {
+                None
+            } else {
+                Some(s)
+            }
         };
         let contact_vector = {
             let s = val_to_string(&row[4]);
-            if s.is_empty() { None } else { Some(s) }
+            if s.is_empty() {
+                None
+            } else {
+                Some(s)
+            }
         };
         let module_id = val_to_string(&row[5]);
         let confidence = val_to_f64(&row[6]);
@@ -704,10 +717,7 @@ mod tests {
     /// er_auto_merge_writes_alias should hit the auto_merge 0.95 threshold.
     #[test]
     fn er_auto_merge_assumption_holds() {
-        let sim = fuzzy_similarity(
-            "Woodfine Capital Projects",
-            "Woodfine Capital Projects Co.",
-        );
+        let sim = fuzzy_similarity("Woodfine Capital Projects", "Woodfine Capital Projects Co.");
         assert!(
             sim >= 0.95,
             "auto_merge assumption failed: sim = {sim:.4}, need >= 0.95"
@@ -718,11 +728,9 @@ mod tests {
     /// but high similarity → Phase 2 ER writes an alias record to entity_aliases.
     #[test]
     fn er_auto_merge_writes_alias() {
-        let dir =
-            std::env::temp_dir().join(format!("sc-er-alias-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("sc-er-alias-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
-        let store =
-            LbugGraphStore::new(dir.to_str().unwrap()).expect("open temp lbug store");
+        let store = LbugGraphStore::new(dir.to_str().unwrap()).expect("open temp lbug store");
         store.init_schema().expect("init_schema");
 
         // "Woodfine Capital Projects Co." normalises to "woodfine_capital_projects_co"
@@ -746,18 +754,18 @@ mod tests {
     /// is idempotent (second call with the same edge does not fail or double-write).
     #[test]
     fn upsert_edges_writes_related_to() {
-        let dir =
-            std::env::temp_dir().join(format!("sc-edges-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("sc-edges-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
-        let store =
-            LbugGraphStore::new(dir.to_str().unwrap()).expect("open temp lbug store");
+        let store = LbugGraphStore::new(dir.to_str().unwrap()).expect("open temp lbug store");
         store.init_schema().expect("init_schema");
 
         let entities = vec![
             company("PointSav Digital Systems"),
             company("Woodfine Capital Projects"),
         ];
-        store.upsert_entities("edgetest", &entities).expect("upsert entities");
+        store
+            .upsert_entities("edgetest", &entities)
+            .expect("upsert entities");
 
         let edges = vec![RelatedToEdge {
             src_entity_name: "PointSav Digital Systems".into(),
@@ -765,7 +773,9 @@ mod tests {
             relation_type: "subsidiary_of".into(),
         }];
 
-        let n = store.upsert_edges("edgetest", &edges).expect("upsert_edges");
+        let n = store
+            .upsert_edges("edgetest", &edges)
+            .expect("upsert_edges");
         assert_eq!(n, 1, "first call should write 1 edge");
 
         // Idempotency: second call must not fail and must not double-write.
@@ -782,11 +792,9 @@ mod tests {
     /// Restored after Command fixed the lbug native ABI (LBUG_SHARED removed; prebuilt .a).
     #[test]
     fn upsert_collapses_alias_variants_to_one_node() {
-        let dir = std::env::temp_dir()
-            .join(format!("sc-graph-ertest-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("sc-graph-ertest-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
-        let store =
-            LbugGraphStore::new(dir.to_str().unwrap()).expect("open temp lbug store");
+        let store = LbugGraphStore::new(dir.to_str().unwrap()).expect("open temp lbug store");
         store.init_schema().expect("init_schema");
 
         let variants = vec![
@@ -803,7 +811,9 @@ mod tests {
             hits.len(),
             1,
             "3 surface variants should collapse to 1 canonical node, got {:?}",
-            hits.iter().map(|e| e.entity_name.clone()).collect::<Vec<_>>()
+            hits.iter()
+                .map(|e| e.entity_name.clone())
+                .collect::<Vec<_>>()
         );
         assert_eq!(store.count_all().expect("count"), 1);
 
@@ -814,19 +824,14 @@ mod tests {
     /// should NOT be auto-merged when similarity is below the 0.95 threshold.
     #[test]
     fn er_low_similarity_does_not_write_alias() {
-        let dir = std::env::temp_dir()
-            .join(format!("sc-er-nosim-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("sc-er-nosim-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
-        let store =
-            LbugGraphStore::new(dir.to_str().unwrap()).expect("open temp lbug store");
+        let store = LbugGraphStore::new(dir.to_str().unwrap()).expect("open temp lbug store");
         store.init_schema().expect("init_schema");
 
         // "Peter Woodfine" and "Peter Thompson" share the "per" block prefix but are
         // clearly different people — similarity should be well below auto_merge 0.95.
-        let entities = vec![
-            person("Peter Woodfine"),
-            person("Peter Thompson"),
-        ];
+        let entities = vec![person("Peter Woodfine"), person("Peter Thompson")];
         store.upsert_entities("test", &entities).expect("upsert");
 
         // Should be in review or New — not auto-merged — so alias count stays 0.
