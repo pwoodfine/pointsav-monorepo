@@ -196,6 +196,7 @@ impl ContentCartridge {
         )
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn new_for(
         username: impl Into<String>,
         tenant: impl Into<String>,
@@ -203,9 +204,9 @@ impl ContentCartridge {
         slm_endpoint: impl Into<String>,
         drafts_outbound_path: impl Into<String>,
         content_endpoint: impl Into<String>,
-        initial_query: Option<String>,
-        initial_selected: Option<usize>,
-        initial_scroll: Option<u16>,
+        _initial_query: Option<String>,
+        _initial_selected: Option<usize>,
+        _initial_scroll: Option<u16>,
         tls_cert_pem: Option<Vec<u8>>,
     ) -> Self {
         let slm = slm_endpoint.into();
@@ -251,22 +252,23 @@ impl ContentCartridge {
             TextArea::default()
         };
         ta.set_placeholder_text(PLACEHOLDER);
-        let initial_state = if !saved_session.content_query.is_empty() {
-            let ep = content_ep.clone();
-            let query_str = saved_session.content_query.clone();
-            let (tx, rx) = mpsc::channel();
-            thread::spawn(move || {
-                let _ = tx.send(search::fetch_search(&ep, &query_str));
-            });
-            ContentState::SearchResults {
-                query: saved_session.content_query.clone(),
-                results: vec![],
-                search_rx: Some(rx),
-                selected: 0,
-                scroll: 0,
+        let initial_state = match saved_session.content_query.as_deref() {
+            Some(q) if !q.is_empty() => {
+                let ep = content_ep.clone();
+                let query_str = q.to_string();
+                let (tx, rx) = mpsc::channel();
+                thread::spawn(move || {
+                    let _ = tx.send(search::fetch_search(&ep, &query_str));
+                });
+                ContentState::SearchResults {
+                    query: q.to_string(),
+                    results: vec![],
+                    search_rx: Some(rx),
+                    selected: 0,
+                    scroll: 0,
+                }
             }
-        } else {
-            ContentState::Input { protocol_idx }
+            _ => ContentState::Input { protocol_idx },
         };
         Self {
             username: username.into(),
@@ -316,12 +318,19 @@ impl ContentCartridge {
     fn save_session(&self) {
         use app_console_keys::SessionState;
         let state = match &self.state {
-            ContentState::SearchResults { query, .. } => SessionState {
-                content_query: query.clone(),
+            ContentState::SearchResults {
+                query,
+                selected,
+                scroll,
+                ..
+            } => SessionState {
+                content_query: Some(query.clone()),
+                content_selected: Some(*selected),
+                content_scroll: Some(*scroll),
             },
             _ => SessionState::default(),
         };
-        state.save();
+        state.save(&SessionState::default_path());
     }
 
     fn reset_textarea(&mut self, protocol_idx: usize) {
