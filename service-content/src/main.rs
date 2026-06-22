@@ -1,5 +1,6 @@
 mod config_http;
 mod entity_filter;
+mod er;
 mod graph;
 mod http;
 mod taxonomy;
