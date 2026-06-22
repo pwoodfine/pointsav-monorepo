@@ -213,11 +213,9 @@
             #data-panel.has-detail[data-detent="peek"] > .panel-header > .panel-tagline {
                 display: none !important;
             }
-            #data-panel:not(.has-detail)[data-detent="peek"] #inspector > .data-block:not(.overview-peek-keep) {
+            #data-panel:not(.has-detail)[data-detent="peek"] #inspector > .data-block {
                 display: none !important;
             }
-            /* Tighten the inspector at peek so the pills sit right under the search */
-            #data-panel:not(.has-detail)[data-detent="peek"] #inspector { padding-top: 12px; }
 
             .nav-cluster     { bottom: calc(var(--sheet-h, 22dvh) + 12px); right: 12px; padding-bottom: 0; transition: bottom 0.30s ease; }
             .nav-cluster.has-detail-nav { bottom: calc(var(--sheet-h, 52dvh) + 12px); }
@@ -1219,7 +1217,7 @@
         const mq = window.matchMedia('(max-width: 768px)');
         const panel = () => document.getElementById('data-panel');
         const PEEK_PX = 90;            // detail peek: one-row summary strip
-        const PEEK_PX_OVERVIEW = 182;  // overview peek: brand + grabber + compact region tabs + search + 3-up tier chips
+        const PEEK_PX_OVERVIEW = 152;  // overview peek: brand + grabber + compact region tabs + search bar only
         // The sheet machinery runs on mobile for BOTH the overview (no .has-detail) and the
         // detail panel (.has-detail). Detail behaviour is unchanged; overview is the new case.
         const active = p => mq.matches && !!p;          // mobile + panel present (overview OR detail)
