@@ -5,6 +5,7 @@
 //!
 //! Run with: `cargo bench -p system-ledger`. Numbers surface in
 //! `target/criterion/<bench>/report/`.
+#![allow(clippy::unit_arg)]
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use ed25519_dalek::{Signer, SigningKey};
