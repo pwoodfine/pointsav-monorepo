@@ -172,13 +172,9 @@ impl ContentCartridge {
                 std::env::var("HOME").unwrap_or_else(|_| ".".into())
             ),
             "http://127.0.0.1:9081",
-            None,
-            None,
-            None,
         )
     }
 
-    #[allow(clippy::too_many_arguments)]
     pub fn new_for(
         username: impl Into<String>,
         tenant: impl Into<String>,
@@ -186,9 +182,6 @@ impl ContentCartridge {
         slm_endpoint: impl Into<String>,
         drafts_outbound_path: impl Into<String>,
         content_endpoint: impl Into<String>,
-        initial_query: Option<String>,
-        initial_selected: Option<usize>,
-        initial_scroll: Option<u16>,
     ) -> Self {
         let slm = slm_endpoint.into();
         let content_ep: String = content_endpoint.into();
@@ -233,19 +226,19 @@ impl ContentCartridge {
             TextArea::default()
         };
         ta.set_placeholder_text(PLACEHOLDER);
-        let initial_state = if let Some(ref q) = initial_query {
+        let initial_state = if !saved_session.content_query.is_empty() {
             let ep = content_ep.clone();
-            let query_str = q.clone();
+            let query_str = saved_session.content_query.clone();
             let (tx, rx) = mpsc::channel();
             thread::spawn(move || {
                 let _ = tx.send(search::fetch_search(&ep, &query_str));
             });
             ContentState::SearchResults {
-                query: q.clone(),
+                query: saved_session.content_query.clone(),
                 results: vec![],
                 search_rx: Some(rx),
-                selected: initial_selected.unwrap_or(0),
-                scroll: initial_scroll.unwrap_or(0),
+                selected: 0,
+                scroll: 0,
             }
         } else {
             ContentState::Input { protocol_idx }
