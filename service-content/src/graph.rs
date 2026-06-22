@@ -353,29 +353,92 @@ impl GraphStore for LbugGraphStore {
         let conn = self.conn()?;
         let q_lower = query.to_lowercase();
 
-        let mut stmt = conn
+        // Phase 1: find matching entities. Drop stmt before Phase 2 prepares new stmts.
+        let initial: Vec<GraphEntity> = {
+            let mut stmt = conn
+                .prepare(
+                    "MATCH (e:Entity) \
+                     WHERE e.module_id = $module_id \
+                       AND lower(e.entity_name) CONTAINS $query \
+                     RETURN e.entity_name, e.classification, e.role_vector, \
+                            e.location_vector, e.contact_vector, e.module_id, e.confidence \
+                     LIMIT $limit",
+                )
+                .map_err(|e| anyhow!("Failed to prepare query_context statement: {}", e))?;
+            let result = conn
+                .execute(
+                    &mut stmt,
+                    vec![
+                        ("module_id", Value::String(module_id.to_string())),
+                        ("query", Value::String(q_lower)),
+                        ("limit", Value::Int64(limit as i64)),
+                    ],
+                )
+                .map_err(|e| anyhow!("Failed to execute query_context: {}", e))?;
+            rows_to_entities(result)?
+        }; // stmt dropped; conn free for Phase 2
+
+        // Phase 2: alias resolution — if a matched entity is recorded as an alias,
+        // return the canonical entity instead. Prevents the caller from receiving a
+        // fragmented alias when the canonical form holds the richer context.
+        // Dedup by canonical_id so two aliases pointing at the same canonical return it once.
+        let mut alias_stmt = conn
+            .prepare("MATCH (a:entity_aliases {id: $id}) RETURN a.canonical_key")
+            .map_err(|e| anyhow!("prepare alias lookup for query_context: {}", e))?;
+
+        let mut canon_stmt = conn
             .prepare(
-                "MATCH (e:Entity) \
-                 WHERE e.module_id = $module_id \
-                   AND lower(e.entity_name) CONTAINS $query \
+                "MATCH (e:Entity {id: $id}) \
                  RETURN e.entity_name, e.classification, e.role_vector, \
-                        e.location_vector, e.contact_vector, e.module_id, e.confidence \
-                 LIMIT $limit",
+                        e.location_vector, e.contact_vector, e.module_id, e.confidence",
             )
-            .map_err(|e| anyhow!("Failed to prepare query_context statement: {}", e))?;
+            .map_err(|e| anyhow!("prepare canonical entity lookup: {}", e))?;
 
-        let result = conn
-            .execute(
-                &mut stmt,
-                vec![
-                    ("module_id", Value::String(module_id.to_string())),
-                    ("query", Value::String(q_lower)),
-                    ("limit", Value::Int64(limit as i64)),
-                ],
-            )
-            .map_err(|e| anyhow!("Failed to execute query_context: {}", e))?;
+        let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
+        let mut out = Vec::with_capacity(initial.len());
 
-        rows_to_entities(result)
+        for entity in initial {
+            let entity_id =
+                format!("{}__{}", module_id, normalize_entity_key(&entity.entity_name));
+
+            // Look up alias record (O(1) PK lookup).
+            let canonical_key_opt = {
+                let result = conn
+                    .execute(&mut alias_stmt, vec![("id", Value::String(entity_id.clone()))])
+                    .map_err(|e| anyhow!("execute alias lookup: {}", e))?;
+                result
+                    .into_iter()
+                    .next()
+                    .and_then(|row| row.into_iter().next())
+                    .and_then(|v| if let Value::String(s) = v { Some(s) } else { None })
+            };
+
+            match canonical_key_opt {
+                Some(canonical_key) => {
+                    let canon_id = format!("{}__{}", module_id, canonical_key);
+                    if seen.insert(canon_id.clone()) {
+                        // First time seeing this canonical — fetch and return it.
+                        let result = conn
+                            .execute(
+                                &mut canon_stmt,
+                                vec![("id", Value::String(canon_id))],
+                            )
+                            .map_err(|e| anyhow!("execute canonical entity lookup: {}", e))?;
+                        let mut canonical_entities = rows_to_entities(result)?;
+                        out.push(canonical_entities.pop().unwrap_or(entity));
+                    }
+                    // else: already emitted this canonical from another alias — skip.
+                }
+                None => {
+                    // Not an alias — return as-is, deduped by entity_id.
+                    if seen.insert(entity_id) {
+                        out.push(entity);
+                    }
+                }
+            }
+        }
+
+        Ok(out)
     }
 
     fn list_entities(&self, module_id: &str) -> Result<Vec<GraphEntity>> {
@@ -818,6 +881,57 @@ mod tests {
                 .collect::<Vec<_>>()
         );
         assert_eq!(store.count_all().expect("count"), 1);
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// DB-backed: query_context with alias resolution — when the matching entity is an alias,
+    /// the canonical entity is returned instead (D5 read-side fix).
+    ///
+    /// Setup: "Woodfine Capital Projects" (canonical) + "Woodfine Capital Projects Co." (alias,
+    /// different normalised key "…_co" but high ER similarity → AutoMerge). Querying for "Co."
+    /// hits only the alias in Phase 1; Phase 2 resolves it to the canonical.
+    #[test]
+    fn query_context_resolves_alias_to_canonical() {
+        let dir =
+            std::env::temp_dir().join(format!("sc-qc-canon-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let store =
+            LbugGraphStore::new(dir.to_str().unwrap()).expect("open temp lbug store");
+        store.init_schema().expect("init_schema");
+
+        // Both entities must use consistent module_id (struct field = upsert parameter)
+        // so the entity_id prefix in entity_aliases matches what query_context computes.
+        let entities = vec![
+            company("Woodfine Capital Projects"),
+            company("Woodfine Capital Projects Co."),
+        ];
+        // module_id param matches entity.module_id ("test") so alias id = "test__..._co"
+        store.upsert_entities("test", &entities).expect("upsert");
+
+        // Verify alias was written (prerequisite for resolution).
+        assert_eq!(
+            store.count_aliases().expect("count_aliases"),
+            1,
+            "AutoMerge alias should have been written"
+        );
+
+        // Query specifically for "Co." — Phase 1 will find only the alias entity.
+        // Phase 2 should resolve it to the canonical "Woodfine Capital Projects".
+        let hits = store
+            .query_context("test", "Co.", 10)
+            .expect("query_context");
+
+        assert_eq!(
+            hits.len(),
+            1,
+            "expected 1 result (the canonical), got {:?}",
+            hits.iter().map(|e| &e.entity_name).collect::<Vec<_>>()
+        );
+        assert_eq!(
+            hits[0].entity_name, "Woodfine Capital Projects",
+            "query_context should return canonical entity, not the alias"
+        );
 
         let _ = std::fs::remove_dir_all(&dir);
     }
