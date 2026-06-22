@@ -17,6 +17,7 @@ pub extern "C" fn _start() -> ! {
     loop {
         // Block and wait for Inter-Process Communication (IPC) from system-network-interface
         // Handle read/write logic strictly within provisioned WORM boundaries
+        core::hint::spin_loop();
     }
 }
 
@@ -25,5 +26,7 @@ pub extern "C" fn _start() -> ! {
 #[cfg(not(test))]
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
-    loop {}
+    loop {
+        core::hint::spin_loop();
+    }
 }
