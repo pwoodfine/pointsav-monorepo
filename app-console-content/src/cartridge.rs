@@ -297,19 +297,12 @@ impl ContentCartridge {
     fn save_session(&self) {
         use app_console_keys::SessionState;
         let state = match &self.state {
-            ContentState::SearchResults {
-                query,
-                selected,
-                scroll,
-                ..
-            } => SessionState {
-                content_query: Some(query.clone()),
-                content_selected: Some(*selected),
-                content_scroll: Some(*scroll),
+            ContentState::SearchResults { query, .. } => SessionState {
+                content_query: query.clone(),
             },
             _ => SessionState::default(),
         };
-        state.save(&SessionState::default_path());
+        state.save();
     }
 
     fn reset_textarea(&mut self, protocol_idx: usize) {
