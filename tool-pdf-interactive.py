@@ -97,6 +97,239 @@ NAV_ITEMS = [
 BTN_W      = 64
 BTN_H      = 20
 BTN_MARGIN = 24
+# Slightly larger inset for rotated (landscape-displayed) pages so the button
+# clears any landscape footer rule. Portrait (rotation 0/180) is unchanged.
+BTN_MARGIN_ROTATED = 28
+
+# ---------------------------------------------------------------------------
+# Home-anchor hook (reserved-zone targeting)
+# ---------------------------------------------------------------------------
+# Convention: documents MAY embed an invisible registration marker that reserves
+# a clean zone for the INDEX button, so the button never collides with a page
+# border or footer rule. The HTML/CSS side renders an invisible element carrying
+# the class `pdf-home-anchor`, positioned at the page's visual bottom-right.
+# When such a marker is present the script lands the button on it; otherwise it
+# falls back to geometric placement (rotation-aware — see button_geometry()).
+HOME_ANCHOR_CLASS = "pdf-home-anchor"
+
+# Invisible registration sentinel embedded by the CSS author as white-on-white
+# text at the page's visual bottom-right. The literal run is U+2302 (HOUSE) +
+# "PDFHOME" + U+2302. We match on the ASCII core because the U+2302 glyphs may
+# extract as spaces or be dropped depending on the font's ToUnicode map.
+HOME_ANCHOR_SENTINEL = "PDFHOME"
+
+# pdfplumber gives reliable per-fragment bounding boxes; pypdf's visitor_text
+# transformation matrix is unscaled text-space here (not composed with the CTM)
+# and yields coordinates outside the mediabox, so it cannot be trusted for the
+# bbox. Prefer pdfplumber when present; fall back to the pypdf visitor only as a
+# best-effort last resort.
+try:
+    import pdfplumber  # type: ignore
+    _HAVE_PDFPLUMBER = True
+except Exception:  # pragma: no cover - pdfplumber optional
+    pdfplumber = None  # type: ignore
+    _HAVE_PDFPLUMBER = False
+
+
+def _sentinel_bbox_pdfplumber(page):  # noqa: ANN001 - pypdf PageObject
+    """Locate the sentinel bbox via pdfplumber.
+
+    The pypdf ``page`` is serialized to a one-page in-memory PDF and re-opened
+    with pdfplumber (which needs a file/stream, not a pypdf PageObject). Returns
+    ``(bx0, by0, bx1, by1)`` in PDF points (origin bottom-left), or ``None``.
+    pdfplumber reports word boxes with a top-left origin, so y is flipped about
+    the page height.
+    """
+    writer = PdfWriter()
+    writer.add_page(page)
+    buf = io.BytesIO()
+    writer.write(buf)
+    buf.seek(0)
+
+    with pdfplumber.open(buf) as pdf:  # type: ignore[union-attr]
+        plpage = pdf.pages[0]
+        ph = float(plpage.height)
+        candidates = []
+        # 1) Word-level match — the sentinel usually extracts as one word.
+        for w in plpage.extract_words(use_text_flow=False):
+            if HOME_ANCHOR_SENTINEL in w["text"]:
+                candidates.append((float(w["x0"]), float(w["x1"]),
+                                   float(w["top"]), float(w["bottom"])))
+        if not candidates:
+            # 2) Char-run fallback: scan the ASCII letters of the sentinel in
+            #    reading order and assemble a run that spells PDFHOME.
+            run = []
+            target = HOME_ANCHOR_SENTINEL
+            for ch in plpage.chars:
+                t = ch.get("text", "")
+                if len(run) < len(target) and t == target[len(run)]:
+                    run.append(ch)
+                    if len(run) == len(target):
+                        x0 = min(float(c["x0"]) for c in run)
+                        x1 = max(float(c["x1"]) for c in run)
+                        top = min(float(c["top"]) for c in run)
+                        bot = max(float(c["bottom"]) for c in run)
+                        candidates.append((x0, x1, top, bot))
+                        run = []
+                elif t and target.startswith(t):
+                    run = [ch]
+                else:
+                    run = []
+        if not candidates:
+            return None
+        # If multiple, prefer the lowest (visually bottom-most) instance.
+        bx0, bx1, top, bot = max(candidates, key=lambda c: c[3])
+        by0 = ph - bot   # bbox bottom edge in bottom-left coordinates
+        by1 = ph - top   # bbox top edge
+        return (bx0, by0, bx1, by1)
+
+
+def _sentinel_bbox_pypdf(page):  # noqa: ANN001 - pypdf PageObject
+    """Best-effort sentinel bbox via the pypdf visitor (fallback only).
+
+    The visitor's transformation matrix is text-space and may not be composed
+    with the page CTM, so coordinates can fall outside the mediabox. Used only
+    when pdfplumber is unavailable; the result is returned but may be unreliable.
+    """
+    frags = []
+
+    def _visitor(text, cm, tm, font_dict, font_size):  # noqa: ANN001
+        if text and HOME_ANCHOR_SENTINEL in text:
+            x = float(tm[4])
+            y = float(tm[5])
+            try:
+                fs = float(font_size)
+            except (TypeError, ValueError):
+                fs = 6.0
+            # Crude width estimate; the visitor does not give a true box.
+            w = 0.5 * fs * len(HOME_ANCHOR_SENTINEL)
+            frags.append((x, y, x + w, y + fs))
+
+    try:
+        page.extract_text(visitor_text=_visitor)
+    except Exception:
+        return None
+    if not frags:
+        return None
+    return frags[-1]
+
+
+def find_home_anchor(page):  # noqa: ANN001 - pypdf PageObject
+    """Locate the reserved-zone home anchor on *page* and return its button rect.
+
+    The document embeds an invisible registration sentinel — the literal run
+    ``⌂PDFHOME⌂`` (U+2302 + ``PDFHOME`` + U+2302) rendered white-on-white in a
+    tiny font at the page's visual bottom-right (CSS class
+    ``HOME_ANCHOR_CLASS``). This function extracts the sentinel's bounding box
+    ``(bx0, by0, bx1, by1)`` in PDF points (origin bottom-left) and maps it to
+    the INDEX/Home button rect per the CSS author's convention::
+
+        button = (bx1 - BTN_W, by0 - BTN_H, bx1, by0)
+
+    i.e. the marker bbox's bottom-right corner is the button's top-right corner,
+    so the button sits in the clean reserved margin just below/left of the
+    sentinel. Returns ``(x0, y0, x1, y1)`` suitable for both the overlay draw
+    origin and the ``/Link`` annotation ``/Rect``, or ``None`` if the sentinel
+    is not present on this page (callers then use the geometric fallback).
+
+    Matching is on the ASCII core ``PDFHOME`` — the U+2302 glyphs may extract as
+    spaces or be dropped. Bbox extraction prefers pdfplumber (reliable boxes);
+    the pypdf visitor is a best-effort fallback when pdfplumber is absent.
+    """
+    bbox = None
+    if _HAVE_PDFPLUMBER:
+        try:
+            bbox = _sentinel_bbox_pdfplumber(page)
+        except Exception:
+            bbox = None
+    if bbox is None:
+        bbox = _sentinel_bbox_pypdf(page)
+    if bbox is None:
+        return None
+
+    bx0, by0, bx1, by1 = bbox
+    # Marker bbox bottom-right corner == button top-right corner.
+    return (bx1 - BTN_W, by0 - BTN_H, bx1, by0)
+
+
+# ---------------------------------------------------------------------------
+# Rotation-aware button geometry
+# ---------------------------------------------------------------------------
+
+def _page_rotation(pg) -> int:  # noqa: ANN001 - pypdf PageObject
+    """Return the page's clockwise rotation normalized to {0, 90, 180, 270}."""
+    rot = None
+    # pypdf exposes a convenience property; fall back to the raw /Rotate entry.
+    try:
+        rot = pg.rotation  # type: ignore[attr-defined]
+    except Exception:
+        rot = None
+    if rot is None:
+        rot = pg.get("/Rotate", 0)
+    try:
+        rot = int(rot)
+    except (TypeError, ValueError):
+        rot = 0
+    return rot % 360
+
+
+def effective_size(mb_w: float, mb_h: float, rotation: int):
+    """Return the VISUAL (displayed) (width, height) for a page.
+
+    Swaps width/height when the page is displayed rotated 90° or 270°.
+    """
+    return (mb_h, mb_w) if rotation % 360 in (90, 270) else (mb_w, mb_h)
+
+
+def button_geometry(mb_w: float, mb_h: float, rotation: int):
+    """Compute the INDEX button's unrotated bounding box for *rotation*.
+
+    ``merge_page`` composes the overlay in the page's *unrotated* mediabox
+    coordinate space, and the viewer then applies ``/Rotate`` for display. We
+    want the button to appear upright at the VISUAL bottom-right in all four
+    rotations. An upright button is BTN_W wide × BTN_H tall *in display space*;
+    in unrotated space those extents swap for 90/270.
+
+    Args:
+        mb_w, mb_h:  mediabox width/height (unrotated page dimensions).
+        rotation:    normalized page rotation in {0, 90, 180, 270}.
+
+    Returns:
+        ``(x0, y0, rect)`` where ``(x0, y0)`` is the unrotated lower-left of the
+        button's bounding box (the overlay draw anchor) and ``rect`` is the
+        full unrotated bounding box ``(x0, y0, x1, y1)`` used for the ``/Link``
+        annotation ``/Rect``. The box is BTN_W×BTN_H for rotation 0/180 and
+        BTN_H×BTN_W for rotation 90/270.
+    """
+    rotation = rotation % 360
+    margin = BTN_MARGIN if rotation in (0, 180) else BTN_MARGIN_ROTATED
+
+    if rotation == 0:
+        # Visual bottom-right == unrotated bottom-right; box is BTN_W×BTN_H.
+        x0 = mb_w - margin - BTN_W
+        y0 = margin
+        bw, bh = BTN_W, BTN_H
+    elif rotation == 90:
+        # Page rotated 90° CW for display. The visual bottom-right corner maps
+        # to the unrotated top-right corner; upright button occupies BTN_H wide
+        # × BTN_W tall in unrotated space.
+        bw, bh = BTN_H, BTN_W
+        x0 = mb_w - margin - bw
+        y0 = mb_h - margin - bh
+    elif rotation == 180:
+        # Visual bottom-right == unrotated top-left; box is BTN_W×BTN_H.
+        bw, bh = BTN_W, BTN_H
+        x0 = margin
+        y0 = mb_h - margin - bh
+    else:  # rotation == 270
+        # Page rotated 270° CW (== 90° CCW). Visual bottom-right maps to the
+        # unrotated bottom-left corner; box is BTN_H wide × BTN_W tall.
+        bw, bh = BTN_H, BTN_W
+        x0 = margin
+        y0 = margin
+
+    rect = (x0, y0, x0 + bw, y0 + bh)
+    return x0, y0, rect
 
 
 # ---------------------------------------------------------------------------
@@ -178,18 +411,49 @@ def draw_slip_sheet(c: canvas.Canvas, active_idx: int) -> None:
     )
 
 
-def make_index_overlay(page_w: float, page_h: float) -> bytes:
-    """Return a one-page PDF with a dark navy INDEX button at bottom-right."""
-    btn_x = page_w - BTN_MARGIN - BTN_W
-    btn_y = BTN_MARGIN
+def make_index_overlay(page_w: float, page_h: float, rotation: int = 0) -> bytes:
+    """Return a one-page PDF (unrotated mediabox page_w × page_h) with a dark
+    navy INDEX button placed so it appears at the VISUAL bottom-right after the
+    viewer applies *rotation*.
+
+    The overlay is always drawn in the page's unrotated coordinate space (that
+    is how ``merge_page`` composes it). For rotation 0/180 this is a plain
+    bottom-right / top-left placement. For 90/270 we additionally rotate the
+    canvas about the button's lower-left so the button glyph itself is upright
+    in the displayed (rotated) frame — otherwise "INDEX" would read sideways.
+    """
+    rotation = rotation % 360
+    x0, y0, _rect = button_geometry(page_w, page_h, rotation)
+
     buf = io.BytesIO()
     oc = canvas.Canvas(buf, pagesize=(page_w, page_h))
+    oc.saveState()
+
+    # Orient the drawing so the button reads upright after the page is rotated
+    # for display. The page is rotated clockwise by `rotation`; counter-rotate
+    # the button content by the same amount about its anchor so it ends upright.
+    oc.translate(x0, y0)
+    if rotation == 90:
+        # After a 90° CW page rotation, draw the button rotated +90° here.
+        oc.rotate(90)
+        oc.translate(0, -BTN_H)
+    elif rotation == 180:
+        oc.rotate(180)
+        oc.translate(-BTN_W, -BTN_H)
+    elif rotation == 270:
+        oc.rotate(270)
+        oc.translate(-BTN_W, 0)
+
+    # From here the local origin's (0,0)→(BTN_W,BTN_H) box draws the upright
+    # button regardless of page rotation.
     oc.setFillColorRGB(0.0, 0.18, 0.39)
-    oc.roundRect(btn_x, btn_y, BTN_W, BTN_H, 4, fill=1, stroke=0)
+    oc.roundRect(0, 0, BTN_W, BTN_H, 4, fill=1, stroke=0)
     oc.setFillColorRGB(1, 1, 1)
     oc.setFont("Helvetica-Bold", 8)
     tw = oc.stringWidth("INDEX", "Helvetica-Bold", 8)
-    oc.drawString(btn_x + (BTN_W - tw) / 2, btn_y + 6, "INDEX")
+    oc.drawString((BTN_W - tw) / 2, 6, "INDEX")
+
+    oc.restoreState()
     oc.save()
     buf.seek(0)
     return buf.read()
@@ -307,8 +571,8 @@ def main() -> None:
     home_ref = writer.pages[0].indirect_reference
     assert home_ref is not None, "page 0 has no indirect_reference"
 
-    # Cache overlays by page size (most pages share one size)
-    overlay_cache: dict[tuple[float, float], bytes] = {}
+    # Cache overlays by (page size, rotation) — most pages share one key.
+    overlay_cache: dict[tuple[float, float, int], bytes] = {}
 
     for p in range(len(writer.pages)):
         if p in slip_set:
@@ -316,16 +580,40 @@ def main() -> None:
         pg = writer.pages[p]
         mb = pg.mediabox
         pw, ph = float(mb.width), float(mb.height)
+        rot = _page_rotation(pg)   # honour /Rotate so landscape lands correctly
 
-        key = (pw, ph)
-        if key not in overlay_cache:
-            overlay_cache[key] = make_index_overlay(pw, ph)
-        overlay_pg = PdfReader(io.BytesIO(overlay_cache[key])).pages[0]
-        pg.merge_page(overlay_pg)
-
-        btn_x0 = pw - BTN_MARGIN - BTN_W
-        btn_y0 = BTN_MARGIN
-        btn_rect = (btn_x0, btn_y0, btn_x0 + BTN_W, btn_y0 + BTN_H)
+        # Reserved-zone anchor takes priority over geometric placement. When a
+        # document embeds the `pdf-home-anchor` sentinel (⌂PDFHOME⌂) this lands
+        # the button in the reserved clean zone; otherwise find_home_anchor()
+        # returns None and we fall through to the rotation-aware geometry.
+        anchor_rect = find_home_anchor(pg)
+        if anchor_rect is not None:
+            btn_rect = tuple(float(v) for v in anchor_rect)
+            # Anchor placement: draw a plain (unrotated) overlay at the rect.
+            ax0, ay0 = btn_rect[0], btn_rect[1]
+            key = ("anchor", round(pw, 2), round(ph, 2), round(ax0, 2), round(ay0, 2))
+            if key not in overlay_cache:
+                ob = io.BytesIO()
+                oc = canvas.Canvas(ob, pagesize=(pw, ph))
+                oc.setFillColorRGB(0.0, 0.18, 0.39)
+                oc.roundRect(ax0, ay0, BTN_W, BTN_H, 4, fill=1, stroke=0)
+                oc.setFillColorRGB(1, 1, 1)
+                oc.setFont("Helvetica-Bold", 8)
+                tw = oc.stringWidth("INDEX", "Helvetica-Bold", 8)
+                oc.drawString(ax0 + (BTN_W - tw) / 2, ay0 + 6, "INDEX")
+                oc.save()
+                ob.seek(0)
+                overlay_cache[key] = ob.read()
+            overlay_pg = PdfReader(io.BytesIO(overlay_cache[key])).pages[0]
+            pg.merge_page(overlay_pg)
+        else:
+            # Geometric fallback (rotation-aware — handles 0/90/180/270).
+            _bx0, _by0, btn_rect = button_geometry(pw, ph, rot)
+            key = (round(pw, 2), round(ph, 2), rot)
+            if key not in overlay_cache:
+                overlay_cache[key] = make_index_overlay(pw, ph, rot)
+            overlay_pg = PdfReader(io.BytesIO(overlay_cache[key])).pages[0]
+            pg.merge_page(overlay_pg)
 
         ann = DictionaryObject({
             NameObject("/Type"):    NameObject("/Annot"),
