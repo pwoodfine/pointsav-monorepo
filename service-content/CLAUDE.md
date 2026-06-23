@@ -1,6 +1,6 @@
 # CLAUDE.md — service-content
 
-> **State:** Scaffold-coded  —  **Last updated:** 2026-06-01
+> **State:** Active  —  **Last updated:** 2026-06-22
 > **Registry row:** `pointsav-monorepo/.agent/rules/project-registry.md`
 
 ---
@@ -31,15 +31,19 @@ LadybugDB graph (2026-06-01).
 | Corpus watcher loop | Live |
 | `/v1/graph/context` | Live — Doorman queries before inference |
 | `/v1/graph/mutate` | Live — proxied through Doorman |
-| Sprint 2: `node_type` + `RelatedTo` edges | Code-complete, 23/23 tests |
-| Sprint 5: persistent `processed_ledgers` | **DEPLOYED** (commit `5ad06ec9`, 2026-06-01) — JSONL sidecar at `$SERVICE_CONTENT_GRAPH_DIR/processed_ledgers.jsonl`; 43,107 entries loaded on restart; no re-drain |
+| ER alias table + in-batch entity resolution | Code-complete, 55/55 tests — deploys via Stage 6 |
+| RelatedTo write path (`upsert_edges`) | Code-complete — deploy pending |
+| `query_context` alias-aware canonical resolution | Code-complete — deploy pending |
+| created_at first-write-wins (D9) | Code-complete — deploy pending |
+| Extraction schema `additionalProperties:false` (D8) | Code-complete — deploy pending |
+| Sprint 5: persistent `processed_ledgers` | **DEPLOYED** (commit `5ad06ec9`, 2026-06-01) — JSONL sidecar at `$SERVICE_CONTENT_GRAPH_DIR/processed_ledgers.jsonl` |
 | Tier B (Yo-Yo) extraction | Deferred — circuit breaker open until Yo-Yo online |
 | `/v1/draft/generate` | 503 pre-D4 (Doorman unconfigured for Tier C auth) |
 
 ## Build and test
 
 ```
-cargo test -p service-content       # 23 tests
+cargo test -p service-content       # 55 tests
 cargo clippy -p service-content --all-targets -- -D warnings
 ```
 
