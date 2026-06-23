@@ -334,7 +334,7 @@ fn process_payload(
 mod tests {
     use super::*;
     use base64::engine::general_purpose::STANDARD as BASE64_STD;
-    use base64::Engine as _;
+
     use serde_json::Value;
     use std::fs;
     use std::path::{Path, PathBuf};
@@ -487,7 +487,6 @@ mod tests {
         for entity in entities {
             let name = entity["entity_name"].as_str().unwrap_or("");
             assert!(!name.is_empty(), "entity_name must not be empty");
-            assert!(name.len() > 0, "entity_name must have length > 0");
         }
     }
 
@@ -524,7 +523,7 @@ mod tests {
         );
         let ledger = read_crm_ledger(&crm_path);
         let entities = ledger["extracted_crm_entities"].as_array().unwrap();
-        assert!(entities.len() >= 1, "at least one entity expected");
+        assert!(!entities.is_empty(), "at least one entity expected");
         for entity in entities {
             assert!(
                 entity.get("classification").is_some(),
@@ -901,7 +900,7 @@ mod tests {
         for entity in entities {
             if let Some(conf) = entity["confidence"].as_f64() {
                 assert!(
-                    conf >= 0.0 && conf <= 1.0,
+                    (0.0..=1.0).contains(&conf),
                     "confidence must be in [0.0, 1.0], got {}",
                     conf
                 );
@@ -1330,7 +1329,7 @@ mod tests {
 
         // Write raw binary content (invalid UTF-8 / JSON)
         let filepath = watch_dir.join("WORM-D08.json");
-        fs::write(&filepath, &[0xffu8, 0xfeu8, 0x00u8, 0x01u8, 0xffu8]).unwrap();
+        fs::write(&filepath, [0xffu8, 0xfeu8, 0x00u8, 0x01u8, 0xffu8]).unwrap();
 
         let result = process_payload(&filepath, base_dir.to_str().unwrap(), None, None);
         assert!(!result, "binary file content must return false");
