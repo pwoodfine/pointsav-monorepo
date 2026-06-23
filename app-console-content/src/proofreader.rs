@@ -1,6 +1,5 @@
 use anyhow::{bail, Result};
 use serde::{Deserialize, Serialize};
-use std::time::Duration;
 
 pub const PROTOCOLS: &[(&str, &str)] = &[
     ("prose-architecture", "PROSE — ARCHITECTURE"),
@@ -52,10 +51,9 @@ pub fn submit_proofread(
     protocol: &str,
     tenant: &str,
     endpoint: &str,
+    cert_pem: Option<&[u8]>,
 ) -> Result<ProofreadResponse> {
-    let client = reqwest::blocking::Client::builder()
-        .timeout(Duration::from_secs(300))
-        .build()?;
+    let client = app_console_keys::tls::build_http_client(cert_pem, 300);
     let req = ProofreadRequest {
         text: text.to_string(),
         protocol: protocol.to_string(),
@@ -70,10 +68,14 @@ pub fn submit_proofread(
     Ok(resp.json::<ProofreadResponse>()?)
 }
 
-pub fn post_verdict(request_id: &str, tenant: &str, verdict: &str, endpoint: &str) -> Result<()> {
-    let client = reqwest::blocking::Client::builder()
-        .timeout(Duration::from_secs(30))
-        .build()?;
+pub fn post_verdict(
+    request_id: &str,
+    tenant: &str,
+    verdict: &str,
+    endpoint: &str,
+    cert_pem: Option<&[u8]>,
+) -> Result<()> {
+    let client = app_console_keys::tls::build_http_client(cert_pem, 30);
     let req = VerdictRequest {
         request_id: request_id.to_string(),
         draft_id: request_id.to_string(),
