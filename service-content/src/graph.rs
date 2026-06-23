@@ -434,19 +434,31 @@ impl GraphStore for LbugGraphStore {
         let mut out = Vec::with_capacity(initial.len());
 
         for entity in initial {
-            let entity_id =
-                format!("{}__{}", module_id, normalize_entity_key(&entity.entity_name));
+            let entity_id = format!(
+                "{}__{}",
+                module_id,
+                normalize_entity_key(&entity.entity_name)
+            );
 
             // Look up alias record (O(1) PK lookup).
             let canonical_key_opt = {
                 let result = conn
-                    .execute(&mut alias_stmt, vec![("id", Value::String(entity_id.clone()))])
+                    .execute(
+                        &mut alias_stmt,
+                        vec![("id", Value::String(entity_id.clone()))],
+                    )
                     .map_err(|e| anyhow!("execute alias lookup: {}", e))?;
                 result
                     .into_iter()
                     .next()
                     .and_then(|row| row.into_iter().next())
-                    .and_then(|v| if let Value::String(s) = v { Some(s) } else { None })
+                    .and_then(|v| {
+                        if let Value::String(s) = v {
+                            Some(s)
+                        } else {
+                            None
+                        }
+                    })
             };
 
             match canonical_key_opt {
@@ -455,10 +467,7 @@ impl GraphStore for LbugGraphStore {
                     if seen.insert(canon_id.clone()) {
                         // First time seeing this canonical — fetch and return it.
                         let result = conn
-                            .execute(
-                                &mut canon_stmt,
-                                vec![("id", Value::String(canon_id))],
-                            )
+                            .execute(&mut canon_stmt, vec![("id", Value::String(canon_id))])
                             .map_err(|e| anyhow!("execute canonical entity lookup: {}", e))?;
                         let mut canonical_entities = rows_to_entities(result)?;
                         out.push(canonical_entities.pop().unwrap_or(entity));
@@ -687,10 +696,10 @@ impl LbugGraphStore {
         let mut stmt = conn
             .prepare("MATCH (e:Entity {id: $id}) RETURN e.created_at")
             .map_err(|e| anyhow!("prepare get_entity_created_at: {}", e))?;
-        let result = conn
+        let mut result = conn
             .execute(&mut stmt, vec![("id", Value::String(id))])
             .map_err(|e| anyhow!("execute get_entity_created_at: {}", e))?;
-        for row in result {
+        if let Some(row) = result.next() {
             let s = val_to_string(&row[0]);
             return Ok(if s.is_empty() { None } else { Some(s) });
         }
@@ -948,11 +957,9 @@ mod tests {
     /// hits only the alias in Phase 1; Phase 2 resolves it to the canonical.
     #[test]
     fn query_context_resolves_alias_to_canonical() {
-        let dir =
-            std::env::temp_dir().join(format!("sc-qc-canon-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("sc-qc-canon-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
-        let store =
-            LbugGraphStore::new(dir.to_str().unwrap()).expect("open temp lbug store");
+        let store = LbugGraphStore::new(dir.to_str().unwrap()).expect("open temp lbug store");
         store.init_schema().expect("init_schema");
 
         // Both entities must use consistent module_id (struct field = upsert parameter)
@@ -1026,17 +1033,25 @@ mod tests {
         let entity = person("Jennifer Woodfine");
 
         // First upsert — should set created_at.
-        store.upsert_entities("test", &[entity.clone()]).expect("first upsert");
+        store
+            .upsert_entities("test", std::slice::from_ref(&entity))
+            .expect("first upsert");
         let created_first = store
             .get_entity_created_at("test", "Jennifer Woodfine")
             .expect("get_entity_created_at");
         assert!(
-            created_first.as_deref().map(|s| !s.is_empty()).unwrap_or(false),
-            "created_at should be set after first upsert, got: {:?}", created_first
+            created_first
+                .as_deref()
+                .map(|s| !s.is_empty())
+                .unwrap_or(false),
+            "created_at should be set after first upsert, got: {:?}",
+            created_first
         );
 
         // Second upsert — created_at must NOT change.
-        store.upsert_entities("test", &[entity]).expect("second upsert");
+        store
+            .upsert_entities("test", &[entity])
+            .expect("second upsert");
         let created_second = store
             .get_entity_created_at("test", "Jennifer Woodfine")
             .expect("get_entity_created_at second");
