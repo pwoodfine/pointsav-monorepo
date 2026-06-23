@@ -202,8 +202,8 @@
   --link:         var(--interactive-link, var(--navy));
   --link-hover:   var(--interactive-link-hover, var(--navy-deep));
 
-  --code-bg:      #F1F4F7;
-  --code-fg:      #1F2937;
+  --code-bg:      var(--surface-layer-accent, #F1F4F7);
+  --code-fg:      var(--text-primary, #1F2937);
 
   --shadow-sm:  0 1px 2px rgba(15, 23, 42, 0.04);
   --shadow-md:  0 4px 14px rgba(15, 23, 42, 0.06);
@@ -284,6 +284,7 @@ code, kbd, samp {
   color: var(--code-fg);
   padding: 0.12em 0.4em;
   border-radius: 4px;
+  overflow-wrap: anywhere;
 }
 kbd { border: 1px solid var(--fg-4); box-shadow: 0 1px 0 var(--fg-4); }
 
@@ -820,12 +821,15 @@ div.mobile-toc-drawer {
   overscroll-behavior: contain;
   padding: var(--sp-4);
   transform: translateX(-100%);
-  transition: transform 0.22s ease;
+  transition: transform 0.22s ease, visibility 0s linear 0.22s;
   will-change: transform;
+  visibility: hidden;
 }
 nav.mobile-nav-drawer:not([aria-hidden]),
 div.mobile-toc-drawer:not([aria-hidden]) {
   transform: translateX(0);
+  visibility: visible;
+  transition: transform 0.22s ease, visibility 0s linear 0s;
 }
 
 /* Drawer header row */
