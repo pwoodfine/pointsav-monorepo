@@ -8,9 +8,6 @@ description = "os-console — keyboard-native terminal interface for the Totebox
 name = "os-console"
 path = "src/main.rs"
 
-[features]
-ssh-server = ["dep:rand", "dep:ratatui"]
-
 [dependencies]
 app-console-keys = { path = "../app-console-keys" }
 app-console-content = { path = "../app-console-content" }
@@ -24,5 +21,3 @@ anyhow = "1"
 ctrlc = "3"
 tokio = { version = "1", features = ["full"] }
 russh = { version = "0.60" }
-rand = { version = "0.10", optional = true }
-ratatui = { version = "0.29", optional = true }

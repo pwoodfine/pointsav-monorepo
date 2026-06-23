@@ -43,13 +43,17 @@ pub struct ProfileConfig {
     pub metrics_port: u16,
     #[serde(default)]
     pub plain_mode: bool,
-    /// GCE VM hostname/IP for embedded SSH tunnel. Empty = no tunnel.
+    /// GCE VM hostname/IP for SSH port-forward tunnel. Empty = no tunnel.
     #[serde(default)]
     pub gce_host: String,
     #[serde(default = "default_gce_ssh_port")]
     pub gce_ssh_port: u16,
     #[serde(default = "default_gce_user")]
     pub gce_user: String,
+    /// Pinned MBA server SSH host key fingerprint (SHA256:… format from `ssh-keygen -l`).
+    /// Empty = accept-and-warn (TOFU mode). Pin after first connect to prevent MITM.
+    #[serde(default)]
+    pub totebox_known_host_key: String,
 }
 
 fn default_username() -> String {
@@ -132,6 +136,7 @@ impl Default for ProfileConfig {
             gce_host: String::new(),
             gce_ssh_port: default_gce_ssh_port(),
             gce_user: default_gce_user(),
+            totebox_known_host_key: String::new(),
         }
     }
 }
