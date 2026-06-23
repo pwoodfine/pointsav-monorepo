@@ -163,6 +163,8 @@ pub struct ContentCartridge {
     active_tab_idx: usize,
     // Last search query — restored from session.toml at startup.
     last_search: String,
+    // mTLS Phase A: PEM cert bytes for the service-ingress server (None = system CA pool).
+    tls_cert_pem: Option<Vec<u8>>,
 }
 
 fn format_hhmm_utc() -> String {
@@ -186,6 +188,10 @@ impl ContentCartridge {
                 std::env::var("HOME").unwrap_or_else(|_| ".".into())
             ),
             "http://127.0.0.1:9081",
+            None,
+            None,
+            None,
+            None,
         )
     }
 
@@ -196,6 +202,10 @@ impl ContentCartridge {
         slm_endpoint: impl Into<String>,
         drafts_outbound_path: impl Into<String>,
         content_endpoint: impl Into<String>,
+        initial_query: Option<String>,
+        initial_selected: Option<usize>,
+        initial_scroll: Option<u16>,
+        tls_cert_pem: Option<Vec<u8>>,
     ) -> Self {
         let slm = slm_endpoint.into();
         let content_ep: String = content_endpoint.into();
@@ -278,6 +288,7 @@ impl ContentCartridge {
             tabs: vec![TabSnapshot::fresh_input()],
             active_tab_idx: 0,
             last_search: saved_session.content_query.unwrap_or_default(),
+            tls_cert_pem,
         }
     }
 
@@ -924,6 +935,7 @@ impl ContentCartridge {
             let tenant = self.tenant.clone();
             let endpoint = self.proof_endpoint.clone();
             let text_clone = text.clone();
+            let cert = self.tls_cert_pem.clone();
             let (tx, rx) = mpsc::channel();
             thread::spawn(move || {
                 let _ = tx.send(proofreader::submit_proofread(
@@ -931,6 +943,7 @@ impl ContentCartridge {
                     &protocol,
                     &tenant,
                     &endpoint,
+                    cert.as_deref(),
                 ));
             });
             self.state = ContentState::Submitting {
@@ -1072,8 +1085,11 @@ impl ContentCartridge {
                     let rid = response.request_id.clone();
                     let tenant = self.tenant.clone();
                     let endpoint = self.proof_endpoint.clone();
+                    let cert = self.tls_cert_pem.clone();
                     thread::spawn(move || {
-                        let _ = proofreader::post_verdict(&rid, &tenant, "accept", &endpoint);
+                        let _ = proofreader::post_verdict(
+                            &rid, &tenant, "accept", &endpoint, cert.as_deref(),
+                        );
                     });
                 }
                 self.reset_textarea(DEFAULT_PROTOCOL_IDX);
@@ -1083,8 +1099,11 @@ impl ContentCartridge {
                     let rid = response.request_id.clone();
                     let tenant = self.tenant.clone();
                     let endpoint = self.proof_endpoint.clone();
+                    let cert = self.tls_cert_pem.clone();
                     thread::spawn(move || {
-                        let _ = proofreader::post_verdict(&rid, &tenant, "reject", &endpoint);
+                        let _ = proofreader::post_verdict(
+                            &rid, &tenant, "reject", &endpoint, cert.as_deref(),
+                        );
                     });
                 }
                 self.reset_textarea(DEFAULT_PROTOCOL_IDX);

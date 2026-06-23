@@ -221,6 +221,19 @@ fn inner_main() -> anyhow::Result<()> {
         chassis.set_mba_reconnect_rx(reconnect_rx);
     }
 
+    // mTLS Phase A: when tls_endpoint is configured, route all HTTP calls through
+    // the service-ingress HTTPS endpoint instead of the SSH-tunnel localhost ports.
+    let (effective_proof, effective_content) = if !p.tls_endpoint.is_empty() {
+        (p.tls_endpoint.clone(), p.tls_endpoint.clone())
+    } else {
+        (p.proof_endpoint.clone(), p.content_endpoint.clone())
+    };
+    let tls_cert_pem: Option<Vec<u8>> = if !p.tls_cert_pem_path.is_empty() {
+        std::fs::read(&p.tls_cert_pem_path).ok()
+    } else {
+        None
+    };
+
     chassis.register(Box::new(PeopleCartridge::new_for(&p.people_endpoint)));
     chassis.register(Box::new(EmailCartridge::new_for(
         &p.email_endpoint,
@@ -230,20 +243,24 @@ fn inner_main() -> anyhow::Result<()> {
     chassis.register(Box::new(ContentCartridge::new_for(
         &p.username,
         &p.tenant,
-        &p.proof_endpoint,
+        &effective_proof,
         &p.slm_endpoint,
         &p.drafts_outbound_path,
-        &p.content_endpoint,
+        &effective_content,
         content_session.content_query,
         content_session.content_selected,
         content_session.content_scroll,
+        tls_cert_pem.clone(),
     )));
     chassis.register(Box::new(InputCartridge::new_for(
         &p.username,
         &p.tenant,
         &p.ingest_endpoint,
     )));
-    chassis.register(Box::new(SearchCartridge::new_for(&p.content_endpoint)));
+    chassis.register(Box::new(SearchCartridge::new_for(
+        &effective_content,
+        tls_cert_pem,
+    )));
     chassis.register(Box::new(SlmCartridge::new(&p.slm_endpoint, p.plain_mode)));
     chassis.register(Box::new(SystemCartridge::new(
         &p.pair_endpoint,

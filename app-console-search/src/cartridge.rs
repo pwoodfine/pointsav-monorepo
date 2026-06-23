@@ -1,6 +1,5 @@
 use std::sync::mpsc;
 use std::thread;
-use std::time::Duration;
 
 use app_console_keys::{Cartridge, CartridgeAction, FKey};
 use crossterm::event::{Event, KeyCode, KeyModifiers};
@@ -32,10 +31,12 @@ struct SearchResponse {
     results: Vec<SearchResult>,
 }
 
-fn fetch_search(endpoint: &str, query: &str) -> anyhow::Result<Vec<SearchResult>> {
-    let client = reqwest::blocking::Client::builder()
-        .timeout(Duration::from_secs(5))
-        .build()?;
+fn fetch_search(
+    endpoint: &str,
+    query: &str,
+    cert_pem: Option<&[u8]>,
+) -> anyhow::Result<Vec<SearchResult>> {
+    let client = app_console_keys::tls::build_http_client(cert_pem, 5);
     let url = format!("{}/v1/search", endpoint.trim_end_matches('/'));
     let resp = client
         .get(&url)
@@ -71,20 +72,22 @@ pub struct SearchCartridge {
     content_endpoint: String,
     state: SearchState,
     query_cursor: usize,
+    tls_cert_pem: Option<Vec<u8>>,
 }
 
 impl SearchCartridge {
     pub fn new() -> Self {
-        Self::new_for("http://127.0.0.1:9081")
+        Self::new_for("http://127.0.0.1:9081", None)
     }
 
-    pub fn new_for(content_endpoint: impl Into<String>) -> Self {
+    pub fn new_for(content_endpoint: impl Into<String>, tls_cert_pem: Option<Vec<u8>>) -> Self {
         Self {
             content_endpoint: content_endpoint.into(),
             state: SearchState::Idle {
                 query: String::new(),
             },
             query_cursor: 0,
+            tls_cert_pem,
         }
     }
 
@@ -101,8 +104,9 @@ impl SearchCartridge {
         let (tx, rx) = mpsc::channel();
         let ep = self.content_endpoint.clone();
         let q = query.clone();
+        let cert = self.tls_cert_pem.clone();
         thread::spawn(move || {
-            let _ = tx.send(fetch_search(&ep, &q));
+            let _ = tx.send(fetch_search(&ep, &q, cert.as_deref()));
         });
         self.state = SearchState::Searching {
             query,

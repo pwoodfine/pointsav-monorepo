@@ -9,6 +9,7 @@ pub mod motion;
 pub mod pairing;
 pub mod qr;
 pub mod session;
+pub mod tls;
 pub mod widgets;
 
 pub use cartridge::{Cartridge, CartridgeAction};
