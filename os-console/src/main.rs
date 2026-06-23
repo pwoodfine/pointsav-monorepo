@@ -132,6 +132,7 @@ fn inner_main() -> anyhow::Result<()> {
         .unwrap_or_else(|_| mba_client::MbaResult {
             active: false,
             fingerprint: "(connection timed out)".into(),
+            tofu_server_fingerprint: None,
         })
     });
     drop(rt);
@@ -140,6 +141,10 @@ fn inner_main() -> anyhow::Result<()> {
     chassis.set_pair_base_url(p.pair_endpoint.clone());
 
     if mba.active {
+        // Auto-pin the server key on first TOFU so all future connections are verified.
+        if let Some(ref server_fp) = mba.tofu_server_fingerprint {
+            mba_client::pin_server_key(server_fp);
+        }
         chassis.set_mba_active();
     } else {
         // MBA inactive — start zero-jargon pairing flow
@@ -198,11 +203,10 @@ fn inner_main() -> anyhow::Result<()> {
                                 ),
                             )
                             .await
-                            .unwrap_or_else(|_| {
-                                mba_client::MbaResult {
-                                    active: false,
-                                    fingerprint: "(timeout)".into(),
-                                }
+                            .unwrap_or_else(|_| mba_client::MbaResult {
+                                active: false,
+                                fingerprint: "(timeout)".into(),
+                                tofu_server_fingerprint: None,
                             })
                         })
                     });
