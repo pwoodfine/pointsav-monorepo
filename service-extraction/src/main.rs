@@ -337,7 +337,6 @@ fn process_payload(
 mod tests {
     use super::*;
     use base64::engine::general_purpose::STANDARD as BASE64_STD;
-
     use serde_json::Value;
     use std::fs;
     use std::path::{Path, PathBuf};

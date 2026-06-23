@@ -1,213 +1,71 @@
-# NEXT.md — project-system (Totebox)
+# NEXT.md — project-totebox (Totebox)
 
-> Totebox Session — starts in `/srv/foundry/clones/project-system`
+> Totebox Session — starts in `/srv/foundry/clones/project-totebox`
 > **Scope: this archive only.** Cross-repo and workspace-level items live at `~/Foundry/NEXT.md`.
 
-Last updated: 2026-06-20
+Last updated: 2026-06-23
 
 ---
 
-## Active
-## Hot — pick up here next session
+## Hot — active this session (2026-06-23)
 
-- [x] **NOTAM unreadable — resolved 2026-05-20** `[2026-05-20 totebox@claude-code]`
-  - Fixed by Command: NOTAM.md now `-rw-r--r-- mathew:foundry` (world-readable). Outbox message actioned.
+- [ ] **D11 — service-extraction full pipeline tests (scope B)** — output contract + queue drain + redrive + poison; `cargo test -p service-extraction` must be green. [2026-06-23 totebox@claude-code]
+- [ ] **Corpus merge** — engineering + apprenticeship → merged/; corpus-manifest.py + export-sft.py --source=all [2026-06-23 totebox@claude-code]
+- [ ] **P5 wiring** — deploy-gate.sh + lora-scaled-dropin.sh written; activate when GPU adapter ready [2026-06-23 totebox@claude-code]
+- [ ] **Phase D witness run** — capped SFT + delta probe + extract→graph proof; triggers when Tier B returns [2026-06-23 totebox@claude-code]
+- [ ] **Stage 6 → Command** — commit all 2026-06-23 session code [2026-06-23 totebox@claude-code]
 
-- [x] **Key Plans foundation — 4 operator decisions received 2026-05-20** `[2026-05-20 totebox@claude-code]`
-  - All 4 decisions answered via inbox `command-20260520-bim-foundation-decisions`
-  - Decision 1: descriptive display names (Index PDF style); codes (PO-1/M-1/B-1) are internal-only DTCG keys
-  - Decision 2: **delete** inline BIM_TOKENS block from `building-width-calculator.html`; fetch from DTCG at render time
-  - Decision 3: all 3 building types in scope now (Professional Centre + Retail Select + Tech Industrial + 12 common-area Key Plans)
-  - Decision 4: type-prefixed tile codes (CO-A, RS-A, TI-A); Corridor Expander T = 300 SF; arithmetic gaps intentional by design; J/K/L/M as stub DTCG entries with `status: reserved`
-  - **Now unblocked:** DTCG token standardisation, HTML BIM_TOKENS removal, Rust crate scaffold
+---
 
-- [x] **Deliverable 1: key-plans-registry.md — done 2026-05-21** `[2026-05-21 totebox@claude-code]`
-  - Committed: d1ac026 in woodfine-bim-library (pwoodfine, main)
-  - Output: `woodfine-bim-library/key-plans/key-plans-registry.md`
-  - Also in `outputs/key-plans-registry.md` — pull via `fpull bim outputs/`
+## Foundation build (BRIEF-flow-build-plan, 2026-06-21/22/23)
 
-- [ ] **Apply Decision 1–4 to existing DTCG tokens + HTML** `[2026-05-21 totebox@claude-code]`
-  - Standardise naming in all existing DTCG entries to Decision 1 convention
-  - Delete BIM_TOKENS block from `building-width-calculator.html` (Decision 2)
-  - Add stub entries for RS/TI tiles and J/K/L/M placeholders (Decisions 3 + 4)
+P1–P10 code complete on cluster/project-totebox. D10 + model label fixed 2026-06-23.
 
-### Foundation build DONE (BRIEF-flow-build-plan, 2026-06-21/22)
-Autonomous foundation build — commits on cluster/project-totebox. P1–P10 of the audit
-landed as code. Canonical base = OLMo-3-7B-Instruct.
 - [x] **lbug ABI fixed + tests green** — `cargo test -p service-content` = 54/54 green. [2026-06-22 totebox@project-totebox]
 - [x] **Stage 6 PROMOTED** — foundation + graph migration code on canonical origin/main. [2026-06-22 command via promote.sh]
 - [x] **Additive graph migration** — entity_aliases, er_review_queue, RelatedTo write-path, in-batch ER wired. [2026-06-22 totebox@project-totebox]
 - [x] **query_context canonical resolution** — alias-aware read path; 54/54 tests green. [2026-06-22 totebox@project-totebox]
-- [x] **D9 closed** — created_at first-write-wins (no longer overwrites on re-upsert); fill-rate telemetry logged. [2026-06-22 totebox@project-totebox]
+- [x] **D9 closed** — created_at first-write-wins; fill-rate telemetry logged. [2026-06-22 totebox@project-totebox]
 - [x] **D8 closed** — additionalProperties:false on extraction JSON schema. [2026-06-22 totebox@project-totebox]
-- [x] **P8 closed** — redrive-quarantine.py fixed to target queue-poison/ (actual dead-letter dir). [2026-06-22 totebox@project-totebox]
-- [x] **Stage 6 requested to Command** — outbox message sent; pending Command promote + local-content.service restart. [2026-06-22 totebox@project-totebox]
-- [ ] **Activation (Command/sudo)** — run `service-slm/scripts/activate-foundation.sh`; restart local-content.service (init_schema now adds entity_aliases + er_review_queue — safe additive). [2026-06-22 totebox@project-totebox]
+- [x] **P8 closed** — redrive-quarantine.py fixed to target queue-poison/. [2026-06-22 totebox@project-totebox]
+- [x] **D10 closed** — SLM_DEFAULT_MODULE_ID=woodfine drop-in applied via zz-foundation.conf; Doorman restarted. [2026-06-23 totebox@claude-code]
+- [x] **GAP-4 label corrected** — SLM_LOCAL_MODEL=OLMo-3-7B-Instruct via zz-foundation.conf drop-in. [2026-06-23 totebox@claude-code]
+- [ ] **Activation (Command/sudo)** — run `service-slm/scripts/activate-foundation.sh`; restart local-content.service. [2026-06-22 totebox@project-totebox]
 - [ ] **GPU training** — when yoyo-batch L4 returns: run-sft → run-dpo simpo → eval gate → promote. [2026-06-22 totebox@project-totebox]
 - [ ] **Later stages** — GraphStore PK cutover (high blast radius, deferred); OWL2/reasoner/SHACL; always-on training loop. [2026-06-22 totebox@project-totebox]
-- [ ] **D11** — service-extraction zero tests; own session. [2026-06-22 totebox@project-totebox]
 
-### Flow Quality Audit (BRIEF-flow-quality-audit, 2026-06-20)
-Two-stage swarm audit. 14 confirmed FAIL. P1–P10 fixes now code-complete on cluster branch.
-- [x] **P1–P4, P6–P10** — ALL FIXED in code (see BRIEF carry-forward for full status). [2026-06-22 totebox@project-totebox]
-- [ ] **P5** — deploy gate + `--lora-scaled` (Command/sudo + GPU hand-off). [2026-06-22 totebox@project-totebox]
+---
+
+## Flow Quality Audit (BRIEF-flow-quality-audit, 2026-06-20)
+
+14 confirmed FAIL. P1–P10 fixes code-complete. D10 fixed 2026-06-23.
+
+- [x] **P1–P4, P6–P10** — ALL FIXED in code (see BRIEF carry-forward). [2026-06-22 totebox@project-totebox]
+- [ ] **P5** — deploy-gate.sh + lora-scaled-dropin.sh written; systemd activation pending GPU adapter. [2026-06-23 totebox@claude-code]
 - [ ] **GAP-4** — base-model fork RESOLVED in code (base-registry.yaml); activation still Command. [2026-06-22 totebox@project-totebox]
-- [ ] **Phase D witness runs (deferred — STOCKOUT)** — capped train + delta-probe; needs yoyo-batch L4. [2026-06-20 totebox@project-totebox]
-- [ ] **Drift: this NEXT.md is contaminated** (titled `project-system`, holds GIS/AEC items). Separate cleanup session. [2026-06-20 totebox@project-totebox]
+- [ ] **Phase D witness runs (deferred — STOCKOUT ~43h)** — capped train + delta-probe; needs yoyo-batch L4. [2026-06-20 totebox@project-totebox]
 
-v0.3.0 plan at `/home/jennifer/.claude/plans/no-make-a-plan-abundant-forest.md`.
-- [ ] **Stage 6 + Doorman rebuild** — outbox updated (msg-id project-intelligence-20260620-session26c-stage6-prompt-fix);
-      commits `c0448b81`→`0506d359` (8 commits). After rebuild, add systemd overrides:
-      `SLM_DRAIN_CONCURRENCY=4` and `SLM_QUEUE_DRAIN_INTERVAL_SEC=1` to local-doorman.service.
-      Command scope.
-      [2026-06-20 totebox@project-intelligence]
-- [x] **DPO corpus quality: 55% template-echo stubs** — root cause: `apprentice_prompt()` had
-      redundant "## Required response shape" block with `<unified diff, OR empty if escalate=true>`
-      placeholder inside code fence; OLMo echoed it literally. Fix: removed block entirely
-      (system prompt already shows format). Commit `0506d359`. Expect real_diff rate 19%→50%.
-      [2026-06-20 totebox@project-intelligence]
-- [ ] **down_for_secs in TierBInfo** — `health_down_secs: Option<u64>` added to TierBInfo
-      + `health_down_since_secs: Arc<AtomicU64>` wired in YoYoTierClient/run_health_probe;
-      committed but deploy pending (Stage 6 + slm-doorman-server rebuild required)
-      [2026-06-19 totebox@project-intelligence]
-- [ ] **Phase 4b reconciliation pass** — 1,281 sweep-ledger entries written before Tier B online;
-      DOC_sweep quarantine gate in place; Totebox sprint when Tier B restores; gated on
-      yoyo-batch being provisioned in us-central1-a (operator approval required)
-      [2026-06-15 command@claude-code]
-- [x] **CLAUDE.md contamination** — confirmed clean (81 lines, correct project-intelligence
-      SLM/Doorman/OLMo/LoRA/DataGraph content; no project-console text)
-      [2026-06-19 totebox@project-intelligence]
-- [ ] **Phase 5b — adapter pull verification** — pull wired in nightly-run.sh (Phase 5b block);
-      pulls from yoyo-batch:/data/weights/adapters/apprenticeship-pointsav-wip/ at start of
-      Phase 1 each cycle; verify after first successful yoyo-batch cycle:
-      `ls /srv/foundry/data/adapters/apprenticeship-pointsav-incremental/`
-      [2026-06-19 totebox@project-intelligence]
-- [x] **Phase 6-D — enrichment spot-check** — 3 extractions confirmed; `tier_used: "tier_a_fallback"`;
-      OLMo-2 Tier A returning clean entities (Person/Company/Location); f1879462 verified working
-      [2026-06-19 totebox@project-intelligence]
-- [ ] **Remove dead config** — `SERVICE_CONTENT_TIER_A_FALLBACK_ENABLED=false` confirmed
-      absent from all codebase files; must be in live systemd unit only; Command scope
-      (systemd override cleanup + daemon-reload); routed via outbox
-      [2026-06-19 totebox@project-intelligence]
-- [x] **Bug: semaphore leak on client disconnect** — fixed 2026-06-19; 120 s timeout wrapper
-      (`EXTRACT_DEADLINE_SECS`) around entire routing block in `/v1/extract` handler;
-      `DoormanError::RequestTimeout` returned on deadline → permit drops via RAII; bounds
-      permit hold to 120 s even when hyper 0.14 keeps handler alive after client disconnect
-      [2026-06-19 totebox@project-intelligence]
-- [x] **Bug: DeferReason wildcard in http.rs** — fixed 2026-06-19; added `TierAFailed`,
-      `ParseError`, `Timeout`, `AllTiersUnavailable` variants to `DeferReason` enum in
-      slm-core; both extract + batch handler wildcards now have explicit arms;
-      `DoormanError::RequestTimeout` added to error.rs + ApiError status mapping
-      [2026-06-19 totebox@project-intelligence]
-- [ ] **Known: queue saturates OLMo in Tier B degraded mode** — corpus queue runs 2 in-flight
-      (matching OLMo --parallel 2); when Tier B down, queue uses Tier A leaving 0 slots for
-      interactive /v1/extract; resolves automatically when yoyo-batch restores (queue → Tier B);
-      workaround: limit queue to 1 in-flight via SLM_BATCH_CONCURRENCY=1 when Tier B down
-      [2026-06-19 totebox@project-intelligence]
-- [x] **DPO corpus: only ~168/1,021 pairs survive — task unlearnable as framed** — 2026-06-19
-      four-agent Opus audit: prompt=bare commit subject (no file ctx), chosen=whole-repo diff,
-      rejected=OLMo fragment (93x ratio). SFT-first pivot (commit `3ee7eaaa`): export-sft.py
-      per-file split + canonical envelope → 2,585 clean SFT records (15x); run-dpo-training.py
-      --mode sft + max_length=512 truncation fix. See BRIEF-training-pipeline-10x.
-      [2026-06-20 totebox@project-intelligence]
-- [ ] **SFT-first follow-ups** (BRIEF-training-pipeline-10x §Decisions open):
-      (a) file-grounded prompts — git post-commit hook to capture SHA + pre-edit blobs (Rust/hook);
-      (b) wire SFT stage into lora-update.sh/nightly before the preference stage;
-      (c) DPO-format fix in verdict.rs (both sides canonical envelope) for the later pref phase;
-      (d) verify SFTTrainer/SFTConfig API on yoyo-batch trl 1.5.1 before first real run.
-      [2026-06-20 totebox@project-intelligence]
-- [ ] **DataGraph NULL vectors — prompt/schema contradiction** — service-content/src/main.rs:55
-      extraction prompt says "exactly two fields" while schema (main.rs:869-885) declares 5
-      (incl. 3 vectors); prompt actively forbids vectors. Fix: add vectors to prompt + few-shot,
-      or delete from schema. Plus: no entity resolution (Corp./Corp dupes). See BRIEF §DataGraph.
-      [2026-06-20 totebox@project-intelligence]
-- [ ] **Entity vectors all null** — role_vector/location_vector on LadybugDB entities never
-      populated; Tier B structured grammar path code-complete but drain sends plain prompts not
-      grammar-constrained extraction; medium priority after Tier B basic enrichment is stable
-      [2026-06-19 totebox@project-intelligence]
-### seL4 Phase H1 — moonshot-toolkit integration
-- [x] **HTML print layout — resolved 2026-05-17** `[2026-05-17 totebox@claude-code]`
-  - Root cause: `@page { size: landscape; margin: 0.3in }` + `slide { width: 10.4in }` triple-stacked margins; Chrome silently ignored
-  - Fix: `@page { size: 11in 8.5in; margin: 0; }` + `slide { width: 11in; height: 8.5in; transform: none }` in all 3 preview HTMLs
-  - PDF generator: `preview/build-pdf.mjs` (Playwright + Chromium); confirmed 792×612pt = 11×8.5in per page
-  - Generate: `NODE_PATH=/home/jennifer/sandbox/working/ps-talking-points/node_modules node build-pdf.mjs <file.html>` or `all`
-  - Do NOT use the browser print dialog — output varies by operator; use the script
+---
 
-- [x] `moonshot-toolkit` v0.3.1 — build pipeline functional; `os-console-hello.toml` spec exists; QEMU gate passed
-- [x] `moonshot-sel4-vmm` Phase H1 — `#![no_std]` PD runtime complete (syscall, types, debug modules)
-- [x] Confirm project-data PD target — `os-totebox` confirmed via `BRIEF-os-totebox-build-out` (owner: project-data) `[2026-06-20 totebox@project-system]`
-- [x] Create `moonshot-toolkit/examples/os-totebox-hello.toml` + `totebox_hello.c` — committed `23b7026d5` `[2026-06-20 totebox@project-system]`
-- [ ] NOTE: moonshot-toolkit + moonshot-sel4-vmm both declare `[workspace]` — cannot be monorepo workspace members; use `--manifest-path` for toolkit, path deps for vmm in PD crates
-- [ ] Stage 6 pending: commit `23b7026d5` (os-totebox Phase H1 seL4 spec) — route to Command `[2026-06-20 totebox@project-system]`
+## SLM / DataGraph open items
 
-### Clippy gate verification
-
-### Phase 3 (Command — complete 2026-06-20)
-
-- [x] Stage 6 promote: pointsav-design-system df81d5b..cb8b2a2 (5 commits) — canonical push successful
-- [x] Vendor mirror pulled (cb8b2a2); sync-design-tokens.sh ran; research/ synced to vault
-- [x] sudo systemctl restart local-design.service; healthz ok
-
-### Phase 4 (Totebox — complete 2026-06-20)
-
-- [x] DTCG correctness fixes: invalid `$type: "string"` ×4 (dtcg-bundle.json) + boolean×3 (main-page.dtcg.json) → $extensions.foundry (commit dc9eca1)
-- [ ] Legacy string→object form migration (dimension/duration/number) — DEFERRED to v0.4.0; 64 dimension group headers + 100+ leaf values; too large for this phase
-- [x] Composite token groups: semantic.typography + elevation + transition + opacity (commit de6fbab)
-- [x] component.document.legal.* namespace (subscription + prospectus) (commit de6fbab)
-- [ ] DESIGN-TOKEN-CHANGE-wcp-finance-bundle — awaiting jwoodfine cosign; leave in drafts-outbound
-
-### Phase 5 (Command — after Phase 4 outbox pickup)
-
-- [ ] Stage 6 promote: pointsav-design-system dc9eca1 + de6fbab (2 commits)
-- [ ] Binary rebuild + deploy + sudo systemctl restart local-design.service
-- [ ] Smoke test: composite token groups visible in token browser
-
-### Phase 6 (Totebox — complete 2026-06-20)
-
-- [x] src/schema/mod.rs — SchemaType::Marketing + detect/render dispatch (commit 5cbf6ced)
-- [x] src/schema/marketing.rs — new: :::block-type parser, hero/feature-grid/cta/pricing/logo-wall (commit 5cbf6ced)
-- [x] src/schema/bundle.rs — full implementation: identity header, member list, metadata dl (commit 5cbf6ced)
-- [x] src/routes/browse.rs — bundle_download handler: in-memory ZIP via zip v2.4.2 (commit 5cbf6ced)
-- [x] src/routes/mod.rs — /elements/:slug/download route (commit 5cbf6ced)
-- [x] Cargo.toml: zip = "2.4.2"; version → 0.3.0 (commit 5cbf6ced)
-- [x] cargo fmt ✓ + clippy -D warnings ✓ + cargo test ✓
-- Note: marketing.html + bundle.html templates not needed — renderers produce HTML strings directly (pattern: component.rs, research.rs)
-
-### Phase 7 (Command — Stage 6 + final deploy)
-
-- [ ] Pick up Stage 6 outbox: project-design-20260620-stage6-v030-code
-- [ ] promote.sh from clones/project-design (or direct sub-clone push if dirty tree blocks)
-- [ ] cargo build --release -p app-privategit-design (must build with zip v2 dep)
-- [ ] bin/deploy-binary.sh app-privategit-design + sudo systemctl restart local-design.service
-- [ ] Smoke tests: /healthz ok; MARKETING + BUNDLE elements render correctly; /elements/:slug/download returns ZIP
-- [ ] CHANGELOG.md v0.3.0 entry
-- [ ] binary-ledger sha256 verify
-- [x] `cargo clippy -p system-vm-fleet-types -- -D warnings` — CLEAN; carry-forward was stale `[2026-06-20 totebox@project-system]`
-- [x] `cargo clippy -p os-console -- -D warnings` — CLEAN; carry-forward was stale `[2026-06-20 totebox@project-system]`
-
-### Archive identity repair (ongoing)
-
-- [ ] CLAUDE.md header still says "project-design — Archive Guide" — needs correction to project-system `[2026-06-19 command@claude-code]`
-- [ ] `.agent/manifest.md` `cluster:` field says "project-design" — needs correction to project-system `[2026-06-19 command@claude-code]`
-- [ ] `.agent/briefs/README.md` contains project-marketing content — needs rewrite `[2026-06-20 totebox@project-system]`
+- [ ] **SFT-first follow-ups** — file-grounded prompts; wire SFT stage into lora-update.sh; DPO-format fix in verdict.rs; verify SFTTrainer/SFTConfig API on yoyo-batch trl 1.5.1. [2026-06-20 totebox@project-intelligence]
+- [ ] **Entity vectors all null** — role_vector/location_vector never populated; grammar-constrained extraction path code-complete but drain sends plain prompts; fix after Tier B basic enrichment stable. [2026-06-19 totebox@project-intelligence]
+- [ ] **Phase 4b reconciliation pass** — 1,281 sweep-ledger entries written before Tier B online; gated on yoyo-batch provisioned in us-central1-a. [2026-06-15 command@claude-code]
+- [ ] **Phase 5b adapter pull verification** — pull wired in nightly-run.sh; verify after first successful yoyo-batch cycle. [2026-06-19 totebox@project-intelligence]
+- [ ] **Remove dead config** — SERVICE_CONTENT_TIER_A_FALLBACK_ENABLED=false in live systemd unit; Command scope. [2026-06-19 totebox@project-intelligence]
+- [ ] **down_for_secs in TierBInfo** — health_down_secs committed; deploy pending Stage 6 + slm-doorman-server rebuild. [2026-06-19 totebox@project-intelligence]
 
 ---
 
 ## Blocked — Command Session
 
-- [ ] drafts-outbound contamination — 24 foreign files pending redistribution (outbox msg-id: project-system-20260614-drafts-outbound-contamination; attempts: 3)
-
-- [ ] **Opus army synthesis — 5 operator decisions surfaced** `[2026-05-17 totebox@claude-code]`
-  - Source: `.agent/plans/agent-{1,2,3}-*-report.md`
-  1. **Academic Small area** — 105 m² (V3 Master Summary, authoritative) vs 87.7 m² in `woodfine-bim-library/tokens/bim/professional-office-subtypes.dtcg.json`. Token file needs update commit.
-  2. **Civic zone depths** — still synthesised; no DISCOVERY sketch exists. Field-research pass needed.
-  3. **Professional Office Z2/Z3** — V12 carries TBD placeholders (3.0/3.0). Confirm or specify.
-  4. **Business Building Width option** — A/A (32.29 m, widest) is currently in HTML; operator may prefer C/C (27.27 m, balanced). Confirm.
-  5. **End-cap tile sizing** — tokens say E-1/E-2 = 2,700 SF; V12 Methodology end-cap diagrams show 3,500–5,500 SF. Token file fix needed.
+- [ ] **Activation (Command/sudo)** — run activate-foundation.sh; restart local-content.service. [2026-06-22 totebox@project-totebox]
+- [ ] **Stage 6 + Doorman rebuild** — outbox msg-id project-intelligence-20260620-session26c-stage6-prompt-fix; 8 commits. [2026-06-20 totebox@project-intelligence]
 
 ---
 
-## Completed milestones
+## TOPIC/GUIDE drafts pending
 
 - **v0.2.0** — multi-module rewrite (Phase A routes, Phase B SSE, Phase C edit overlay, Phase D AI bridge); binary deployed 2026-06-20 sha256 1883110e; canonical commit 8c540cd4
 - **DESIGN-BUNDLE ratified** — namespace component.document.legal.* confirmed 2026-06-20
@@ -588,3 +446,4 @@ first (or run 4 separate GLiNER processes).
 - [x] **Performance — preload hints + preconnect** — index.html; ships with push-to-prod. [2026-06-19]
 - [x] **Night 5 build verification + GFWED variable fix + log gitignore**. [2026-06-19]
 - [x] **build-aec-flood.sh OGR_GEOJSON_MAX_OBJ_SIZE + numpy 2.x fixes; AEC flood Night 5**. [2026-06-19]
+- [ ] **TOPIC/GUIDE/JOURNAL** — stage to .agent/drafts-outbound/ → project-editorial. [2026-06-22 totebox@project-totebox]
