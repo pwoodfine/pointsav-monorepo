@@ -130,7 +130,7 @@ Woodfine Management Corp., New York, NY, USA
 
 ## Abstract
 
-No production operating system deployment in 2026 makes capability state visible to a transparency log and consultable by the kernel before honouring an invocation, while simultaneously enabling atomic, ledger-anchored ownership transfer. This paper presents a substrate architecture that composes three mature, independently established primitives — seL4 microkernel capability types, RFC 9162 v2 Merkle transparency logs [rfc-9162], and C2SP signed-note multi-signature checkpoints [c2sp-signed-note] — into a system in which the running state of a deployment is the deterministic materialization of a customer-rooted capability ledger. A two-bottom design pairs a seL4 v15.0.0 native bottom on AArch64-first hardware with a NetBSD compatibility bottom deploying Veriexec verified-image boot and offline-reproducible `build.sh`, enabling the same operating system runtime binaries to execute on either substrate via a thin Rust shim with Cargo feature-flag selection. An apex co-signing ceremony derived from C2SP signed-note multi-signature semantics makes ownership transfer atomic and ledger-anchored, without vendor involvement or state migration. The architecture is evaluated through a working Rust implementation: `system-core` v0.2.0 (51 unit tests, RFC 9162 conformant), `system-ledger` v0.2.1 (44 integration tests, 10 Criterion benchmarks), and a build orchestrator v0.1.3 (30 tests, content-addressed reproducible build orchestration). Cache hits against the checkpoint ledger measure 11.2 ns versus 4.01 ms for full Ed25519 verification — a 358,000× ratio that makes the cache structurally load-bearing rather than optional.
+No production operating system deployment in 2026 makes capability state visible to a transparency log and consultable by the kernel before honouring an invocation, while simultaneously enabling atomic, ledger-anchored ownership transfer. This paper presents a substrate architecture that composes three mature, independently established primitives — seL4 microkernel capability types, RFC 9162 v2 Merkle transparency logs [rfc-9162], and C2SP signed-note multi-signature checkpoints [c2sp-signed-note] — into a system in which the running state of a deployment is the deterministic materialization of a customer-rooted capability ledger. A two-bottom design pairs a seL4 v15.0.0 native bottom on AArch64-first hardware with a NetBSD compatibility bottom deploying Veriexec verified-image boot and offline-reproducible `build.sh`, enabling the same operating system runtime binaries to execute on either substrate via a thin Rust shim with Cargo feature-flag selection. An apex co-signing ceremony derived from C2SP signed-note multi-signature semantics makes ownership transfer atomic and ledger-anchored, without vendor involvement or state migration. The architecture is evaluated through a working Rust implementation: `system-core` v1.0.0 (62 unit tests, RFC 9162 conformant), `system-ledger` v1.0.0 (47 integration tests, 12 Criterion benchmarks), and a build orchestrator (moonshot-toolkit) v0.3.1 (35 tests, content-addressed reproducible build orchestration). Cache hits against the checkpoint ledger measure 11.2 ns versus 4.01 ms for full Ed25519 verification — a 358,000× ratio that makes the cache structurally load-bearing rather than optional.
 
 *(148 words)*
 
@@ -158,7 +158,7 @@ What is missing is the **composition**: wiring a kernel capability type (`seL4_C
 
 This paper makes three contributions. First (1), it specifies a *Capability Ledger Substrate* architecture in which the substrate's capability state is defined as a WORM (write-once, read-many) Merkle log; every kernel-mediated capability invocation, grant, revocation, and temporal extension emits a signed entry to a customer-rooted log whose apex is the customer's signing key, and the kernel consults the log before honouring any capability invocation. Second (2), it introduces a *two-bottom* operating system design: a seL4 native bottom for regulated, high-assurance deployments on AArch64 hardware; and a NetBSD compatibility bottom for commodity hardware where seL4 cannot reach bare-metal; a thin Rust shim selected at compile time via Cargo feature flags presents a uniform capability-invocation interface (`CapabilityInvoker`) to all operating system runtime binaries above, enabling identical runtime semantics across both substrates. Third (3), it presents a *N+3+ apex co-signing ceremony* derived from C2SP signed-note multi-signature semantics that makes ownership transfer of an entire operating-system deployment atomic and ledger-anchored; a new apex operator inherits all capability state, audit history, operational identity, and formal verification proofs as a single signed ledger event at height N+2, with no vendor involvement, no state migration, and no re-certification.
 
-*Scope.* This paper presents an implemented substrate prototype, not a production-deployed verified system. The operating system runtime family targeting this substrate is currently in a pre-production prototype stage. The seL4 AArch64 production deployment path is planned; present benchmark hardware is x86_64 (GCP n2-class). The build orchestrator's `build` subcommand is a validated stub; real seL4 cross-compilation is a planned deliverable. The architecture, formal properties, and falsification programme are independent of commercial considerations. The benchmark measurements are derived from criterion harness runs on identified hardware. Forward-looking statements regarding production deployment timelines carry "planned" or "intended" language throughout.
+*Scope.* This paper presents an implemented substrate prototype, not a production-deployed verified system. The operating system runtime family targeting this substrate is currently in a pre-production prototype stage. The seL4 AArch64 production deployment path is planned; present benchmark hardware is x86_64 (GCP n2-class). The build orchestrator's `build` subcommand performs real seL4 AArch64 cross-compilation (`aarch64-linux-gnu-gcc` + `cargo` → CPIO + elfloader link), producing a `build/system-image.bin` validated against a QEMU boot gate (moonshot-toolkit v0.3.1, Phase 1C complete). The architecture, formal properties, and falsification programme are independent of commercial considerations. The benchmark measurements are derived from criterion harness runs on identified hardware. Forward-looking statements regarding production deployment timelines carry "planned" or "intended" language throughout.
 
 ### 1.3 Structure
 
@@ -210,7 +210,7 @@ The gap is compositional, not primitive. Each of seL4, RFC 9162, C2SP signed-not
 
 ### 3.1 The Two-Bottom Design
 
-The Capability Ledger Substrate positions two operating system bottoms beneath every runtime binary, enabling the same binaries to execute on either substrate through a uniform interface. A working Rust implementation — 51 tests passing across four modules (§6.3) — confirms the design. The substrate positions two bottoms beneath every operating system runtime:
+The Capability Ledger Substrate positions two operating system bottoms beneath every runtime binary, enabling the same binaries to execute on either substrate through a uniform interface. A working Rust implementation — 62 tests passing across four modules (§6.3) — confirms the design. The substrate positions two bottoms beneath every operating system runtime:
 
 | Bottom | Role | Composition | Scope |
 |---|---|---|---|
@@ -221,7 +221,7 @@ The same operating system runtime binaries execute on either bottom via a thin R
 
 The structural rationale for the two-bottom design is hardware reach without capability-geometry compromise. A single-substrate design choosing seL4 exclusively would be constrained to AArch64 hardware where formal proofs apply and AArch64 seL4 port coverage exists (38 platforms in the vendored seL4 kernel tree as of v15.0.0-dev). A single-substrate design choosing a commodity OS would abandon the formal-verification properties that make the native bottom meaningful for regulated workloads. The two-bottom design allows the same operator to run the compat bottom on a leased laptop today and the native bottom on a verified production appliance tomorrow, with the same capability ledger, the same apex signing key, and the same audit history.
 
-### 3.2 The Capability Type System (`system-core` v0.2.0)
+### 3.2 The Capability Type System (`system-core` v1.0.0)
 
 The substrate's foundational type is `Capability`, implemented in `system-core/src/lib.rs`:
 
@@ -310,17 +310,17 @@ The substrate's WORM ledger follows a four-layer architecture:
 | Layer | Role | Current Implementation |
 |---|---|---|
 | **L4 Anchoring** | External timestamping via Sigstore Rekor v2 [sigstore-rekor-v2] monthly + per-MINOR-bump | Anchor emitter binary; systemd timer (`OnCalendar=*-*-01 02:30:00`) |
-| **L3 Wire** | axum HTTP endpoints (`/v1/append`, `/v1/entries`, `/v1/checkpoint`, `/v1/tile/N/M`); MCP-server layered on top | WORM ledger HTTP service (`http.rs`, `mcp.rs`) |
-| **L2 WORM Ledger API** | Rust trait `LedgerBackend` (`open`, `append`, `read_since`, `checkpoint`, `verify_inclusion`, `verify_consistency`) | WORM ledger API implementation; `system-ledger` `LedgerConsumer` trait |
-| **L1 Tile Storage** | C2SP tlog-tiles format [c2sp-tlog-tiles] — same bytes as Trillian-Tessera and Sigstore Rekor v2 internally | POSIX tile ledger (`PosixTileLedger`) |
+| **L3 Wire** | axum HTTP endpoints (`/v1/append`, `/v1/entries`, `/v1/checkpoint`, `/v1/tile/N/M`); MCP-server layered on top | **Planned — owned by project-data** (`http.rs`, `mcp.rs`; not present in this archive's `service-fs/`) |
+| **L2 WORM Ledger API** | Rust trait `LedgerBackend` (`open`, `append`, `read_since`, `checkpoint`, `verify_inclusion`, `verify_consistency`) | `system-ledger` v1.0.0 `LedgerConsumer` trait implemented and tested (concrete impl: `InMemoryLedger`); production tile storage backend **planned** |
+| **L1 Tile Storage** | C2SP tlog-tiles format [c2sp-tlog-tiles] — same bytes as Trillian-Tessera and Sigstore Rekor v2 internally | **Planned — owned by project-data** (`PosixTileLedger`; not present in this archive's `service-fs/`) |
 
-The critical design property at L1: the tile format used internally by the WORM ledger service is identical to the format Sigstore Rekor v2 uses externally. No format conversion occurs at the L4 anchoring boundary. A customer with the tiles and a tile-aware auditor tool can verify the ledger against the external Rekor anchor independently.
+The intended design property at L1: the tile format to be used internally by the WORM ledger service is identical to the format Sigstore Rekor v2 uses externally. With that implementation in place, no format conversion would occur at the L4 anchoring boundary. The L1 and L3 implementations (`PosixTileLedger`, `http.rs`, `mcp.rs`) are planned and will be owned by the project-data archive; they are not present in this archive's `service-fs/` crate, which currently contains only a `no_std` stub.
 
-The L2 `LedgerBackend` trait is the durable contract. `PosixTileLedger` is the v0.1.x implementation on a conventional filesystem. When a planned high-throughput storage backend lands, a new `LedgerBackend` implementation slots in behind the same trait without modifying the wire protocol or anchoring pipeline. This is the storage-layer substitution principle: the trait is the stable contract; the backing implementation is replaceable.
+The L2 `LedgerBackend` trait is the durable contract, implemented and tested in `system-ledger` v1.0.0. The concrete ledger implementation in this archive is `InMemoryLedger` (not the tile store). The planned production tile storage backend (`PosixTileLedger`) will slot in behind the same trait without modifying the wire protocol or anchoring pipeline — the storage-layer substitution principle: the trait is the stable contract; the backing implementation is replaceable.
 
-### 4.2 The Kernel-Side Ledger State Machine (`system-ledger` v0.2.1)
+### 4.2 The Kernel-Side Ledger State Machine (`system-ledger` v1.0.0)
 
-`system-ledger` v0.2.1 implements the substrate-tier consumer of the WORM ledger. Its role is distinct from the WORM ledger service: the WORM ledger service *produces* signed checkpoints for application-tier records; `system-ledger` *consults* checkpoints when the kernel decides whether to honour a capability invocation. Both consume the same `system-core` primitive types (`Capability`, `SignedCheckpoint`, `WitnessRecord`), but at different access-pattern envelopes:
+`system-ledger` v1.0.0 implements the substrate-tier consumer of the WORM ledger. Its role is distinct from the WORM ledger service: the WORM ledger service *produces* signed checkpoints for application-tier records; `system-ledger` *consults* checkpoints when the kernel decides whether to honour a capability invocation. Both consume the same `system-core` primitive types (`Capability`, `SignedCheckpoint`, `WitnessRecord`), but at different access-pattern envelopes:
 
 - **WORM ledger service**: application-tier, network-accessible, human-scale record throughput, Tokio async.
 - **`system-ledger`**: kernel-adjacent, single-threaded (by design — matches the kernel-side substrate model), microsecond-scale read latency required.
@@ -334,7 +334,7 @@ apply_apex_handover(old_name, old_pk, new_name, new_pk, handover_cp)       → (
 apply_witness_record(record: WitnessRecord, proof: InclusionProof)         → () | LedgerError
 ```
 
-`Verdict` has three variants: `Allow`, `Refuse(RefuseReason)`, and `ExtendThenAllow { new_expiry_t }`. `RefuseReason` has six structured variants — `Revoked`, `Expired`, `WitnessSignatureInvalid`, `WitnessNotInLedger`, `NotExtensible`, `ApexInvalid`, `StaleApex` — each with a distinct operational response. Structured refusals are deliberately not collapsed into a single `Error` type: different failure classes require different operator responses.
+`Verdict` has three variants: `Allow`, `Refuse(RefuseReason)`, and `ExtendThenAllow { new_expiry_t }`. `RefuseReason` has seven structured variants — `Revoked`, `Expired`, `WitnessSignatureInvalid`, `WitnessNotInLedger`, `NotExtensible`, `ApexInvalid`, `StaleApex` — each with a distinct operational response. Structured refusals are deliberately not collapsed into a single `Error` type: different failure classes require different operator responses.
 
 `apply_witness_record` takes an `InclusionProof` argument (the v0.2.0 breaking change from v0.1.x): a witness record is not recorded until its Merkle inclusion in the current checkpoint is verified. A witness that signs an extension off-ledger is detectable because `apply_witness_record` will refuse it; `consult_capability` will subsequently return `WitnessNotInLedger` if the record has not been recorded.
 
@@ -453,9 +453,9 @@ The property that makes this possible: the deployment IS the ledger. The running
 
 ## 6. Implementation and Evaluation
 
-### 6.1 Build Orchestrator v0.1.3: Reproducible Build Orchestration
+### 6.1 Build Orchestrator v0.3.1: Reproducible Build Orchestration
 
-The build orchestrator (v0.1.3) is a Rust-only seL4 build orchestrator replacing the Python+CMake+Ninja+Make+shell toolchain that seL4's upstream kernel source tree uses. The design mandate: **a single Rust binary** with a five-language audit surface replaced by one auditable executable and its vendored dependencies.
+The build orchestrator (v0.3.1) is a Rust-only seL4 build orchestrator replacing the Python+CMake+Ninja+Make+shell toolchain that seL4's upstream kernel source tree uses. The design mandate: **a single Rust binary** with a five-language audit surface replaced by one auditable executable and its vendored dependencies.
 
 The pipeline has two content-addressed stages:
 
@@ -465,7 +465,7 @@ The pipeline has two content-addressed stages:
 
 `plan_hash` is the customer-facing reproducibility commitment: a customer re-runs the build orchestrator's `plan` subcommand against the same spec on their own hardware, compares the hex digest, and verifies the build without trusting the vendor's build environment. Sigstore Cosign + the customer's apex key co-sign the `plan_hash` value (planned, pending the cross-compile toolchain decision).
 
-The CLI (clap 4) provides three subcommands: `validate` (parse + validate spec), `plan` (generate + emit BuildPlan as JSON), `build` (generate plan + stub-execute: prints the steps that would run). The `build` subcommand's stub is explicit by design: real seL4 cross-compilation to AArch64 is a planned deliverable, gated on three operator decisions (cross-compile toolchain, seL4 source vendoring strategy, toolchain installation ownership).
+The CLI (clap 4) provides three subcommands: `validate` (parse + validate spec), `plan` (generate + emit BuildPlan as JSON), `build` (generate plan + execute: invokes `aarch64-linux-gnu-gcc` + `cargo` to compile each protection domain, writes a CPIO archive, links via elfloader, and emits `build/system-image.bin`, validated against a QEMU boot gate). The build is not yet hermetic/bit-for-bit reproducible: it shells out to an unpinned host toolchain (`gcc`/`cargo`) and resolves vendored seL4 by relative path; `plan_hash` is deterministic over the SPEC only, not the emitted binary.
 
 ### 6.2 Performance Characteristics
 
@@ -553,7 +553,7 @@ The substrate owns the kernel, system layer, applications, capability ledger, id
 
 *Pre-production runtime layer.* The operating system runtime family targeting this substrate is currently in a pre-production prototype stage. The substrate architecture and its Rust implementation are complete; the runtime layers that consume the substrate are not yet production-deployed. Production claims for the runtime layer are forward-looking.
 
-*AArch64 cross-compilation.* The build orchestrator's `build` subcommand is a validated stub. AArch64 seL4 cross-compilation via the build orchestrator is a planned deliverable pending three operator decisions: cross-compile toolchain, seL4 source vendoring strategy, and toolchain installation ownership.
+*AArch64 cross-compilation.* The build orchestrator's `build` subcommand performs AArch64 seL4 cross-compilation today (Phase 1C complete, v0.3.1), emitting a QEMU-booting `system-image.bin`. **Remaining gap to scope honestly:** the build is not yet hermetic/bit-for-bit reproducible — it shells out to an *unpinned* host `gcc`/`cargo` and resolves vendored seL4 by relative path with no toolchain pinning or input hashing; `plan_hash` is deterministic over the SPEC only, not the emitted binary.
 
 *Multicore.* seL4 multicore (SMP) verification is an open research problem. The substrate targets single-core or multikernel-pending configurations until multicore seL4 verification completes (SRI international target: Q3/2028).
 
@@ -595,7 +595,7 @@ H₂ is falsified if: the compiled outputs of the `native` and `compat` feature-
 
 This paper has presented a substrate architecture for customer-sovereign, trustworthy operating system deployments. The three contributions are:
 
-**The Capability Ledger Substrate.** The substrate's capability state IS the WORM ledger. Every kernel-mediated capability invocation, grant, revocation, and temporal extension emits a signed entry to a customer-rooted Merkle log whose apex is the customer's signing key. The kernel consults the log before honouring any capability invocation via a state machine (`system-ledger`) implementing a `LedgerConsumer` trait with structured `Verdict` results and five-step cost-ordered consultation logic. The architecture is implemented in 51+44 = 95 tested Rust test cases and 10 Criterion benchmarks.
+**The Capability Ledger Substrate.** The substrate's capability state IS the WORM ledger. Every kernel-mediated capability invocation, grant, revocation, and temporal extension emits a signed entry to a customer-rooted Merkle log whose apex is the customer's signing key. The kernel consults the log before honouring any capability invocation via a state machine (`system-ledger`) implementing a `LedgerConsumer` trait with structured `Verdict` results and five-step cost-ordered consultation logic. The architecture is implemented in 62+47 = 109 tested Rust test cases and 12 Criterion benchmarks.
 
 **The Two-Bottom Operating System Design.** A seL4 v15.0.0 native bottom on AArch64-first hardware and a NetBSD compatibility bottom deploying Veriexec verified-image boot and offline-reproducible `build.sh` enable the same operating system runtime binaries to execute on either substrate via a thin Rust shim with Cargo feature-flag selection. Linux is not a substrate bottom. The design achieves hardware reach without capability-geometry compromise — a structural property not available from single-substrate hyperscaler or proprietary-RTOS architectures.
 
