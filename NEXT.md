@@ -31,6 +31,30 @@ Last updated: 2026-06-20
   - Delete BIM_TOKENS block from `building-width-calculator.html` (Decision 2)
   - Add stub entries for RS/TI tiles and J/K/L/M placeholders (Decisions 3 + 4)
 
+### Foundation build DONE (BRIEF-flow-build-plan, 2026-06-21/22)
+Autonomous foundation build — commits on cluster/project-totebox. P1–P10 of the audit
+landed as code. Canonical base = OLMo-3-7B-Instruct.
+- [x] **lbug ABI fixed + tests green** — `cargo test -p service-content` = 54/54 green. [2026-06-22 totebox@project-totebox]
+- [x] **Stage 6 PROMOTED** — foundation + graph migration code on canonical origin/main. [2026-06-22 command via promote.sh]
+- [x] **Additive graph migration** — entity_aliases, er_review_queue, RelatedTo write-path, in-batch ER wired. [2026-06-22 totebox@project-totebox]
+- [x] **query_context canonical resolution** — alias-aware read path; 54/54 tests green. [2026-06-22 totebox@project-totebox]
+- [x] **D9 closed** — created_at first-write-wins (no longer overwrites on re-upsert); fill-rate telemetry logged. [2026-06-22 totebox@project-totebox]
+- [x] **D8 closed** — additionalProperties:false on extraction JSON schema. [2026-06-22 totebox@project-totebox]
+- [x] **P8 closed** — redrive-quarantine.py fixed to target queue-poison/ (actual dead-letter dir). [2026-06-22 totebox@project-totebox]
+- [x] **Stage 6 requested to Command** — outbox message sent; pending Command promote + local-content.service restart. [2026-06-22 totebox@project-totebox]
+- [ ] **Activation (Command/sudo)** — run `service-slm/scripts/activate-foundation.sh`; restart local-content.service (init_schema now adds entity_aliases + er_review_queue — safe additive). [2026-06-22 totebox@project-totebox]
+- [ ] **GPU training** — when yoyo-batch L4 returns: run-sft → run-dpo simpo → eval gate → promote. [2026-06-22 totebox@project-totebox]
+- [ ] **Later stages** — GraphStore PK cutover (high blast radius, deferred); OWL2/reasoner/SHACL; always-on training loop. [2026-06-22 totebox@project-totebox]
+- [ ] **D11** — service-extraction zero tests; own session. [2026-06-22 totebox@project-totebox]
+
+### Flow Quality Audit (BRIEF-flow-quality-audit, 2026-06-20)
+Two-stage swarm audit. 14 confirmed FAIL. P1–P10 fixes now code-complete on cluster branch.
+- [x] **P1–P4, P6–P10** — ALL FIXED in code (see BRIEF carry-forward for full status). [2026-06-22 totebox@project-totebox]
+- [ ] **P5** — deploy gate + `--lora-scaled` (Command/sudo + GPU hand-off). [2026-06-22 totebox@project-totebox]
+- [ ] **GAP-4** — base-model fork RESOLVED in code (base-registry.yaml); activation still Command. [2026-06-22 totebox@project-totebox]
+- [ ] **Phase D witness runs (deferred — STOCKOUT)** — capped train + delta-probe; needs yoyo-batch L4. [2026-06-20 totebox@project-totebox]
+- [ ] **Drift: this NEXT.md is contaminated** (titled `project-system`, holds GIS/AEC items). Separate cleanup session. [2026-06-20 totebox@project-totebox]
+
 v0.3.0 plan at `/home/jennifer/.claude/plans/no-make-a-plan-abundant-forest.md`.
 - [ ] **Stage 6 + Doorman rebuild** — outbox updated (msg-id project-intelligence-20260620-session26c-stage6-prompt-fix);
       commits `c0448b81`→`0506d359` (8 commits). After rebuild, add systemd overrides:

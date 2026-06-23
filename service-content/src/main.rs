@@ -867,6 +867,7 @@ fn process_corpus(
     }
 
     // ── Shared entity schema used by both tiers ───────────────────────────────
+    // additionalProperties:false prevents hallucinated fields from leaking into the graph.
     let entity_schema = serde_json::json!({
         "type": "array",
         "items": {
@@ -881,7 +882,8 @@ fn process_corpus(
                 "location_vector": {"type": ["string", "null"]},
                 "contact_vector": {"type": ["string", "null"]}
             },
-            "required": ["entity_name", "classification"]
+            "required": ["entity_name", "classification"],
+            "additionalProperties": false
         }
     });
 

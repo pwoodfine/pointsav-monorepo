@@ -183,7 +183,7 @@ impl GraphStore for LbugGraphStore {
         let now = chrono::Utc::now().to_rfc3339();
 
         // Phase 1: MERGE each entity node.
-        // The stmt is scoped so its borrow on conn drops before Phase 2 prepares new stmts.
+        // Both stmts are scoped so their borrows on conn drop before Phase 2 prepares new stmts.
         let count: usize = {
             let mut stmt = conn
                 .prepare(
@@ -194,10 +194,20 @@ impl GraphStore for LbugGraphStore {
                          e.location_vector = $location_vector, \
                          e.contact_vector = $contact_vector, \
                          e.module_id = $module_id, \
-                         e.confidence = $confidence, \
-                         e.created_at = $created_at",
+                         e.confidence = $confidence",
                 )
                 .map_err(|e| anyhow!("Failed to prepare upsert statement: {}", e))?;
+
+            // First-write-wins: only set created_at when the node is newly created (field is
+            // NULL or empty). On subsequent MERGE (update), the WHERE filter is false → no-op.
+            // Kùzu initializes unset STRING properties as NULL, not ''.
+            let mut created_at_stmt = conn
+                .prepare(
+                    "MATCH (e:Entity {id: $id}) \
+                     WHERE e.created_at IS NULL OR e.created_at = '' \
+                     SET e.created_at = $now",
+                )
+                .map_err(|e| anyhow!("Failed to prepare created_at statement: {}", e))?;
 
             let mut c = 0usize;
             for entity in entities {
@@ -209,7 +219,7 @@ impl GraphStore for LbugGraphStore {
                 conn.execute(
                     &mut stmt,
                     vec![
-                        ("id", Value::String(id)),
+                        ("id", Value::String(id.clone())),
                         ("entity_name", Value::String(entity.entity_name.clone())),
                         (
                             "classification",
@@ -229,14 +239,40 @@ impl GraphStore for LbugGraphStore {
                         ),
                         ("module_id", Value::String(entity.module_id.clone())),
                         ("confidence", Value::Double(entity.confidence)),
-                        ("created_at", Value::String(now.clone())),
                     ],
                 )
                 .map_err(|e| anyhow!("Failed to upsert entity '{}': {}", entity.entity_name, e))?;
+                conn.execute(
+                    &mut created_at_stmt,
+                    vec![
+                        ("id", Value::String(id)),
+                        ("now", Value::String(now.clone())),
+                    ],
+                )
+                .map_err(|e| anyhow!("Failed to set created_at: {}", e))?;
                 c += 1;
             }
+
+            // Fill-rate telemetry: log vector coverage so operators can track D8 improvement.
+            if c > 0 {
+                let null_role = entities
+                    .iter()
+                    .filter(|e| e.role_vector.as_deref().unwrap_or("").is_empty())
+                    .count();
+                let null_loc = entities
+                    .iter()
+                    .filter(|e| e.location_vector.as_deref().unwrap_or("").is_empty())
+                    .count();
+                println!(
+                    "[graph] upserted {} entities (module={}) | role_vector fill={:.0}% location_vector fill={:.0}%",
+                    c, module_id,
+                    100.0 * (c - null_role) as f64 / c as f64,
+                    100.0 * (c - null_loc) as f64 / c as f64,
+                );
+            }
+
             c
-        }; // stmt dropped here; conn is free for Phase 2
+        }; // stmt and created_at_stmt dropped here; conn is free for Phase 2
 
         // Phase 2: In-batch ER — compare entities within each blocking block; write
         // AutoMerge decisions to entity_aliases and Review decisions to er_review_queue.
@@ -643,6 +679,25 @@ impl GraphStore for LbugGraphStore {
     }
 }
 
+#[cfg(test)]
+impl LbugGraphStore {
+    fn get_entity_created_at(&self, module_id: &str, entity_name: &str) -> Result<Option<String>> {
+        let conn = self.conn()?;
+        let id = format!("{}__{}", module_id, normalize_entity_key(entity_name));
+        let mut stmt = conn
+            .prepare("MATCH (e:Entity {id: $id}) RETURN e.created_at")
+            .map_err(|e| anyhow!("prepare get_entity_created_at: {}", e))?;
+        let result = conn
+            .execute(&mut stmt, vec![("id", Value::String(id))])
+            .map_err(|e| anyhow!("execute get_entity_created_at: {}", e))?;
+        for row in result {
+            let s = val_to_string(&row[0]);
+            return Ok(if s.is_empty() { None } else { Some(s) });
+        }
+        Ok(None)
+    }
+}
+
 /// Extract a `String` from a `Value::String`, or return empty string.
 fn val_to_string(v: &Value) -> String {
     match v {
@@ -957,6 +1012,38 @@ mod tests {
             assert_eq!(store.count_aliases().expect("count_aliases"), 0);
         }
         // (If sim were somehow >= 0.95, the test assumption is wrong and we skip the assert.)
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn created_at_first_write_wins() {
+        let dir = std::env::temp_dir().join(format!("sc-created-at-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let store = LbugGraphStore::new(dir.to_str().unwrap()).expect("open temp lbug store");
+        store.init_schema().expect("init_schema");
+
+        let entity = person("Jennifer Woodfine");
+
+        // First upsert — should set created_at.
+        store.upsert_entities("test", &[entity.clone()]).expect("first upsert");
+        let created_first = store
+            .get_entity_created_at("test", "Jennifer Woodfine")
+            .expect("get_entity_created_at");
+        assert!(
+            created_first.as_deref().map(|s| !s.is_empty()).unwrap_or(false),
+            "created_at should be set after first upsert, got: {:?}", created_first
+        );
+
+        // Second upsert — created_at must NOT change.
+        store.upsert_entities("test", &[entity]).expect("second upsert");
+        let created_second = store
+            .get_entity_created_at("test", "Jennifer Woodfine")
+            .expect("get_entity_created_at second");
+        assert_eq!(
+            created_first, created_second,
+            "created_at must not be overwritten on re-upsert"
+        );
 
         let _ = std::fs::remove_dir_all(&dir);
     }
