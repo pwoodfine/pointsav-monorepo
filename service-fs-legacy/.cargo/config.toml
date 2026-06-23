@@ -1,0 +1,2 @@
+[build]
+# target = "x86_64-unknown-none"  # Envelope B (seL4 bare-metal) — Phase 3; this crate is Envelope A (std)

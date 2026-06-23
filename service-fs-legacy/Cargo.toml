@@ -1,0 +1,37 @@
+# LEGACY — Envelope A (axum/tokio std HTTP server).
+# Superseded by service-fs (Envelope B, seL4 bare-metal unikernel, Phase 3).
+# Retained for reference. Remove when Envelope B is confirmed stable in production.
+# NOT a workspace member — compile standalone only if needed.
+
+[package]
+name = "service-fs-legacy"
+version = "1.0.1"
+edition = "2021"
+authors = ["PointSav Digital Systems"]
+description = "LEGACY: WORM Storage Gatekeeper — Envelope A (std/axum HTTP). Superseded by service-fs Envelope B (seL4 unikernel)."
+
+[[bin]]
+name = "service-fs-legacy"
+path = "src/main.rs"
+
+[dev-dependencies]
+tower = { version = "0.4", features = ["util"] }
+tempfile = "3"
+
+[[bench]]
+name = "ledger_bench"
+harness = false
+# Requires lib target (PosixTileLedger) not yet implemented.
+required-features = ["bench-ledger"]
+
+[features]
+bench-ledger = []
+
+[dependencies]
+axum = { version = "0.7", features = ["json"] }
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+hex = "0.4"
+uuid = { version = "1", features = ["v4"] }
