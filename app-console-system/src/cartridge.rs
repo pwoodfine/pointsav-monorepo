@@ -44,6 +44,10 @@ pub struct SystemCartridge {
     graph_selected: usize,
     revoke_flash: u8,
     ledger_log: Vec<LedgerLogEntry>,
+    /// Cascade animation: indices of caps whose basis was just revoked.
+    cascade_queue: Vec<usize>,
+    /// Ticks remaining until the next cascade entry is revealed (~10 ticks = 160ms).
+    cascade_timer: u8,
 
     // TOPOLOGY tab — existing pending-approval flow
     base_url: String,
@@ -99,6 +103,8 @@ impl SystemCartridge {
             graph_selected: 0,
             revoke_flash: 0,
             ledger_log,
+            cascade_queue: Vec::new(),
+            cascade_timer: 0,
 
             base_url,
             content_endpoint,
@@ -262,6 +268,17 @@ impl SystemCartridge {
 
     // ── graph / ledger actions ─────────────────────────────────────────────
 
+    /// Return indices of caps that lose their basis when cap `idx` is revoked.
+    /// Hardcoded for the demo set: endpoint-a(0) is the root of memory-b(1),
+    /// irq-c(2), notify-d(3); cnode-e(4) grants endpoint-a(0).
+    fn cascade_for(idx: usize) -> Vec<usize> {
+        match idx {
+            0 => vec![1, 2, 3], // endpoint-a revoked → memory-b, irq-c, notify-d cascade
+            4 => vec![0],       // cnode-e revoked → endpoint-a loses grant basis
+            _ => vec![],
+        }
+    }
+
     fn do_revoke_selected(&mut self) {
         let n = self.caps.len();
         if n == 0 {
@@ -291,7 +308,18 @@ impl SystemCartridge {
                     action: "REVOKE",
                 });
                 self.revoke_flash = 20; // ~320ms at 16ms tick
-                self.feedback = Some(format!("{DENY} Revoked: {label}"));
+                // Compute cascade: caps that lose their basis when this one is revoked.
+                let cascade = Self::cascade_for(idx)
+                    .into_iter()
+                    .filter(|&ci| compute_verdict(&self.caps[ci].cap, &self.ledger) != CapVerdict::Revoked)
+                    .collect::<Vec<_>>();
+                if cascade.is_empty() {
+                    self.feedback = Some(format!("{DENY} Revoked: {label}"));
+                } else {
+                    self.feedback = Some(format!("{DENY} Revoked: {label} — cascade pending ({} dependent)", cascade.len()));
+                    self.cascade_queue = cascade;
+                    self.cascade_timer = 12;
+                }
             }
             Err(e) => {
                 self.feedback = Some(format!("Revoke failed: {e:?}"));
@@ -390,6 +418,7 @@ impl SystemCartridge {
         );
 
         let flash_active = self.revoke_flash > 0;
+        let cascade_pending: std::collections::HashSet<usize> = self.cascade_queue.iter().copied().collect();
         let items: Vec<ListItem> = self
             .caps
             .iter()
@@ -397,7 +426,8 @@ impl SystemCartridge {
             .map(|(i, entry)| {
                 let verdict = compute_verdict(&entry.cap, &self.ledger);
                 let is_sel = i == self.graph_selected;
-                let sel_mark = if is_sel { MARKER } else { " " };
+                let is_cascade = cascade_pending.contains(&i);
+                let sel_mark = if is_sel { MARKER } else if is_cascade { "⟲" } else { " " };
                 let ct = cap_type_label(&entry.cap.cap_type);
                 let rights = format!("{:<20}", rights_label(&entry.cap.rights));
                 let expiry = expiry_label(entry.cap.expiry_t);
@@ -432,6 +462,8 @@ impl SystemCartridge {
 
                 if is_sel {
                     ListItem::new(line).style(Style::default().bg(Color::DarkGray))
+                } else if is_cascade {
+                    ListItem::new(line).style(Style::default().bg(Color::Rgb(60, 40, 0)))
                 } else {
                     ListItem::new(line)
                 }
@@ -721,6 +753,35 @@ impl Cartridge for SystemCartridge {
         self.drain_peers_poll();
         if self.revoke_flash > 0 {
             self.revoke_flash -= 1;
+        }
+        // Advance cascade animation: one entry revealed per cascade_timer expiry.
+        if !self.cascade_queue.is_empty() {
+            if self.cascade_timer > 0 {
+                self.cascade_timer -= 1;
+            } else if let Some(cascade_idx) = self.cascade_queue.first().copied() {
+                self.cascade_queue.remove(0);
+                let cap_hash = self.caps[cascade_idx].cap.hash();
+                let label = self.caps[cascade_idx].label.to_string();
+                if compute_verdict(&self.caps[cascade_idx].cap, &self.ledger) != CapVerdict::Revoked {
+                    let height = self.ledger_log.len() as u64 + 2;
+                    let _ = self.ledger.apply_revocation(RevocationEvent {
+                        capability_hash: cap_hash,
+                        revoked_at: now_secs(),
+                        signed_by: "console-apex".to_string(),
+                        ledger_height: height,
+                    });
+                    self.ledger_log.push(LedgerLogEntry {
+                        height,
+                        cap_label: label.clone(),
+                        action: "REVOKE ⟲",
+                    });
+                    self.revoke_flash = 10;
+                    if self.cascade_queue.is_empty() {
+                        self.feedback = Some(format!("{DENY} Cascade complete — {label} struck"));
+                    }
+                }
+                self.cascade_timer = 12;
+            }
         }
     }
 

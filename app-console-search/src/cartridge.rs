@@ -195,7 +195,7 @@ impl SearchCartridge {
             .borders(Borders::ALL)
             .border_style(Style::default().fg(Color::Green))
             .title(format!(
-                " F5: Search — {} result(s) for \"{}\"    [j/k: move  Enter: open  Esc: clear] ",
+                " F5: Search — {} result(s) for \"{}\"    [j/k: move  S: send to Proofreader  Esc: clear] ",
                 results.len(),
                 query
             ));
@@ -440,6 +440,15 @@ impl Cartridge for SearchCartridge {
                     KeyCode::Char('k') | KeyCode::Up => {
                         if let SearchState::Results { selected, .. } = &mut self.state {
                             *selected = selected.saturating_sub(1);
+                        }
+                        return CartridgeAction::Consumed;
+                    }
+                    // Send selected result to Proofreader (F4).
+                    KeyCode::Char('s') | KeyCode::Char('S') => {
+                        if let SearchState::Results { results, selected, .. } = &self.state {
+                            if let Some(r) = results.get(*selected).filter(|r| !r.redacted) {
+                                return CartridgeAction::SendToContent(r.title.clone());
+                            }
                         }
                         return CartridgeAction::Consumed;
                     }

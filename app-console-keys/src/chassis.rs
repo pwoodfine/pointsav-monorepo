@@ -271,12 +271,21 @@ impl AppConsoleKeys {
         }
         // Cartridge-scoped intent: hand to the active cartridge.
         let args = IntentArgs::default();
-        if let Some(c) = self.cartridges.get_mut(&self.active) {
-            match c.dispatch(id, &args) {
-                CartridgeAction::Quit => return ChassisAction::Quit,
-                CartridgeAction::GoBack => self.active = self.previous,
-                CartridgeAction::Consumed | CartridgeAction::None => {}
+        let action = self.cartridges
+            .get_mut(&self.active)
+            .map(|c| c.dispatch(id, &args))
+            .unwrap_or(CartridgeAction::None);
+        match action {
+            CartridgeAction::Quit => return ChassisAction::Quit,
+            CartridgeAction::GoBack => self.active = self.previous,
+            CartridgeAction::SendToContent(text) => {
+                self.previous = self.active;
+                self.active = FKey::F4;
+                if let Some(dest) = self.cartridges.get_mut(&FKey::F4) {
+                    dest.accept_transfer(text);
+                }
             }
+            CartridgeAction::Consumed | CartridgeAction::None => {}
         }
         ChassisAction::None
     }
@@ -398,12 +407,21 @@ impl AppConsoleKeys {
 
     fn forward_mouse_to_cartridge(&mut self, m: &MouseEvent) -> ChassisAction {
         let ev = Event::Mouse(*m);
-        if let Some(c) = self.cartridges.get_mut(&self.active) {
-            match c.handle_event(&ev) {
-                CartridgeAction::Quit => return ChassisAction::Quit,
-                CartridgeAction::GoBack => self.active = self.previous,
-                CartridgeAction::Consumed | CartridgeAction::None => {}
+        let action = self.cartridges
+            .get_mut(&self.active)
+            .map(|c| c.handle_event(&ev))
+            .unwrap_or(CartridgeAction::None);
+        match action {
+            CartridgeAction::Quit => return ChassisAction::Quit,
+            CartridgeAction::GoBack => self.active = self.previous,
+            CartridgeAction::SendToContent(text) => {
+                self.previous = self.active;
+                self.active = FKey::F4;
+                if let Some(dest) = self.cartridges.get_mut(&FKey::F4) {
+                    dest.accept_transfer(text);
+                }
             }
+            CartridgeAction::Consumed | CartridgeAction::None => {}
         }
         ChassisAction::None
     }
@@ -696,16 +714,26 @@ impl AppConsoleKeys {
             }
         }
 
-        if let Some(c) = self.cartridges.get_mut(&self.active) {
-            match c.handle_event(event) {
-                CartridgeAction::Consumed => return ChassisAction::None,
-                CartridgeAction::Quit => return ChassisAction::Quit,
-                CartridgeAction::GoBack => {
-                    self.active = self.previous;
-                    return ChassisAction::None;
-                }
-                CartridgeAction::None => {}
+        let action = self.cartridges
+            .get_mut(&self.active)
+            .map(|c| c.handle_event(event))
+            .unwrap_or(CartridgeAction::None);
+        match action {
+            CartridgeAction::Consumed => return ChassisAction::None,
+            CartridgeAction::Quit => return ChassisAction::Quit,
+            CartridgeAction::GoBack => {
+                self.active = self.previous;
+                return ChassisAction::None;
             }
+            CartridgeAction::SendToContent(text) => {
+                self.previous = self.active;
+                self.active = FKey::F4;
+                if let Some(dest) = self.cartridges.get_mut(&FKey::F4) {
+                    dest.accept_transfer(text);
+                }
+                return ChassisAction::None;
+            }
+            CartridgeAction::None => {}
         }
 
         if let Event::Key(key) = event {
