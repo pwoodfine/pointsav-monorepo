@@ -392,7 +392,12 @@ mod tests {
     }
 
     /// Return the path where the CRM ledger is expected after process_payload().
-    fn expected_crm_path(base_dir: &Path, dest_archive: &str, service: &str, worm_id: &str) -> PathBuf {
+    fn expected_crm_path(
+        base_dir: &Path,
+        dest_archive: &str,
+        service: &str,
+        worm_id: &str,
+    ) -> PathBuf {
         base_dir
             .join(dest_archive)
             .join("service-fs/data")
@@ -419,11 +424,7 @@ mod tests {
         let watch_dir = td.join("watch");
         fs::create_dir_all(&watch_dir).unwrap();
 
-        let b64 = sample_email_b64(
-            "Alice Smith <alice@example.com>",
-            "Hello",
-            "Test body",
-        );
+        let b64 = sample_email_b64("Alice Smith <alice@example.com>", "Hello", "Test body");
         let payload = build_payload(
             "message.eml",
             &b64,
@@ -433,12 +434,7 @@ mod tests {
         );
         let filepath = write_payload_file(&watch_dir, "WORM-A01", &payload);
 
-        let ok = process_payload(
-            &filepath,
-            base_dir.to_str().unwrap(),
-            None,
-            None,
-        );
+        let ok = process_payload(&filepath, base_dir.to_str().unwrap(), None, None);
         assert!(ok, "process_payload must return true for a valid payload");
 
         let crm_path = expected_crm_path(
@@ -451,8 +447,14 @@ mod tests {
 
         let ledger = read_crm_ledger(&crm_path);
         assert_eq!(ledger["worm_id"].as_str().unwrap(), "WORM-A01");
-        assert!(ledger["source_asset"].as_str().is_some(), "source_asset required");
-        assert!(ledger["extracted_crm_entities"].is_array(), "extracted_crm_entities must be array");
+        assert!(
+            ledger["source_asset"].as_str().is_some(),
+            "source_asset required"
+        );
+        assert!(
+            ledger["extracted_crm_entities"].is_array(),
+            "extracted_crm_entities must be array"
+        );
     }
 
     /// A-02: `entity_name` in each extracted entity must be a non-empty string.
@@ -463,11 +465,7 @@ mod tests {
         let watch_dir = td.join("watch");
         fs::create_dir_all(&watch_dir).unwrap();
 
-        let b64 = sample_email_b64(
-            "Bob Jones <bob@example.com>",
-            "Subject",
-            "Body text",
-        );
+        let b64 = sample_email_b64("Bob Jones <bob@example.com>", "Subject", "Body text");
         let payload = build_payload(
             "email.eml",
             &b64,
@@ -547,11 +545,7 @@ mod tests {
         let watch_dir = td.join("watch");
         fs::create_dir_all(&watch_dir).unwrap();
 
-        let b64 = sample_email_b64(
-            "Diana Prince <diana@example.com>",
-            "Hi",
-            "Test",
-        );
+        let b64 = sample_email_b64("Diana Prince <diana@example.com>", "Hi", "Test");
         let payload = build_payload(
             "test.eml",
             &b64,
@@ -574,9 +568,16 @@ mod tests {
             .iter()
             .filter(|e| e["classification"].as_str() == Some("ORIGIN SENDER"))
             .collect();
-        assert_eq!(sender_entities.len(), 1, "exactly one ORIGIN SENDER entity expected");
+        assert_eq!(
+            sender_entities.len(),
+            1,
+            "exactly one ORIGIN SENDER entity expected"
+        );
         let name = sender_entities[0]["entity_name"].as_str().unwrap();
-        assert!(name.contains("Diana"), "sender name must come from From header");
+        assert!(
+            name.contains("Diana"),
+            "sender name must come from From header"
+        );
     }
 
     /// A-05: Edge entities from the payload array appear in the CRM ledger.
@@ -587,11 +588,7 @@ mod tests {
         let watch_dir = td.join("watch");
         fs::create_dir_all(&watch_dir).unwrap();
 
-        let b64 = sample_email_b64(
-            "Eve Adams <eve@example.com>",
-            "Contract",
-            "Signed by Eve",
-        );
+        let b64 = sample_email_b64("Eve Adams <eve@example.com>", "Contract", "Signed by Eve");
         let payload = build_payload(
             "contract.eml",
             &b64,
@@ -617,7 +614,10 @@ mod tests {
             .iter()
             .filter_map(|e| e["entity_name"].as_str())
             .collect();
-        assert!(names.contains(&"GlobalTech Ltd"), "edge entity GlobalTech Ltd expected");
+        assert!(
+            names.contains(&"GlobalTech Ltd"),
+            "edge entity GlobalTech Ltd expected"
+        );
         assert!(names.contains(&"New York"), "edge entity New York expected");
     }
 
@@ -630,11 +630,7 @@ mod tests {
         let watch_dir = td.join("watch");
         fs::create_dir_all(&watch_dir).unwrap();
 
-        let b64 = sample_email_b64(
-            "Frank Hill <frank@example.com>",
-            "Hi",
-            "Body",
-        );
+        let b64 = sample_email_b64("Frank Hill <frank@example.com>", "Hi", "Body");
         let payload = build_payload(
             "note.eml",
             &b64,
@@ -673,11 +669,7 @@ mod tests {
         let watch_dir = td.join("watch");
         fs::create_dir_all(&watch_dir).unwrap();
 
-        let b64 = sample_email_b64(
-            "Grace Lee <grace@example.com>",
-            "Test",
-            "Body",
-        );
+        let b64 = sample_email_b64("Grace Lee <grace@example.com>", "Test", "Body");
         // "Grace Lee" appears in From header; edge entity repeats the same name
         let payload = build_payload(
             "dup.eml",
@@ -703,7 +695,10 @@ mod tests {
             .iter()
             .filter(|e| e["entity_name"].as_str() == Some("Grace Lee"))
             .count();
-        assert_eq!(grace_count, 1, "duplicate entity_name must appear exactly once");
+        assert_eq!(
+            grace_count, 1,
+            "duplicate entity_name must appear exactly once"
+        );
     }
 
     /// A-08: The CRM ledger is valid JSON (no trailing garbage, parseable).
@@ -714,11 +709,7 @@ mod tests {
         let watch_dir = td.join("watch");
         fs::create_dir_all(&watch_dir).unwrap();
 
-        let b64 = sample_email_b64(
-            "Hiro Tanaka <hiro@example.com>",
-            "Status",
-            "All good.",
-        );
+        let b64 = sample_email_b64("Hiro Tanaka <hiro@example.com>", "Status", "All good.");
         let payload = build_payload(
             "status.eml",
             &b64,
@@ -770,7 +761,10 @@ mod tests {
         assert!(ok, "process_payload must return true for markdown payload");
 
         let corpus_path = corpus_dir.join("CORPUS_WORM-A09.json");
-        assert!(corpus_path.exists(), "CORPUS file must be emitted for markdown");
+        assert!(
+            corpus_path.exists(),
+            "CORPUS file must be emitted for markdown"
+        );
         let corpus_raw = fs::read_to_string(&corpus_path).unwrap();
         let corpus_json: Value = serde_json::from_str(&corpus_raw).unwrap();
         let corpus_text = corpus_json["corpus"].as_str().unwrap_or("");
@@ -790,7 +784,11 @@ mod tests {
         fs::create_dir_all(&watch_dir).unwrap();
         fs::create_dir_all(&corpus_dir).unwrap();
 
-        let b64 = sample_email_b64("Ivan Petrov <ivan@example.com>", "Greetings", "Hello world.");
+        let b64 = sample_email_b64(
+            "Ivan Petrov <ivan@example.com>",
+            "Greetings",
+            "Hello world.",
+        );
         let payload = build_payload(
             "greet.eml",
             &b64,
@@ -810,8 +808,14 @@ mod tests {
         assert!(corpus_path.exists(), "CORPUS file must exist");
         let corpus_json: Value =
             serde_json::from_str(&fs::read_to_string(&corpus_path).unwrap()).unwrap();
-        assert!(corpus_json.get("worm_id").is_some(), "corpus JSON must have worm_id");
-        assert!(corpus_json.get("corpus").is_some(), "corpus JSON must have corpus field");
+        assert!(
+            corpus_json.get("worm_id").is_some(),
+            "corpus JSON must have worm_id"
+        );
+        assert!(
+            corpus_json.get("corpus").is_some(),
+            "corpus JSON must have corpus field"
+        );
         assert_eq!(
             corpus_json["module_id"].as_str().unwrap_or(""),
             "module-test",
@@ -896,7 +900,11 @@ mod tests {
         let entities = ledger["extracted_crm_entities"].as_array().unwrap();
         for entity in entities {
             if let Some(conf) = entity["confidence"].as_f64() {
-                assert!(conf >= 0.0 && conf <= 1.0, "confidence must be in [0.0, 1.0], got {}", conf);
+                assert!(
+                    conf >= 0.0 && conf <= 1.0,
+                    "confidence must be in [0.0, 1.0], got {}",
+                    conf
+                );
             }
         }
     }
@@ -969,9 +977,12 @@ mod tests {
         let watch_dir = td.join("watch");
         fs::create_dir_all(&watch_dir).unwrap();
 
-        for (idx, name) in [("Alice Alpha", "alice@example.com"), ("Bob Beta", "bob@example.com")]
-            .iter()
-            .enumerate()
+        for (idx, name) in [
+            ("Alice Alpha", "alice@example.com"),
+            ("Bob Beta", "bob@example.com"),
+        ]
+        .iter()
+        .enumerate()
         {
             let worm = format!("WORM-B03-{}", idx);
             let b64 = sample_email_b64(&format!("{} <{}>", name.0, name.1), "Sub", "Body");
@@ -1031,7 +1042,7 @@ mod tests {
             "test.eml",
             &b64,
             "cluster-totebox-personnel-1",
-            "service-email",    // non-default target
+            "service-email", // non-default target
             serde_json::json!([]),
         );
         let filepath = write_payload_file(&watch_dir, "WORM-B05", &payload);
@@ -1043,7 +1054,10 @@ mod tests {
             "service-email",
             "WORM-B05",
         );
-        assert!(crm_path.exists(), "CRM ledger must be under service-email subdir");
+        assert!(
+            crm_path.exists(),
+            "CRM ledger must be under service-email subdir"
+        );
     }
 
     // ── Area C: Redrive logic ─────────────────────────────────────────────────
@@ -1184,7 +1198,8 @@ mod tests {
         let watch_dir = td.join("watch");
         fs::create_dir_all(&watch_dir).unwrap();
 
-        let filepath = write_payload_file(&watch_dir, "WORM-D02", r#"{"file": {"filename": "x.eml""#);
+        let filepath =
+            write_payload_file(&watch_dir, "WORM-D02", r#"{"file": {"filename": "x.eml""#);
         let result = process_payload(&filepath, base_dir.to_str().unwrap(), None, None);
         assert!(!result, "truncated JSON must return false");
     }
@@ -1376,7 +1391,7 @@ mod tests {
             &b64,
             "cluster-totebox-personnel-1",
             "service-people",
-            serde_json::json!([]),    // no edge entities
+            serde_json::json!([]), // no edge entities
         );
         let filepath = write_payload_file(&watch_dir, "WORM-D11", &payload);
         let ok = process_payload(
@@ -1393,10 +1408,16 @@ mod tests {
             "service-people",
             "WORM-D11",
         );
-        assert!(!crm_path.exists(), "no CRM ledger when no entities extracted");
+        assert!(
+            !crm_path.exists(),
+            "no CRM ledger when no entities extracted"
+        );
 
         let corpus_path = corpus_dir.join("CORPUS_WORM-D11.json");
-        assert!(corpus_path.exists(), "CORPUS file must be emitted for YAML payload");
+        assert!(
+            corpus_path.exists(),
+            "CORPUS file must be emitted for YAML payload"
+        );
     }
 
     /// D-12: A `.txt` payload with edge entities produces both a CRM ledger
@@ -1436,9 +1457,15 @@ mod tests {
             "service-people",
             "WORM-D12",
         );
-        assert!(crm_path.exists(), "CRM ledger must exist for txt payload with entities");
+        assert!(
+            crm_path.exists(),
+            "CRM ledger must exist for txt payload with entities"
+        );
 
         let corpus_path = corpus_dir.join("CORPUS_WORM-D12.json");
-        assert!(corpus_path.exists(), "CORPUS file must be emitted for txt payload");
+        assert!(
+            corpus_path.exists(),
+            "CORPUS file must be emitted for txt payload"
+        );
     }
 }
