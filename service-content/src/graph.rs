@@ -934,6 +934,25 @@ impl LbugGraphStore {
     }
 }
 
+#[cfg(test)]
+impl LbugGraphStore {
+    fn get_entity_created_at(&self, module_id: &str, entity_name: &str) -> Result<Option<String>> {
+        let conn = self.conn()?;
+        let id = format!("{}__{}", module_id, normalize_entity_key(entity_name));
+        let mut stmt = conn
+            .prepare("MATCH (e:Entity {id: $id}) RETURN e.created_at")
+            .map_err(|e| anyhow!("prepare get_entity_created_at: {}", e))?;
+        let result = conn
+            .execute(&mut stmt, vec![("id", Value::String(id))])
+            .map_err(|e| anyhow!("execute get_entity_created_at: {}", e))?;
+        for row in result {
+            let s = val_to_string(&row[0]);
+            return Ok(if s.is_empty() { None } else { Some(s) });
+        }
+        Ok(None)
+    }
+}
+
 /// Extract a `String` from a `Value::String`, or return empty string.
 fn val_to_string(v: &Value) -> String {
     match v {
