@@ -9,6 +9,10 @@ pub enum CartridgeAction {
     Consumed,
     Quit,
     GoBack,
+    /// Request that the chassis transfer this text to the Content cartridge (F4),
+    /// switch to it, and pre-fill the draft textarea. Implements the
+    /// `search.send_to_proofreader` intent without a data-bus crate.
+    SendToContent(String),
 }
 
 pub trait Cartridge: Send {
@@ -42,6 +46,11 @@ pub trait Cartridge: Send {
     /// Called by the chassis after each terminal.draw() to emit OSC 8 hyperlinks
     /// for any rendered links. Default no-op; override in cartridges that render links.
     fn flush_hyperlinks(&self) {}
+
+    /// Accept a cross-cartridge text transfer (e.g. Search → Proofreader send-to).
+    /// The chassis calls this on the destination cartridge after switching focus to it.
+    /// Default: no-op.
+    fn accept_transfer(&mut self, _text: String) {}
 
     /// Live capability verdicts for the `?` capability overlay (Phase K). Default: empty.
     /// Returns `(label, verdict)` pairs where verdict is "✓ ALLOW", "✗ REVOKED", or "⟳ EXPIRED".

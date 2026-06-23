@@ -96,6 +96,8 @@ enum ContentState {
         original: String,
         scroll: u16,
         born_at: Instant,
+        /// Wall-clock time the result landed (HH:MM UTC) — shown in egress-witness strip.
+        witness_at: String,
     },
     DraftingNew {
         title: String,
@@ -161,6 +163,15 @@ pub struct ContentCartridge {
     active_tab_idx: usize,
     // Last search query — restored from session.toml at startup.
     last_search: String,
+}
+
+fn format_hhmm_utc() -> String {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let secs = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
+    format!("{:02}:{:02}", (secs % 86400) / 3600, (secs % 3600) / 60)
 }
 
 impl ContentCartridge {
@@ -413,6 +424,7 @@ impl ContentCartridge {
         );
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn render_results(
         frame: &mut Frame,
         area: Rect,
@@ -421,6 +433,7 @@ impl ContentCartridge {
         scroll: u16,
         born_ms: u64,
         truecolor: bool,
+        witness_at: &str,
     ) {
         use similar::{ChangeTag, TextDiff};
 
@@ -430,7 +443,7 @@ impl ContentCartridge {
             format!("  [DEGRADED: {}]", response.degraded.join(", "))
         };
         let title = format!(
-            " F4: Content — Results{}    [A: accept  R: reject  Esc: back  ↑↓: scroll] ",
+            " F4: Content — Results{}    [A: accept  R: reject  ↑↓: scroll  Esc: back] ",
             degraded_str
         );
 
@@ -454,7 +467,7 @@ impl ContentCartridge {
 
         let chunks = Layout::default()
             .direction(Direction::Vertical)
-            .constraints([Constraint::Length(1), Constraint::Fill(1)])
+            .constraints([Constraint::Length(1), Constraint::Fill(1), Constraint::Length(1)])
             .split(inner);
 
         // Info line
@@ -507,6 +520,15 @@ impl ContentCartridge {
                 &mut sb_state,
             );
         }
+
+        // Egress-witness strip — shows which Doorman tier reviewed this draft.
+        frame.render_widget(
+            Paragraph::new(Line::from(vec![
+                Span::styled("  ⬡ Witnessed by Doorman · Local · ", Style::default().fg(Color::DarkGray)),
+                Span::styled(witness_at, Style::default().fg(Color::Cyan)),
+            ])),
+            chunks[2],
+        );
     }
 
     fn render_error(frame: &mut Frame, area: Rect, message: &str) {
@@ -1512,6 +1534,16 @@ impl Cartridge for ContentCartridge {
         }
     }
 
+    fn accept_transfer(&mut self, text: String) {
+        let mut ta = TextArea::default();
+        ta.set_placeholder_text(PLACEHOLDER);
+        ta.insert_str(&text);
+        self.textarea = ta;
+        self.state = ContentState::Input {
+            protocol_idx: DEFAULT_PROTOCOL_IDX,
+        };
+    }
+
     fn set_graphics_caps(
         &mut self,
         kitty: bool,
@@ -1535,6 +1567,7 @@ impl Cartridge for ContentCartridge {
                         original: original.clone(),
                         scroll: 0,
                         born_at: Instant::now(),
+                        witness_at: format_hhmm_utc(),
                     }),
                     Ok(Err(e)) => Some(ContentState::Error {
                         message: e.to_string(),
@@ -1655,7 +1688,7 @@ impl Cartridge for ContentCartridge {
             Input(usize),
             Picker(usize),
             Submitting(u64),
-            Results(ProofreadResponse, String, u16, u64),
+            Results(ProofreadResponse, String, u16, u64, String),
             Drafting(String, String, bool, Option<String>, u16),
             Search(String, Vec<SearchResult>, usize, u16, bool),
             Pdf(String, u32, u32),
@@ -1673,7 +1706,8 @@ impl Cartridge for ContentCartridge {
                 original,
                 scroll,
                 born_at,
-            } => Cmd::Results(response.clone(), original.clone(), *scroll, born_at.elapsed().as_millis() as u64),
+                witness_at,
+            } => Cmd::Results(response.clone(), original.clone(), *scroll, born_at.elapsed().as_millis() as u64, witness_at.clone()),
             ContentState::DraftingNew {
                 title,
                 buffer,
@@ -1728,8 +1762,8 @@ impl Cartridge for ContentCartridge {
             Cmd::Submitting(elapsed_ms) => {
                 Self::render_submitting(frame, render_area, elapsed_ms, self.truecolor)
             }
-            Cmd::Results(resp, orig, sc, born_ms) => {
-                Self::render_results(frame, render_area, &resp, &orig, sc, born_ms, self.truecolor)
+            Cmd::Results(resp, orig, sc, born_ms, wit) => {
+                Self::render_results(frame, render_area, &resp, &orig, sc, born_ms, self.truecolor, &wit)
             }
             Cmd::Drafting(t, buf, done, err, sc) => {
                 Self::render_drafting(frame, render_area, &t, &buf, done, err.as_deref(), sc)

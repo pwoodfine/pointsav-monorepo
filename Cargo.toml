@@ -63,6 +63,8 @@ members = [
     "moonshot-index",
     # os-console F5 Search cartridge
     "app-console-search",
+    # mTLS Phase A public ingress
+    "service-ingress",
 ]
 
 [profile.dev]

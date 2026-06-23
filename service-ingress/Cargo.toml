@@ -1,0 +1,28 @@
+[package]
+name = "service-ingress"
+version = "0.1.0"
+edition = "2021"
+description = "os-console mTLS Phase A — TLS-terminating reverse proxy; fans out to local services by path prefix"
+license = "AGPL-3.0-or-later"
+
+[[bin]]
+name = "service-ingress"
+path = "src/main.rs"
+
+[dependencies]
+axum = "0.8"
+axum-server = { version = "0.7", features = ["tls-rustls"] }
+tokio = { version = "1", features = ["full"] }
+reqwest = { version = "0.12", default-features = false, features = ["http2", "rustls-tls", "stream"] }
+rustls = "0.23"
+rcgen = "0.13"
+anyhow = "1"
+serde = { version = "1", features = ["derive"] }
+toml = "0.8"
+bytes = "1"
+http = "1"
+http-body-util = "0.1"
+hyper = { version = "1", features = ["full"] }
+tower = "0.5"
+sha2 = { version = "0.10", features = ["std"] }
+hex = "0.4"
