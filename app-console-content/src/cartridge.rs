@@ -1,6 +1,8 @@
 use std::sync::mpsc;
 use std::thread;
+use std::time::Instant;
 
+use app_console_keys::motion::{self, Anim};
 use app_console_keys::session::SessionState;
 use app_console_keys::{Cartridge, CartridgeAction, FKey};
 use crossterm::event::{Event, KeyCode, KeyModifiers};
@@ -29,7 +31,7 @@ use crate::pdf::{self, PdfPageData};
 use crate::proofreader::{self, ProofreadResponse, DEFAULT_PROTOCOL_IDX, PROTOCOLS};
 use crate::search::{self, SearchResult};
 
-const SPINNER: &[&str] = &["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+const PATIENCE_RING: &[&str] = &["◌", "◎", "⊙", "●", "⊙", "◎"];
 
 /// A hyperlink position recorded during render — consumed by flush_hyperlinks().
 struct HyperlinkTarget {
@@ -87,12 +89,13 @@ enum ContentState {
         #[allow(dead_code)]
         protocol_idx: usize,
         rx: mpsc::Receiver<anyhow::Result<ProofreadResponse>>,
-        spinner: usize,
+        wait_since: Instant,
     },
     Results {
         response: ProofreadResponse,
         original: String,
         scroll: u16,
+        born_at: Instant,
     },
     DraftingNew {
         title: String,
@@ -379,10 +382,18 @@ impl ContentCartridge {
         frame.render_widget(List::new(items), inner);
     }
 
-    fn render_submitting(frame: &mut Frame, area: Rect, spinner: usize) {
+    fn render_submitting(frame: &mut Frame, area: Rect, elapsed_ms: u64, truecolor: bool) {
+        let t = motion::pulse(elapsed_ms, 2800);
+        let ring = PATIENCE_RING[((t * PATIENCE_RING.len() as f32) as usize).min(PATIENCE_RING.len() - 1)];
+        let border_color = if truecolor {
+            let v = 80 + (t * 175.0) as u8;
+            Color::Rgb(0, v, v)
+        } else {
+            Color::Cyan
+        };
         let outer = Block::default()
             .borders(Borders::ALL)
-            .border_style(Style::default().fg(Color::Cyan))
+            .border_style(Style::default().fg(border_color))
             .title(" F4: Content — Proofreading... ");
         let inner = outer.inner(area);
         frame.render_widget(outer, area);
@@ -395,7 +406,7 @@ impl ContentCartridge {
         frame.render_widget(
             Paragraph::new(format!(
                 "  {} Sending to service-proofreader — please wait (up to 300s)…",
-                SPINNER[spinner % SPINNER.len()]
+                ring,
             ))
             .style(Style::default().fg(Color::Yellow)),
             mid,
@@ -408,6 +419,8 @@ impl ContentCartridge {
         response: &ProofreadResponse,
         original: &str,
         scroll: u16,
+        born_ms: u64,
+        truecolor: bool,
     ) {
         use similar::{ChangeTag, TextDiff};
 
@@ -421,9 +434,20 @@ impl ContentCartridge {
             degraded_str
         );
 
+        let pop_t = Anim::verdict_pop().value(born_ms);
+        let border_style = if truecolor {
+            let base = 80u8;
+            let bright = 255u8;
+            let v = base + (pop_t * (bright - base) as f32) as u8;
+            Style::default().fg(Color::Rgb(0, v, 60))
+        } else if born_ms < 200 {
+            Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)
+        } else {
+            Style::default().fg(Color::Green)
+        };
         let outer = Block::default()
             .borders(Borders::ALL)
-            .border_style(Style::default().fg(Color::Green))
+            .border_style(border_style)
             .title(title.as_str());
         let inner = outer.inner(area);
         frame.render_widget(outer, area);
@@ -891,7 +915,7 @@ impl ContentCartridge {
                 original: text,
                 protocol_idx,
                 rx,
-                spinner: 0,
+                wait_since: Instant::now(),
             };
             return CartridgeAction::Consumed;
         }
@@ -1510,6 +1534,7 @@ impl Cartridge for ContentCartridge {
                         response: resp,
                         original: original.clone(),
                         scroll: 0,
+                        born_at: Instant::now(),
                     }),
                     Ok(Err(e)) => Some(ContentState::Error {
                         message: e.to_string(),
@@ -1556,10 +1581,7 @@ impl Cartridge for ContentCartridge {
             }
         }
 
-        // Tick spinner
-        if let ContentState::Submitting { spinner, .. } = &mut self.state {
-            *spinner = spinner.wrapping_add(1);
-        }
+        // Patience ring: wait_since drives elapsed_ms at render time — no tick needed.
 
         // Drain search results — take() frees the borrow so we can act on self.state freely
         let search_rx_opt = if let ContentState::SearchResults { search_rx, .. } = &mut self.state {
@@ -1632,8 +1654,8 @@ impl Cartridge for ContentCartridge {
         enum Cmd {
             Input(usize),
             Picker(usize),
-            Submitting(usize),
-            Results(ProofreadResponse, String, u16),
+            Submitting(u64),
+            Results(ProofreadResponse, String, u16, u64),
             Drafting(String, String, bool, Option<String>, u16),
             Search(String, Vec<SearchResult>, usize, u16, bool),
             Pdf(String, u32, u32),
@@ -1643,12 +1665,15 @@ impl Cartridge for ContentCartridge {
         let cmd = match &self.state {
             ContentState::Input { protocol_idx } => Cmd::Input(*protocol_idx),
             ContentState::PickProtocol { selected, .. } => Cmd::Picker(*selected),
-            ContentState::Submitting { spinner, .. } => Cmd::Submitting(*spinner),
+            ContentState::Submitting { wait_since, .. } => {
+                Cmd::Submitting(wait_since.elapsed().as_millis() as u64)
+            }
             ContentState::Results {
                 response,
                 original,
                 scroll,
-            } => Cmd::Results(response.clone(), original.clone(), *scroll),
+                born_at,
+            } => Cmd::Results(response.clone(), original.clone(), *scroll, born_at.elapsed().as_millis() as u64),
             ContentState::DraftingNew {
                 title,
                 buffer,
@@ -1700,9 +1725,11 @@ impl Cartridge for ContentCartridge {
         match cmd {
             Cmd::Input(pidx) => self.render_input(frame, render_area, pidx),
             Cmd::Picker(sel) => Self::render_picker(frame, render_area, sel, self.selection_bg()),
-            Cmd::Submitting(sp) => Self::render_submitting(frame, render_area, sp),
-            Cmd::Results(resp, orig, sc) => {
-                Self::render_results(frame, render_area, &resp, &orig, sc)
+            Cmd::Submitting(elapsed_ms) => {
+                Self::render_submitting(frame, render_area, elapsed_ms, self.truecolor)
+            }
+            Cmd::Results(resp, orig, sc, born_ms) => {
+                Self::render_results(frame, render_area, &resp, &orig, sc, born_ms, self.truecolor)
             }
             Cmd::Drafting(t, buf, done, err, sc) => {
                 Self::render_drafting(frame, render_area, &t, &buf, done, err.as_deref(), sc)

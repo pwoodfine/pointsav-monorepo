@@ -57,6 +57,8 @@ members = [
     # Sovereign replacement stubs (wired into app-privategit-design)
     "moonshot-fs-watch",
     "moonshot-index",
+    # os-console F5 Search cartridge
+    "app-console-search",
 ]
 
 [profile.dev]

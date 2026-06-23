@@ -156,6 +156,8 @@ pub struct AppConsoleKeys {
     strip_rect: Rect,
     content_rect: Rect,
     palette_rect: Rect,
+    // --- Capability overlay (Phase K) ---
+    cap_overlay: bool,
 }
 
 impl AppConsoleKeys {
@@ -186,6 +188,7 @@ impl AppConsoleKeys {
             strip_rect: Rect::default(),
             content_rect: Rect::default(),
             palette_rect: Rect::default(),
+            cap_overlay: false,
         }
     }
 
@@ -634,6 +637,16 @@ impl AppConsoleKeys {
             menu.rect = rect;
             render_context_menu(frame, menu);
         }
+
+        // Capability overlay (Phase K) — rendered on top.
+        if self.cap_overlay {
+            let verdicts = self
+                .cartridges
+                .get(&self.active)
+                .map(|c| c.cap_verdicts())
+                .unwrap_or_default();
+            render_cap_overlay(frame, area, &verdicts);
+        }
     }
 
     pub fn handle_event(&mut self, event: &Event) -> ChassisAction {
@@ -644,6 +657,15 @@ impl AppConsoleKeys {
         if self.palette.is_some() {
             return self.handle_palette_event(event);
         }
+        // Capability overlay (Phase K): ? toggles; Esc / ? closes.
+        if self.cap_overlay {
+            if let Event::Key(key) = event {
+                if key.code == KeyCode::Char('?') || key.code == KeyCode::Esc {
+                    self.cap_overlay = false;
+                }
+            }
+            return ChassisAction::None;
+        }
 
         // Mouse input (Phase I-2) — only when no overlay is open.
         if let Event::Mouse(m) = event {
@@ -651,7 +673,12 @@ impl AppConsoleKeys {
         }
 
         // Ctrl-K (resolved through the keymap) opens the palette.
+        // ? opens the capability overlay.
         if let Event::Key(key) = event {
+            if key.code == KeyCode::Char('?') {
+                self.cap_overlay = true;
+                return ChassisAction::None;
+            }
             if let Some(chord) = key_to_chord(key) {
                 if self.keymap.resolve(&chord, self.focused_scope()) == Some(IntentId("console.palette"))
                 {
@@ -1170,6 +1197,60 @@ fn render_context_menu(frame: &mut Frame, menu: &ContextMenu) {
             Line::from(Span::styled(format!(" {title} "), style))
         })
         .collect();
+    frame.render_widget(Paragraph::new(lines), inner);
+}
+
+/// Render the capability overlay (Phase K). A centered box showing live verdicts
+/// from the active cartridge. Empty message when the cartridge has no verdicts.
+fn render_cap_overlay(frame: &mut Frame, area: Rect, verdicts: &[(String, String)]) {
+    use ratatui::layout::{Constraint as C, Direction, Layout};
+    use ratatui::style::{Color, Modifier, Style};
+    use ratatui::text::{Line, Span};
+
+    let height = (verdicts.len() as u16 + 4).min(area.height.saturating_sub(4));
+    let vchunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([C::Fill(1), C::Length(height), C::Fill(1)])
+        .split(area);
+    let hchunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([C::Fill(1), C::Percentage(60), C::Fill(1)])
+        .split(vchunks[1]);
+
+    let rect = hchunks[1];
+    frame.render_widget(Clear, rect);
+
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(Color::Magenta).add_modifier(Modifier::BOLD))
+        .title(" ◈ Capability Verdicts    [? / Esc: close] ");
+    let inner = block.inner(rect);
+    frame.render_widget(block, rect);
+
+    let mut lines: Vec<Line> = vec![Line::from("")];
+    if verdicts.is_empty() {
+        lines.push(Line::from(Span::styled(
+            "  No capability data — switch to F11 for live verdicts.",
+            Style::default().fg(Color::DarkGray),
+        )));
+    } else {
+        for (label, verdict) in verdicts {
+            let color = if verdict.starts_with('✓') {
+                Color::Green
+            } else if verdict.starts_with('✗') {
+                Color::Red
+            } else {
+                Color::Yellow
+            };
+            lines.push(Line::from(vec![
+                Span::styled(
+                    format!("  {:<28}", label),
+                    Style::default().fg(Color::White),
+                ),
+                Span::styled(verdict.clone(), Style::default().fg(color)),
+            ]));
+        }
+    }
     frame.render_widget(Paragraph::new(lines), inner);
 }
 

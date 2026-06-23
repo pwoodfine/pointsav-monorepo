@@ -16,6 +16,7 @@ app-console-system = { path = "../app-console-system" }
 app-console-email = { path = "../app-console-email" }
 app-console-slm = { path = "../app-console-slm" }
 app-console-people = { path = "../app-console-people" }
+app-console-search = { path = "../app-console-search" }
 system-gateway-mba = { path = "../system-gateway-mba" }
 anyhow = "1"
 ctrlc = "3"

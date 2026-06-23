@@ -1,6 +1,8 @@
 use std::sync::mpsc;
 use std::thread;
 
+use sha2::{Digest, Sha256};
+
 use app_console_keys::{Cartridge, CartridgeAction, FKey};
 use crossterm::event::{Event, KeyCode, KeyModifiers};
 use ratatui::{
@@ -157,6 +159,8 @@ pub struct InputCartridge {
     state: InputState,
     path_input: PathInput,
     truecolor: bool,
+    ledger_root: [u8; 32],
+    ledger_height: u64,
 }
 
 impl InputCartridge {
@@ -176,6 +180,8 @@ impl InputCartridge {
             state: InputState::Entry,
             path_input: PathInput::new(),
             truecolor: false,
+            ledger_root: [0u8; 32],
+            ledger_height: 0,
         }
     }
 
@@ -304,7 +310,14 @@ impl InputCartridge {
         );
     }
 
-    fn render_done(frame: &mut Frame, area: Rect, path: &str, result: &IngestResult) {
+    fn render_done(
+        frame: &mut Frame,
+        area: Rect,
+        path: &str,
+        result: &IngestResult,
+        ledger_height: u64,
+        ledger_root: &[u8; 32],
+    ) {
         let modal = Self::render_modal(frame, area);
 
         let (title, color) = if result.warning.is_some() {
@@ -320,6 +333,11 @@ impl InputCartridge {
         let inner = block.inner(modal);
         frame.render_widget(block, modal);
 
+        let root_hex: String = ledger_root[..8]
+            .iter()
+            .map(|b| format!("{:02x}", b))
+            .collect();
+
         let mut lines = vec![
             Line::from(""),
             Line::from(vec![
@@ -331,10 +349,17 @@ impl InputCartridge {
                 Span::styled("  Payload ID: ", Style::default().fg(Color::DarkGray)),
                 Span::styled(result.payload_id.clone(), Style::default().fg(Color::Cyan)),
             ]),
+            Line::from(vec![
+                Span::styled("  ⬡ Ledger:  ", Style::default().fg(Color::DarkGray)),
+                Span::styled(
+                    format!("#{} root:{}", ledger_height, root_hex),
+                    Style::default().fg(Color::Magenta),
+                ),
+            ]),
         ];
         if let Some(ledger) = &result.ledger_root {
             lines.push(Line::from(vec![
-                Span::styled("  Ledger:     ", Style::default().fg(Color::DarkGray)),
+                Span::styled("    Service: ", Style::default().fg(Color::DarkGray)),
                 Span::styled(ledger.clone(), Style::default().fg(Color::Cyan)),
             ]));
         }
@@ -503,6 +528,13 @@ impl Cartridge for InputCartridge {
                 None
             };
         if let Some(ns) = new_state {
+            if let InputState::Done { result, .. } = &ns {
+                let mut h = Sha256::new();
+                h.update(self.ledger_root);
+                h.update(result.payload_id.as_bytes());
+                self.ledger_root = h.finalize().into();
+                self.ledger_height += 1;
+            }
             self.state = ns;
         }
 
@@ -514,16 +546,18 @@ impl Cartridge for InputCartridge {
             Entry,
             Confirm(&'a str),
             Submitting(usize),
-            Done(&'a str, &'a IngestResult),
+            Done(&'a str, &'a IngestResult, u64, [u8; 32]),
             Audit(&'a [IngestRecord], u16),
             Error(&'a str),
         }
 
+        let ledger_h = self.ledger_height;
+        let ledger_r = self.ledger_root;
         let cmd = match &self.state {
             InputState::Entry => Cmd::Entry,
             InputState::Confirm { path } => Cmd::Confirm(path.as_str()),
             InputState::Submitting { spinner, .. } => Cmd::Submitting(*spinner),
-            InputState::Done { path, result } => Cmd::Done(path.as_str(), result),
+            InputState::Done { path, result } => Cmd::Done(path.as_str(), result, ledger_h, ledger_r),
             InputState::AuditLog { records, scroll } => Cmd::Audit(records.as_slice(), *scroll),
             InputState::Error { message } => Cmd::Error(message.as_str()),
         };
@@ -532,7 +566,7 @@ impl Cartridge for InputCartridge {
             Cmd::Entry => self.render_entry(frame, area),
             Cmd::Confirm(p) => Self::render_confirm(frame, area, p),
             Cmd::Submitting(sp) => Self::render_submitting(frame, area, sp),
-            Cmd::Done(p, r) => Self::render_done(frame, area, p, r),
+            Cmd::Done(p, r, lh, lr) => Self::render_done(frame, area, p, r, lh, &lr),
             Cmd::Audit(recs, sc) => Self::render_audit(frame, area, recs, sc),
             Cmd::Error(m) => Self::render_error(frame, area, m),
         }
