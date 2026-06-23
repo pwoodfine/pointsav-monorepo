@@ -303,13 +303,21 @@ pub fn router(state: AppState) -> Router {
         .route("/special/hash-lookup/{hash}", get(hash_lookup_page))
         // Phase 4 Step 4.8 — OpenAPI 3.1 specification
         .route("/openapi.yaml", get(openapi_yaml))
-        .route("/openapi.json", get(openapi_json));
+        .route("/openapi.json", get(openapi_json))
+        // P2: same-origin page-view beacon (no cookies, no third-party network)
+        .route("/_beacon", post(beacon_handler));
     // Phase 4 Step 4.6 — MCP JSON-RPC 2.0 endpoint; only mounted when
     // --enable-mcp is set (default off).
     if mcp_enabled {
         r = r.route("/mcp", post(crate::mcp::handler));
     }
     r.with_state(Arc::new(state))
+}
+
+/// P2: same-origin page-view beacon. Accepts a JSON body `{"u": "/path", "t": <ms>}` from
+/// `navigator.sendBeacon` and returns 204 immediately. No cookies. No third-party network.
+async fn beacon_handler() -> impl axum::response::IntoResponse {
+    axum::http::StatusCode::NO_CONTENT
 }
 
 /// Doorman AI-assist stubs (Phase 4 reserved surface).

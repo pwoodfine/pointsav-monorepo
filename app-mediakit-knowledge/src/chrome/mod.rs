@@ -138,6 +138,11 @@ pub fn head(title: &str, brand: &str, locale: Locale) -> Markup {
             script {
                 (PreEscaped(r#"(function(){var t=localStorage.getItem('wiki-theme');if(t==='dark'||t==='light'){document.documentElement.setAttribute('data-theme',t);}else if(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches){document.documentElement.setAttribute('data-theme','dark');}})();"#))
             }
+            // P2: same-origin page-view beacon (no cookies, no third-party network).
+            // navigator.sendBeacon fires after page is interactive; fails silently.
+            script {
+                (PreEscaped(r#"document.addEventListener('DOMContentLoaded',function(){try{navigator.sendBeacon('/_beacon',JSON.stringify({u:location.pathname,t:Date.now()}));}catch(e){}});"#))
+            }
         }
     }
 }
@@ -237,7 +242,7 @@ pub fn base_page(
                 (mobile)
 
                 // Canonical footer (L7 — byte-for-byte locked text)
-                footer class="site-footer" {
+                footer class="site-footer" role="contentinfo" {
                     div class="site-footer__inner" {
                         p class="site-footer__trademark" {
                             "© 2026 Woodfine Capital Projects Inc. All rights reserved. "

@@ -30,11 +30,12 @@ fn chrome(
                 title { (site_title) }
                 link rel="stylesheet" href="/static/tokens.css";
                 link rel="stylesheet" href="/static/style.css";
+                script { (PreEscaped(r#"document.addEventListener('DOMContentLoaded',function(){try{navigator.sendBeacon('/_beacon',JSON.stringify({u:location.pathname,t:Date.now()}));}catch(e){}});"#)) }
             }
             body {
                 a.skip-to-content href="#main-content" { "Skip to content" }
-                header.topnav {
-                    nav.left {
+                header.topnav role="banner" {
+                    nav.left aria-label="Site links" {
                         a href="/page/disclaimer" { "Disclaimer" }
                         @if woodfine_theme { a href="/page/contact" { "Contact us" } }
                     }
@@ -46,7 +47,7 @@ fn chrome(
                         }
                     }
                     div.right-cluster {
-                        nav.right {
+                        nav.right aria-label="External links" {
                             @if woodfine_theme {
                                 a.external href="https://corporate.woodfinegroup.com" target="_blank" rel="noopener" { "Corporate" }
                                 a.external href="https://projects.woodfinegroup.com" target="_blank" rel="noopener" { "Projects" }
@@ -140,11 +141,12 @@ pub async fn page_handler(
                     link rel="stylesheet" href="/static/tokens-woodfine.css";
                 }
                 script { (PreEscaped(r#"(function(){var t=localStorage.getItem('wiki-theme')||'light';document.documentElement.setAttribute('data-theme',t);}());"#)) }
+                script { (PreEscaped(r#"document.addEventListener('DOMContentLoaded',function(){try{navigator.sendBeacon('/_beacon',JSON.stringify({u:location.pathname,t:Date.now()}));}catch(e){}});"#)) }
             }
             body {
                 a.skip-to-content href="#page-content" { "Skip to content" }
-                header.topnav {
-                    nav.left {
+                header.topnav role="banner" {
+                    nav.left aria-label="Site links" {
                         @if woodfine_theme {
                             a href="/page/disclaimer" { "Disclaimer" }
                             a href="/page/contact" { "Contact us" }
@@ -160,7 +162,7 @@ pub async fn page_handler(
                         }
                     }
                     div.right-cluster {
-                        nav.right {
+                        nav.right aria-label="External links" {
                             @if woodfine_theme {
                                 a.external href="https://corporate.woodfinegroup.com" target="_blank" rel="noopener" { "Corporate" }
                                 a.external href="https://projects.woodfinegroup.com" target="_blank" rel="noopener" { "Projects" }
