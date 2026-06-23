@@ -246,6 +246,7 @@ dependencies = [
  "rusqlite",
  "serde",
  "serde_json",
+ "sha2 0.10.9",
  "uuid",
 ]
 
@@ -275,6 +276,19 @@ dependencies = [
  "crossterm",
  "ratatui",
  "reqwest 0.12.28",
+ "serde_json",
+]
+
+[[package]]
+name = "app-console-search"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "app-console-keys",
+ "crossterm",
+ "ratatui",
+ "reqwest 0.12.28",
+ "serde",
  "serde_json",
 ]
 
@@ -5711,11 +5725,10 @@ dependencies = [
  "app-console-input",
  "app-console-keys",
  "app-console-people",
+ "app-console-search",
  "app-console-slm",
  "app-console-system",
  "ctrlc",
- "rand 0.10.1",
- "ratatui",
  "russh",
  "system-gateway-mba",
  "tokio",

@@ -43,6 +43,13 @@ pub trait Cartridge: Send {
     /// for any rendered links. Default no-op; override in cartridges that render links.
     fn flush_hyperlinks(&self) {}
 
+    /// Live capability verdicts for the `?` capability overlay (Phase K). Default: empty.
+    /// Returns `(label, verdict)` pairs where verdict is "✓ ALLOW", "✗ REVOKED", or "⟳ EXPIRED".
+    /// SystemCartridge overrides this with real ledger verdicts.
+    fn cap_verdicts(&self) -> Vec<(String, String)> {
+        Vec::new()
+    }
+
     // --- Intent system (Phase I-1; additive, all defaulted) ---
 
     /// Stable scope id for the dual-input intent system (e.g. `"system"`). A

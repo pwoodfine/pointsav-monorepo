@@ -316,6 +316,20 @@ impl Cartridge for SystemCartridge {
         }
         CartridgeAction::None
     }
+
+    fn cap_verdicts(&self) -> Vec<(String, String)> {
+        build_demo_caps()
+            .iter()
+            .map(|e| {
+                let verdict_str = match compute_verdict(&e.cap, &self.ledger) {
+                    CapVerdict::Allow => "✓ ALLOW".into(),
+                    CapVerdict::Revoked => "✗ REVOKED".into(),
+                    CapVerdict::Expired => "⟳ EXPIRED".into(),
+                };
+                (e.label.to_string(), verdict_str)
+            })
+            .collect()
+    }
 }
 
 impl SystemCartridge {
