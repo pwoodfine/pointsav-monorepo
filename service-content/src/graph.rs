@@ -942,10 +942,10 @@ impl LbugGraphStore {
         let mut stmt = conn
             .prepare("MATCH (e:Entity {id: $id}) RETURN e.created_at")
             .map_err(|e| anyhow!("prepare get_entity_created_at: {}", e))?;
-        let result = conn
+        let mut result = conn
             .execute(&mut stmt, vec![("id", Value::String(id))])
             .map_err(|e| anyhow!("execute get_entity_created_at: {}", e))?;
-        for row in result {
+        if let Some(row) = result.next() {
             let s = val_to_string(&row[0]);
             return Ok(if s.is_empty() { None } else { Some(s) });
         }
