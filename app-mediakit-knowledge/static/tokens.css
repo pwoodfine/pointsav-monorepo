@@ -33,8 +33,8 @@
   --color-status-warn-bg: oklch(96.19% 0.0579 95.64);
 
   /* Primitive — font */
-  --font-family-body: Georgia, 'Times New Roman', Times, serif;
-  --font-family-display: 'Oswald', ui-sans-serif, system-ui, sans-serif;
+  --font-family-body: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+  --font-family-display: 'Playfair Display', Georgia, 'Times New Roman', serif;
   --font-family-heading: Charter, 'Bitstream Charter', Georgia, serif;
   --font-family-kbd: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   --font-family-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;

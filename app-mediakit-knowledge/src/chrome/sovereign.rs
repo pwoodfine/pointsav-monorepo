@@ -30,9 +30,9 @@ pub enum Tenant {
 impl Tenant {
     pub fn from_str(s: &str) -> Self {
         match s {
-            "projects"  => Self::Projects,
+            "projects" => Self::Projects,
             "corporate" => Self::Corporate,
-            _           => Self::Documentation,
+            _ => Self::Documentation,
         }
     }
 
@@ -50,8 +50,8 @@ impl Tenant {
     pub fn instance_str(self) -> &'static str {
         match self {
             Self::Documentation => "documentation",
-            Self::Projects      => "projects",
-            Self::Corporate     => "corporate",
+            Self::Projects => "projects",
+            Self::Corporate => "corporate",
         }
     }
 
@@ -60,22 +60,28 @@ impl Tenant {
     /// Trademark line kept separate from copyright line per TRADEMARK.md §7.
     pub fn trademark_line(self) -> &'static str {
         match self {
-            Self::Documentation =>
+            Self::Documentation => {
                 "PointSav Digital Systems\u{2122}, Totebox Orchestration\u{2122}, and \
                  Totebox Archive\u{2122} are trademarks of Woodfine Capital Projects Inc., \
                  used in Canada, the United States, Latin America, and Europe. \
-                 All other trademarks are the property of their respective owners.",
-            Self::Projects | Self::Corporate =>
+                 All other trademarks are the property of their respective owners."
+            }
+            Self::Projects | Self::Corporate => {
                 "Woodfine Capital Projects\u{2122}, Woodfine Management Corp\u{2122}, \
                  PointSav Digital Systems\u{2122}, Totebox Orchestration\u{2122}, and \
                  Totebox Archive\u{2122} are trademarks of Woodfine Capital Projects Inc., \
                  used in Canada, the United States, Latin America, and Europe. \
-                 All other trademarks are the property of their respective owners.",
+                 All other trademarks are the property of their respective owners."
+            }
         }
     }
 
     fn wordmark_svg(self) -> &'static str {
-        if self.is_woodfine() { WORDMARK_SVG_WOODFINE } else { WORDMARK_SVG_POINTSAV }
+        if self.is_woodfine() {
+            WORDMARK_SVG_WOODFINE
+        } else {
+            WORDMARK_SVG_POINTSAV
+        }
     }
 }
 
@@ -83,14 +89,13 @@ impl Tenant {
 /// Layout: wordmark left | inline search centre | lang+theme right.
 /// Replaces all four legacy `<header class="topnav">` blocks + their search panels.
 /// `lang` is "en" or "es" (from `Locale::lang_attr()` in the server module).
-pub fn sovereign_nav(
-    tenant: Tenant,
-    lang: &str,
-    site_title: &str,
-    lang_href: &str,
-) -> Markup {
-    let lang_label         = if lang == "es" { "EN" } else { "ES" };
-    let search_placeholder = if lang == "es" { "Buscar\u{2026}" } else { "Search\u{2026}" };
+pub fn sovereign_nav(tenant: Tenant, lang: &str, site_title: &str, lang_href: &str) -> Markup {
+    let lang_label = if lang == "es" { "EN" } else { "ES" };
+    let search_placeholder = if lang == "es" {
+        "Buscar\u{2026}"
+    } else {
+        "Search\u{2026}"
+    };
     html! {
         header class="topnav s-topnav" role="banner" {
             a class="s-wordmark" href="/" aria-label=(site_title) {
@@ -118,8 +123,44 @@ pub fn sovereign_nav(
                        aria-label="Toggle appearance" type="button" {
                     (PreEscaped(r#"<svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16" aria-hidden="true"><circle cx="10" cy="10" r="4"/><path stroke="currentColor" stroke-width="1.5" fill="none" d="M10 1v2.5M10 16.5V19M1 10h2.5M16.5 10H19M3.64 3.64l1.77 1.77M14.59 14.59l1.77 1.77M3.64 16.36l1.77-1.77M14.59 5.41l1.77-1.77"/></svg>"#))
                 }
+                button class="s-hamburger" id="nav-toggle"
+                       aria-label="Menu"
+                       aria-expanded="false"
+                       aria-controls="mobile-nav-drawer"
+                       type="button" {
+                    (PreEscaped(r#"<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>"#))
+                }
             }
         }
+    }
+}
+
+/// Mobile nav drawer + overlay for pages that use sovereign_page().
+/// Article pages provide their own `#mobile-nav-drawer` with per-article TOC — do not call this there.
+pub fn sovereign_mobile_nav_drawer(tenant: Tenant, site_title: &str) -> Markup {
+    html! {
+        nav class="mobile-nav-drawer" id="mobile-nav-drawer" aria-hidden="true" {
+            div class="mobile-nav-header" {
+                a class="site-title" href="/" { (site_title) }
+                button class="mobile-nav-close" id="mobile-nav-close" aria-label="Close navigation" {
+                    (PreEscaped(r#"<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>"#))
+                }
+            }
+            ul class="mobile-nav-list" {
+                li { a href="/" { "Home" } }
+                li { a href="/search" { "Search" } }
+                li { a href="/random" { "Random article" } }
+                li { a href="/special/all-pages" { "All pages" } }
+                li { a href="/special/categories" { "Categories" } }
+                li { a href="/special/recent-changes" { "Recent changes" } }
+                @if tenant.is_woodfine() {
+                    li { a href="/page/contact" { "Contact" } }
+                }
+                li { a href="/page/disclaimer" { "Disclaimer" } }
+                li { a href="/page/privacy" { "Privacy" } }
+            }
+        }
+        div class="mobile-nav-overlay" id="mobile-nav-overlay" aria-hidden="true" {}
     }
 }
 
@@ -178,7 +219,7 @@ pub fn sovereign_page(
     lang_href: &str,
     content: Markup,
 ) -> Markup {
-    let brand    = tenant.brand();
+    let brand = tenant.brand();
     let instance = tenant.instance_str();
     html! {
         (DOCTYPE)
@@ -188,9 +229,9 @@ pub fn sovereign_page(
                 meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover";
                 title { (title) }
                 link rel="preload" as="font" type="font/woff2" crossorigin
-                     href="/static/fonts/Inter-400-normal-latin.woff2";
+                     href="/static/fonts/IBMPlexSans-Variable-latin.woff2";
                 link rel="preload" as="font" type="font/woff2" crossorigin
-                     href="/static/fonts/Source-Serif-4-400-normal-latin.woff2";
+                     href="/static/fonts/PlayfairDisplay-Variable-latin.woff2";
                 link rel="stylesheet" href="/static/tokens.css";
                 link rel="stylesheet" href="/static/style.css";
                 @if brand == "woodfine" {
@@ -202,6 +243,7 @@ pub fn sovereign_page(
             body {
                 a class="skip-to-content" href="#main-content" { "Skip to content" }
                 (sovereign_nav(tenant, lang, site_title, lang_href))
+                (sovereign_mobile_nav_drawer(tenant, site_title))
                 main class="site-main" id="main-content" {
                     (content)
                 }
