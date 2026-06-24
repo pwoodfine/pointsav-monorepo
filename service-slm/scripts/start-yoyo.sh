@@ -41,8 +41,8 @@
 set -uo pipefail
 
 PROJECT="${SLM_YOYO_GCP_PROJECT:-woodfine-node-gcp-free}"
-PRIMARY_ZONE="${SLM_YOYO_GCP_ZONE:-europe-west4-a}"
-INSTANCE="${SLM_YOYO_GCP_INSTANCE:-yoyo-tier-b-1}"
+PRIMARY_ZONE="${SLM_YOYO_GCP_ZONE:-us-central1-a}"
+INSTANCE="${SLM_YOYO_GCP_INSTANCE:-yoyo-batch}"
 DOORMAN_ENV="${DOORMAN_ENV_FILE:-/etc/local-doorman/local-doorman.env}"
 # Zone fallback disabled by default — creating 256 GB disk clones across regions
 # to probe capacity costs $2-20/scan. Enable only for explicit operator-initiated

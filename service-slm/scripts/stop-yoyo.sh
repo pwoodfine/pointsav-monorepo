@@ -25,8 +25,8 @@
 set -uo pipefail
 
 PROJECT="${SLM_YOYO_GCP_PROJECT:-woodfine-node-gcp-free}"
-ZONE="${SLM_YOYO_GCP_ZONE:-us-west1-b}"
-INSTANCE="${SLM_YOYO_GCP_INSTANCE:-yoyo-tier-b-1}"
+ZONE="${SLM_YOYO_GCP_ZONE:-us-central1-a}"
+INSTANCE="${SLM_YOYO_GCP_INSTANCE:-yoyo-batch}"
 LIFECYCLE_LOG="${SLM_YOYO_LIFECYCLE_LOG:-/srv/foundry/data/yoyo-lifecycle.log}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 

@@ -14,7 +14,15 @@ Run modes:
 
 Adapter buckets and thresholds:
   engineering-pointsav    engineering/**/*.jsonl   threshold=50  SFT
-  apprenticeship-pointsav apprenticeship/**/*.jsonl threshold=50  DPO
+  apprenticeship-pointsav apprenticeship/**/*.jsonl threshold=50  SFT
+
+NOTE (2026-06-24 audit): apprenticeship changed from DPO to SFT.
+DPO requires signed verdicts and >=1-3K contrastive pairs; the
+current corpus has verdict=0 across all 1619 pairs and only 313
+pass quality filters (avg length-ratio 31x). SFT on the same data
+as choice sequences is the correct method until verdicts are wired
+and the pair floor is met. Update the nightly cycle to route
+apprenticeship-pointsav markers to run-sft-training.py.
 """
 
 import argparse
@@ -41,8 +49,8 @@ ADAPTER_SPECS: dict = {
     "apprenticeship-pointsav": {
         "glob": "apprenticeship/**/*.jsonl",
         "threshold": 50,
-        "method": "dpo",
-        "description": "Apprenticeship shadow + verdict tuples; DPO requires signed verdicts",
+        "method": "sft",
+        "description": "Apprenticeship shadow tuples as SFT choice sequences; DPO deferred until signed verdicts and >=1K clean pairs",
     },
 }
 
