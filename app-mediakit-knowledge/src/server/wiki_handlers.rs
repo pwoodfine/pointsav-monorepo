@@ -783,8 +783,8 @@ fn wiki_chrome(
             body class=(if printable { "printable" } else { "" }) data-slug=(slug) {
                 div.reading-progress-bar aria-hidden="true" {}
                 a.skip-to-content href="#mw-content-text" { "Skip to content" }
-                header.topnav {
-                    nav.left {
+                header.topnav role="banner" {
+                    nav.left aria-label="Site links" {
                         @if woodfine_theme {
                             a href="/page/disclaimer" { "Disclaimer" }
                             a href="/page/contact" { "Contact us" }
@@ -800,7 +800,7 @@ fn wiki_chrome(
                         }
                     }
                     div.right-cluster {
-                        nav.right {
+                        nav.right aria-label="External links" {
                             @if woodfine_theme {
                                 a.external href="https://corporate.woodfinegroup.com" target="_blank" rel="noopener" { "Corporate" }
                                 a.external href="https://projects.woodfinegroup.com" target="_blank" rel="noopener" { "Projects" }
@@ -1401,7 +1401,7 @@ async fn edit_page(
                 }
             }
             body {
-                header.topnav {
+                header.topnav role="banner" {
                     div.left {}
                     a.wordmark href="/" aria-label=(&state.site_title) {
                         @if woodfine_theme {
