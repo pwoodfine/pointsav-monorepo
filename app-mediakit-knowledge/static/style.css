@@ -117,6 +117,31 @@
   src: url('/static/fonts/Inter-600-normal-latin.woff2') format('woff2');
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2215, U+FEFF, U+FFFD;
 }
+@font-face {
+  font-family: 'Playfair Display';
+  font-style: normal;
+  font-weight: 400 900;
+  font-display: swap;
+  src: url('/static/fonts/PlayfairDisplay-Variable-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Playfair Display';
+  font-style: italic;
+  font-weight: 400 900;
+  font-display: swap;
+  src: url('/static/fonts/PlayfairDisplay-Variable-italic-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 100 700;
+  font-display: swap;
+  font-stretch: 100%;
+  src: url('/static/fonts/IBMPlexSans-Variable-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
 
 /* ============================================================================
  * Section 1 — Custom properties (token var references; no hardcoded hex)
@@ -125,8 +150,8 @@
   /* Type — Sprint I: Source Serif 4 display (authoritative serif) + Inter body (neutral grotesque, already loaded)
      Both fonts are self-hosted via @font-face above. Condensed display faces (Oswald/Barlow) removed —
      they signal editorial/athletic, not institutional finance. */
-  --font-display:  "Source Serif 4", Georgia, "Times New Roman", serif;
-  --font-body:     "Inter", -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+  --font-display:  "Playfair Display", Georgia, "Times New Roman", serif;
+  --font-body:     "IBM Plex Sans", "Inter", system-ui, -apple-system, sans-serif;
   --font-reading:  "Source Serif 4", Georgia, ui-serif, serif;
   /* Marketing token aliases */
   --display: var(--font-display);
@@ -420,7 +445,7 @@ html.search-open .topnav { margin-bottom: 0; }
   display: flex;
   gap: 36px;
   align-items: center;
-  font-family: "Barlow Condensed", "Oswald", "Helvetica Neue", Arial, sans-serif;
+  font-family: var(--font-body);
   font-size: 14px;
   font-weight: 500;
   letter-spacing: 0.16em;
@@ -559,7 +584,7 @@ a.lang-toggle {
   align-items: center;
   min-height: 44px;
   padding: 0 4px;
-  font-family: "Barlow Condensed", "Oswald", "Helvetica Neue", Arial, sans-serif;
+  font-family: var(--font-body);
   font-size: 13px; font-weight: 600;
   letter-spacing: 0.14em; text-transform: uppercase;
   color: var(--fg-3); transition: color .15s ease;
@@ -1755,6 +1780,21 @@ html[data-theme="dark"] .topnav .logo-svg { filter: invert(1) brightness(2); }
 }
 .s-theme-btn:hover { color: #fff; border-color: rgba(255,255,255,0.7); }
 
+/* Hamburger — site navigation trigger (all viewports; hidden search panel replaced by inline search) */
+.s-hamburger {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  padding: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: color 0.12s;
+}
+.s-hamburger:hover { color: #fff; }
+
 /* Footer */
 .s-footer {
   background: var(--footer-bg, #0e1117);
@@ -1804,6 +1844,6 @@ html[data-theme="dark"] .topnav .logo-svg { filter: invert(1) brightness(2); }
   .s-footer { padding: 32px 20px 24px; }
 }
 @media (max-width: 480px) {
-  .s-topnav { grid-template-columns: auto 1fr; }
-  .s-controls { display: none; }
+  .s-topnav { grid-template-columns: auto 1fr auto; }
+  .s-lang, .s-theme-btn { display: none; }
 }

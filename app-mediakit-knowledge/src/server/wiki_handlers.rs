@@ -796,11 +796,6 @@ fn wiki_chrome(
                             aria-controls="mobile-toc-drawer"
                         { "Contents" }
                     }
-                    button.nav-toggle-btn.mobile-only #nav-toggle
-                        aria-label="Menu"
-                        aria-expanded="false"
-                        aria-controls="mobile-nav-drawer"
-                    { "Menu" }
                 }
 
                 // Mobile nav drawer — hidden on desktop, toggled by hamburger button

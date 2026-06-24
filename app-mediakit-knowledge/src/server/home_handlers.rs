@@ -318,6 +318,7 @@ fn home_chrome(
             body {
                 a class="skip-to-content" href="#mp-main" { "Skip to content" }
                 (sovereign_nav(tenant, locale.lang_attr(), site_title, lang_href))
+                (sovereign_mobile_nav_drawer(tenant, site_title))
                 main class="site-main" id="mp-main" {
 
                     // ── Editorial front page (Wikipedia-pattern two-column) ──
