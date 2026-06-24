@@ -259,9 +259,6 @@ fn inner_main() -> anyhow::Result<()> {
         &p.slm_endpoint,
         &p.drafts_outbound_path,
         &p.content_endpoint,
-        None,
-        None,
-        None,
     )));
     chassis.register(Box::new(InputCartridge::new_for(
         &p.username,
