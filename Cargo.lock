@@ -324,6 +324,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "app-mediakit-foodservice"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "app-mediakit-shell",
+ "axum 0.8.9",
+ "clap",
+ "http-body-util",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "tempfile",
+ "tokio",
+ "tower",
+ "tower-http 0.6.11",
+ "tracing",
+ "tracing-subscriber",
+ "uuid",
+]
+
+[[package]]
 name = "app-mediakit-knowledge"
 version = "0.0.1"
 dependencies = [

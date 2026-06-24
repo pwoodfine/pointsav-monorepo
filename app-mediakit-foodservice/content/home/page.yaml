@@ -1,0 +1,28 @@
+title: Food Service
+slug: home
+description: Food service operations for Woodfine Capital Projects developments.
+lang: en
+sections:
+  - type: hero
+    headline: Food service for Woodfine developments
+    subhead: >-
+      Woodfine Capital Projects supports food service operations across its
+      direct-hold real property solutions in North American and European markets.
+
+  - type: card-grid
+    columns: 3
+    cards:
+      - title: Home
+        href: https://home.woodfinegroup.com
+      - title: Location Intelligence
+        href: https://gis.woodfinegroup.com/
+      - title: BIM Library
+        href: https://bim.woodfinegroup.com/
+
+  - type: prose
+    body: |
+      © 2026 Woodfine Capital Projects Inc. All rights reserved.
+
+      Woodfine Capital Projects, Woodfine Management Corp, PointSav Digital
+      Systems, Totebox Orchestration, and Totebox Archive are trademarks owned
+      by Woodfine Capital Projects Inc.
