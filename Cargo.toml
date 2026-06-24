@@ -60,6 +60,8 @@ members = [
     "app-orchestration-graph",
     # Marketing platform rewrite (parallel crate; swaps in at plan P8)
     "app-mediakit-marketing-2",
+    # Food-service platform engine (foodservice.woodfinegroup.com)
+    "app-mediakit-foodservice",
     # Design system browser (port 9094)
     "app-privategit-design",
     # Sovereign replacement stubs (wired into app-privategit-design)
@@ -96,6 +98,11 @@ strip = "symbols"
 
 # app-mediakit-marketing-2 (rewrite) — same rationale as the crate it replaces.
 [profile.release.package.app-mediakit-marketing-2]
+opt-level = 3
+strip = "symbols"
+
+# app-mediakit-foodservice is a runtime HTTP server — same speed-optimised profile.
+[profile.release.package.app-mediakit-foodservice]
 opt-level = 3
 strip = "symbols"
 
