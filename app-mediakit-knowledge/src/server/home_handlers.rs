@@ -356,8 +356,8 @@ fn home_chrome(
             }
             body {
                 a.skip-to-content href="#mp-main" { "Skip to content" }
-                header.topnav {
-                    nav.left {
+                header.topnav role="banner" {
+                    nav.left aria-label="Site links" {
                         @if woodfine_theme {
                             a href="/page/disclaimer" { "Disclaimer" }
                             a href="/page/contact" { "Contact us" }
@@ -373,7 +373,7 @@ fn home_chrome(
                         }
                     }
                     div.right-cluster {
-                        nav.right {
+                        nav.right aria-label="External links" {
                             @if woodfine_theme {
                                 a.external href="https://corporate.woodfinegroup.com" target="_blank" rel="noopener" { "Corporate" }
                                 a.external href="https://projects.woodfinegroup.com" target="_blank" rel="noopener" { "Projects" }
