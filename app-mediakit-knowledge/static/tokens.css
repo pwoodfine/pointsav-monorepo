@@ -192,4 +192,11 @@
   --home-recent-date-column-width: 6rem;
   --home-recent-item-padding-y: 0.5rem;
 
+  /* Sovereign Editorial chrome */
+  --topnav-bg: #164679;
+  --topnav-fg: #ffffff;
+  --footer-bg: #0e1117;
+  --footer-fg: rgba(255, 255, 255, 0.65);
+  --footer-border: rgba(255, 255, 255, 0.12);
+
 }

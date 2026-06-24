@@ -702,7 +702,7 @@ fn wiki_chrome(
     brand_instance: &str,
     peers: &[crate::config::PeerConfig],
     user: Option<&User>,
-    pending_count: i64,
+    _pending_count: i64,
     redirected_from: Option<&str>,
     printable: bool,
     _body_blake3: &str,
@@ -719,6 +719,8 @@ fn wiki_chrome(
     let auth_attr = if is_authenticated { "user" } else { "anon" };
     let _talk_slug = format!("{slug}.talk");
     let page_title = format!("{title} — {site_title}");
+    let tenant = Tenant::from_str(brand_instance);
+    let lang_href = match locale { Locale::En => format!("/es/wiki/{slug}"), Locale::Es => format!("/wiki/{slug}") };
 
     // B5: Precompute ToC entries with hierarchical section numbers (1, 2, 2.1, etc.)
     let numbered_headings: Vec<(String, String, u8, String)> = {
@@ -782,60 +784,8 @@ fn wiki_chrome(
             }
             body class=(if printable { "printable" } else { "" }) data-slug=(slug) {
                 div.reading-progress-bar aria-hidden="true" {}
-                a.skip-to-content href="#mw-content-text" { "Skip to content" }
-                header.topnav role="banner" {
-                    nav.left aria-label="Site links" {
-                        @if woodfine_theme {
-                            a href="/page/disclaimer" { "Disclaimer" }
-                            a href="/page/contact" { "Contact us" }
-                        } @else {
-                            a href="/page/disclaimer" { "Disclaimer" }
-                        }
-                    }
-                    a.wordmark href="/" aria-label=(site_title) {
-                        @if woodfine_theme {
-                            (PreEscaped(WORDMARK_SVG_WOODFINE))
-                        } @else {
-                            (PreEscaped(WORDMARK_SVG_POINTSAV))
-                        }
-                    }
-                    div.right-cluster {
-                        nav.right aria-label="External links" {
-                            @if woodfine_theme {
-                                a.external href="https://corporate.woodfinegroup.com" target="_blank" rel="noopener" { "Corporate" }
-                                a.external href="https://projects.woodfinegroup.com" target="_blank" rel="noopener" { "Projects" }
-                                a.external href="https://newsroom.woodfinegroup.com" target="_blank" rel="noopener" { "Newsroom" }
-                            } @else {
-                                a.external href="https://software.pointsav.com" target="_blank" rel="noopener" { "Monorepo" }
-                                a.external href="https://design.pointsav.com" target="_blank" rel="noopener" { "Design System" }
-                            }
-                        }
-                        (auth_nav_widget(user, pending_count))
-                        a.lang-toggle href=(match locale { Locale::En => format!("/es/wiki/{slug}"), Locale::Es => format!("/wiki/{slug}") }) {
-                            (match locale { Locale::En => "ES", Locale::Es => "EN" })
-                        }
-                        button.search-toggle type="button" aria-label="Search" aria-expanded="false"
-                            aria-controls="topnav-search-panel" {
-                            (PreEscaped(SEARCH_ICON_SVG))
-                        }
-                        @if woodfine_theme {
-                            a.header-cta href="/page/contact" { "Enquire" }
-                        }
-                    }
-                }
-                div.topnav-search-panel #topnav-search-panel aria-hidden="true" {
-                    form.topnav-search action="/search" method="get" role="search" {
-                        input #header-search-q
-                            type="search"
-                            name="q"
-                            placeholder="Search…"
-                            autocomplete="off"
-                            aria-label="Search this wiki"
-                            spellcheck="false";
-                        button.topnav-search-btn type="submit" aria-label="Search" { "→" }
-                    }
-                    div.ac-dropdown #search-autocomplete-dropdown {}
-                }
+                a class="skip-to-content" href="#mw-content-text" { "Skip to content" }
+                (sovereign_nav(tenant, locale.lang_attr(), site_title, &lang_href))
                 // Mobile-only toggle buttons placed outside topnav so the header
                 // height is consistent across all page types (P1 fix).
                 div.mobile-topnav-toggles {
@@ -1350,7 +1300,7 @@ fn wiki_chrome(
                     a.doc-edit-link href={ "/git/" (slug) } { "View source" }
                 }
 
-                (shell_footer(brand_instance, Some(slug)))
+                (sovereign_footer(tenant, Some(slug)))
 
                 // Minimal JS: TOC collapse toggle + density preference persistence.
                 // Loaded last so HTML renders without it. No in-browser editor —
@@ -1382,8 +1332,8 @@ async fn edit_page(
     let md_path = state.primary_path().join(format!("{slug}.md"));
     let content = fs::read_to_string(&md_path).await.unwrap_or_default();
 
-    let woodfine_theme = matches!(state.brand_theme.as_deref(), Some("woodfine") | Some("woodfine-projects"));
     let page_title = format!("Edit: {slug} — {}", state.site_title);
+    let edit_tenant = Tenant::from_str(&state.brand_instance);
 
     let markup = html! {
         (DOCTYPE)
@@ -1396,22 +1346,12 @@ async fn edit_page(
                 link rel="preload" as="font" type="font/woff2" crossorigin href="/static/fonts/Source-Serif-4-400-normal-latin.woff2";
                 link rel="stylesheet" href="/static/tokens.css";
                 link rel="stylesheet" href="/static/style.css";
-                @if woodfine_theme {
+                @if matches!(state.brand_theme.as_deref(), Some("woodfine") | Some("woodfine-projects")) {
                     link rel="stylesheet" href="/static/tokens-woodfine.css";
                 }
             }
             body {
-                header.topnav role="banner" {
-                    div.left {}
-                    a.wordmark href="/" aria-label=(&state.site_title) {
-                        @if woodfine_theme {
-                            (PreEscaped(WORDMARK_SVG_WOODFINE))
-                        } @else {
-                            (PreEscaped(WORDMARK_SVG_POINTSAV))
-                        }
-                    }
-                    div.right-cluster {}
-                }
+                (sovereign_nav(edit_tenant, "en", &state.site_title, "/"))
                 div.edit-page-wrap {
                     nav.edit-page-crumb {
                         a href={ "/wiki/" (&slug) } { "← Back to article" }
@@ -1432,7 +1372,7 @@ async fn edit_page(
                         }
                     }
                 }
-                (shell_footer(&state.brand_instance, Some(&slug)))
+                (sovereign_footer(edit_tenant, Some(&slug)))
                 // L25: editor assets loaded only on /edit/* routes.
                 script src="/static/vendor/cm-saa.bundle.js" defer="true" {}
                 script src="/static/editor.js" defer="true" {}

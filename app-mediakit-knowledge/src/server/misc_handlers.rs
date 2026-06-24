@@ -1,98 +1,18 @@
 /// Shared shell for non-article pages (search, category, errors).
+/// Replaced with sovereign chrome — single unified masthead + footer.
 fn chrome(
-    _title: &str,
+    title: &str,
     body: Markup,
     site_title: &str,
-    user: Option<&User>,
-    pending_count: i64,
+    _user: Option<&User>,
+    _pending_count: i64,
 ) -> Markup {
-    let auth_attr = if user.is_some() { "user" } else { "anon" };
-    // P0-4: per-tenant chrome for search/category/error pages. This shim was hardcoded to
-    // PointSav, leaking Monorepo/Design-System nav + "© PointSav" onto the Woodfine domains.
-    // Tenant derived from site_title until brand_instance is threaded through all chrome()
-    // callers (full chrome unification = separate item).
-    let woodfine_theme = site_title.contains("Woodfine");
-    let brand_instance = if site_title.contains("Projects") {
-        "projects"
-    } else if woodfine_theme {
-        "corporate"
-    } else {
-        "documentation"
-    };
-    html! {
-        (DOCTYPE)
-        html lang="en"
-             data-auth=(auth_attr)
-             data-instance=(brand_instance) {
-            head {
-                meta charset="utf-8";
-                meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover";
-                title { (site_title) }
-                link rel="stylesheet" href="/static/tokens.css";
-                link rel="stylesheet" href="/static/style.css";
-                script { (PreEscaped(r#"document.addEventListener('DOMContentLoaded',function(){try{navigator.sendBeacon('/_beacon',JSON.stringify({u:location.pathname,t:Date.now()}));}catch(e){}});"#)) }
-            }
-            body {
-                a.skip-to-content href="#main-content" { "Skip to content" }
-                header.topnav role="banner" {
-                    nav.left aria-label="Site links" {
-                        a href="/page/disclaimer" { "Disclaimer" }
-                        @if woodfine_theme { a href="/page/contact" { "Contact us" } }
-                    }
-                    a.wordmark href="/" aria-label=(site_title) {
-                        @if woodfine_theme {
-                            (PreEscaped(WORDMARK_SVG_WOODFINE))
-                        } @else {
-                            (PreEscaped(WORDMARK_SVG_POINTSAV))
-                        }
-                    }
-                    div.right-cluster {
-                        nav.right aria-label="External links" {
-                            @if woodfine_theme {
-                                a.external href="https://corporate.woodfinegroup.com" target="_blank" rel="noopener" { "Corporate" }
-                                a.external href="https://projects.woodfinegroup.com" target="_blank" rel="noopener" { "Projects" }
-                                a.external href="https://newsroom.woodfinegroup.com" target="_blank" rel="noopener" { "Newsroom" }
-                            } @else {
-                                a.external href="https://software.pointsav.com" target="_blank" rel="noopener" { "Monorepo" }
-                                a.external href="https://design.pointsav.com" target="_blank" rel="noopener" { "Design System" }
-                            }
-                        }
-                        (auth_nav_widget(user, pending_count))
-                        a.lang-toggle href="/es/" { "ES" }
-                        button.search-toggle type="button" aria-label="Search" aria-expanded="false"
-                            aria-controls="topnav-search-panel" {
-                            (PreEscaped(SEARCH_ICON_SVG))
-                        }
-                    }
-                }
-                div.topnav-search-panel #topnav-search-panel aria-hidden="true" {
-                    form.topnav-search action="/search" method="get" role="search" {
-                        input #header-search-q
-                            type="search"
-                            name="q"
-                            placeholder="Search…"
-                            autocomplete="off"
-                            aria-label="Search this wiki"
-                            spellcheck="false";
-                        button.topnav-search-btn type="submit" aria-label="Search" { "→" }
-                    }
-                    div.ac-dropdown #search-autocomplete-dropdown {}
-                }
-                main.site-main #main-content {
-                    (body)
-                }
-                (shell_footer(brand_instance, None))
-                script src="/static/wiki.js" defer="true" {}
-            }
-        }
-    }
-}
-
-/// Anonymous read-only chrome — auth removed (git-only contribution workflow).
-/// The two parameters are retained so the many `chrome(...)` call sites compile
-/// unchanged; both are inert. Renders nothing.
-fn auth_nav_widget(_user: Option<&User>, _pending_count: i64) -> Markup {
-    html! {}
+    let tenant = Tenant::from_str(
+        if site_title.contains("Projects") { "projects" }
+        else if site_title.contains("Woodfine") { "corporate" }
+        else { "documentation" }
+    );
+    sovereign_page(title, tenant, "en", site_title, "/es/", body)
 }
 
 /// GET /page/:slug — static pages (Disclaimer, Contact, etc.) served on-domain
@@ -104,7 +24,6 @@ pub async fn page_handler(
     Path(slug): Path<String>,
 ) -> impl IntoResponse {
     let brand_instance = state.brand_instance.as_str();
-    let woodfine_theme = matches!(brand_instance, "projects" | "corporate");
 
     let primary = state.primary_path().to_path_buf();
     let md_path = primary.join(format!("page-{slug}.md"));
@@ -125,87 +44,24 @@ pub async fn page_handler(
 
     let display_title = page_title_for_slug(&slug);
     let site_title = &state.site_title;
+    let tenant = Tenant::from_str(brand_instance);
 
-    let page = html! {
-        (DOCTYPE)
-        html lang="en"
-             data-auth="anon"
-             data-instance=(brand_instance) {
-            head {
-                meta charset="utf-8";
-                meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover";
-                title { (display_title) " — " (site_title) }
-                link rel="stylesheet" href="/static/tokens.css";
-                link rel="stylesheet" href="/static/style.css";
-                @if woodfine_theme {
-                    link rel="stylesheet" href="/static/tokens-woodfine.css";
-                }
-                script { (PreEscaped(r#"(function(){var t=localStorage.getItem('wiki-theme')||'light';document.documentElement.setAttribute('data-theme',t);}());"#)) }
-                script { (PreEscaped(r#"document.addEventListener('DOMContentLoaded',function(){try{navigator.sendBeacon('/_beacon',JSON.stringify({u:location.pathname,t:Date.now()}));}catch(e){}});"#)) }
-            }
-            body {
-                a.skip-to-content href="#page-content" { "Skip to content" }
-                header.topnav role="banner" {
-                    nav.left aria-label="Site links" {
-                        @if woodfine_theme {
-                            a href="/page/disclaimer" { "Disclaimer" }
-                            a href="/page/contact" { "Contact us" }
-                        } @else {
-                            a href="/page/disclaimer" { "Disclaimer" }
-                        }
-                    }
-                    a.wordmark href="/" aria-label=(site_title) {
-                        @if woodfine_theme {
-                            (PreEscaped(WORDMARK_SVG_WOODFINE))
-                        } @else {
-                            (PreEscaped(WORDMARK_SVG_POINTSAV))
-                        }
-                    }
-                    div.right-cluster {
-                        nav.right aria-label="External links" {
-                            @if woodfine_theme {
-                                a.external href="https://corporate.woodfinegroup.com" target="_blank" rel="noopener" { "Corporate" }
-                                a.external href="https://projects.woodfinegroup.com" target="_blank" rel="noopener" { "Projects" }
-                                a.external href="https://newsroom.woodfinegroup.com" target="_blank" rel="noopener" { "Newsroom" }
-                            } @else {
-                                a.external href="https://software.pointsav.com" target="_blank" rel="noopener" { "Monorepo" }
-                                a.external href="https://design.pointsav.com" target="_blank" rel="noopener" { "Design System" }
-                            }
-                        }
-                        @if woodfine_theme {
-                            a.header-cta href="/page/contact" { "Enquire" }
-                        }
-                        button.search-toggle type="button" aria-label="Search" aria-expanded="false"
-                            aria-controls="topnav-search-panel" {
-                            (PreEscaped(SEARCH_ICON_SVG))
-                        }
-                    }
-                }
-                div.topnav-search-panel #topnav-search-panel aria-hidden="true" {
-                    form.topnav-search action="/search" method="get" role="search" {
-                        input #header-search-q
-                            type="search"
-                            name="q"
-                            placeholder="Search…"
-                            autocomplete="off"
-                            aria-label="Search this wiki"
-                            spellcheck="false";
-                        button.topnav-search-btn type="submit" aria-label="Search" { "→" }
-                    }
-                }
-                main.site-main #page-content {
-                    div.shell {
-                        article.prose {
-                            h1 { (display_title) }
-                            (PreEscaped(content_html))
-                        }
-                    }
-                }
-                (shell_footer(brand_instance, None))
-                script src="/static/wiki.js" defer="true" {}
+    let content = html! {
+        div class="shell" {
+            article class="prose" {
+                h1 { (display_title) }
+                (PreEscaped(content_html))
             }
         }
     };
+    let page = sovereign_page(
+        &format!("{display_title} \u{2014} {site_title}"),
+        tenant,
+        "en",
+        site_title,
+        "/es/",
+        content,
+    );
 
     axum::response::Html(page.into_string())
 }

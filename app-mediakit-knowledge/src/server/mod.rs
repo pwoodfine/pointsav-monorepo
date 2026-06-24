@@ -49,6 +49,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::fs;
 
 use crate::assets::StaticAsset;
+use crate::chrome::sovereign::{sovereign_footer, sovereign_nav, sovereign_page, Tenant};
 use crate::error::WikiError;
 use crate::jsonld::jsonld_for_topic;
 use crate::render::{
