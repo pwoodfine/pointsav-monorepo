@@ -4,6 +4,8 @@ version = "1.0.1"
 edition = "2021"
 authors = ["PointSav Digital Systems"]
 description = "Bare-Metal Unikernel File System Gatekeeper. Enforces WORM storage boundaries."
+# benches/ references LedgerBackend/PosixTileLedger not yet implemented — disable autodetection
+autobenches = false
 
 [[bin]]
 name = "service-fs"
