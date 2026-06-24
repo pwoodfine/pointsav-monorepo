@@ -17,6 +17,7 @@ pub mod article;
 pub mod home;
 pub mod mobile;
 pub mod palette;
+pub mod sovereign;
 
 use maud::{html, Markup, PreEscaped, DOCTYPE};
 
