@@ -33,9 +33,9 @@
 #      we are alive and stops the VM if we die without cleaning up.
 #
 # Usage:
-#   ./test-mode.sh                 # default 45-minute hard wall
-#   MAX_MINUTES=30 ./test-mode.sh  # tighter wall
-#   ./test-mode.sh --max-minutes 35
+#   ./test-mode.sh                 # default 2-hour hard wall (matches nightly budget)
+#   MAX_MINUTES=45 ./test-mode.sh  # tighter wall for quick validation
+#   ./test-mode.sh --max-minutes 45
 #
 # Exit codes:
 #   0  — ran to completion (tests may have individually FAILED — see result JSON)
@@ -49,7 +49,7 @@ set -uo pipefail
 # ──────────────────────────────────────────────────────────────────────────────
 # Configuration
 # ──────────────────────────────────────────────────────────────────────────────
-MAX_MINUTES="${MAX_MINUTES:-45}"
+MAX_MINUTES="${MAX_MINUTES:-120}"
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
