@@ -104,6 +104,7 @@ POLL_INTERVAL=15
 # Watchdog PID (background timer) and VM-started flag.
 WATCHDOG_PID=""
 VM_STARTED=0
+VM_IP=""
 LOCK_FD=""
 HARD_STOP_DONE=0
 
@@ -228,19 +229,17 @@ vm_external_ip() {
 }
 
 remote_ssh() {
-    # remote_ssh <command...>  — run a command on the VM. Returns ssh exit code.
-    "${GCLOUD}" compute ssh "${INSTANCE}" \
-        --project="${PROJECT}" --zone="${ZONE}" \
-        --ssh-key-file="${SSH_KEY}" --tunnel-through-iap \
-        --command="$*" 2>>"${LOG_FILE}"
+    # remote_ssh <command...>  — run a command on the VM via direct SSH (no IAP).
+    ssh -i "${SSH_KEY}" -o StrictHostKeyChecking=no \
+        -o ConnectTimeout=10 -o ServerAliveInterval=30 \
+        "mathew@${VM_IP}" "$*" 2>>"${LOG_FILE}"
 }
 
 remote_rsync() {
-    # remote_rsync <local> <remote>
-    "${GCLOUD}" compute scp --recurse \
-        --project="${PROJECT}" --zone="${ZONE}" \
-        --ssh-key-file="${SSH_KEY}" --tunnel-through-iap \
-        "$1" "${INSTANCE}:$2" 2>>"${LOG_FILE}"
+    # remote_rsync <local> <remote>  — rsync to VM via direct SSH (no IAP).
+    rsync -az \
+        -e "ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no -o ConnectTimeout=10" \
+        "$1" "mathew@${VM_IP}:$2" 2>>"${LOG_FILE}"
 }
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -511,6 +510,15 @@ else
 fi
 record "provision" "pass" "VM RUNNING in ${ZONE}"
 
+# Resolve external IP for direct SSH (no IAP tunnel required).
+VM_IP="$(vm_external_ip)"
+log "VM external IP: ${VM_IP}"
+if [[ -z "${VM_IP}" ]]; then
+    log "ERROR: could not determine VM external IP — cannot SSH"
+    record "ssh-reachable" "fail" "no external IP"
+    EXIT_CODE=1; exit 1
+fi
+
 # Wait for SSH reachability (kill-switch-aware), bounded.
 log "Waiting for SSH reachability..."
 SSH_DEADLINE=$(( SECONDS + 180 ))
@@ -703,10 +711,9 @@ if (( DRYRUN_OK == 1 )); then
         if (( TRAIN_DONE == 1 )); then
             # Pull adapter to the throwaway tree (NOT production).
             log "  Pulling adapter to ${ADAPTER_OUT} ..."
-            "${GCLOUD}" compute scp --recurse \
-                --project="${PROJECT}" --zone="${ZONE}" \
-                --ssh-key-file="${SSH_KEY}" --tunnel-through-iap \
-                "${INSTANCE}:${REMOTE_DIR}/adapter/." "${ADAPTER_OUT}/" >>"${LOG_FILE}" 2>&1 \
+            rsync -az \
+                -e "ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no" \
+                "mathew@${VM_IP}:${REMOTE_DIR}/adapter/." "${ADAPTER_OUT}/" >>"${LOG_FILE}" 2>&1 \
                 || log "  WARN adapter pull failed"
             if [[ -f "${ADAPTER_OUT}/adapter_config.json" ]]; then
                 record "sft-train" "pass" "adapter produced + pulled to test tree"
