@@ -256,7 +256,10 @@ fn main() -> NotifyResult<()> {
         std::collections::HashMap::new();
     let dead_letter_dir = format!("{}/dead-letter", corpus_dir);
     if let Err(e) = std::fs::create_dir_all(&dead_letter_dir) {
-        eprintln!("[WARN] Could not create dead-letter dir {}: {}", dead_letter_dir, e);
+        eprintln!(
+            "[WARN] Could not create dead-letter dir {}: {}",
+            dead_letter_dir, e
+        );
     }
 
     // ── Parallel startup drain ────────────────────────────────────────────────
@@ -485,15 +488,18 @@ fn main() -> NotifyResult<()> {
                                 let base_ms: u64 = (5_000u64 << exponent).min(120_000);
                                 let char_sum: u32 = filename.bytes().map(|b| b as u32).sum();
                                 let jitter_num = char_sum % 100; // 0..99
-                                // jitter_factor: 0.75 to 1.25
+                                                                 // jitter_factor: 0.75 to 1.25
                                 let jittered_ms = base_ms * (150 + jitter_num as u64 / 2) / 200;
                                 let delay_ms = jittered_ms.clamp(5_000, 120_000);
-                                let retry_not_before = std::time::Instant::now()
-                                    + Duration::from_millis(delay_ms);
-                                backoff_state.insert(filename.clone(), (retry_not_before, delay_ms));
+                                let retry_not_before =
+                                    std::time::Instant::now() + Duration::from_millis(delay_ms);
+                                backoff_state
+                                    .insert(filename.clone(), (retry_not_before, delay_ms));
                                 println!(
                                     "[DEFER] {} retry #{} in {:.1}s",
-                                    filename, count, delay_ms as f64 / 1000.0
+                                    filename,
+                                    count,
+                                    delay_ms as f64 / 1000.0
                                 );
                                 deferred_ledgers.push(filename);
                             }
