@@ -1192,6 +1192,67 @@ async fn hash_lookup_page(
     }
 }
 
+/// `GET /special/specialpages` — index of all available special pages,
+/// equivalent to Wikipedia's Special:SpecialPages.
+async fn special_pages_index(
+    State(state): State<Arc<AppState>>,
+    CurrentUser(maybe_user): CurrentUser,
+) -> Result<Markup, WikiError> {
+    let pending_count = pending_count_for(&state, maybe_user.as_ref()).await;
+
+    // (group, [(path, title, description)])
+    type Sp = (&'static str, &'static str, &'static str);
+    let groups: &[(&str, &[Sp])] = &[
+        ("Content", &[
+            ("/special/all-pages",    "All pages",      "Browse every article in this wiki."),
+            ("/special/categories",   "Categories",     "Browse articles by category."),
+            ("/special/recent-changes", "Recent changes", "List of the most recent edits."),
+            ("/special/statistics",   "Statistics",     "Article count, word count, and other metrics."),
+        ]),
+        ("Pages and files", &[
+            ("/random",          "Random page",   "Jump to a randomly chosen article."),
+            ("/special/wanted",  "Wanted pages",  "Articles linked to but not yet created."),
+        ]),
+        ("Per-page tools", &[
+            ("/special/whatlinkshere/", "What links here", "Articles that link to a specific page."),
+            ("/special/pageinfo/",      "Page information", "Metadata for a specific article."),
+            ("/special/cite/",          "Cite this page",   "Citation templates for a specific article."),
+            ("/special/hash-lookup/",   "Hash lookup",      "Find an article by its content fingerprint."),
+        ]),
+        ("Technical", &[
+            ("/openapi.yaml",  "OpenAPI specification", "Machine-readable API description (OpenAPI 3.1)."),
+            ("/robots.txt",    "robots.txt",           "Crawler exclusion rules."),
+            ("/sitemap.xml",   "Sitemap",              "XML sitemap for search engines."),
+            ("/feed.atom",     "Atom feed",            "Recent-changes feed in Atom format."),
+            ("/feed.json",     "JSON feed",            "Recent-changes feed in JSON Feed 1.1 format."),
+            ("/llms.txt",      "llms.txt",             "Plain-text index for large language models."),
+        ]),
+    ];
+
+    Ok(chrome(
+        &format!("Special pages — {}", state.site_title),
+        html! {
+            h1 { "Special pages" }
+            p.wiki-special-intro { "Below is a list of all available special pages on this wiki." }
+            @for (group_name, entries) in groups {
+                h2 { (group_name) }
+                ul.wiki-special-list {
+                    @for (path, title, desc) in *entries {
+                        li {
+                            a href=(path) { (title) }
+                            " — "
+                            span.wiki-special-desc { (desc) }
+                        }
+                    }
+                }
+            }
+        },
+        &state.site_title,
+        maybe_user.as_ref(),
+        pending_count,
+    ))
+}
+
 #[cfg(test)]
 mod llms_txt_tests {
     use super::llms_txt_snippet;

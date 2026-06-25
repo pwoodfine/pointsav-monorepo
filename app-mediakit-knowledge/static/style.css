@@ -1494,7 +1494,7 @@ a.anchor {
   margin-left: 0.3em;
   transition: opacity var(--dur-fast) ease;
 }
-a.anchor::after { content: " ¶"; }
+a.anchor::after { content: " §"; }
 .prose h2:hover a.anchor,
 .prose h3:hover a.anchor { opacity: 1; }
 button.anchor-share {
@@ -2335,6 +2335,20 @@ a.wikilink.redlink:hover { color: oklch(42% 0.2 25); }
   color: var(--fg-3);
   font-style: italic;
 }
+a.hover-card-more {
+  display: block;
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  color: var(--link);
+  text-decoration: none;
+  padding: var(--sp-1) var(--sp-4) var(--sp-3);
+  text-align: right;
+}
+a.hover-card-more:hover { text-decoration: underline; }
+html[data-theme="dark"] .wiki-hover-card { background: oklch(16% 0.01 260); border-color: oklch(28% 0.01 260); }
+html[data-theme="dark"] .wiki-hover-card strong { color: var(--fg-1); }
+html[data-theme="dark"] .wiki-hover-card p { color: var(--fg-2); }
+html[data-theme="dark"] a.hover-card-more { color: var(--link); }
 
 .wiki-home-lede__body p + p { margin-top: var(--sp-3); }
 .wiki-home-lede__body p:last-child { font-size: 13px; color: var(--fg-3); font-style: italic; }
@@ -2689,6 +2703,20 @@ ol.search-results { list-style: none; padding: 0; margin: 0; display: flex; flex
   color: var(--fg-3);
   margin: 0 0 var(--sp-5);
 }
+ul.wiki-special-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 var(--sp-6);
+}
+ul.wiki-special-list li {
+  padding: var(--sp-1) 0;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  border-bottom: 1px solid var(--border);
+}
+ul.wiki-special-list li a { color: var(--link); font-weight: 500; }
+ul.wiki-special-list li a:hover { text-decoration: underline; }
+.wiki-special-desc { color: var(--fg-3); }
 nav.wiki-allpages-jump {
   display: flex;
   flex-wrap: wrap;
