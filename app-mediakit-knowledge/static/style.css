@@ -1341,6 +1341,7 @@ span.toc-numb { color: var(--fg-3); font-size: var(--text-xs); margin-right: 0.4
   padding-right: var(--sp-3);
 }
 .wiki-tab--tool:hover { color: var(--link); background: transparent; }
+@media (max-width: 360px) { .wiki-tab--tool { display: none; } }
 
 .doc-header {
   padding-block: var(--sp-6) var(--sp-8);
