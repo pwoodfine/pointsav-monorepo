@@ -178,6 +178,8 @@ pub fn sovereign_footer(tenant: Tenant, view_source_slug: Option<&str>) -> Marku
                         span class="s-footer__col-head" { "Navigate" }
                         a href="/" { "Home" }
                         a href="/search" { "Search" }
+                        a href="/special/specialpages" { "Special pages" }
+                        a href="/random" { "Random article" }
                         @if tenant.is_woodfine() {
                             a href="/page/contact" { "Contact" }
                         }
