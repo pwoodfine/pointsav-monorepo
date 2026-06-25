@@ -330,7 +330,10 @@ mod tests {
         let markup = head("Test", "pointsav", Locale::En).into_string();
         let ibm_preload = markup.contains("IBMPlexSans-Variable-latin.woff2");
         let playfair_preload = markup.contains("PlayfairDisplay-Variable-latin.woff2");
-        assert!(ibm_preload, "IBM Plex Sans Variable font preload must be present");
+        assert!(
+            ibm_preload,
+            "IBM Plex Sans Variable font preload must be present"
+        );
         assert!(
             playfair_preload,
             "Playfair Display Variable font preload must be present"
