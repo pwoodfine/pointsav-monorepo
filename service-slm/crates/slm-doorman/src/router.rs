@@ -171,6 +171,15 @@ impl Doorman {
             .collect()
     }
 
+    /// Returns true when the named Yoyo node has its circuit closed and its
+    /// health probe up — i.e. it is currently accepting requests.
+    /// Used by the drain worker to gate shadow brief dispatch before dequeuing,
+    /// preventing Tier A fallback from saturating OLMo when the GPU node is
+    /// unavailable (STOCKOUT, circuit open, or health probe failure).
+    pub fn yoyo_node_ready(&self, label: &str) -> bool {
+        self.yoyo.get(label).map(|c| c.allow_request()).unwrap_or(false)
+    }
+
     pub fn ledger(&self) -> &AuditLedger {
         &self.ledger
     }
