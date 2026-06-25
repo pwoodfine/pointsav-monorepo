@@ -1125,6 +1125,42 @@ li.toc-section-active > a { font-weight: 600; color: var(--navy); }
 /* 5a Content-type colour system — defined in :root above; selectors here */
 
 /* 5b Article header zone */
+/* Article tabs — Wikipedia-style (Article/Talk/Edit/History) */
+.wiki-page-tabs {
+  display: flex;
+  gap: 2px;
+  margin-bottom: var(--sp-5);
+  border-bottom: 1px solid var(--border);
+  margin-left: calc(-1 * var(--sp-1));
+}
+.wiki-tab {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--sp-2) var(--sp-4);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--fg-2);
+  text-decoration: none;
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  background: transparent;
+  transition: background var(--dur-fast) ease, color var(--dur-fast) ease;
+  position: relative;
+  bottom: -1px;
+}
+.wiki-tab:hover {
+  background: var(--bg-hover);
+  color: var(--fg-1);
+}
+.wiki-tab[aria-current="page"] {
+  background: var(--bg);
+  color: var(--fg-1);
+  border-color: var(--border);
+  font-weight: 600;
+}
+
 .doc-header {
   border-top: 4px solid var(--ct-color);
   padding-block: var(--sp-6) var(--sp-8);
