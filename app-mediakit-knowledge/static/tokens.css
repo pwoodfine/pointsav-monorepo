@@ -198,7 +198,7 @@
   /* Sovereign Editorial chrome */
   --topnav-bg: #164679;
   --topnav-fg: #ffffff;
-  --footer-bg: #0e1117;
+  --footer-bg: oklch(18% 0.04 258);
   --footer-fg: rgba(255, 255, 255, 0.65);
   --footer-border: rgba(255, 255, 255, 0.12);
   --s-accent: oklch(58% 0.19 195);   /* PointSav teal — editorial accent; override in tokens-woodfine.css */
