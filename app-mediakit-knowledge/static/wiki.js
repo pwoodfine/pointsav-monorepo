@@ -42,6 +42,12 @@
   var _glossaryTip = null;      // glossary tooltip element
   var _fnTip = null;            // footnote tooltip element
 
+  function escHtml(s) {
+    return String(s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
   /* ------------------------------------------------------------------ *
    * 1. TOC collapse toggle                                               *
    * ------------------------------------------------------------------ */
@@ -221,11 +227,15 @@
   }
 
   function renderHoverCard(data) {
-    var snip   = data.snippet || 'No summary available.';
+    var snip = data.snippet || 'No summary available.';
     var imgHtml = data.image_url
       ? '<img src="' + data.image_url + '" alt="">'
       : '';
-    _hoverCard.innerHTML = imgHtml + '<strong>' + data.title + '</strong><p>' + snip + '</p>';
+    var slug = data.slug || '';
+    var moreHtml = slug
+      ? '<a class="hover-card-more" href="/wiki/' + escHtml(slug) + '">Read more →</a>'
+      : '';
+    _hoverCard.innerHTML = imgHtml + '<strong>' + escHtml(data.title) + '</strong><p>' + escHtml(snip) + '</p>' + moreHtml;
     _hoverCard.style.display = 'block';
   }
 

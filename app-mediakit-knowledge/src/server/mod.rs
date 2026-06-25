@@ -305,6 +305,8 @@ pub fn router(state: AppState) -> Router {
         .route("/special/cite/{*slug}", get(cite_page))
         .route("/special/categories", get(categories_index_page))
         .route("/special/hash-lookup/{hash}", get(hash_lookup_page))
+        .route("/special/specialpages", get(special_pages_index))
+        .route("/special/wanted", get(wanted_page))
         // Phase 4 Step 4.8 — OpenAPI 3.1 specification
         .route("/openapi.yaml", get(openapi_yaml))
         .route("/openapi.json", get(openapi_json))
@@ -413,7 +415,9 @@ async fn preview_api(
     };
 
     let parsed = parse_page(&text)?;
-    let title = parsed.frontmatter.title.unwrap_or_else(|| slug.clone());
+    let title = parsed.frontmatter.title.unwrap_or_else(|| {
+        slug.rsplit('/').next().unwrap_or(&slug).replace('-', " ")
+    });
     let snippet = crate::feeds::first_paragraph_snippet(&parsed.body_md, 300);
     let image_url = crate::feeds::first_image_url(&parsed.body_md);
 
