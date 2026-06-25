@@ -460,7 +460,8 @@ a.docs-sidenav__link {
   transition: color var(--dur-fast) ease, background var(--dur-fast) ease;
 }
 a.docs-sidenav__link:hover { color: var(--navy); background: var(--bg-hover); }
-a.docs-sidenav__link[aria-current="page"] { color: var(--navy); font-weight: 600; background: color-mix(in oklab, var(--navy) 8%, transparent); }
+a.docs-sidenav__link[aria-current="page"],
+a.docs-sidenav__link.is-active { color: var(--navy); font-weight: 600; background: color-mix(in oklab, var(--navy) 8%, transparent); }
 
 .article-wrap {
   display: grid;
