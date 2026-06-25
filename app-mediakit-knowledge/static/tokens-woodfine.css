@@ -12,6 +12,9 @@
  * ============================================================================ */
 
 :root {
+  /* ---- Sovereign Editorial — Woodfine warm gold accent ---- */
+  --s-accent: #c9a84c;   /* Woodfine warm gold — overrides PointSav #C7A961 */
+
   /* ---- Surface overrides ---- */
   --surface-background:   oklch(98.09% 0.0026 229.85); /* #F7F9FA unified canvas */
   --surface-layer:        oklch(100.0% 0.0001 263.28); /* #FFFFFF raised surfaces */

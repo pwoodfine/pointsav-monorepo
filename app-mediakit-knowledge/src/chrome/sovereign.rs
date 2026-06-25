@@ -210,6 +210,38 @@ pub fn sovereign_footer(tenant: Tenant, view_source_slug: Option<&str>) -> Marku
 
 /// Full document wrapper for pages that do not need locale alternates or JSON-LD.
 /// Used by misc_handlers chrome() and page_handler(), and chrome/mod.rs base_page().
+/// Secondary contextual nav: 48px bar beneath the masthead, scrolls with page.
+/// Links are tenant-specific; active link detected client-side via inline script.
+pub fn sovereign_secondary_nav(tenant: Tenant) -> Markup {
+    html! {
+        nav class="s-subnav" aria-label="Section navigation" {
+            div class="s-subnav__inner" {
+                @match tenant {
+                    Tenant::Documentation => {
+                        a class="s-subnav__link" href="/" { "Home" }
+                        a class="s-subnav__link" href="/special/categories" { "Reference" }
+                        a class="s-subnav__link" href="/special/all-pages" { "All pages" }
+                        a class="s-subnav__link" href="/special/recent-changes" { "Recent changes" }
+                    }
+                    Tenant::Projects => {
+                        a class="s-subnav__link" href="/" { "Home" }
+                        a class="s-subnav__link" href="/special/categories" { "Projects" }
+                        a class="s-subnav__link" href="/special/all-pages" { "All pages" }
+                        a class="s-subnav__link" href="/special/recent-changes" { "Recent changes" }
+                    }
+                    Tenant::Corporate => {
+                        a class="s-subnav__link" href="/" { "Home" }
+                        a class="s-subnav__link" href="/special/categories" { "Governance" }
+                        a class="s-subnav__link" href="/page/contact" { "Contact" }
+                        a class="s-subnav__link" href="/special/all-pages" { "All pages" }
+                    }
+                }
+            }
+        }
+        script { (PreEscaped(r#"(function(){var p=location.pathname;document.querySelectorAll('.s-subnav__link').forEach(function(a){var h=a.getAttribute('href');if(h===p||(p.length>1&&h!=='/'&&p.startsWith(h))){a.classList.add('s-subnav__link--active');}});})();"#)) }
+    }
+}
+
 /// Home and wiki handlers build their own document wrapper for hreflang/canonical/JSON-LD.
 /// `lang` is "en" or "es" (from `Locale::lang_attr()` in the server module).
 pub fn sovereign_page(
@@ -244,6 +276,7 @@ pub fn sovereign_page(
             body {
                 a class="skip-to-content" href="#main-content" { "Skip to content" }
                 (sovereign_nav(tenant, lang, site_title, lang_href))
+                (sovereign_secondary_nav(tenant))
                 (sovereign_mobile_nav_drawer(tenant, site_title))
                 main class="site-main" id="main-content" {
                     (content)

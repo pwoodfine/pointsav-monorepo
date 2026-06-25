@@ -339,25 +339,30 @@ kbd { border: 1px solid var(--fg-4); box-shadow: 0 1px 0 var(--fg-4); }
 .docs-sidenav { display: none; } /* mobile default; desktop override is in the @media below (order matters) */
 @media (min-width: 1024px) {
   .shell {
+    grid-template-areas: "sidebar content";
     grid-template-columns: var(--sidenav-w) minmax(0, 1fr);
     padding: 0 var(--sp-8);
   }
-  .docs-sidenav { display: block; }
+  .docs-sidenav { display: block; grid-area: sidebar; }
+  .article-wrap { grid-area: content; }
 }
 
 .main { padding: var(--sp-10) 0 var(--sp-16) var(--sp-10); min-width: 0; }
 @media (max-width: 1024px) { .main { padding: var(--sp-8) 0; } }
 @media (max-width: 640px)  { .main { padding: var(--sp-4) 0; } }
 
-/* Article layout: [article body | right-rail TOC] */
+/* Article layout: named grid areas (3k) — "article" | "aside" (TOC) */
 .article-wrap {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) var(--toc-w);
+  grid-template-areas: "article aside";
+  grid-template-columns: minmax(65ch, 75ch) var(--toc-w);
   gap: var(--sp-16);
   align-items: start;
 }
+.article__body { grid-area: article; min-width: 0; }
+.toc { grid-area: aside; }
 @media (max-width: 1280px) {
-  .article-wrap { grid-template-columns: minmax(0, 1fr); }
+  .article-wrap { grid-template-areas: "article"; grid-template-columns: minmax(0, 1fr); }
   .toc { display: none; }
 }
 
@@ -1274,15 +1279,19 @@ a.wikilink-missing, a.wiki-redlink { color: var(--color-link-redlink, #cc3333); 
   font-size: var(--text-2xl); color: var(--fg-1);
 }
 
-/* Home editorial grid */
+/* Home editorial grid (3l: named bento areas) */
 .wiki-home-editorial {
   display: grid;
+  grid-template-areas: "featured" "recent";
   grid-template-columns: 1fr;
   gap: var(--sp-8);
   padding: var(--sp-8) 0 var(--sp-10);
 }
+.wiki-home-editorial__left { grid-area: featured; }
+.wiki-home-editorial__right { grid-area: recent; }
 @media (min-width: 768px) {
   .wiki-home-editorial {
+    grid-template-areas: "featured recent";
     grid-template-columns: 3fr 2fr;
     gap: var(--sp-10);
     align-items: start;
@@ -1368,20 +1377,35 @@ a.wikilink-missing, a.wiki-redlink { color: var(--color-link-redlink, #cc3333); 
   margin-bottom: var(--sp-5);
 }
 
-/* Category grid (documentation homepage) */
+/* Category grid (documentation homepage) — bento asymmetric layout (3l) */
 .cat-grid {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: var(--sp-5);
+  container-type: inline-size;
+}
+@media (min-width: 768px) {
+  .cat-grid { grid-template-columns: repeat(3, 1fr); }
+}
+/* Container query: bento first-card span inside the .cat-grid container */
+@container (min-width: 580px) {
+  .cat-card:first-child {
+    grid-column: span 2;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: var(--sp-8);
+  }
 }
 .cat-card {
   display: flex; flex-direction: column; gap: var(--sp-2);
   padding: var(--sp-6); background: var(--bg-elevated);
   border: 1px solid var(--border); border-radius: var(--radius);
   text-decoration: none; color: inherit;
-  transition: border-color var(--dur-fast) var(--ease-out);
+  transition: border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
 }
 .cat-card:hover {
-  border-color: var(--navy);
+  border-color: var(--s-accent, var(--navy));
+  box-shadow: 0 2px 12px rgba(0,0,0,0.07);
 }
 .cat-card__head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
 .cat-card__name { font-family: var(--font-display); font-weight: 600; font-size: 16px; color: var(--fg-1); }
@@ -1425,7 +1449,7 @@ a.wikilink-missing, a.wiki-redlink { color: var(--color-link-redlink, #cc3333); 
   background: color-mix(in srgb, var(--navy) 8%, transparent);
   padding: 4px 10px; border-radius: 999px; white-space: nowrap;
 }
-.recent__date { font-size: 12px; color: var(--fg-4); font-variant-numeric: tabular-nums; }
+.recent__date { font-size: 12px; color: var(--fg-3); font-variant-numeric: tabular-nums; }
 
 /* Leapfrog facts strip */
 .leapfrog-strip {
@@ -1494,7 +1518,7 @@ a.wikilink-missing, a.wiki-redlink { color: var(--color-link-redlink, #cc3333); 
   color: var(--fg-2); font-size: var(--text-sm); font-weight: 600; transition: background .12s;
 }
 .browse-list__item a:hover { background: var(--bg-hover); color: var(--fg-1); }
-.browse-list__count { font-family: var(--font-mono); font-size: 12px; color: var(--fg-4); }
+.browse-list__count { font-family: var(--font-mono); font-size: 12px; color: var(--fg-3); }
 
 /* Cross-instance discovery band */
 .peer-band {
@@ -1504,7 +1528,7 @@ a.wikilink-missing, a.wiki-redlink { color: var(--color-link-redlink, #cc3333); 
 }
 .peer-band__label {
   font-family: var(--font-display); font-size: 11px; font-weight: 700;
-  letter-spacing: 0.1em; text-transform: uppercase; color: var(--fg-4);
+  letter-spacing: 0.1em; text-transform: uppercase; color: var(--fg-3);
 }
 .peer-band__link {
   display: inline-flex; align-items: center; gap: var(--sp-1);
@@ -1523,7 +1547,7 @@ a.wikilink-missing, a.wiki-redlink { color: var(--color-link-redlink, #cc3333); 
 }
 .peer-strip__label {
   font-family: var(--font-display); font-size: 11px; font-weight: 700;
-  letter-spacing: 0.08em; text-transform: uppercase; color: var(--fg-4);
+  letter-spacing: 0.08em; text-transform: uppercase; color: var(--fg-3);
   margin-right: var(--sp-1);
 }
 .peer-strip__link {
@@ -1734,7 +1758,7 @@ html[data-theme="dark"] .topnav .logo-svg { filter: invert(1) brightness(2); }
 }
 .s-search__input::placeholder { color: rgba(255,255,255,0.55); }
 .s-search__input:focus {
-  border-color: rgba(255,255,255,0.6);
+  border-color: var(--s-accent, rgba(255,255,255,0.6));
   background: rgba(255,255,255,0.18);
 }
 .s-search__btn {
@@ -1794,6 +1818,40 @@ html[data-theme="dark"] .topnav .logo-svg { filter: invert(1) brightness(2); }
   transition: color 0.12s;
 }
 .s-hamburger:hover { color: #fff; }
+
+/* Secondary nav (3n) */
+.s-subnav {
+  background: var(--topnav-bg, #164679);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.25);
+}
+.s-subnav__inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 40px;
+  display: flex;
+  align-items: stretch;
+  height: var(--s-subnav-height, 48px);
+}
+.s-subnav__link {
+  color: rgba(255, 255, 255, 0.65);
+  text-decoration: none;
+  font-family: var(--font-body, 'IBM Plex Sans Variable', system-ui, sans-serif);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  border-bottom: 2px solid transparent;
+  transition: color 0.12s ease, border-color 0.12s ease;
+  white-space: nowrap;
+}
+.s-subnav__link:hover { color: rgba(255, 255, 255, 0.9); }
+.s-subnav__link--active {
+  color: #fff;
+  border-bottom-color: var(--s-accent, #C7A961);
+}
+@media (max-width: 768px) { .s-subnav { display: none; } }
 
 /* Footer */
 .s-footer {
