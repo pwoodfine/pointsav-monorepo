@@ -2016,6 +2016,58 @@ a.wikilink.redlink:hover { color: oklch(42% 0.2 25); }
   box-shadow: var(--shadow-md);
   pointer-events: none;
 }
+/* Footnote tooltip */
+.fn-tooltip {
+  position: absolute;
+  z-index: 200;
+  max-width: 360px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--fg-2);
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  line-height: 1.55;
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
+  pointer-events: none;
+}
+/* Wiki wikilink hover card */
+.wiki-hover-card {
+  position: absolute;
+  z-index: 200;
+  width: 320px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  pointer-events: auto;
+}
+.wiki-hover-card img { width: 100%; height: 140px; object-fit: cover; display: block; }
+.wiki-hover-card strong {
+  display: block;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--text-base);
+  color: var(--fg-1);
+  padding: var(--sp-3) var(--sp-4) var(--sp-1);
+}
+.wiki-hover-card p {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--fg-2);
+  line-height: 1.5;
+  padding: 0 var(--sp-4) var(--sp-3);
+  margin: 0;
+}
+.hover-loading {
+  padding: var(--sp-4);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--fg-3);
+  font-style: italic;
+}
 
 .wiki-home-lede__body p + p { margin-top: var(--sp-3); }
 .wiki-home-lede__body p:last-child { font-size: 13px; color: var(--fg-3); font-style: italic; }
