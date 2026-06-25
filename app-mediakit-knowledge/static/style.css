@@ -3079,6 +3079,13 @@ html[data-theme="dark"] .cm-editor { background: var(--code-bg); color: var(--co
 html[data-theme="dark"] .mobile-bottom-bar { background: var(--bg-elevated); border-top-color: var(--border); }
 html[data-theme="dark"] .wiki-appearance-opt.is-active,
 html[data-theme="dark"] .wiki-appearance-opt.appearance-active { color: var(--link); }
+html[data-theme="dark"] .wiki-special-table thead th,
+html[data-theme="dark"] .history-th { background: oklch(16% 0.01 260); }
+html[data-theme="dark"] .blame-pre { background: oklch(14% 0.01 260); }
+html[data-theme="dark"] .blame-meta { background: oklch(16% 0.01 260); border-right-color: oklch(22% 0.01 260); }
+html[data-theme="dark"] .blame-text { background: oklch(12% 0.01 260); }
+html[data-theme="dark"] .diff-two-col tr.diff-row-del .diff-cell-old { background: color-mix(in oklab, #ef4444 12%, transparent); }
+html[data-theme="dark"] .diff-two-col tr.diff-row-ins .diff-cell-new { background: color-mix(in oklab, #22c55e 12%, transparent); }
 
 /* === Section 9: Print === */
 
