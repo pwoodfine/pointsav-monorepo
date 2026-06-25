@@ -2326,6 +2326,59 @@ a.wikilink.redlink:hover { color: oklch(42% 0.2 25); }
 .peer-strip__link:hover { color: var(--navy-deep); text-decoration: underline; }
 .peer-strip__link + .peer-strip__link::before { content: "·"; margin-right: var(--sp-3); color: var(--fg-4); }
 
+/* Continue-reading strip (Phase 10 — localStorage reading state) */
+#continue-reading-strip {
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: var(--sp-3) 0;
+  margin-bottom: var(--sp-6);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2) var(--sp-4);
+}
+#continue-reading-strip[hidden] { display: none; }
+.continue-reading__label {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--fg-3);
+  margin: 0;
+  flex-shrink: 0;
+}
+.continue-reading__item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-1) var(--sp-3);
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  text-decoration: none;
+  transition: background var(--dur-fast) ease, border-color var(--dur-fast) ease;
+}
+.continue-reading__item:hover {
+  background: var(--bg-hover);
+  border-color: var(--navy-soft);
+}
+.continue-reading__title {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--fg-1);
+  text-transform: capitalize;
+}
+.continue-reading__pct {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  color: var(--ct-color, var(--navy));
+  background: color-mix(in oklab, var(--ct-color, var(--navy)) 12%, transparent);
+  padding: 1px 6px;
+  border-radius: 999px;
+}
+
 .leapfrog-strip { display: flex; flex-wrap: wrap; gap: var(--sp-4); padding: var(--sp-4) 0; margin-bottom: var(--sp-8); border-bottom: 1px solid var(--rule); font-family: var(--font-body); font-size: var(--text-sm); color: var(--fg-3); }
 .leapfrog-strip__fact::after { content: " ·"; margin-left: var(--sp-4); }
 .leapfrog-strip__fact:last-child::after { content: ""; }
