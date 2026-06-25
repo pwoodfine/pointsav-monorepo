@@ -205,4 +205,13 @@
   --s-subnav-bg: rgba(255, 255, 255, 0.06);
   --s-subnav-height: 48px;
 
+  /* Content-type color system (Phase 4a) — inherited by badge, header band, hatnote border, section headings */
+  --ct-topic:     oklch(37.14% 0.113 261.96);  /* navy — matches masthead */
+  --ct-guide:     oklch(50%    0.14  168);      /* teal/green */
+  --ct-research:  oklch(60%    0.16   75);      /* amber */
+  --ct-reference: oklch(50%    0.15  295);      /* purple */
+  --ct-article:   oklch(37.14% 0.113 261.96);  /* alias navy */
+  --ct-category:  oklch(46%    0.0202 264.39); /* muted navy */
+  --ct-color: var(--ct-topic);                 /* default; overridden by [data-content-type] */
+
 }

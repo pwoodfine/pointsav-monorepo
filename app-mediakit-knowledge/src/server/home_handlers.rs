@@ -329,7 +329,7 @@ fn home_chrome(
 
                             // Featured article
                             @if let Some(ref featured) = featured {
-                                div.featured #mp-tfa {
+                                div.featured #mp-tfa data-content-type=(item_type_key(&featured.slug)) {
                                     div.featured__row {
                                         span.dot {}
                                         (section_featured)
@@ -380,7 +380,7 @@ fn home_chrome(
                                 }
                                 ul.recent {
                                     @for t in recent.iter().take(8) {
-                                        li.recent__item {
+                                        li.recent__item data-content-type=(item_type_key(&t.slug)) {
                                             a.recent__title href={ "/wiki/" (t.slug) } { (t.title) }
                                             @if let Some(cat) = t.slug.split_once('/').map(|(c, _)| c) {
                                                 span.recent__crumb { (humanize_category(cat)) }
@@ -792,7 +792,7 @@ async fn category_page(
                     }
                     ul.wiki-cat-page-list {
                         @for t in topics {
-                            li.wiki-cat-page-item data-kind=(item_type_key(&t.slug)) {
+                            li.wiki-cat-page-item data-kind=(item_type_key(&t.slug)) data-content-type=(item_type_key(&t.slug)) {
                                 a.wiki-cat-page-item-title href={ "/wiki/" (t.slug) } { (t.title) }
                                 @if let Some(ref d) = t.last_edited {
                                     span.wiki-cat-page-item-date { (d) }

@@ -1910,3 +1910,162 @@ html[data-theme="dark"] .topnav .logo-svg { filter: invert(1) brightness(2); }
   .s-topnav { grid-template-columns: auto 1fr auto; }
   .s-lang, .s-theme-btn { display: none; }
 }
+
+/* ============================================================================
+ * Section 5b — Phase 4: Article Premium Reading Experience
+ * ============================================================================ */
+
+/* 4a — Content-type color dispatch. Sets --ct-color for the entire article subtree. */
+[data-content-type="topic"]     { --ct-color: var(--ct-topic); }
+[data-content-type="guide"]     { --ct-color: var(--ct-guide); }
+[data-content-type="research"]  { --ct-color: var(--ct-research); }
+[data-content-type="reference"] { --ct-color: var(--ct-reference); }
+[data-content-type="article"]   { --ct-color: var(--ct-article); }
+[data-content-type="category"]  { --ct-color: var(--ct-category); }
+
+/* 4a — Top color band: 4px accent strip above article header */
+article.article__body {
+  border-top: 4px solid var(--ct-color, var(--ct-topic));
+  padding-top: var(--sp-6);
+}
+
+/* 4b — Larger, more commanding title */
+.article__title {
+  font-size: clamp(40px, 4.5vw, 64px);
+}
+
+/* 4b — Content-type badge: always-visible pill, colored by content type */
+.content-type-badge {
+  display: inline-flex; align-items: center;
+  padding: 3px 12px; border-radius: 999px;
+  font-family: var(--font-display); font-size: 11px; font-weight: 700;
+  letter-spacing: 0.10em; text-transform: uppercase;
+  background: color-mix(in oklch, var(--ct-color, var(--ct-topic)) 12%, transparent);
+  color: var(--ct-color, var(--ct-topic));
+  border: 1px solid color-mix(in oklch, var(--ct-color, var(--ct-topic)) 30%, transparent);
+  vertical-align: middle; margin-left: var(--sp-3);
+}
+[data-auth="anon"] .content-type-badge { display: none; }
+
+/* 4b — Lede / standfirst: left border accent for visual weight */
+.article__lede {
+  border-left: 3px solid var(--ct-color, var(--ct-topic));
+  padding-left: var(--sp-4);
+  margin-left: 0;
+}
+
+/* 4b — Reading time: subtle inline metadata */
+.reading-time {
+  font-size: 13px; color: var(--fg-3); font-family: var(--font-body);
+}
+.reading-time:not(:empty)::before { content: "· "; }
+
+/* 4a — Section heading gradient underline (h2 inside prose) */
+.prose h2 {
+  position: relative;
+  padding-bottom: var(--sp-2);
+}
+.prose h2::after {
+  content: "";
+  position: absolute; bottom: 0; left: 0;
+  width: 56px; height: 3px;
+  background: linear-gradient(90deg, var(--ct-color, var(--ct-topic)), transparent);
+  border-radius: 2px;
+}
+
+/* 4c — Drop cap on first prose paragraph */
+.prose > p:first-of-type::first-letter {
+  initial-letter: 3 2;
+  color: var(--ct-color, var(--ct-topic));
+  font-family: var(--font-reading);
+  font-weight: 700;
+  padding-right: 6px;
+  line-height: 0.85;
+}
+
+/* 4d — Infobox (HTML rendered; CSS was absent) */
+aside.infobox {
+  float: right; clear: right;
+  margin: 0 0 var(--sp-6) var(--sp-8);
+  width: clamp(200px, 30%, 280px);
+  font-size: var(--text-sm);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-subtle);
+  overflow: hidden;
+}
+.infobox-title {
+  font-family: var(--font-display); font-weight: 700; font-size: 12px;
+  letter-spacing: 0.10em; text-transform: uppercase;
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--ct-color, var(--ct-topic)); color: #fff;
+}
+.infobox-table { width: 100%; border-collapse: collapse; }
+.infobox-label { font-weight: 600; padding: 5px 8px; color: var(--fg-2); width: 44%; vertical-align: top; }
+.infobox-data  { padding: 5px 8px; color: var(--fg-1); }
+.infobox-table tr + tr { border-top: 1px solid var(--border); }
+.infobox-image img { width: 100%; height: auto; display: block; }
+@media (max-width: 640px) {
+  aside.infobox { float: none; width: 100%; margin: 0 0 var(--sp-6); }
+}
+
+/* 4e — Callout / GFM alert boxes */
+.markdown-alert {
+  padding: var(--sp-3) var(--sp-5);
+  border-left: 4px solid var(--callout-color, var(--border));
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  background: var(--callout-bg, var(--bg-subtle));
+  margin: var(--sp-6) 0;
+}
+.markdown-alert-title {
+  font-family: var(--font-display); font-size: 12px; font-weight: 700;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--callout-color, var(--fg-2));
+  margin-bottom: var(--sp-2); margin-top: 0;
+}
+.markdown-alert-note      { --callout-color: #164679; --callout-bg: color-mix(in oklch, #164679 7%, transparent); }
+.markdown-alert-tip       { --callout-color: #059669; --callout-bg: color-mix(in oklch, #059669 7%, transparent); }
+.markdown-alert-important { --callout-color: #7c3aed; --callout-bg: color-mix(in oklch, #7c3aed 7%, transparent); }
+.markdown-alert-warning   { --callout-color: #d97706; --callout-bg: color-mix(in oklch, #d97706 9%, transparent); }
+.markdown-alert-caution   { --callout-color: #dc2626; --callout-bg: color-mix(in oklch, #dc2626 7%, transparent); }
+
+/* 4g — Guide steps numbered list */
+ol.guide-steps {
+  list-style: none;
+  counter-reset: guide-step;
+  padding: 0; margin: var(--sp-8) 0;
+  display: flex; flex-direction: column; gap: var(--sp-6);
+}
+ol.guide-steps > li {
+  counter-increment: guide-step;
+  display: grid; grid-template-columns: 44px 1fr;
+  gap: var(--sp-4); align-items: start;
+}
+ol.guide-steps > li::before {
+  content: counter(guide-step);
+  width: 44px; height: 44px; border-radius: 50%;
+  background: var(--ct-color, var(--ct-guide));
+  color: #fff;
+  font-family: var(--font-display); font-weight: 700; font-size: 18px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+
+/* 4h — Content-type color on article cards (home bento + category listing) */
+.recent-item[data-content-type],
+.cat-item[data-content-type],
+.browse-item[data-content-type] {
+  border-left: 3px solid var(--ct-color, var(--ct-topic));
+  padding-left: var(--sp-3);
+}
+
+/* 4h — Card content-type badge on home bento featured card */
+.featured-card[data-content-type] .content-type-badge,
+[data-content-type] .card-badge {
+  display: inline-flex; align-items: center;
+  padding: 2px 8px; border-radius: 999px;
+  font-family: var(--font-display); font-size: 10px; font-weight: 700;
+  letter-spacing: 0.10em; text-transform: uppercase;
+  background: color-mix(in oklch, var(--ct-color, var(--ct-topic)) 12%, transparent);
+  color: var(--ct-color, var(--ct-topic));
+}
