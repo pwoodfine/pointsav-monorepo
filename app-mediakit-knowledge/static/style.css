@@ -663,7 +663,8 @@ a.lang-toggle {
 }
 
 .s-hamburger,
-.nav-toggle-btn {
+.nav-toggle-btn,
+.toc-toggle-btn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -678,8 +679,8 @@ a.lang-toggle {
   flex-shrink: 0;
   transition: color 0.12s ease, background 0.12s ease;
 }
-.s-hamburger:hover, .nav-toggle-btn:hover { color: #fff; background: rgba(255, 255, 255, 0.10); }
-.s-hamburger[aria-expanded="true"], .nav-toggle-btn[aria-expanded="true"] {
+.s-hamburger:hover, .nav-toggle-btn:hover, .toc-toggle-btn:hover { color: #fff; background: rgba(255, 255, 255, 0.10); }
+.s-hamburger[aria-expanded="true"], .nav-toggle-btn[aria-expanded="true"], .toc-toggle-btn[aria-expanded="true"] {
   color: #fff;
   background: rgba(255, 255, 255, 0.12);
 }
