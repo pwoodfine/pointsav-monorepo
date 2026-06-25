@@ -754,8 +754,8 @@ fn wiki_chrome(
                 meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover";
                 title { (page_title) }
                 // Font preload — eliminates FOUT on first load
-                link rel="preload" as="font" type="font/woff2" crossorigin href="/static/fonts/Inter-400-normal-latin.woff2";
-                link rel="preload" as="font" type="font/woff2" crossorigin href="/static/fonts/Source-Serif-4-400-normal-latin.woff2";
+                link rel="preload" as="font" type="font/woff2" crossorigin href="/static/fonts/IBMPlexSans-Variable-latin.woff2";
+                link rel="preload" as="font" type="font/woff2" crossorigin href="/static/fonts/PlayfairDisplay-Variable-latin.woff2";
                 link rel="stylesheet" href="/static/tokens.css";
                 link rel="stylesheet" href="/static/style.css";
                 @if woodfine_theme {
@@ -1337,8 +1337,8 @@ async fn edit_page(
                 meta charset="utf-8";
                 meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover";
                 title { (page_title) }
-                link rel="preload" as="font" type="font/woff2" crossorigin href="/static/fonts/Inter-400-normal-latin.woff2";
-                link rel="preload" as="font" type="font/woff2" crossorigin href="/static/fonts/Source-Serif-4-400-normal-latin.woff2";
+                link rel="preload" as="font" type="font/woff2" crossorigin href="/static/fonts/IBMPlexSans-Variable-latin.woff2";
+                link rel="preload" as="font" type="font/woff2" crossorigin href="/static/fonts/PlayfairDisplay-Variable-latin.woff2";
                 link rel="stylesheet" href="/static/tokens.css";
                 link rel="stylesheet" href="/static/style.css";
                 @if matches!(state.brand_theme.as_deref(), Some("woodfine") | Some("woodfine-projects")) {
