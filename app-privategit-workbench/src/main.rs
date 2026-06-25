@@ -1373,6 +1373,91 @@ fn extract_json_string_field(json: &str, field: &str) -> Option<String> {
 // GET /pdf — platform PDF rendering via WeasyPrint subprocess
 // ---------------------------------------------------------------------------
 
+/// GET /zip?path=<url_path> — ZIP a folder and return it as a download.
+async fn get_zip(State(state): State<AppState>, Query(q): Query<FileQuery>) -> Response {
+    let (fs_path, _writable) = match resolve_path(&state.roots, &q.path) {
+        Ok(v) => v,
+        Err(e) => return err(StatusCode::BAD_REQUEST, e.to_string()),
+    };
+
+    if !fs_path.exists() {
+        return err(StatusCode::NOT_FOUND, "folder not found");
+    }
+    if !fs_path.is_dir() {
+        return err(StatusCode::BAD_REQUEST, "not a directory");
+    }
+
+    let folder_name = fs_path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("folder")
+        .to_string();
+
+    let zip_bytes = match tokio::task::spawn_blocking(move || build_zip(&fs_path)).await {
+        Ok(Ok(b)) => b,
+        Ok(Err(e)) => return err(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()),
+        Err(e) => return err(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()),
+    };
+
+    let cd = format!("attachment; filename=\"{}.zip\"", folder_name);
+    let mut headers = HeaderMap::new();
+    headers.insert("content-type", "application/zip".parse().unwrap());
+    headers.insert("content-disposition", cd.parse().unwrap());
+    (StatusCode::OK, headers, Bytes::from(zip_bytes)).into_response()
+}
+
+fn build_zip(dir: &Path) -> Result<Vec<u8>> {
+    use zip::{write::SimpleFileOptions, CompressionMethod, ZipWriter};
+    let cursor = std::io::Cursor::new(Vec::new());
+    let mut zip = ZipWriter::new(cursor);
+    let options =
+        SimpleFileOptions::default().compression_method(CompressionMethod::Deflated);
+    zip_add_dir(&mut zip, dir, dir, options)?;
+    let cursor = zip.finish()?;
+    Ok(cursor.into_inner())
+}
+
+fn zip_add_dir<W: std::io::Write + std::io::Seek>(
+    zip: &mut zip::ZipWriter<W>,
+    base: &Path,
+    current: &Path,
+    options: zip::write::SimpleFileOptions,
+) -> Result<()> {
+    let mut entries: Vec<_> = match std::fs::read_dir(current) {
+        Ok(rd) => rd.filter_map(|e| e.ok()).collect(),
+        Err(_) => return Ok(()),
+    };
+    entries.sort_by_key(|e| e.file_name());
+
+    for entry in entries {
+        let path = entry.path();
+        if entry.file_name().to_string_lossy().starts_with('.') {
+            continue;
+        }
+        let name = match path.strip_prefix(base) {
+            Ok(rel) => rel.to_string_lossy().into_owned(),
+            Err(_) => continue,
+        };
+        if path.is_dir() {
+            zip_add_dir(zip, base, &path, options)?;
+        } else if path.is_file() {
+            if let Ok(meta) = path.metadata() {
+                if meta.len() > 50 * 1024 * 1024 {
+                    continue; // skip files > 50 MiB
+                }
+            }
+            if let Ok(content) = std::fs::read(&path) {
+                zip.start_file(name, options)?;
+                use std::io::Write as _;
+                zip.write_all(&content)?;
+            }
+        }
+    }
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+
 /// GET /pdf?path=<url_path>
 /// Renders the file to PDF via WeasyPrint and returns it as a download.
 /// For HTML files: injects @page CSS then renders.
@@ -1821,6 +1906,7 @@ async fn main() -> Result<()> {
         .route("/git-status", get(git_status))
         .route("/document", get(get_document))
         .route("/pdf", get(get_pdf))
+        .route("/zip", get(get_zip))
         .route("/events", get(get_events))
         .route("/mcp", post(mcp::mcp_handler))
         .route("/section", get(get_section))
