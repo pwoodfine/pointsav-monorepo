@@ -379,6 +379,13 @@ input, select, textarea { font-size: max(16px, 1em); }
   padding: 0 var(--sp-6);
 }
 
+/* Page prose shell (used on /page/* routes) */
+div.shell {
+  max-width: 780px;
+  margin: var(--sp-12) auto var(--sp-20);
+  padding: 0 var(--sp-6);
+}
+
 @media (min-width: 641px) {
   .wiki-shell { padding: 0 var(--sp-6); }
 }
@@ -405,6 +412,55 @@ input, select, textarea { font-size: max(16px, 1em); }
     border-right: 1px solid var(--rule);
   }
 }
+
+/* Docs left-column nav (inside .sidebar) */
+nav.docs-sidenav { padding: 0; }
+.docs-sidenav__inner { display: flex; flex-direction: column; gap: 0; }
+details.docs-sidenav__cat {
+  border-bottom: 1px solid var(--rule);
+}
+details.docs-sidenav__cat > summary {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--fg-3);
+  padding: var(--sp-2) var(--sp-3);
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+details.docs-sidenav__cat > summary::-webkit-details-marker { display: none; }
+details.docs-sidenav__cat > summary::after {
+  content: "▸";
+  font-size: 9px;
+  color: var(--fg-4);
+  transition: transform 0.15s ease;
+}
+details.docs-sidenav__cat[open] > summary::after { transform: rotate(90deg); }
+details.docs-sidenav__cat > summary:hover { color: var(--fg-1); background: var(--bg-hover); border-radius: var(--radius-sm); }
+ul.docs-sidenav__list {
+  list-style: none;
+  padding: var(--sp-1) 0 var(--sp-2);
+  margin: 0;
+}
+a.docs-sidenav__link {
+  display: block;
+  padding: 3px var(--sp-4);
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--fg-2);
+  text-decoration: none;
+  line-height: 1.45;
+  border-radius: var(--radius-sm);
+  transition: color var(--dur-fast) ease, background var(--dur-fast) ease;
+}
+a.docs-sidenav__link:hover { color: var(--navy); background: var(--bg-hover); }
+a.docs-sidenav__link[aria-current="page"] { color: var(--navy); font-weight: 600; background: color-mix(in oklab, var(--navy) 8%, transparent); }
 
 .article-wrap {
   display: grid;
