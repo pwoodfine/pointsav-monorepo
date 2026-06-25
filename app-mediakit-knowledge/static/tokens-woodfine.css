@@ -12,8 +12,8 @@
  * ============================================================================ */
 
 :root {
-  /* ---- Sovereign Editorial — Woodfine warm gold accent ---- */
-  --s-accent: #c9a84c;   /* Woodfine warm gold — overrides PointSav #C7A961 */
+  /* ---- Sovereign Editorial — Woodfine teal accent ---- */
+  --s-accent: oklch(52% 0.17 195);   /* Woodfine deep teal — overrides PointSav teal */
 
   /* ---- Surface overrides ---- */
   --surface-background:   oklch(98.09% 0.0026 229.85); /* #F7F9FA unified canvas */
@@ -179,9 +179,9 @@ html[data-theme="dark"] {
   color: #1A5FA8;
 }
 
-/* ── Blockquote accent — restore gold on Woodfine ── */
+/* ── Blockquote accent — Woodfine teal ── */
 :is([data-instance="projects"], [data-instance="corporate"]) .prose blockquote {
-  border-left-color: #C7A961;
+  border-left-color: var(--s-accent);
 }
 
 /* ── Footer — Woodfine Blue footnav accents ── */
