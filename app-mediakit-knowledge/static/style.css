@@ -1263,17 +1263,18 @@ li.toc-section-active > a { font-weight: 600; color: var(--navy); }
   text-wrap: balance;
   font-optical-sizing: auto;
   position: relative;
-  padding-bottom: var(--sp-3);
+  padding-bottom: 0.35em;
+  border-bottom: 1px solid var(--border);
 }
 .prose h2::after {
   content: "";
   display: block;
   position: absolute;
-  bottom: 0;
+  bottom: -1px;
   left: 0;
   width: 56px;
   height: 3px;
-  background: linear-gradient(90deg, var(--ct-color) 0%, color-mix(in oklab, var(--ct-color) 30%, transparent) 100%);
+  background: var(--ct-color, var(--navy));
   border-radius: 2px;
 }
 .prose h3 {
@@ -1308,6 +1309,19 @@ li.toc-section-active > a { font-weight: 600; color: var(--navy); }
   margin-bottom: 0;
 }
 .prose p { margin: 0; }
+
+/* 4c — Drop cap on first paragraph of article prose */
+.prose > p:first-of-type::first-letter {
+  initial-letter: 3 2;
+  float: left;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 4.2em;
+  line-height: 0.82;
+  margin: 0 0.08em 0 0;
+  color: var(--ct-color, var(--navy));
+  padding-right: 2px;
+}
 
 .prose a {
   color: var(--navy);
