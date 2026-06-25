@@ -1644,6 +1644,37 @@ aside.infobox {
   pointer-events: none;
 }
 
+/* Claim-rail — citation freshness sidebar */
+aside.claim-rail {
+  display: none;
+}
+@media (min-width: 1280px) {
+  aside.claim-rail {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-2);
+    position: sticky;
+    top: calc(var(--header-h) + var(--sp-4));
+    width: 24px;
+    padding-top: var(--sp-2);
+  }
+}
+a.claim-tick {
+  display: block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--fg-4);
+  border: 1.5px solid transparent;
+  transition: background var(--dur-fast) ease, transform var(--dur-fast) ease;
+  cursor: pointer;
+}
+a.claim-tick[data-status="fresh"]   { background: oklch(58% 0.14 168); }
+a.claim-tick[data-status="stale"]   { background: oklch(65% 0.16 55); }
+a.claim-tick[data-status="unknown"] { background: var(--fg-4); }
+a.claim-tick.active                 { transform: scale(1.4); border-color: currentColor; }
+a.claim-tick:hover                  { transform: scale(1.3); }
+
 /* 5g Guide steps */
 ol.guide-steps {
   list-style: none;
