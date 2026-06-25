@@ -2721,6 +2721,37 @@ ul.wiki-allpages-list a:hover { text-decoration: underline; }
   white-space: nowrap;
 }
 
+/* Recent changes table */
+.wiki-special-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  margin-top: var(--sp-4);
+}
+.wiki-special-table thead th {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fg-3);
+  padding: var(--sp-2) var(--sp-3);
+  border-bottom: 2px solid var(--border);
+  background: var(--bg-subtle);
+}
+.wiki-special-table tbody tr {
+  border-bottom: 1px solid var(--rule);
+  transition: background var(--dur-fast) ease;
+}
+.wiki-special-table tbody tr:hover { background: var(--bg-hover); }
+.wiki-special-table td { padding: var(--sp-2) var(--sp-3); vertical-align: top; color: var(--fg-2); }
+.rc-date { font-family: var(--font-mono); font-size: 12px; color: var(--fg-3); white-space: nowrap; width: 1%; }
+.rc-author { color: var(--fg-2); font-weight: 500; white-space: nowrap; width: 1%; }
+.rc-sha { font-family: var(--font-mono); font-size: 11px; background: var(--bg-subtle); border-radius: 4px; padding: 1px 5px; color: var(--fg-3); }
+.rc-summary a { color: var(--link); text-decoration: none; }
+.rc-summary a:hover { text-decoration: underline; }
+
 /* Error */
 .wiki-error-body { min-height: 100vh; display: flex; flex-direction: column; background: var(--bg); font-family: var(--font-body); }
 .wiki-error-header { background: var(--navy); padding: var(--sp-4) var(--sp-8); display: flex; align-items: center; }
