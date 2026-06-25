@@ -289,6 +289,7 @@ pub fn render_html_raw(
     options.extension.description_lists = true;
     options.extension.autolink = true;
     options.extension.header_id_prefix = Some("h-".to_string());
+    options.extension.alerts = true;  // Phase 4e: GFM > [!NOTE/TIP/WARNING/etc.] callout boxes
     // Enable raw HTML so our programmatically-injected HtmlBlock nodes (infobox,
     // navbox, main) are not suppressed by the renderer.  All injected HTML goes
     // through escape_html(), so there is no XSS risk from our own code.  Raw HTML

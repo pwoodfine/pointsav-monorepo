@@ -980,6 +980,8 @@ fn wiki_chrome(
                                         a href={ "/history/" (slug) } { "History" }
                                     }
                                 }
+                                // Phase 4b: reading time — word count set by wiki.js
+                                span.reading-time data-words="0" {}
                                 @if let Some(translations) = &fm.translations {
                                     @if !translations.is_empty() {
                                         span.wiki-lang-switcher {

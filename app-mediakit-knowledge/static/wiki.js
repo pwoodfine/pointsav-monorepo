@@ -1456,6 +1456,43 @@ function initCategoryFacets() {
   update();
 }());
 
+// Phase 4b — Reading time estimate (article pages only)
+(function() {
+  var rt = document.querySelector('.reading-time[data-words]');
+  var prose = document.querySelector('.prose');
+  if (!rt || !prose) return;
+  var words = prose.innerText.trim().split(/\s+/).length;
+  var mins = Math.max(1, Math.round(words / 200));
+  rt.setAttribute('data-words', words);
+  rt.textContent = mins + ' min read';
+}());
+
+// Phase 4f — Reading progress bar (article pages only; reuses #wiki-loading-bar)
+(function() {
+  var bar = document.getElementById('wiki-loading-bar');
+  var article = document.querySelector('article.article__body');
+  if (!bar || !article) return;
+  // Only activate when no AJAX nav is in flight
+  var active = false;
+  function update() {
+    if (active) return;
+    var rect = article.getBoundingClientRect();
+    var total = article.offsetHeight - window.innerHeight;
+    if (total <= 0) return;
+    var scrolled = Math.max(0, -rect.top);
+    var pct = Math.min(1, scrolled / total);
+    bar.style.transform = 'scaleX(' + pct + ')';
+    bar.style.opacity = pct > 0.01 ? '0.8' : '0';
+    bar.style.transition = 'none';
+    bar.style.background = 'var(--ct-color, var(--accent))';
+  }
+  window.addEventListener('scroll', update, { passive: true });
+  // Disable progress bar during AJAX navigation (loading bar takes over)
+  document.addEventListener('wiki:nav-start', function() { active = true; bar.style.opacity = '0'; });
+  document.addEventListener('wiki:nav-done',  function() { active = false; bar.style.transform = 'scaleX(0)'; });
+  update();
+}());
+
 // Search toggle — opens/closes the topnav search panel
 (function() {
   var btn = document.querySelector('.search-toggle');
