@@ -124,7 +124,7 @@ pub fn sovereign_nav(tenant: Tenant, lang: &str, site_title: &str, lang_href: &s
                        aria-label="Toggle appearance" type="button" {
                     (PreEscaped(r#"<svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16" aria-hidden="true"><circle cx="10" cy="10" r="4"/><path stroke="currentColor" stroke-width="1.5" fill="none" d="M10 1v2.5M10 16.5V19M1 10h2.5M16.5 10H19M3.64 3.64l1.77 1.77M14.59 14.59l1.77 1.77M3.64 16.36l1.77-1.77M14.59 5.41l1.77-1.77"/></svg>"#))
                 }
-                button class="s-hamburger" id="nav-toggle"
+                button class="s-hamburger nav-toggle-btn" id="nav-toggle"
                        aria-label="Menu"
                        aria-expanded="false"
                        aria-controls="mobile-nav-drawer"
