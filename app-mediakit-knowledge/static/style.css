@@ -1551,6 +1551,27 @@ button.anchor-share:hover { color: var(--ct-color, var(--navy)); }
 /* Clearfix after infobox */
 .prose::after { content: ""; display: table; clear: both; }
 
+/* Mobile collapsible sections (initCollapsibleSections; <960px only) */
+@media (max-width: 959px) {
+  h2.section-toggle {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    user-select: none;
+  }
+  h2.section-toggle::after {
+    content: "▾";
+    font-size: 14px;
+    color: var(--fg-3);
+    flex-shrink: 0;
+    transition: transform 0.15s ease;
+  }
+  h2.section-toggle.section-collapsed::after { transform: rotate(-90deg); }
+  h2.section-toggle:hover { color: var(--ct-color, var(--navy)); }
+  .section-body { overflow: hidden; }
+}
+
 /* 5d Infobox */
 aside.infobox {
   float: right;
@@ -1795,6 +1816,36 @@ a.wikilink.redlink:hover { color: oklch(42% 0.2 25); }
 .wiki-hatnote a, .hatnote a { color: var(--link); text-decoration: underline; }
 .hatnote--main::before { content: "Main article: "; font-weight: 600; font-style: normal; }
 .hatnote--see-also::before { content: "See also: "; font-weight: 600; font-style: normal; }
+
+/* Navbox — collapsible navigation tables (author-embedded via markdown HTML) */
+.navbox {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  margin: var(--sp-8) 0;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+}
+.navbox-title {
+  background: color-mix(in oklab, var(--ct-color, var(--navy)) 12%, var(--bg));
+  font-weight: 700;
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: var(--sp-2) var(--sp-4);
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--fg-2);
+}
+.navbox-title::after { content: "▾"; font-size: 10px; }
+.navbox-collapsed .navbox-title::after { content: "▸"; }
+.navbox-body { padding: var(--sp-3) var(--sp-4); color: var(--fg-2); line-height: 1.6; }
+.navbox-body a { color: var(--link); text-decoration: none; }
+.navbox-body a:hover { text-decoration: underline; }
+.navbox-collapsed .navbox-body { display: none; }
 
 .see-also { border-top: 1px solid var(--rule); padding-top: var(--sp-6); margin-top: var(--sp-8); }
 .see-also__heading { font-family: var(--font-display); font-size: 20px; font-weight: 600; color: var(--fg-1); margin: 0 0 var(--sp-4); font-optical-sizing: auto; }
