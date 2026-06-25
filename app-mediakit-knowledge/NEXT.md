@@ -1,9 +1,35 @@
 # NEXT.md — app-mediakit-knowledge
 
-> Last updated: 2026-06-19 (Sprint T6 committed; Defect 6 + Defect 2 closed; Stage 6 (8th) pending)
-> **SOURCE OF TRUTH:** `.agent/briefs/BRIEF-knowledge-platform-master.md` — read it first.
-> It supersedes the 2030 brief and consolidates the 2026-06-01 research (mobile-first,
-> content federation via mounts + blueprints, premium UX, linking model + zero dead links).
+> Last updated: 2026-06-25 (Wikipedia-effect session — 6 commits; Stage 6 pending)
+> **SOURCE OF TRUTH:** `.agent/briefs/BRIEF-phase2-redesign.md` — read this first.
+> 14 commits queued for Stage 6. Incremental build in progress for tab navigation CSS.
+
+## Phase 4 Wikipedia-effect — COMPLETE (2026-06-25 session)
+
+6 commits on cluster/project-knowledge branch of sub-clone:
+- `54da925d` — logo currentColor + footer softened (jwoodfine)
+- `5c7b97b6` — h2 border-bottom + drop cap on first paragraph (pwoodfine)
+- `4a117bbc` — home right column info boxes + portal chips grid + TOC grid-area (pwoodfine)
+- `2392ed69` — cat-card portal boxes navy top border (jwoodfine)
+- `01def04f` — prose table outer border + cleaner separators (pwoodfine)
+- `ba0c63ae` — Wikipedia-style article tab navigation (jwoodfine)
+
+**Deploy status:** binary at 00:08 (cat-card + table). Incremental build in progress (tab CSS).
+After build: deploy → regression → session close.
+
+**Stage 6 pending:** 14 commits total (Phase 3 + Phase 4). Route via self-service-promote.sh.
+
+**Immediate next steps after build:**
+1. Deploy + restart services + run 27/27 regression
+2. Session close: BRIEF + NEXT + session-context + outbox
+
+**Carry-forward open items:**
+- [ ] Stage 6 self-service (`~/Foundry/bin/self-service-promote.sh`) — 14 commits
+- [ ] foundry-prod deploy: `command-20260624-deploy-request-app-mediakit-knowledge-to`
+- [ ] Privacy pages: `project-knowledge-20260623-privacy-page-draft`
+- [ ] h2 border-bottom is `border-bottom: 1px solid var(--border); padding-bottom: 0.35em` — verify the ::after accent overlaps correctly at all font sizes
+
+---
 
 ## Sprint I — shipped 2026-06-19 (commit fa22b382, Stage 6 pending)
 
