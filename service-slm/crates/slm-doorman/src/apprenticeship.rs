@@ -1091,6 +1091,9 @@ OK.
             },
             bearer,
         );
+        // health_up initialises false (pessimistic); simulate the first
+        // successful /health probe so dispatch will route to Tier B.
+        yoyo.health_up.store(true, std::sync::atomic::Ordering::Relaxed);
         let doorman = Doorman::new(
             DoormanConfig {
                 local: Some(local),

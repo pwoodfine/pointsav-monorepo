@@ -735,16 +735,46 @@ fn build_doorman() -> anyhow::Result<Doorman> {
         info!("SLM_TIER_A_FIRST=true: Tier A is the confident primary; Tier B used only when explicitly hinted and circuit closed");
     }
 
+    // ── Admission control semaphores ─────────────────────────────────────────
+    // SLM_LOCAL_CONCURRENT (default 2): total OLMo slots across all callers.
+    // SLM_BACKGROUND_CONCURRENT (default 1): cap for extraction + drain only;
+    //   ensures at least one slot is always free for interactive callers.
+    // SLM_TIER_B_CONCURRENT (default 4): GPU handles more concurrency than CPU.
+    let local_concurrent = std::env::var("SLM_LOCAL_CONCURRENT")
+        .ok()
+        .and_then(|s| s.parse::<usize>().ok())
+        .unwrap_or(2);
+    let background_concurrent = std::env::var("SLM_BACKGROUND_CONCURRENT")
+        .ok()
+        .and_then(|s| s.parse::<usize>().ok())
+        .unwrap_or(1);
+    let tier_b_concurrent = std::env::var("SLM_TIER_B_CONCURRENT")
+        .ok()
+        .and_then(|s| s.parse::<usize>().ok())
+        .unwrap_or(4);
+    info!(
+        local_concurrent,
+        background_concurrent,
+        tier_b_concurrent,
+        "admission control semaphores initialised"
+    );
+    let total_sem = Arc::new(tokio::sync::Semaphore::new(local_concurrent));
+    let background_sem = Arc::new(tokio::sync::Semaphore::new(background_concurrent));
+    let tier_b_sem = Arc::new(tokio::sync::Semaphore::new(tier_b_concurrent));
+
     let local = if force_broker {
         info!("SLM_FORCE_BROKER_MODE=true: Tier A disabled; all inference routes to Yo-Yo");
         None
     } else {
-        Some(LocalTierClient::new(LocalTierConfig {
-            endpoint: std::env::var("SLM_LOCAL_ENDPOINT")
-                .unwrap_or_else(|_| "http://127.0.0.1:8080".to_string()),
-            default_model: std::env::var("SLM_LOCAL_MODEL")
-                .unwrap_or_else(|_| "olmo-3-7b-instruct".to_string()),
-        }))
+        Some(
+            LocalTierClient::new(LocalTierConfig {
+                endpoint: std::env::var("SLM_LOCAL_ENDPOINT")
+                    .unwrap_or_else(|_| "http://127.0.0.1:8080".to_string()),
+                default_model: std::env::var("SLM_LOCAL_MODEL")
+                    .unwrap_or_else(|_| "olmo-3-7b-instruct".to_string()),
+            })
+            .with_semaphores(Arc::clone(&total_sem), Arc::clone(&background_sem)),
+        )
     };
 
     let mut yoyo = std::collections::HashMap::new();
@@ -755,7 +785,9 @@ fn build_doorman() -> anyhow::Result<Doorman> {
         "SLM_YOYO_MODEL",
         "SLM_YOYO_BEARER",
         "SLM_YOYO_HOURLY_USD",
-    ) {
+    )
+    .map(|c| c.with_concurrency_sem(Arc::clone(&tier_b_sem)))
+    {
         yoyo.insert("default".to_string(), client);
     }
 
@@ -765,7 +797,9 @@ fn build_doorman() -> anyhow::Result<Doorman> {
         "SLM_YOYO_TRAINER_MODEL",
         "SLM_YOYO_TRAINER_BEARER",
         "SLM_YOYO_TRAINER_HOURLY_USD",
-    ) {
+    )
+    .map(|c| c.with_concurrency_sem(Arc::clone(&tier_b_sem)))
+    {
         info!("Yo-Yo 'trainer' node configured");
         yoyo.insert("trainer".to_string(), client);
     }
@@ -775,7 +809,9 @@ fn build_doorman() -> anyhow::Result<Doorman> {
         "SLM_YOYO_GRAPH_MODEL",
         "SLM_YOYO_GRAPH_BEARER",
         "SLM_YOYO_GRAPH_HOURLY_USD",
-    ) {
+    )
+    .map(|c| c.with_concurrency_sem(Arc::clone(&tier_b_sem)))
+    {
         info!("Yo-Yo 'graph' node configured");
         yoyo.insert("graph".to_string(), client);
     }

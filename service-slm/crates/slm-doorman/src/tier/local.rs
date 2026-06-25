@@ -8,10 +8,12 @@
 //! OpenAI-compatible wire format, so the client does not branch on which
 //! is running.
 
+use std::sync::Arc;
 use std::time::Instant;
 
 use serde::{Deserialize, Serialize};
 use slm_core::{ChatMessage, ComputeRequest, ComputeResponse, GrammarConstraint, Tier};
+use tokio::sync::{OwnedSemaphorePermit, Semaphore};
 use tracing::debug;
 
 use crate::error::{DoormanError, Result};
@@ -29,6 +31,16 @@ pub struct LocalTierConfig {
 pub struct LocalTierClient {
     config: LocalTierConfig,
     http: reqwest::Client,
+    /// Total concurrent OLMo slots (SLM_LOCAL_CONCURRENT, default 2).
+    /// Held by all callers — interactive and background alike. When full,
+    /// the caller receives LocalSaturated immediately instead of queuing
+    /// inside llama-server for up to 1 800 s.
+    total_sem: Option<Arc<Semaphore>>,
+    /// Background-only semaphore (SLM_BACKGROUND_CONCURRENT, default 1).
+    /// Acquired BEFORE total_sem by extraction fallback and drain dispatch.
+    /// Ensures at least one total slot remains free for interactive callers
+    /// even when background work is in flight.
+    background_sem: Option<Arc<Semaphore>>,
 }
 
 impl LocalTierClient {
@@ -49,14 +61,78 @@ impl LocalTierClient {
                 .connect_timeout(std::time::Duration::from_secs(10))
                 .build()
                 .expect("failed to build Tier A HTTP client"),
+            total_sem: None,
+            background_sem: None,
         }
+    }
+
+    /// Attach priority admission-control semaphores (production only).
+    /// Called once after `new()` in the server startup path; tests call
+    /// `new()` alone and pass `None` implicitly (no cap applied).
+    pub fn with_semaphores(mut self, total: Arc<Semaphore>, background: Arc<Semaphore>) -> Self {
+        self.total_sem = Some(total);
+        self.background_sem = Some(background);
+        self
     }
 
     pub fn endpoint(&self) -> &str {
         &self.config.endpoint
     }
 
+    /// Interactive path: acquires one slot from `total_sem` only.
+    /// Returns LocalSaturated immediately when the semaphore is full.
+    fn try_acquire_interactive(&self) -> Result<Option<OwnedSemaphorePermit>> {
+        match &self.total_sem {
+            None => Ok(None),
+            Some(sem) => sem
+                .clone()
+                .try_acquire_owned()
+                .map(Some)
+                .map_err(|_| DoormanError::LocalSaturated),
+        }
+    }
+
+    /// Background path: acquires `background_sem` first (caps background
+    /// concurrency), then `total_sem` (caps total OLMo load).
+    /// If either semaphore is full, returns LocalSaturated immediately.
+    /// When `background_sem` succeeds but `total_sem` fails, the background
+    /// permit is dropped automatically before returning the error.
+    fn try_acquire_background(
+        &self,
+    ) -> Result<(Option<OwnedSemaphorePermit>, Option<OwnedSemaphorePermit>)> {
+        let bg = match &self.background_sem {
+            None => None,
+            Some(sem) => match sem.clone().try_acquire_owned() {
+                Ok(p) => Some(p),
+                Err(_) => return Err(DoormanError::LocalSaturated),
+            },
+        };
+        let total = match &self.total_sem {
+            None => None,
+            Some(sem) => match sem.clone().try_acquire_owned() {
+                Ok(p) => Some(p),
+                Err(_) => return Err(DoormanError::LocalSaturated),
+            },
+        };
+        Ok((bg, total))
+    }
+
+    /// Interactive caller (e.g. `/v1/chat/completions`).
+    /// Acquires one total slot; returns LocalSaturated when saturated.
     pub async fn complete(&self, req: &ComputeRequest) -> Result<ComputeResponse> {
+        let _permit = self.try_acquire_interactive()?;
+        self.complete_inner(req).await
+    }
+
+    /// Background caller (extraction fallback, drain dispatch).
+    /// Acquires background_sem then total_sem; returns LocalSaturated when
+    /// either is full so the caller can back off without queuing in llama-server.
+    pub async fn complete_background(&self, req: &ComputeRequest) -> Result<ComputeResponse> {
+        let (_bg, _total) = self.try_acquire_background()?;
+        self.complete_inner(req).await
+    }
+
+    async fn complete_inner(&self, req: &ComputeRequest) -> Result<ComputeResponse> {
         let model = req
             .model
             .clone()
