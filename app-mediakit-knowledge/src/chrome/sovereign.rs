@@ -264,7 +264,9 @@ pub fn sovereign_page(
                 link rel="preload" as="font" type="font/woff2" crossorigin
                      href="/static/fonts/IBMPlexSans-Variable-latin.woff2";
                 link rel="preload" as="font" type="font/woff2" crossorigin
-                     href="/static/fonts/PlayfairDisplay-Variable-latin.woff2";
+                     href="/static/fonts/InstrumentSerif-Regular-latin.woff2";
+                link rel="preload" as="font" type="font/woff2" crossorigin
+                     href="/static/fonts/Source-Serif-4-400-normal-latin.woff2";
                 link rel="stylesheet" href="/static/tokens.css";
                 link rel="stylesheet" href="/static/style.css";
                 @if brand == "woodfine" {
