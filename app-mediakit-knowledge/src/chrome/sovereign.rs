@@ -110,6 +110,7 @@ pub fn sovereign_nav(tenant: Tenant, lang: &str, site_title: &str, lang_href: &s
                           autocomplete="off"
                           aria-label=(search_placeholder)
                           spellcheck="false";
+                    kbd class="s-search__kbd" aria-hidden="true" { "⌘K" }
                     div class="ac-dropdown" id="search-autocomplete-dropdown" {}
                 }
                 button type="submit" class="topnav-search-btn s-search__btn" aria-label="Search" {

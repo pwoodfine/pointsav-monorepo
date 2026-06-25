@@ -224,7 +224,7 @@ fn home_chrome(
     stats: &HomeStats,
     guides: &[TopicSummary],
     featured: Option<FeaturedArticle>,
-    _dyk: Option<LeapfrogFacts>,
+    dyk: Option<LeapfrogFacts>,
     _ref_inv: Option<ReferenceInvariants>,
     cat_descriptions: &BTreeMap<String, String>,
     site_title: &str,
@@ -376,6 +376,25 @@ fn home_chrome(
                                 div.wiki-home-lede {
                                     div.wiki-home-lede__head { "About this wiki" }
                                     div.wiki-home-lede__body { (PreEscaped(home_html)) }
+                                }
+                            }
+                            // Did You Know
+                            @if let Some(ref dyk) = dyk {
+                                @if !dyk.facts.is_empty() {
+                                    div.wiki-home-dyk {
+                                        div.wiki-home-dyk__head { "Did you know…" }
+                                        ul.wiki-home-dyk__list {
+                                            @for fact in dyk.facts.iter().take(4) {
+                                                li.wiki-home-dyk__item {
+                                                    @if let Some(ref slug) = fact.link_slug {
+                                                        a href={ "/wiki/" (slug) } { (fact.text) }
+                                                    } @else {
+                                                        (fact.text)
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
                             // Recently updated
