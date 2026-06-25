@@ -1193,7 +1193,8 @@ span.toc-numb { color: var(--fg-3); font-size: var(--text-xs); margin-right: 0.4
   transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
 }
 .wiki-appearance-opt:hover { background: var(--bg-hover); color: var(--fg-1); }
-.wiki-appearance-opt.is-active {
+.wiki-appearance-opt.is-active,
+.wiki-appearance-opt.appearance-active {
   background: color-mix(in srgb, var(--navy) 10%, transparent);
   border-color: var(--navy-soft);
   color: var(--navy);
@@ -2734,7 +2735,8 @@ html[data-theme="dark"] .featured__row,
 html[data-theme="dark"] .featured__cta { color: var(--link); }
 html[data-theme="dark"] .toc-entry.active .toc-entry__link { color: var(--link); border-left-color: var(--link); background: color-mix(in oklab, var(--link) 10%, transparent); }
 html[data-theme="dark"] li.toc-section-active > a { color: var(--link); }
-html[data-theme="dark"] .wiki-appearance-opt.is-active { color: var(--link); background: color-mix(in srgb, var(--link) 12%, transparent); border-color: var(--navy-soft); }
+html[data-theme="dark"] .wiki-appearance-opt.is-active,
+html[data-theme="dark"] .wiki-appearance-opt.appearance-active { color: var(--link); background: color-mix(in srgb, var(--link) 12%, transparent); border-color: var(--navy-soft); }
 html[data-theme="dark"] .starthere-chip { border-color: rgba(255,255,255,0.18); color: var(--link); }
 html[data-theme="dark"] .starthere-chip:hover { background: color-mix(in srgb, var(--link) 20%, transparent); color: var(--fg-1); border-color: var(--link); }
 html[data-theme="dark"] .facet-pill { background: oklch(16% 0.01 260); }
@@ -2753,7 +2755,8 @@ html[data-theme="dark"] .recent-item:hover { background: oklch(18% 0.01 260); }
 html[data-theme="dark"] .wiki-empty-state { background: oklch(16% 0.01 260); border-color: rgba(255,255,255,0.12); }
 html[data-theme="dark"] .cm-editor { background: var(--code-bg); color: var(--code-fg); }
 html[data-theme="dark"] .mobile-bottom-bar { background: var(--bg-elevated); border-top-color: var(--border); }
-html[data-theme="dark"] .wiki-appearance-opt.is-active { color: var(--link); }
+html[data-theme="dark"] .wiki-appearance-opt.is-active,
+html[data-theme="dark"] .wiki-appearance-opt.appearance-active { color: var(--link); }
 
 /* === Section 9: Print === */
 
