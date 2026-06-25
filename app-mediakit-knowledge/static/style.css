@@ -1333,6 +1333,14 @@ span.toc-numb { color: var(--fg-3); font-size: var(--text-xs); margin-right: 0.4
   border-color: var(--border);
   font-weight: 600;
 }
+.wiki-tab--tool {
+  margin-left: auto;
+  font-size: var(--text-xs);
+  color: var(--fg-3);
+  padding-left: var(--sp-3);
+  padding-right: var(--sp-3);
+}
+.wiki-tab--tool:hover { color: var(--link); background: transparent; }
 
 .doc-header {
   padding-block: var(--sp-6) var(--sp-8);
@@ -2664,7 +2672,8 @@ a.wikilink.redlink:hover { color: oklch(42% 0.2 25); }
 ol.search-results { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: var(--sp-2); }
 .search-hit { padding: var(--sp-4); border: 1px solid var(--border); border-left: 3px solid var(--navy); border-radius: var(--radius-sm); background: var(--bg); transition: border-left-color var(--dur-fast) ease, background var(--dur-fast) ease; }
 .search-hit:hover { border-left-color: var(--s-accent); background: var(--bg-subtle); }
-.search-hit-title { display: block; font-family: var(--font-display); font-size: var(--text-lg); font-weight: 600; color: var(--navy); margin-bottom: 2px; text-decoration: none; font-optical-sizing: auto; }
+.search-hit-header { display: flex; align-items: baseline; gap: var(--sp-2); flex-wrap: wrap; margin-bottom: 2px; }
+.search-hit-title { display: inline; font-family: var(--font-display); font-size: var(--text-lg); font-weight: 600; color: var(--navy); text-decoration: none; font-optical-sizing: auto; }
 .search-hit-title:hover { text-decoration: underline; }
 .search-hit-slug { display: block; font-family: var(--font-mono); font-size: var(--text-xs); color: var(--fg-4); margin-bottom: var(--sp-1); }
 .search-hit-snippet { margin: 0; font-family: var(--font-body); font-size: var(--text-sm); color: var(--fg-2); line-height: var(--leading-base); }
@@ -3143,3 +3152,55 @@ html[data-theme="dark"] .diff-two-col tr.diff-row-ins .diff-cell-new { backgroun
 html[data-theme="dark"] .ac-title { color: var(--fg-1); }
 html[data-theme="dark"] .ac-lede { color: var(--fg-3); }
 html[data-theme="dark"] .ac-type { color: var(--fg-4); }
+
+/* ── External link icons ─────────────────────────────────── */
+.prose a[href^="http"]::after,
+.prose a[href^="https"]::after {
+  content: "\00a0↗";
+  font-size: 0.72em;
+  vertical-align: super;
+  color: var(--fg-3);
+  text-decoration: none;
+}
+
+/* ── What links here — backlinks list ───────────────────── */
+ul.wiki-backlinks-list {
+  list-style: none;
+  padding: 0;
+  margin: var(--sp-4) 0 var(--sp-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+ul.wiki-backlinks-list li a {
+  color: var(--link);
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  text-decoration: none;
+}
+ul.wiki-backlinks-list li a:hover { text-decoration: underline; }
+.doc-header__wlh-link {
+  display: block;
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  color: var(--fg-3);
+  text-decoration: none;
+  margin-top: var(--sp-1);
+}
+.doc-header__wlh-link:hover { color: var(--link); text-decoration: underline; }
+
+/* ── Search result content-type badge ───────────────────── */
+.search-hit-type {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 1px 5px;
+  border-radius: 2px;
+  color: var(--fg-4);
+  background: var(--bg-hover);
+  vertical-align: middle;
+  margin-left: var(--sp-1);
+}
+html[data-theme="dark"] .search-hit-type { background: oklch(20% 0.01 260); color: var(--fg-3); }

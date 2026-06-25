@@ -997,6 +997,9 @@ fn wiki_chrome(
                                 a.wiki-tab href={ "/history/" (slug) } {
                                     (match locale { Locale::En => "History", Locale::Es => "Historial" })
                                 }
+                                a.wiki-tab.wiki-tab--tool href={ "/special/whatlinkshere/" (slug) } {
+                                    (match locale { Locale::En => "What links here", Locale::Es => "Lo que enlaza aquí" })
+                                }
                             }
                             @if let Some(ref cat) = fm.category {
                                 @if cat != "root" {
