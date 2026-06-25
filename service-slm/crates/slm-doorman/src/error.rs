@@ -253,6 +253,15 @@ pub enum DoormanError {
     #[error("extraction deadline (120 s) exceeded; semaphore permit released")]
     RequestTimeout,
 
+    // ── Tier A admission control ─────────────────────────────────────────────
+    /// Tier A (local OLMo) has no available inference slots.
+    /// `SLM_LOCAL_CONCURRENT` slots are occupied; the request is rejected
+    /// immediately without queuing inside llama-server. Interactive callers
+    /// receive HTTP 429 Retry-After: 2. Background callers (extraction
+    /// fallback, drain dispatch) receive the oose-saturated signal.
+    #[error("Tier A local OLMo has no available inference slots; retry after a slot frees")]
+    LocalSaturated,
+
     // ── Graph proxy (conventions/datagraph-access-discipline.md) ────────
     /// `POST /v1/graph/query` or `POST /v1/graph/mutate` — caller omitted the
     /// mandatory `X-Foundry-Module-ID` header. 400 BAD_REQUEST.

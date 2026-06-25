@@ -556,4 +556,7 @@ pub enum DeferReason {
     Timeout,
     /// Both Tier B and Tier A reported unavailable; no tier could serve the request.
     AllTiersUnavailable,
+    /// Tier A (local OLMo) has all concurrent inference slots occupied.
+    /// The caller should back off and retry; exponential backoff recommended.
+    OoseSaturated,
 }

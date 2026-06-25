@@ -31,6 +31,8 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
+use tokio::sync::OwnedSemaphorePermit;
+
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use slm_core::{ChatMessage, ComputeRequest, ComputeResponse, GrammarConstraint, Tier};
@@ -234,11 +236,16 @@ pub struct YoYoTierClient {
     pub circuit: Arc<CircuitBreaker>,
     /// GCP zone for this node (from `SLM_YOYO_GCP_ZONE`). Surfaced in /readyz.
     pub zone: Option<String>,
+    /// Concurrency cap: at most `SLM_TIER_B_CONCURRENT` (default 4) requests
+    /// in flight simultaneously. `try_acquire_owned()` fast-fails when full,
+    /// returning TierUnavailable so the router falls back to Tier A rather
+    /// than queuing indefinitely inside the remote Ollama process.
+    concurrency_sem: Option<Arc<tokio::sync::Semaphore>>,
 }
 
 impl YoYoTierClient {
     pub fn new(config: YoYoTierConfig, bearer: Arc<dyn BearerTokenProvider>) -> Self {
-        let health_up = Arc::new(AtomicBool::new(true));
+        let health_up = Arc::new(AtomicBool::new(false));
         let health_down_since_secs = Arc::new(AtomicU64::new(0));
         let circuit = Arc::new(CircuitBreaker::new());
 
@@ -272,7 +279,16 @@ impl YoYoTierClient {
             health_down_since_secs,
             circuit,
             zone,
+            concurrency_sem: None,
         }
+    }
+
+    /// Attach a concurrency semaphore (production only).
+    /// When full, `complete()` returns `TierUnavailable` immediately rather
+    /// than queuing inside the remote Ollama process indefinitely.
+    pub fn with_concurrency_sem(mut self, sem: Arc<tokio::sync::Semaphore>) -> Self {
+        self.concurrency_sem = Some(sem);
+        self
     }
 
     /// Returns seconds since the health probe last transitioned to down,
@@ -326,6 +342,18 @@ impl YoYoTierClient {
             tracing::Span::current().record("circuit_open", true);
             return Err(DoormanError::TierBCircuitOpen);
         }
+
+        // Concurrency cap: fast-fail when all Tier B slots are occupied.
+        // Held for the lifetime of this call; released on return.
+        let _concurrency_permit: Option<OwnedSemaphorePermit> =
+            if let Some(ref sem) = self.concurrency_sem {
+                match sem.clone().try_acquire_owned() {
+                    Ok(p) => Some(p),
+                    Err(_) => return Err(DoormanError::TierUnavailable(Tier::Yoyo)),
+                }
+            } else {
+                None
+            };
 
         let started = Instant::now();
         let span = tracing::Span::current();
@@ -1271,9 +1299,12 @@ mod tests {
         );
     }
 
-    /// health_up starts true; can be manually flipped and back.
+    /// health_up starts false (pessimistic init — closes the 30 s startup window
+    /// where drain dispatch could fire before the first health probe). The first
+    /// successful /health probe sets it true. The atomic can also be flipped
+    /// manually (used in tests and the health-probe task).
     #[test]
-    fn health_up_atomic_default_true() {
+    fn health_up_atomic_default_false() {
         let server_uri = "http://127.0.0.1:1".to_string(); // unreachable; no probe spawned in sync test
         let client = YoYoTierClient::new(
             YoYoTierConfig {
@@ -1282,7 +1313,9 @@ mod tests {
             },
             Arc::new(StaticBearer::new("tok")),
         );
-        assert!(client.health_up.load(Ordering::Relaxed));
+        assert!(!client.health_up.load(Ordering::Relaxed), "pessimistic init: starts false");
+        client.health_up.store(true, Ordering::Relaxed);
+        assert!(client.health_up.load(Ordering::Relaxed), "can be set true after a probe succeeds");
         client.health_up.store(false, Ordering::Relaxed);
         assert!(!client.health_up.load(Ordering::Relaxed));
     }

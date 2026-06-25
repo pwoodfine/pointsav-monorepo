@@ -684,6 +684,9 @@ async fn extract(State(state): State<Arc<AppState>>, raw: Bytes) -> impl IntoRes
                 // Tier B offline — fall back to Tier A (OLMo 7B, no grammar).
                 // Grammar constraint is unreliable on CPU at 7B scale; pre-fill
                 // anchors JSON array format instead.
+                // Uses route_local_background() so the background_sem cap applies:
+                // at most SLM_BACKGROUND_CONCURRENT extraction fallbacks in flight,
+                // leaving at least one OLMo slot free for interactive callers.
                 let tier_a_req = ComputeRequest {
                     request_id: RequestId::new(),
                     module_id: module_id.clone(),
@@ -719,7 +722,7 @@ async fn extract(State(state): State<Arc<AppState>>, raw: Bytes) -> impl IntoRes
                 };
                 state
                     .doorman
-                    .route(&tier_a_req)
+                    .route_local_background(&tier_a_req)
                     .await
                     .map(|r| (r, "tier_a_fallback"))
             } else {
@@ -792,6 +795,14 @@ async fn extract(State(state): State<Arc<AppState>>, raw: Bytes) -> impl IntoRes
             true,
             Some("all-tiers-unavailable".to_string()),
         ),
+        Err(DoormanError::LocalSaturated) => (
+            vec![],
+            "deferred".to_string(),
+            "none".to_string(),
+            false,
+            true,
+            Some("oose-saturated".to_string()),
+        ),
         Err(DoormanError::RequestTimeout) => (
             vec![],
             "deferred".to_string(),
@@ -839,6 +850,7 @@ async fn extract(State(state): State<Arc<AppState>>, raw: Bytes) -> impl IntoRes
         "yoyo-label-unconfigured" => DeferReason::YoyoLabelUnconfigured,
         "yoyo-transient" => DeferReason::YoyoTransient,
         "all-tiers-unavailable" => DeferReason::AllTiersUnavailable,
+        "oose-saturated" => DeferReason::OoseSaturated,
         "tier-a-failed" => DeferReason::TierAFailed,
         "parse-error" => DeferReason::ParseError,
         "timeout" => DeferReason::Timeout,
@@ -1080,6 +1092,7 @@ async fn batch_extract(State(state): State<Arc<AppState>>, raw: Bytes) -> impl I
             "yoyo-label-unconfigured" => DeferReason::YoyoLabelUnconfigured,
             "yoyo-transient" => DeferReason::YoyoTransient,
             "all-tiers-unavailable" => DeferReason::AllTiersUnavailable,
+            "oose-saturated" => DeferReason::OoseSaturated,
             "tier-a-failed" => DeferReason::TierAFailed,
             "parse-error" => DeferReason::ParseError,
             "timeout" => DeferReason::Timeout,
@@ -2214,6 +2227,10 @@ impl From<DoormanError> for ApiError {
             // Extract handler 120 s deadline. Caught before this conversion
             // in /v1/extract, but must be covered for exhaustiveness.
             DoormanError::RequestTimeout => StatusCode::SERVICE_UNAVAILABLE,
+            // Tier A admission control: all OLMo slots occupied. Fast-failed
+            // before any queuing in llama-server. 429 TOO_MANY_REQUESTS with
+            // Retry-After: 2 — caller should back off briefly and retry.
+            DoormanError::LocalSaturated => StatusCode::TOO_MANY_REQUESTS,
             // Flow gate closed (operator kill switch). 503 with Retry-After;
             // the operator deliberately paused this tier. Caller should retry
             // after the gate re-opens.

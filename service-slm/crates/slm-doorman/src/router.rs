@@ -623,6 +623,17 @@ impl Doorman {
             None => Err(DoormanError::TierUnavailable(Tier::Local)),
         }
     }
+
+    /// Route a background request (extraction fallback, drain dispatch) directly
+    /// to Tier A using the background slot. Returns LocalSaturated immediately when
+    /// either background_sem or total_sem is full — no queuing inside llama-server.
+    /// Skips graph-context injection (the extraction handler pre-builds its request).
+    pub async fn route_local_background(&self, req: &ComputeRequest) -> Result<ComputeResponse> {
+        match &self.local {
+            Some(local) => local.complete_background(req).await,
+            None => Err(DoormanError::TierUnavailable(Tier::Local)),
+        }
+    }
 }
 
 fn is_transient_tier_b_failure(e: &DoormanError) -> bool {
@@ -733,6 +744,10 @@ fn classify_error(e: &DoormanError) -> CompletionStatus {
         // caller should retry or accept the deferred response. UpstreamError
         // because the extraction timed out due to OLMo saturation.
         DoormanError::RequestTimeout => CompletionStatus::UpstreamError,
+        // Tier A admission control: all slots occupied. The request was
+        // fast-failed before queuing in llama-server. PolicyDenied — the
+        // Doorman is enforcing a server-side concurrency cap.
+        DoormanError::LocalSaturated => CompletionStatus::PolicyDenied,
     }
 }
 

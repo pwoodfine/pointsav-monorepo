@@ -785,6 +785,9 @@ fn doorman_error_to_status(e: &DoormanError) -> StatusCode {
         // tuple was rejected by the corpus gate (invalid diff, placeholder,
         // length-ratio violation). Caller-side content error.
         DoormanError::CorpusGateRejected { .. } => StatusCode::UNPROCESSABLE_ENTITY,
+        // LocalSaturated → 429 TOO_MANY_REQUESTS: Tier A OLMo slots full;
+        // caller should back off (Retry-After: 2) and retry.
+        DoormanError::LocalSaturated => StatusCode::TOO_MANY_REQUESTS,
     }
 }
 
@@ -1205,6 +1208,8 @@ async fn valid_lark_grammar_passes_through_to_tier_b() {
         },
         Arc::new(StaticBearer::new("test-token")),
     );
+    // health_up starts false (pessimistic init); simulate a passed health probe.
+    yoyo.health_up.store(true, std::sync::atomic::Ordering::Relaxed);
     let doorman = Doorman::new(
         DoormanConfig {
             local: None,
