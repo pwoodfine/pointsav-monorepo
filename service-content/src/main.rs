@@ -861,7 +861,7 @@ fn main() -> NotifyResult<()> {
                                 let base_ms: u64 = (5_000u64 << exponent).min(120_000);
                                 let char_sum: u32 = filename.bytes().map(|b| b as u32).sum();
                                 let jitter_num = char_sum % 100; // 0..99
-                                                                 // jitter_factor: 0.75 to 1.25
+                                // jitter_factor: 0.75 to 1.25
                                 let jittered_ms = base_ms * (150 + jitter_num as u64 / 2) / 200;
                                 let delay_ms = jittered_ms.clamp(5_000, 120_000);
                                 let retry_not_before =
