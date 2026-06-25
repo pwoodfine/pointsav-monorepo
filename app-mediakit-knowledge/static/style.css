@@ -1666,6 +1666,40 @@ aside.infobox {
   pointer-events: none;
 }
 
+/* Sticky article compact header (Phase 11) */
+#wiki-sticky-header {
+  position: fixed;
+  top: calc(var(--header-h) + var(--tabs-h));
+  left: 0;
+  right: 0;
+  z-index: 99;
+  height: 40px;
+  background: var(--bg-elevated);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 var(--sp-6);
+  transform: translateY(-100%);
+  transition: transform 0.18s ease;
+  pointer-events: none;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+#wiki-sticky-header[aria-hidden="false"],
+#wiki-sticky-header.sticky-visible {
+  transform: translateY(0);
+  pointer-events: auto;
+}
+.wiki-sticky-title {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--fg-1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 65ch;
+}
+
 /* Claim-rail — citation freshness sidebar */
 aside.claim-rail {
   display: none;
