@@ -192,11 +192,17 @@
   --home-recent-date-column-width: 6rem;
   --home-recent-item-padding-y: 0.5rem;
 
+  /* Semantic — text (WCAG AA: darken tertiary from oklch(53%) to oklch(46%) — min 4.5:1 on white) */
+  --text-tertiary: oklch(46% 0.0202 264.39);
+
   /* Sovereign Editorial chrome */
   --topnav-bg: #164679;
   --topnav-fg: #ffffff;
   --footer-bg: #0e1117;
   --footer-fg: rgba(255, 255, 255, 0.65);
   --footer-border: rgba(255, 255, 255, 0.12);
+  --s-accent: #C7A961;   /* PointSav gold — per-tenant accent; override in tokens-woodfine.css */
+  --s-subnav-bg: rgba(255, 255, 255, 0.06);
+  --s-subnav-height: 48px;
 
 }

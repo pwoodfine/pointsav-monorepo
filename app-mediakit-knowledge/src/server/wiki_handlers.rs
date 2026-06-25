@@ -786,6 +786,7 @@ fn wiki_chrome(
                 div.reading-progress-bar aria-hidden="true" {}
                 a class="skip-to-content" href="#mw-content-text" { "Skip to content" }
                 (sovereign_nav(tenant, locale.lang_attr(), site_title, &lang_href))
+                (sovereign_secondary_nav(tenant))
                 // Mobile-only toggle buttons placed outside topnav so the header
                 // height is consistent across all page types (P1 fix).
                 div.mobile-topnav-toggles {

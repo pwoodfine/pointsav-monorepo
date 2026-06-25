@@ -50,7 +50,8 @@ use tokio::fs;
 
 use crate::assets::StaticAsset;
 use crate::chrome::sovereign::{
-    sovereign_footer, sovereign_mobile_nav_drawer, sovereign_nav, sovereign_page, Tenant,
+    sovereign_footer, sovereign_mobile_nav_drawer, sovereign_nav, sovereign_page,
+    sovereign_secondary_nav, Tenant,
 };
 use crate::error::WikiError;
 use crate::jsonld::jsonld_for_topic;
