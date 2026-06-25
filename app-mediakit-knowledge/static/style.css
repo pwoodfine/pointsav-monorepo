@@ -1328,7 +1328,6 @@ span.toc-numb { color: var(--fg-3); font-size: var(--text-xs); margin-right: 0.4
 }
 
 .doc-header {
-  border-top: 4px solid var(--ct-color);
   padding-block: var(--sp-6) var(--sp-8);
   position: relative;
 }
