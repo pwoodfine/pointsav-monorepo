@@ -184,8 +184,12 @@ async fn wiki_page(
     Query(q): Query<WikiPageQuery>,
     CurrentUser(maybe_user): CurrentUser,
     headers: HeaderMap,
-) -> Result<Response, WikiError> {
-    wiki_page_inner(state, slug, Locale::En, q, maybe_user, headers).await
+) -> Response {
+    match wiki_page_inner(Arc::clone(&state), slug.clone(), Locale::En, q, maybe_user, headers).await {
+        Ok(resp) => resp,
+        Err(WikiError::NotFound(s)) => not_found_page(&state, &s, Locale::En),
+        Err(e) => e.into_response(),
+    }
 }
 
 async fn wiki_page_es(
@@ -194,8 +198,55 @@ async fn wiki_page_es(
     Query(q): Query<WikiPageQuery>,
     CurrentUser(maybe_user): CurrentUser,
     headers: HeaderMap,
-) -> Result<Response, WikiError> {
-    wiki_page_inner(state, slug, Locale::Es, q, maybe_user, headers).await
+) -> Response {
+    match wiki_page_inner(Arc::clone(&state), slug.clone(), Locale::Es, q, maybe_user, headers).await {
+        Ok(resp) => resp,
+        Err(WikiError::NotFound(s)) => not_found_page(&state, &s, Locale::Es),
+        Err(e) => e.into_response(),
+    }
+}
+
+fn not_found_page(state: &AppState, slug: &str, locale: Locale) -> Response {
+    use axum::http::StatusCode;
+    use maud::html;
+    let tenant = Tenant::from_str(&state.brand_instance);
+    let site_title = &state.site_title;
+    let lang = locale.lang_attr();
+    let search_href = if locale == Locale::Es { "/es/search" } else { "/search" };
+    let home_href = if locale == Locale::Es { "/es/" } else { "/" };
+    let body = html! {
+        div class="shell" {
+            div class="wiki-error-page" {
+                h1 class="wiki-error-title" { "Page not found" }
+                p class="wiki-error-message" {
+                    "The article "
+                    strong { (slug) }
+                    " does not exist in this wiki."
+                }
+                p class="wiki-error-detail" {
+                    "You can "
+                    a href=(home_href) { "return to the home page" }
+                    " or "
+                    a href=(search_href) { "search" }
+                    " for what you are looking for."
+                }
+            }
+        }
+    };
+    let page = sovereign_page(
+        &format!("Page not found \u{2014} {site_title}"),
+        tenant,
+        lang,
+        site_title,
+        if locale == Locale::Es { "/wiki/" } else { "/es/wiki/" },
+        body,
+    );
+    (
+        StatusCode::NOT_FOUND,
+        [(axum::http::header::CONTENT_TYPE, "text/html; charset=utf-8")],
+        page.into_string(),
+    )
+        .into_response()
 }
 
 async fn wiki_page_inner(
