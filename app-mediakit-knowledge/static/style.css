@@ -3126,6 +3126,8 @@ html[data-theme="dark"] .diff-two-col tr.diff-row-ins .diff-cell-new { backgroun
 
   figure { page-break-inside: avoid; break-inside: avoid; }
   img { max-width: 100%; filter: none !important; }
+  .wiki-special-table, .history-table, .diff-two-col { font-size: 9pt; }
+  .history-pagination, .diff-stats { display: none; }
 
   aside.infobox { float: none; width: 100%; margin: 0 0 12pt; border: 1pt solid #ccc; }
   ol.guide-steps > li::before { background: #000; color: #fff; }
