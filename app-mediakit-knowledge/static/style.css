@@ -765,6 +765,39 @@ nav.mobile-nav-drawer:not([aria-hidden="true"]) {
   visibility: visible;
   transition: transform 0.22s var(--ease-out), visibility 0s linear 0s;
 }
+/* Mobile TOC drawer — slides in from the right on article pages */
+div.mobile-toc-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: min(300px, 88vw);
+  height: 100dvh;
+  background: var(--bg-elevated);
+  border-left: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
+  z-index: 70;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  transform: translateX(100%);
+  transition: transform 0.22s var(--ease-out), visibility 0s linear 0.22s;
+  will-change: transform;
+  visibility: hidden;
+}
+div.mobile-toc-drawer:not([aria-hidden="true"]) {
+  transform: translateX(0);
+  visibility: visible;
+  transition: transform 0.22s var(--ease-out), visibility 0s linear 0s;
+}
+.mobile-toc-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--fg-3);
+  padding: var(--sp-1) var(--sp-2);
+}
+.mobile-toc-close:hover { color: var(--fg-1); }
 
 .mobile-nav-header {
   display: flex;
