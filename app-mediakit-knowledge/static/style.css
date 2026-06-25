@@ -2162,6 +2162,70 @@ a.wikilink.redlink:hover { color: oklch(42% 0.2 25); }
 .leapfrog-strip__fact::after { content: " ·"; margin-left: var(--sp-4); }
 .leapfrog-strip__fact:last-child::after { content: ""; }
 
+/* Cmd+K command palette */
+.cmdk-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 96px;
+  backdrop-filter: blur(4px);
+}
+.cmdk-overlay[aria-hidden="true"] { display: none; }
+.cmdk-panel {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-xl, 0 25px 50px -12px rgba(0,0,0,0.4));
+  width: min(560px, calc(100vw - var(--sp-8)));
+  max-height: calc(100dvh - 160px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.cmdk-input {
+  width: 100%;
+  padding: var(--sp-4) var(--sp-5);
+  border: none;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  color: var(--fg-1);
+  font-family: var(--font-body);
+  font-size: var(--text-lg);
+  outline: none;
+}
+.cmdk-input::placeholder { color: var(--fg-4); }
+.cmdk-results {
+  list-style: none;
+  margin: 0;
+  padding: var(--sp-2) 0;
+  overflow-y: auto;
+  max-height: 360px;
+  scrollbar-width: thin;
+}
+.cmdk-item {
+  padding: var(--sp-3) var(--sp-5);
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  color: var(--fg-2);
+  cursor: pointer;
+  border-left: 3px solid transparent;
+  transition: background var(--dur-fast) ease, color var(--dur-fast) ease;
+}
+.cmdk-item:hover { background: var(--bg-hover); color: var(--fg-1); }
+.cmdk-item.cmdk-active {
+  background: color-mix(in oklab, var(--navy) 10%, transparent);
+  border-left-color: var(--navy);
+  color: var(--fg-1);
+}
+@media (max-width: 640px) {
+  .cmdk-overlay { padding-top: 0; align-items: flex-end; }
+  .cmdk-panel { width: 100%; border-radius: var(--radius-md) var(--radius-md) 0 0; max-height: 75dvh; }
+}
+
 /* Search */
 .search-form { display: flex; gap: var(--sp-2); margin-bottom: var(--sp-8); }
 .search-form input[type="search"] { flex: 1; padding: var(--sp-2) var(--sp-3); border: 1px solid var(--border); border-radius: var(--radius-sm); font-family: var(--font-body); font-size: 16px; color: var(--fg-1); background: var(--bg); outline-offset: 2px; transition: border-color var(--dur-fast) ease; }
