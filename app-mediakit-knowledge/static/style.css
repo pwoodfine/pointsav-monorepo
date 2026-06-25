@@ -1762,12 +1762,10 @@ aside.infobox {
   position: fixed;
   top: 0;
   left: 0;
-  right: 0;
+  width: 0;
   height: 3px;
-  background: var(--ct-color);
-  transform: scaleX(0);
-  transform-origin: left center;
-  transition: transform 0.1s linear;
+  background: var(--ct-color, var(--navy));
+  transition: width 0.1s linear;
   z-index: 9999;
   pointer-events: none;
 }
