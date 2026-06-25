@@ -244,6 +244,11 @@
 /* ============================================================================
  * Section 2 — Reset and base
  * ============================================================================ */
+/* Accessibility utility — visually hidden but present for screen readers / heading outline */
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border-width: 0;
+}
 *, *::before, *::after { box-sizing: border-box; }
 * { -webkit-tap-highlight-color: transparent; }
 html {

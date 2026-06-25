@@ -321,6 +321,7 @@ fn home_chrome(
                 (sovereign_secondary_nav(tenant))
                 (sovereign_mobile_nav_drawer(tenant, site_title))
                 main class="site-main" id="mp-main" {
+                    h1 class="sr-only" { (site_title) }
 
                     // ── Editorial front page (Wikipedia-pattern two-column) ──
                     div.wiki-home-editorial #mp-topbanner {

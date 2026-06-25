@@ -196,3 +196,13 @@ html[data-theme="dark"] {
   border-color: #164679;
   color: #fff;
 }
+
+/* ── Featured hero panel — 320px overflow guard ── */
+/* The bleed margin: 0 -32px works when the parent has 32px horizontal padding.
+   At ≤480px (mobile) padding collapses to 0, so reset the bleed to stay in-bounds. */
+@media (max-width: 480px) {
+  :is([data-instance="projects"], [data-instance="corporate"]) .featured {
+    margin: 0;
+    padding: 32px 16px;
+  }
+}
