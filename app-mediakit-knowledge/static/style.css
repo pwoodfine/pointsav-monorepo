@@ -1712,6 +1712,10 @@ button.anchor-share:hover { color: var(--ct-color, var(--navy)); }
 .prose tr:nth-child(even) td { background: color-mix(in oklab, var(--bg-subtle) 40%, transparent); }
 .prose strong { font-weight: 700; color: var(--fg-1); }
 .prose em { font-style: italic; }
+.prose img { max-width: 100%; height: auto; border-radius: var(--radius-sm); display: block; }
+.prose figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); }
+.prose figure img { border: 1px solid var(--border); }
+.prose figcaption { font-family: var(--font-body); font-size: var(--text-xs); color: var(--fg-3); text-align: center; line-height: 1.4; }
 
 /* Clearfix after infobox */
 .prose::after { content: ""; display: table; clear: both; }
