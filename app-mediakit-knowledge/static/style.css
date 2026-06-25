@@ -469,7 +469,7 @@ a.docs-sidenav__link.is-active { color: var(--navy); font-weight: 600; backgroun
   grid-template-columns: 1fr;
   align-items: start;
 }
-.article__body { grid-area: article; min-width: 0; }
+.article__body { grid-area: article; min-width: 0; border-top: 4px solid var(--ct-color, var(--navy)); }
 .toc-wrap { display: none; grid-area: aside; }
 aside.toc { grid-area: aside; }
 
