@@ -1522,3 +1522,25 @@ function initCategoryFacets() {
     }
   });
 }());
+
+// Theme cycle: #s-theme-btn cycles light → dark → auto
+(function() {
+  var btn = document.getElementById('s-theme-btn');
+  if (!btn) return;
+  var CYCLE = ['light', 'dark', 'auto'];
+  function setTheme(t) {
+    if (t === 'auto') {
+      var prefer = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', prefer);
+    } else {
+      document.documentElement.setAttribute('data-theme', t);
+    }
+    try { localStorage.setItem('wiki-theme', t); } catch(e) {}
+    btn.setAttribute('aria-label', t === 'light' ? 'Switch to dark mode' : t === 'dark' ? 'Switch to auto mode' : 'Switch to light mode');
+  }
+  btn.addEventListener('click', function() {
+    var current = localStorage.getItem('wiki-theme') || 'light';
+    var next = CYCLE[(CYCLE.indexOf(current) + 1) % CYCLE.length];
+    setTheme(next);
+  });
+}());
