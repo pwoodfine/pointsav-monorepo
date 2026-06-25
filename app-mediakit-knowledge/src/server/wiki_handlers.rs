@@ -787,6 +787,11 @@ fn wiki_chrome(
                 a class="skip-to-content" href="#mw-content-text" { "Skip to content" }
                 (sovereign_nav(tenant, locale.lang_attr(), site_title, &lang_href))
                 (sovereign_secondary_nav(tenant))
+                // Sticky compact header — slides in below both navbars when
+                // the article doc-header (#mw-header) scrolls out of view.
+                div id="wiki-sticky-header" aria-hidden="true" {
+                    span class="wiki-sticky-title" { (title) }
+                }
                 // Mobile-only toggle buttons placed outside topnav so the header
                 // height is consistent across all page types (P1 fix).
                 div.mobile-topnav-toggles {
@@ -925,7 +930,8 @@ fn wiki_chrome(
                         // Clean product-docs article header: breadcrumb, title,
                         // content-type badge, lede, language switcher, last-edited.
                         // Encyclopedia article header: tabs + tagline + breadcrumb + title.
-                        header.doc-header {
+                        // id="mw-header" is observed by initStickyHeader() in wiki.js.
+                        header.doc-header #mw-header {
                             // Wikipedia-pattern Article/Talk/Edit/History tab strip.
                             nav.wiki-page-tabs aria-label="Page tabs" {
                                 a.wiki-tab aria-current="page" href={ "/wiki/" (slug) } {
