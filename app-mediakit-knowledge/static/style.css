@@ -1394,6 +1394,17 @@ span.toc-numb { color: var(--fg-3); font-size: var(--text-xs); margin-right: 0.4
   white-space: nowrap;
   border: 1px solid color-mix(in oklab, var(--ct-color) 25%, transparent);
 }
+article[data-quality="complete"] .wiki-page-tabs::after {
+  content: "✓";
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: oklch(52% 0.14 150);
+  margin-left: auto;
+  padding: 0 var(--sp-2);
+}
+@media (max-width: 360px) { article[data-quality="complete"] .wiki-page-tabs::after { display: none; } }
 .doc-header__meta {
   display: flex;
   align-items: center;

@@ -976,7 +976,9 @@ fn wiki_chrome(
 
                     // --- Article body column (two-column: prose + TOC) ---
                     main.article-wrap {
-                    article.article__body data-content-type=(fm.content_type.as_deref().unwrap_or("topic")) {
+                    article.article__body
+                        data-content-type=(fm.content_type.as_deref().unwrap_or("topic"))
+                        data-quality=(fm.quality.as_deref().unwrap_or("")) {
 
                         // Clean product-docs article header: breadcrumb, title,
                         // content-type badge, lede, language switcher, last-edited.
