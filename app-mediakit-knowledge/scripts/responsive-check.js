@@ -34,6 +34,7 @@ const INSTANCES = [
 // Pages to check per instance — cover home, article, category, misc chrome paths
 const PAGES = [
   { path: '/',                      label: 'home'     },
+  { path: '/wiki/about',            label: 'article'  },
   { path: '/special/categories',    label: 'category' },
   { path: '/special/all-pages',     label: 'all-pages'},
 ];
@@ -98,6 +99,18 @@ async function checkPage(page, url, vp, instanceId) {
     // R6: role="contentinfo" footer present (sovereign chrome)
     if (!document.querySelector('[role="contentinfo"]')) {
       f.push({ rule: 'role-contentinfo', detail: 'no [role="contentinfo"] element found' });
+    }
+
+    // R7: article pages — prose column and TOC list must be present
+    if (document.querySelector('.article__body')) {
+      if (!document.querySelector('.prose')) {
+        f.push({ rule: 'article-prose', detail: '.prose column not found in article page' });
+      }
+      // TOC only generated when article has ≥2 headings; skip check if none present
+      const hasH2 = document.querySelectorAll('.prose h2').length >= 2;
+      if (hasH2 && !document.querySelector('#toc-list, .mobile-toc-list')) {
+        f.push({ rule: 'article-toc', detail: '#toc-list or .mobile-toc-list not found in article page with ≥2 headings' });
+      }
     }
 
     return f;
