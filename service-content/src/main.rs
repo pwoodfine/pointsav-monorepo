@@ -250,6 +250,14 @@ fn main() -> NotifyResult<()> {
         .unwrap_or(10);
     let mut deferred_counts: std::collections::HashMap<String, u32> =
         std::collections::HashMap::new();
+    // Per-file backoff: (retry_not_before, current_delay_ms).
+    // Sequence: 5s → 10s → 20s → 40s → 80s → 120s with ±25% deterministic jitter.
+    let mut backoff_state: std::collections::HashMap<String, (std::time::Instant, u64)> =
+        std::collections::HashMap::new();
+    let dead_letter_dir = format!("{}/dead-letter", corpus_dir);
+    if let Err(e) = std::fs::create_dir_all(&dead_letter_dir) {
+        eprintln!("[WARN] Could not create dead-letter dir {}: {}", dead_letter_dir, e);
+    }
 
     // ── Parallel startup drain ────────────────────────────────────────────────
     // Collects unprocessed CORPUS files, then processes them with N concurrent
@@ -416,7 +424,15 @@ fn main() -> NotifyResult<()> {
                     );
                 }
                 let retry_queue: Vec<String> = std::mem::take(&mut deferred_ledgers);
+                let now = std::time::Instant::now();
                 for filename in retry_queue {
+                    // Respect per-file backoff — push back if window not elapsed.
+                    if let Some((retry_not_before, _)) = backoff_state.get(&filename) {
+                        if now < *retry_not_before {
+                            deferred_ledgers.push(filename);
+                            continue;
+                        }
+                    }
                     let path = Path::new(&corpus_dir).join(&filename);
                     match process_corpus(
                         &path,
@@ -427,6 +443,8 @@ fn main() -> NotifyResult<()> {
                         &feedback_dir,
                     ) {
                         ExtractResult::Success | ExtractResult::Failed => {
+                            backoff_state.remove(&filename);
+                            deferred_counts.remove(&filename);
                             append_processed_ledger(&processed_ledgers_path, &filename);
                             processed_ledgers.insert(filename);
                         }
@@ -439,13 +457,44 @@ fn main() -> NotifyResult<()> {
                             let count = deferred_counts.entry(filename.clone()).or_insert(0);
                             *count += 1;
                             if *count >= max_defer_retries {
-                                eprintln!(
-                                    "[WARN] {} reached max defer retries ({}); moving to dead-letter",
-                                    filename, max_defer_retries
-                                );
-                                append_processed_ledger(&processed_ledgers_path, &filename);
-                                processed_ledgers.insert(filename);
+                                // Dead-letter quarantine: move file out of corpus dir so it is
+                                // not re-queued. Do NOT add to processed_ledger — the file
+                                // failed to process and must remain operator-recoverable.
+                                let src = Path::new(&corpus_dir).join(&filename);
+                                let dst = Path::new(&dead_letter_dir).join(&filename);
+                                match std::fs::rename(&src, &dst) {
+                                    Ok(()) => eprintln!(
+                                        "[WARN] {} quarantined after {} retries — inspect dead-letter/; replay by copying back to corpus dir",
+                                        filename, count
+                                    ),
+                                    Err(e) => {
+                                        eprintln!(
+                                            "[WARN] {} max retries reached but rename failed ({}); adding to processed_ledger as fallback",
+                                            filename, e
+                                        );
+                                        append_processed_ledger(&processed_ledgers_path, &filename);
+                                        processed_ledgers.insert(filename.clone());
+                                    }
+                                }
+                                backoff_state.remove(&filename);
+                                deferred_counts.remove(&filename);
                             } else {
+                                // Exponential backoff: 5s → 10s → 20s → 40s → 80s → 120s.
+                                // Deterministic ±25% jitter keyed on filename byte-sum.
+                                let exponent = (*count).saturating_sub(1).min(4);
+                                let base_ms: u64 = (5_000u64 << exponent).min(120_000);
+                                let char_sum: u32 = filename.bytes().map(|b| b as u32).sum();
+                                let jitter_num = char_sum % 100; // 0..99
+                                // jitter_factor: 0.75 to 1.25
+                                let jittered_ms = base_ms * (150 + jitter_num as u64 / 2) / 200;
+                                let delay_ms = jittered_ms.clamp(5_000, 120_000);
+                                let retry_not_before = std::time::Instant::now()
+                                    + Duration::from_millis(delay_ms);
+                                backoff_state.insert(filename.clone(), (retry_not_before, delay_ms));
+                                println!(
+                                    "[DEFER] {} retry #{} in {:.1}s",
+                                    filename, count, delay_ms as f64 / 1000.0
+                                );
                                 deferred_ledgers.push(filename);
                             }
                         }
