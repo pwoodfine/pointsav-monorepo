@@ -12,32 +12,40 @@ async fn what_links_here(
 
     // Use the redb link graph for exact wikilink backlinks (Step 4.4).
     let backlink_slugs = state.links.backlinks(&slug).unwrap_or_default();
-    let backlinks: Vec<TopicSummary> = backlink_slugs
-        .into_iter()
-        .map(|s| TopicSummary {
-            title: s.clone(),
-            slug: s,
-            last_edited: None,
-            short_description: None,
-            status: None,
-            lede_first_line: String::new(),
-            file_path: PathBuf::new(),
-        })
-        .collect();
 
-    let page_title = format!("Articles that link to: {slug}");
+    // Look up the actual article title from frontmatter for each backlink.
+    let mut backlinks: Vec<(String, String)> = Vec::new();
+    for s in backlink_slugs {
+        let path = state.primary_path().join(format!("{s}.md"));
+        let title = if let Ok(text) = fs::read_to_string(&path).await {
+            if let Ok((fm, _)) = crate::walker::parse_frontmatter(&text) {
+                fm.title.unwrap_or_else(|| {
+                    s.rsplit('/').next().unwrap_or(&s).replace('-', " ")
+                })
+            } else {
+                s.rsplit('/').next().unwrap_or(&s).replace('-', " ")
+            }
+        } else {
+            s.rsplit('/').next().unwrap_or(&s).replace('-', " ")
+        };
+        backlinks.push((s, title));
+    }
+
+    let page_title = format!("What links here: {slug}");
     Ok(chrome(
         &format!("{} — {}", page_title, state.site_title),
         html! {
-            h1 { "What links here: " em { (slug) } }
+            h1 { "What links here" }
+            p.wiki-special-intro { "Articles that link to " em { (slug) } "." }
             @if backlinks.is_empty() {
                 p { "No other articles currently link to this page." }
             } @else {
-                p { (backlinks.len()) " article(s) link here:" }
+                p { (backlinks.len()) " article" @if backlinks.len() != 1 { "s" } " link here:" }
                 ul.wiki-backlinks-list {
-                    @for link in &backlinks {
+                    @for (s, title) in &backlinks {
                         li {
-                            a href={ "/wiki/" (link.slug) } { (link.title) }
+                            a href={ "/wiki/" (s) } { (title) }
+                            span.search-hit-slug { " — " (s) }
                         }
                     }
                 }

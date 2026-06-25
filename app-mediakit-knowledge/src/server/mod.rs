@@ -338,6 +338,17 @@ async fn doorman_instruct_stub() -> impl axum::response::IntoResponse {
     doorman_not_implemented("Doorman instruction assist is not implemented in this build")
 }
 
+/// Derive a content-type display label from the leading slug prefix.
+fn content_type_label(slug: &str) -> &'static str {
+    match slug.splitn(2, '/').next().unwrap_or("") {
+        "how-to" | "guides" => "Guide",
+        "reference" => "Reference",
+        "patterns" | "applications" | "substrate" | "design-system"
+        | "services" | "governance" | "infrastructure" | "architecture" => "Topic",
+        _ => "",
+    }
+}
+
 fn doorman_not_implemented(reason: &str) -> impl axum::response::IntoResponse {
     (
         axum::http::StatusCode::NOT_IMPLEMENTED,
@@ -674,8 +685,14 @@ async fn search_page(
                     ol.search-results {
                         @for hit in &hits {
                             li.search-hit {
-                                a.search-hit-title href={ "/wiki/" (hit.slug) } {
-                                    (hit.title)
+                                div.search-hit-header {
+                                    a.search-hit-title href={ "/wiki/" (hit.slug) } {
+                                        (hit.title)
+                                    }
+                                    @let ct = content_type_label(&hit.slug);
+                                    @if !ct.is_empty() {
+                                        span.search-hit-type { (ct) }
+                                    }
                                 }
                                 span.search-hit-slug { (hit.slug) }
                                 @if !hit.snippet.is_empty() {
