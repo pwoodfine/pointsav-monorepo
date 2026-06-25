@@ -249,7 +249,8 @@
 
 [data-content-type="topic"],
 [data-content-type="article"]   { --ct-color: var(--ct-topic); }
-[data-content-type="guide"]     { --ct-color: var(--ct-guide); }
+[data-content-type="guide"],
+[data-content-type="how-to"]    { --ct-color: var(--ct-guide); }
 [data-content-type="research"]  { --ct-color: var(--ct-research); }
 [data-content-type="reference"] { --ct-color: var(--ct-reference); }
 [data-content-type="page"]      { --ct-color: var(--ct-topic); }
