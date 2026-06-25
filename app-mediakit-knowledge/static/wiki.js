@@ -460,9 +460,19 @@
       activeIdx = -1;
       if (!hits.length) { hideDropdown(); return; }
       hits.forEach(function (hit) {
-        var li = document.createElement('div');
-        li.className   = 'ac-item';
-        li.textContent = hit.title;
+        var li = document.createElement('a');
+        li.className = 'ac-item';
+        li.href = '/wiki/' + hit.slug;
+        var slugParts = hit.slug.split('/');
+        var contentType = slugParts.length > 1 ? slugParts[0] : '';
+        var typeMap = { 'how-to': 'Guide', 'guides': 'Guide', 'reference': 'Reference',
+                        'applications': 'Topic', 'patterns': 'Topic', 'substrate': 'Topic',
+                        'design-system': 'Topic', 'services': 'Topic', 'governance': 'Topic' };
+        var typeLabel = typeMap[contentType] || '';
+        li.innerHTML =
+          '<span class="ac-title">' + escHtml(hit.title) + '</span>' +
+          (typeLabel ? '<span class="ac-type">' + escHtml(typeLabel) + '</span>' : '') +
+          (hit.lede ? '<span class="ac-lede">' + escHtml(hit.lede.slice(0, 90)) + '…</span>' : '');
         li.addEventListener('mousedown', function (e) {
           e.preventDefault();
           window.location.href = '/wiki/' + hit.slug;
@@ -470,6 +480,10 @@
         dropdown.appendChild(li);
       });
       dropdown.style.display = 'block';
+    }
+
+    function escHtml(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
 
     input.addEventListener('input', function () {
