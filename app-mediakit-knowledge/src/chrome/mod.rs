@@ -121,10 +121,10 @@ pub fn head(title: &str, brand: &str, locale: Locale) -> Markup {
             meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover";
             title { (title) }
 
-            // L23: Two mandatory font preload links — Inter latin-regular + Source Serif 4 latin-regular
-            link rel="preload" href="/static/fonts/Inter-400-normal-latin.woff2"
+            // Font preload — IBM Plex Sans Variable (body/UI) + Playfair Display Variable (display/h1)
+            link rel="preload" href="/static/fonts/IBMPlexSans-Variable-latin.woff2"
                  as="font" type="font/woff2" crossorigin="anonymous";
-            link rel="preload" href="/static/fonts/Source-Serif-4-400-normal-latin.woff2"
+            link rel="preload" href="/static/fonts/PlayfairDisplay-Variable-latin.woff2"
                  as="font" type="font/woff2" crossorigin="anonymous";
 
             // Token CSS — always tokens.css; Woodfine instances also get tokens-woodfine.css
@@ -328,12 +328,12 @@ mod tests {
     fn head_emits_two_font_preloads() {
         // L23 acceptance test: every rendered <head> contains exactly two font preload links.
         let markup = head("Test", "pointsav", Locale::En).into_string();
-        let inter_preload = markup.contains("Inter-400-normal-latin.woff2");
-        let serif_preload = markup.contains("Source-Serif-4-400-normal-latin.woff2");
-        assert!(inter_preload, "Inter latin font preload must be present");
+        let ibm_preload = markup.contains("IBMPlexSans-Variable-latin.woff2");
+        let playfair_preload = markup.contains("PlayfairDisplay-Variable-latin.woff2");
+        assert!(ibm_preload, "IBM Plex Sans Variable font preload must be present");
         assert!(
-            serif_preload,
-            "Source Serif 4 latin font preload must be present"
+            playfair_preload,
+            "Playfair Display Variable font preload must be present"
         );
     }
 
