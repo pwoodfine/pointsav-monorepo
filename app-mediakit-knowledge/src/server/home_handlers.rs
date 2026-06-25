@@ -359,18 +359,24 @@ fn home_chrome(
                         div.wiki-home-editorial__right {
                             // Stats block
                             div.wiki-home-stats {
-                                strong { (fmt_commas(stats.article_count)) }
-                                @if brand_instance == "documentation" {
-                                    " articles across "
-                                    strong { (HOMEPAGE_CATEGORIES.len()) }
-                                    " categories"
-                                } @else {
-                                    " articles"
+                                div.wiki-home-stats__head { "Articles" }
+                                div.wiki-home-stats__body {
+                                    strong { (fmt_commas(stats.article_count)) }
+                                    @if brand_instance == "documentation" {
+                                        " articles across "
+                                        strong { (HOMEPAGE_CATEGORIES.len()) }
+                                        " categories"
+                                    } @else {
+                                        " articles in this wiki"
+                                    }
                                 }
                             }
                             // Home lede / intro text
                             @if !home_html.is_empty() {
-                                div.wiki-home-lede { (PreEscaped(home_html)) }
+                                div.wiki-home-lede {
+                                    div.wiki-home-lede__head { "About this wiki" }
+                                    div.wiki-home-lede__body { (PreEscaped(home_html)) }
+                                }
                             }
                             // Recently updated
                             @if !recent.is_empty() {

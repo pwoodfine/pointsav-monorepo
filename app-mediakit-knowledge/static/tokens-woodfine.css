@@ -162,7 +162,8 @@ html[data-theme="dark"] {
 
 /* ── Start-here chips — Woodfine Blue accent ── */
 :is([data-instance="projects"], [data-instance="corporate"]) .starthere-chip {
-  border-color: rgba(22,70,121,0.28);
+  border-color: rgba(22,70,121,0.20);
+  border-top-color: #164679;
 }
 
 /* ── Home stats bar — subtle institutional treatment ── */
