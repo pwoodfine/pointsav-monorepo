@@ -2824,6 +2824,44 @@ ul.wiki-allpages-list a:hover { text-decoration: underline; }
 .diff-two-col tr.diff-row-del .diff-cell-old { background: color-mix(in oklab, #dc2626 8%, transparent); color: var(--fg-1); }
 .diff-two-col tr.diff-row-ins .diff-cell-new { background: color-mix(in oklab, #16a34a 8%, transparent); color: var(--fg-1); }
 
+/* Blame view (/blame/*) */
+.blame-container {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.blame-pre {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.5;
+  background: var(--bg-subtle);
+}
+.blame-line {
+  display: flex;
+  min-width: 0;
+}
+.blame-line:hover { background: var(--bg-hover); }
+.blame-meta {
+  flex-shrink: 0;
+  width: 220px;
+  padding: 0 var(--sp-3);
+  font-size: 11px;
+  color: var(--fg-4);
+  border-right: 1px solid var(--rule);
+  background: var(--bg-subtle);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.blame-text {
+  flex: 1;
+  padding: 0 var(--sp-3);
+  color: var(--fg-1);
+  white-space: pre;
+  background: var(--bg);
+}
+
 /* Error */
 .wiki-error-body { min-height: 100vh; display: flex; flex-direction: column; background: var(--bg); font-family: var(--font-body); }
 .wiki-error-header { background: var(--navy); padding: var(--sp-4) var(--sp-8); display: flex; align-items: center; }
