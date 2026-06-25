@@ -1319,7 +1319,8 @@ span.toc-numb { color: var(--fg-3); font-size: var(--text-xs); margin-right: 0.4
   background: var(--bg-hover);
   color: var(--fg-1);
 }
-.wiki-tab[aria-current="page"] {
+.wiki-tab[aria-current="page"],
+.wiki-tab.wiki-tab-active {
   background: var(--bg);
   color: var(--fg-1);
   border-color: var(--border);
@@ -2861,6 +2862,19 @@ ul.wiki-allpages-list a:hover { text-decoration: underline; }
   white-space: pre;
   background: var(--bg);
 }
+
+/* Talk page + action tabs */
+.page-title { font-family: var(--font-display); font-size: clamp(26px, 3vw, 36px); font-weight: 700; color: var(--fg-1); margin: 0 0 var(--sp-1); }
+.wiki-title-block { margin-bottom: var(--sp-2); }
+.wiki-title-row { display: flex; align-items: baseline; gap: var(--sp-3); }
+.wiki-action-tabs { display: flex; gap: 2px; margin: var(--sp-3) 0; border-bottom: 1px solid var(--border); }
+.wiki-talk-empty { font-family: var(--font-body); font-size: var(--text-sm); color: var(--fg-3); margin: var(--sp-8) 0; text-align: center; }
+
+/* Mobile drawer interior elements */
+.mobile-drawer-title { font-family: var(--font-body); font-size: var(--text-sm); font-weight: 700; color: var(--fg-1); }
+.mobile-drawer-section-heading { font-family: var(--font-body); font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--fg-3); padding: var(--sp-2) var(--sp-4); margin-top: var(--sp-2); }
+.mobile-drawer-divider { border: none; border-top: 1px solid var(--rule); margin: var(--sp-2) 0; }
+.mobile-nav-toc { padding: 0 var(--sp-2) var(--sp-2); }
 
 /* Error */
 .wiki-error-body { min-height: 100vh; display: flex; flex-direction: column; background: var(--bg); font-family: var(--font-body); }
