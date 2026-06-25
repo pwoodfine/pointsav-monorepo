@@ -245,13 +245,17 @@ async fn main() -> anyhow::Result<()> {
         // Sprint 3C: hold queue when all Tier B nodes have been circuit-open
         // for longer than this threshold. Briefs stay in queue/ until circuit
         // closes. Env var: SLM_HOLD_THRESHOLD_SECS (default 3600 = 1 h).
-        // Bypassed when SLM_TIER_A_FIRST=true — Tier A is the primary so there
-        // is no need to wait for Tier B to recover before dispatching briefs.
+        // When all Tier B nodes are circuit-open or health-probe-down for longer
+        // than this threshold, the drain worker holds the queue (no dispatch).
+        // Not bypassed by SLM_TIER_A_FIRST — see Sprint 3C hold below.
         let hold_threshold_secs: u64 = std::env::var("SLM_HOLD_THRESHOLD_SECS")
             .ok()
             .and_then(|s| s.parse().ok())
             .unwrap_or(3600);
-        let tier_a_first: bool = std::env::var("SLM_TIER_A_FIRST")
+        // Read for consistency; the drain worker no longer uses this value
+        // directly (Sprint 3C hold and yoyo_node_ready guard replaced the
+        // old tier_a_first bypass). Doorman config reads it again at startup.
+        let _tier_a_first: bool = std::env::var("SLM_TIER_A_FIRST")
             .ok()
             .map(|v| v.eq_ignore_ascii_case("true") || v == "1")
             .unwrap_or(false);
@@ -354,6 +358,28 @@ async fn main() -> anyhow::Result<()> {
                     info!(
                         hold_threshold_secs,
                         "drain worker: all Tier B nodes offline (circuit or health) — holding queue"
+                    );
+                    tokio::time::sleep(drain_interval).await;
+                    continue;
+                }
+
+                // Drain-target guard: hold if the specific "trainer" node is
+                // circuit-open or health-probe-down. The Sprint 3C hold above
+                // handles the all-nodes-down case; this guard handles the
+                // targeted-node case independently of the global tier_a_first
+                // setting. Checked before dequeue so no lease is acquired during
+                // the hold — the brief stays untouched in queue/.
+                //
+                // Does not close the 5-failure startup window (allow_request()
+                // is optimistic until the circuit opens), but closes the
+                // steady-state gap where select_tier() would fall to Tier A
+                // after the circuit has opened.
+                if !drain_doorman_arc.doorman.yoyo_node_ready("trainer") {
+                    tracing::debug!(
+                        target: "slm_doorman_server",
+                        %worker_id,
+                        "drain worker: trainer node not ready (circuit-open or health-down) \
+                         — holding queue to protect Tier A inference slots"
                     );
                     tokio::time::sleep(drain_interval).await;
                     continue;
