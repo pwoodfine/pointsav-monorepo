@@ -101,6 +101,9 @@ pub fn sovereign_nav(tenant: Tenant, lang: &str, site_title: &str, lang_href: &s
         header class="topnav s-topnav" role="banner" {
             a class="s-wordmark" href="/" aria-label=(site_title) {
                 (PreEscaped(tenant.wordmark_svg()))
+                @if tenant.is_woodfine() {
+                    span class="s-wordmark__sub" { "Capital Projects" }
+                }
             }
             form class="s-search topnav-search" action="/search" method="get" role="search" {
                 div class="header-search-wrap" {
