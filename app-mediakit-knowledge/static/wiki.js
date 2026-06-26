@@ -559,7 +559,7 @@
   function initCollapsibleSections() {
     if (window.innerWidth >= 960) return;
 
-    var article = document.querySelector('#mw-content-text, .mw-body');
+    var article = document.querySelector('.article__body .prose, #mw-content-text, .mw-body');
     if (!article) return;
 
     var slug = (document.querySelector('link[rel="canonical"]') || {}).href

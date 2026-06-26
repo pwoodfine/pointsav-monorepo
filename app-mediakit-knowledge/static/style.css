@@ -1757,6 +1757,12 @@ button.anchor-share:hover { color: var(--ct-color, var(--navy)); }
   }
   h2.section-toggle::after {
     content: "▾";
+    /* Reset position:absolute from .prose h2::after so it sits in the flex row */
+    position: static;
+    width: auto;
+    height: auto;
+    background: none;
+    border-radius: 0;
     font-size: 14px;
     color: var(--fg-3);
     flex-shrink: 0;
