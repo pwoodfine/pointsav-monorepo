@@ -169,6 +169,7 @@ impl LocalTierClient {
             json_schema: json_schema_field,
             stop: req.stop_sequences.clone(),
             tools: req.tools.as_ref().map(super::anthropic_tools_to_openai),
+            cache_prompt: false,
         };
         let url = format!(
             "{}/v1/chat/completions",
@@ -237,6 +238,12 @@ struct OpenAiChatRequest {
     /// `anthropic_tools_to_openai`). Absent when `None`.
     #[serde(skip_serializing_if = "Option::is_none")]
     tools: Option<serde_json::Value>,
+    /// Disable llama-server slot KV-cache reuse across requests.
+    /// OLMo-3 SWA (Sliding Window Attention) causes 26× slower prefill when
+    /// a slot's cached prefix doesn't match the new prompt. Setting this to
+    /// false forces a fresh slot state per request, eliminating the pathology
+    /// at the cost of no cross-request caching (acceptable: requests vary widely).
+    cache_prompt: bool,
 }
 
 #[derive(Deserialize)]
