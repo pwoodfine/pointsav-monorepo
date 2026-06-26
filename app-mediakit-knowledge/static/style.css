@@ -574,21 +574,9 @@ aside.toc { grid-area: aside; }
 }
 .institutional-fill { fill: currentColor; }
 .s-wordmark:hover .logo-svg { opacity: 0.85; }
-[data-instance="projects"] .s-wordmark,
-[data-instance="corporate"] .s-wordmark {
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 1px;
-}
-.s-wordmark__sub {
-  font-family: var(--font-body);
-  font-size: 8px;
-  font-weight: 500;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.7);
-  line-height: 1;
-  padding-left: 1px;
+[data-instance="projects"] .s-wordmark .logo-svg,
+[data-instance="corporate"] .s-wordmark .logo-svg {
+  height: 44px;
 }
 
 /* Search */
