@@ -39,6 +39,9 @@ Omit:\n\
   - Programming languages, file formats, and protocol names (Rust, JSON, HTTP) unless they name a specific product.\n\
   - Shell environment variables and config symbols: $VAR_NAME, SLM_DATA_DIR, FOUNDRY_ARCHIVE_NAME — OMIT.\n\
   - Code identifiers: backtick-quoted terms (`ghi_kwh_m2_yr`), snake_case names without spaces (service_content), file paths (./build.sh, src/main.rs, create-snapshot.sh), call expressions (log(x), ops(slm), func()), and build tool commands (cargo, npm, make, git). OMIT ALL, including any project name appearing as a CLI argument (-p slm-doorman-server, --crate service-content).\n\
+  - Systemd unit names ending in .service or .timer: local-content.service, llama-server.service, lora-update.timer, nightly-build.timer — these are process managers, not projects. OMIT.\n\
+  - Mailbox message identifiers: hyphenated all-lowercase slugs containing an 8-digit date segment (e.g. command-20260520-stage6-rebase-required, project-totebox-20260622-stage6-d9-d8-p8-fixes). These are message IDs, not entities. OMIT.\n\
+  - Operational status phrases joined by \" + \": \"service-content rebuilt + deployed\", \"Yo-Yo env IP update + Doorman restart\" — these describe events, not named entities. OMIT.\n\
   - Commit-message prefixes of the form type(scope): ops(slm), feat(cache), fix(auth), chore(db) — these are NOT projects or accounts. OMIT.\n\
   - Statistical notation (α, β, γ, R², p-value) and mathematical symbols.\n\
   - Laws, regulations, and dates.\n\

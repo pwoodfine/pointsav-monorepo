@@ -36,9 +36,11 @@ pub fn is_noise_entity_name(name: &str) -> bool {
     if trimmed.contains('/') {
         return true;
     }
-    // File-extension-suffixed names: create-yoyo-snapshot.sh, build.py, local-content.service
-    const PATH_SUFFIXES: [&str; 10] = [
+    // File-extension-suffixed names: create-yoyo-snapshot.sh, build.py, local-content.service,
+    // lora-update.timer (systemd timer units)
+    const PATH_SUFFIXES: [&str; 11] = [
         ".sh", ".py", ".rs", ".md", ".json", ".jsonl", ".conf", ".toml", ".yaml", ".service",
+        ".timer",
     ];
     if PATH_SUFFIXES.iter().any(|s| lower.ends_with(s)) {
         return true;
@@ -46,6 +48,31 @@ pub fn is_noise_entity_name(name: &str) -> bool {
     // Math/code expressions with parentheses: ops(slm), log(employment_35km), func()
     if trimmed.contains('(') && trimmed.contains(')') {
         return true;
+    }
+    // Operational status phrases joined by " + ": "service-content rebuilt + deployed",
+    // "Yo-Yo env IP update + Doorman restart" — these are event descriptions, not entities.
+    if trimmed.contains(" + ") {
+        return true;
+    }
+    // Date-slug identifiers: hyphenated names with an 8-consecutive-digit segment are
+    // mailbox message IDs (command-20260520-stage6-rebase-required) or dated slugs.
+    // Real entity names (proper nouns) do not embed YYYYMMDD date runs.
+    {
+        let mut consecutive_digits: u8 = 0;
+        let mut max_run: u8 = 0;
+        for c in trimmed.chars() {
+            if c.is_ascii_digit() {
+                consecutive_digits += 1;
+                if consecutive_digits > max_run {
+                    max_run = consecutive_digits;
+                }
+            } else {
+                consecutive_digits = 0;
+            }
+        }
+        if max_run >= 8 {
+            return true;
+        }
     }
     // Snake_case identifiers without spaces: env vars, code symbols, metric names
     if !trimmed.contains(' ') && trimmed.contains('_') {
@@ -445,9 +472,42 @@ mod tests {
         // systemd unit names extracted as Project — filter via .service suffix
         assert!(is_noise_entity_name("local-content.service"));
         assert!(is_noise_entity_name("llama-server.service"));
-        // service- prefix project names (no .service suffix) must pass
+        // systemd timer unit names — .timer suffix
+        assert!(is_noise_entity_name("lora-update.timer"));
+        assert!(is_noise_entity_name("nightly-build.timer"));
+        // service- prefix project names (no .service/.timer suffix) must pass
         assert!(!is_noise_entity_name("service-vm-fleet"));
         assert!(!is_noise_entity_name("service-content"));
+    }
+
+    #[test]
+    fn noise_rejects_operational_plus_phrases() {
+        // " + " is an operational event joiner, not an entity name component
+        assert!(is_noise_entity_name("service-content rebuilt + deployed"));
+        assert!(is_noise_entity_name(
+            "Yo-Yo env IP update + Doorman restart"
+        ));
+        assert!(is_noise_entity_name("stage6 + restart"));
+    }
+
+    #[test]
+    fn noise_rejects_date_slug_ids() {
+        // Mailbox message IDs and dated slugs contain 8-consecutive-digit YYYYMMDD runs
+        assert!(is_noise_entity_name(
+            "command-20260520-stage6-rebase-required"
+        ));
+        assert!(is_noise_entity_name(
+            "project-totebox-20260622-stage6-d9-d8-p8-fixes"
+        ));
+        assert!(is_noise_entity_name(
+            "project-intelligence-20260620-session26c-stage6-prompt-fix"
+        ));
+        // Real project names with short digit runs must pass
+        assert!(!is_noise_entity_name("service-vm-fleet"));
+        assert!(!is_noise_entity_name("app-privategit-source"));
+        assert!(!is_noise_entity_name("moonshot-sel4-vmm"));
+        // A project with a version number (short digit run) must pass
+        assert!(!is_noise_entity_name("v0.3.1"));
     }
 
     #[test]
