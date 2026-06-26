@@ -888,6 +888,15 @@ mod tests {
         })
     }
 
+    /// SSE body for dispatch_shadow tests — route_local_background uses
+    /// complete_inner_streaming (stream:true) so mocks must return SSE format.
+    fn ok_completion_sse(content: &str) -> String {
+        let payload = serde_json::json!({
+            "choices": [{"delta": {"content": content}, "finish_reason": null}]
+        });
+        format!("data: {payload}\n\ndata: [DONE]\n\n")
+    }
+
     /// Happy path — apprentice returns parseable response with a diff;
     /// dispatcher returns an attempt with `escalate=false` and
     /// non-empty diff.
@@ -1275,7 +1284,11 @@ Shadow attempt for the apprentice.
         Mock::given(method("POST"))
             .and(path("/v1/chat/completions"))
             .respond_with(
-                ResponseTemplate::new(200).set_body_json(ok_completion(apprentice_response)),
+                // dispatch_shadow uses route_local_background → complete_inner_streaming
+                // (stream:true), so the mock must return SSE format.
+                ResponseTemplate::new(200)
+                    .insert_header("content-type", "text/event-stream")
+                    .set_body_string(ok_completion_sse(apprentice_response)),
             )
             .expect(1)
             .mount(&server)
@@ -1345,9 +1358,13 @@ Shadow attempt for the apprentice.
         let server = MockServer::start().await;
         Mock::given(method("POST"))
             .and(path("/v1/chat/completions"))
-            .respond_with(ResponseTemplate::new(200).set_body_json(ok_completion(
-                "---\nself_confidence: 0.8\nescalate: false\n---\n\n## Reasoning\nx\n## Diff\n```diff\n--- a\n+++ a\n```\n",
-            )))
+            .respond_with(
+                ResponseTemplate::new(200)
+                    .insert_header("content-type", "text/event-stream")
+                    .set_body_string(ok_completion_sse(
+                        "---\nself_confidence: 0.8\nescalate: false\n---\n\n## Reasoning\nx\n## Diff\n```diff\n--- a\n+++ a\n```\n",
+                    )),
+            )
             .expect(1) // exactly one apprentice call across both POSTs
             .mount(&server)
             .await;

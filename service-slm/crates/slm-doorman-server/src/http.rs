@@ -303,6 +303,14 @@ async fn chat_completions(
         .get("x-foundry-yoyo-label")
         .and_then(|v| v.to_str().ok())
         .map(|s| s.to_string());
+    // Background hint: set by service-content Tier A extraction calls so they
+    // route through complete_background() and can be preempted when interactive
+    // chat arrives. Interactive callers must NOT set this header.
+    let is_background = headers
+        .get("x-foundry-background")
+        .and_then(|v| v.to_str().ok())
+        .map(|s| s.eq_ignore_ascii_case("true"))
+        .unwrap_or(false);
     let req = ComputeRequest {
         request_id,
         module_id,
@@ -323,6 +331,23 @@ async fn chat_completions(
         stop_sequences: None,
         session_context: body.session_context,
     };
+
+    // Background extraction callers bypass the express-lane gate and graph
+    // context injection; they route directly to complete_background() which
+    // preempts itself when an interactive request arrives.
+    if is_background {
+        let resp = state
+            .doorman
+            .route_local_background(&req)
+            .await
+            .map_err(ApiError::from)?;
+        let tier_str = resp.tier_used.as_str().to_string();
+        let mut resp_headers = HeaderMap::new();
+        if let Ok(v) = tier_str.parse() {
+            resp_headers.insert("x-foundry-tier-used", v);
+        }
+        return Ok((resp_headers, Json(resp)));
+    }
 
     // Express-lane concurrency gate (SLM_BATCH_SLOTS). Returns 429 when all
     // slots are in use; caller should retry. The permit is held for the
