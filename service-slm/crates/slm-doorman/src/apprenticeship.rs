@@ -364,7 +364,8 @@ impl<'a> ApprenticeshipDispatcher<'a> {
             "dispatching shadow brief"
         );
 
-        let resp = self.doorman.route(&req).await?;
+        // Background work: use background slot (respects background_sem cap).
+        let resp = self.doorman.route_local_background(&req).await?;
         let full_content = if resp.content.trim_start().starts_with("---") {
             resp.content.clone()
         } else {
