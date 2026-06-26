@@ -8,12 +8,13 @@
 //! OpenAI-compatible wire format, so the client does not branch on which
 //! is running.
 
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use serde::{Deserialize, Serialize};
 use slm_core::{ChatMessage, ComputeRequest, ComputeResponse, GrammarConstraint, Tier};
-use tokio::sync::{OwnedSemaphorePermit, Semaphore};
+use tokio::sync::{watch, OwnedSemaphorePermit, Semaphore};
 use tracing::debug;
 
 use crate::error::{DoormanError, Result};
@@ -26,6 +27,24 @@ pub struct LocalTierConfig {
     /// Default model identifier. Local Tier A runs OLMo 3 7B Q4
     /// (Apache-2.0 + Open Data Commons; see substrate decision).
     pub default_model: String,
+}
+
+/// RAII guard that decrements `active_interactive` and clears the preemption
+/// signal when the interactive future completes or is cancelled (dropped).
+/// Without this, a dropped HTTP handler would leave the counter stuck > 0,
+/// causing all subsequent background callers to return LocalSaturated forever.
+struct InteractiveGuard {
+    active_interactive: Arc<AtomicUsize>,
+    interactive_tx: Arc<watch::Sender<bool>>,
+}
+
+impl Drop for InteractiveGuard {
+    fn drop(&mut self) {
+        let remaining = self.active_interactive.fetch_sub(1, Ordering::SeqCst);
+        if remaining == 1 {
+            let _ = self.interactive_tx.send(false);
+        }
+    }
 }
 
 pub struct LocalTierClient {
@@ -41,6 +60,17 @@ pub struct LocalTierClient {
     /// Ensures at least one total slot remains free for interactive callers
     /// even when background work is in flight.
     background_sem: Option<Arc<Semaphore>>,
+    /// Count of in-flight interactive requests. Background callers watch this
+    /// via `interactive_rx`; when it goes non-zero they abort their in-progress
+    /// OLMo request (via tokio::select!) and return LocalSaturated so
+    /// service-content backs off. This prevents interactive chat from sharing
+    /// OLMo batch cycles with long extraction jobs.
+    active_interactive: Arc<AtomicUsize>,
+    /// Sends `true` when the first interactive request starts, `false` when
+    /// the last one completes. Background callers watch the paired receiver.
+    interactive_tx: Arc<watch::Sender<bool>>,
+    /// Cloned per `complete_background()` call for the preemption select!.
+    interactive_rx: watch::Receiver<bool>,
 }
 
 impl LocalTierClient {
@@ -52,6 +82,7 @@ impl LocalTierClient {
         // timed out before llama-server finished, Doorman re-queued the brief,
         // and the next attempt immediately timed out again.
         // Without this timeout the drain worker blocks indefinitely.
+        let (interactive_tx, interactive_rx) = watch::channel(false);
         Self {
             config,
             http: reqwest::Client::builder()
@@ -63,6 +94,9 @@ impl LocalTierClient {
                 .expect("failed to build Tier A HTTP client"),
             total_sem: None,
             background_sem: None,
+            active_interactive: Arc::new(AtomicUsize::new(0)),
+            interactive_tx: Arc::new(interactive_tx),
+            interactive_rx,
         }
     }
 
@@ -117,19 +151,204 @@ impl LocalTierClient {
         Ok((bg, total))
     }
 
+    /// Poll `GET /slots` on the local llama-server until all slots report
+    /// `is_processing: false`, or until `timeout` elapses.
+    ///
+    /// Called after firing the preemption signal to ensure background's OLMo
+    /// slot is actually freed before we send our request.  Without this, a
+    /// mid-prefill background request and our interactive request end up in the
+    /// same continuous-batch iteration, which adds 2–15 s of combined prefill
+    /// latency.  The slot is freed when llama-server detects the dropped TCP
+    /// connection, which only happens between batch iterations (≤ 5 s on this
+    /// hardware).
+    async fn wait_for_olmo_slots_free(&self, timeout: Duration) {
+        let url = format!("{}/slots", self.config.endpoint.trim_end_matches('/'));
+        let deadline = tokio::time::Instant::now() + timeout;
+        loop {
+            tokio::time::sleep(Duration::from_millis(75)).await;
+            if tokio::time::Instant::now() >= deadline {
+                break;
+            }
+            match self.http.get(&url).send().await {
+                Ok(resp) => match resp.json::<Vec<serde_json::Value>>().await {
+                    Ok(slots) => {
+                        let all_free = slots.iter().all(|s| {
+                            !s.get("is_processing")
+                                .and_then(|v| v.as_bool())
+                                .unwrap_or(false)
+                        });
+                        if all_free {
+                            return;
+                        }
+                    }
+                    Err(_) => break, // parsing error; proceed
+                },
+                Err(_) => break, // OLMo unreachable; proceed
+            }
+        }
+    }
+
     /// Interactive caller (e.g. `/v1/chat/completions`).
     /// Acquires one total slot; returns LocalSaturated when saturated.
+    /// Increments active_interactive while in flight so background callers
+    /// can detect contention and abort their OLMo requests promptly.
+    /// The InteractiveGuard ensures cleanup runs even when the future is
+    /// cancelled (HTTP connection dropped mid-flight).
+    ///
+    /// When we are the FIRST interactive request (prev == 0), we fire the
+    /// preemption signal and then wait for the background's OLMo slot to be
+    /// freed before sending our own request.  This prevents combined prefill
+    /// batching, which would add 2–15 s of latency even after preemption.
     pub async fn complete(&self, req: &ComputeRequest) -> Result<ComputeResponse> {
         let _permit = self.try_acquire_interactive()?;
+        let prev = self.active_interactive.fetch_add(1, Ordering::SeqCst);
+        let _guard = InteractiveGuard {
+            active_interactive: Arc::clone(&self.active_interactive),
+            interactive_tx: Arc::clone(&self.interactive_tx),
+        };
+        if prev == 0 {
+            let _ = self.interactive_tx.send(true);
+            // Only wait for slot clearance when background semaphores are
+            // configured (production).  Tests omit semaphores, so background
+            // callers cannot exist — polling /slots would be a spurious request.
+            if self.background_sem.is_some() {
+                // Wait up to 8 s for the background slot to be freed.
+                // llama-server detects a dropped TCP connection between batch
+                // iterations; on this hardware each iteration is ≤ 5 s.
+                self.wait_for_olmo_slots_free(Duration::from_secs(8)).await;
+            }
+        }
         self.complete_inner(req).await
     }
 
     /// Background caller (extraction fallback, drain dispatch).
     /// Acquires background_sem then total_sem; returns LocalSaturated when
     /// either is full so the caller can back off without queuing in llama-server.
+    /// Preempts itself when an interactive request arrives mid-flight:
+    /// the in-progress OLMo HTTP request is cancelled (connection dropped),
+    /// freeing the OLMo slot for the interactive caller within ~1 second.
     pub async fn complete_background(&self, req: &ComputeRequest) -> Result<ComputeResponse> {
+        // Fast reject if interactive is already in flight.
+        if self.active_interactive.load(Ordering::SeqCst) > 0 {
+            return Err(DoormanError::LocalSaturated);
+        }
         let (_bg, _total) = self.try_acquire_background()?;
-        self.complete_inner(req).await
+        // Narrow the TOCTOU window: re-check after semaphore acquisition.
+        if self.active_interactive.load(Ordering::SeqCst) > 0 {
+            return Err(DoormanError::LocalSaturated);
+        }
+        // Race OLMo completion against the interactive-active signal. `biased`
+        // ensures the signal branch is evaluated first — if interactive was
+        // signalled between the check above and this select!, we bail immediately
+        // without dispatching to OLMo.
+        let mut sig = self.interactive_rx.clone();
+        tokio::select! {
+            biased;
+            res = sig.wait_for(|&v| v) => {
+                // `wait_for` only errors if the sender is dropped (server shutdown).
+                let _ = res;
+                Err(DoormanError::LocalSaturated)
+            }
+            // Use streaming so llama-server detects the dropped connection within
+            // one token (~0.5 s) when this future is cancelled at the select! above.
+            // Non-streaming only writes at the end of generation; the slot would
+            // stay occupied for minutes even after preemption fires.
+            result = self.complete_inner_streaming(req) => result,
+        }
+    }
+
+    /// Background path: same as `complete_inner` but sends `stream: true`.
+    ///
+    /// With streaming, llama-server writes one chunk per token.  When the TCP
+    /// connection is dropped (preemption signal fires → future dropped → TCP FIN
+    /// sent), llama-server detects the broken pipe on the NEXT token write,
+    /// within ~0.5 s.  With the default non-streaming mode, llama-server only
+    /// tries to write once — after full generation — so it may hold the slot for
+    /// minutes before detecting the disconnect.  Using streaming here makes
+    /// preemption effective even when the background caller is mid-prefill.
+    async fn complete_inner_streaming(&self, req: &ComputeRequest) -> Result<ComputeResponse> {
+        let model = req
+            .model
+            .clone()
+            .unwrap_or_else(|| self.config.default_model.clone());
+
+        let (grammar_field, json_schema_field) = match req.grammar.as_ref() {
+            None => (None, None),
+            Some(GrammarConstraint::Gbnf(s)) => (Some(s.clone()), None),
+            Some(GrammarConstraint::JsonSchema(v)) => (None, Some(v.clone())),
+            Some(GrammarConstraint::Lark(_)) => {
+                return Err(DoormanError::TierAGrammarUnsupported {
+                    dialect: "Lark",
+                    advice: "escalate to Tier B (Yo-Yo) which supports Lark via llguidance, \
+                             or provide a GBNF equivalent for Tier A",
+                });
+            }
+        };
+
+        let body = OpenAiChatRequest {
+            model: model.clone(),
+            messages: req.messages.clone(),
+            stream: true, // streaming → broken-pipe detected per-token, not at end
+            max_tokens: req.max_tokens,
+            temperature: req.temperature,
+            grammar: grammar_field,
+            json_schema: json_schema_field,
+            stop: req.stop_sequences.clone(),
+            tools: req.tools.as_ref().map(super::anthropic_tools_to_openai),
+            cache_prompt: false,
+        };
+
+        let url = format!(
+            "{}/v1/chat/completions",
+            self.config.endpoint.trim_end_matches('/')
+        );
+        debug!(target: "slm_doorman::tier::local", %url, %model, "tier-A background streaming request");
+
+        let started = Instant::now();
+        let mut resp = self
+            .http
+            .post(&url)
+            .json(&body)
+            .send()
+            .await?
+            .error_for_status()?;
+
+        let mut content = String::new();
+        let mut line_buf = String::new();
+
+        while let Some(chunk) = resp.chunk().await? {
+            line_buf.push_str(&String::from_utf8_lossy(&chunk));
+            // Consume all complete newline-terminated lines in the buffer.
+            while let Some(nl) = line_buf.find('\n') {
+                let line = line_buf[..nl].to_string();
+                line_buf = line_buf[nl + 1..].to_string();
+                let line = line.trim();
+                if let Some(data) = line.strip_prefix("data: ") {
+                    if data == "[DONE]" {
+                        break;
+                    }
+                    if let Ok(v) = serde_json::from_str::<serde_json::Value>(data) {
+                        if let Some(delta) = v["choices"][0]["delta"]["content"].as_str() {
+                            content.push_str(delta);
+                        }
+                    }
+                }
+            }
+        }
+
+        let inference_ms = started.elapsed().as_millis() as u64;
+
+        Ok(ComputeResponse {
+            request_id: req.request_id,
+            tier_used: Tier::Local,
+            model,
+            content,
+            reasoning_content: None,
+            inference_ms,
+            cost_usd: 0.0,
+            upstream_version: None,
+            tool_calls: None,
+        })
     }
 
     async fn complete_inner(&self, req: &ComputeRequest) -> Result<ComputeResponse> {

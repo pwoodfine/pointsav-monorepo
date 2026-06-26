@@ -619,6 +619,10 @@ fn call_tier_a_extract(
     match client
         .post(&url)
         .header("X-Foundry-Complexity", "low")
+        // Route via complete_background() so interactive chat can preempt this
+        // extraction call. Without this header, Tier A competes with interactive
+        // on equal footing inside OLMo, causing 4-minute batch delays.
+        .header("X-Foundry-Background", "true")
         .json(&chat_body)
         .timeout(Duration::from_secs(180))
         .send()
