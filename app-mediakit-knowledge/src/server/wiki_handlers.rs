@@ -263,7 +263,7 @@ async fn wiki_page_inner(
         return Err(WikiError::NotFound(slug));
     }
     // Validate component parts for safety.
-    let parts: Vec<&str> = slug.splitn(3, '/').collect();
+    let parts: Vec<&str> = slug.split('/').collect();
     if parts.len() > 2 {
         // More than one directory level — reject.
         return Err(WikiError::NotFound(slug));

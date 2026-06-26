@@ -342,11 +342,11 @@ async fn doorman_instruct_stub() -> impl axum::response::IntoResponse {
 
 /// Derive a content-type display label from the leading slug prefix.
 fn content_type_label(slug: &str) -> &'static str {
-    match slug.splitn(2, '/').next().unwrap_or("") {
+    match slug.split('/').next().unwrap_or("") {
         "how-to" | "guides" => "Guide",
         "reference" => "Reference",
-        "patterns" | "applications" | "substrate" | "design-system"
-        | "services" | "governance" | "infrastructure" | "architecture" => "Topic",
+        "patterns" | "applications" | "substrate" | "design-system" | "services" | "governance"
+        | "infrastructure" | "architecture" => "Topic",
         _ => "",
     }
 }
@@ -415,9 +415,10 @@ async fn preview_api(
     };
 
     let parsed = parse_page(&text)?;
-    let title = parsed.frontmatter.title.unwrap_or_else(|| {
-        slug.rsplit('/').next().unwrap_or(&slug).replace('-', " ")
-    });
+    let title = parsed
+        .frontmatter
+        .title
+        .unwrap_or_else(|| slug.rsplit('/').next().unwrap_or(&slug).replace('-', " "));
     let snippet = crate::feeds::first_paragraph_snippet(&parsed.body_md, 300);
     let image_url = crate::feeds::first_image_url(&parsed.body_md);
 
