@@ -710,16 +710,25 @@ if (( DRYRUN_OK == 1 )); then
         # Debian PEP 668 blocks pip from touching system python — venv is required.
         # ~/train-venv persists on the 100GB disk so subsequent runs skip this step.
         TRAIN_VENV="/home/mathew/train-venv"
+        # Pin marker: if venv was built with TRL 1.x (OOM on L4), rebuild with 0.9.x.
+        # Remove venv if trl version is 1.x so next run recreates with pinned versions.
+        remote_ssh "test -f ${TRAIN_VENV}/bin/python3 && \
+            ${TRAIN_VENV}/bin/python3 -c 'import trl; v=trl.__version__; exit(0 if v.startswith(\"0.\") else 1)' \
+            2>/dev/null || (echo '[venv] Removing TRL 1.x venv to rebuild with 0.9.x'; rm -rf ${TRAIN_VENV})" \
+            >>"${LOG_FILE}" 2>&1 || true
         log "  Checking training venv (${TRAIN_VENV}) on VM..."
         if remote_ssh "test -f ${TRAIN_VENV}/bin/python3 && ${TRAIN_VENV}/bin/python3 -c 'import torch, trl, peft' 2>/dev/null"; then
             log "  Venv exists with torch/trl/peft — skipping install."
         else
             log "  Creating venv + installing torch (CUDA 12.1) + training libs..."
+            # Pin TRL to 0.9.x — TRL 1.x adds chunked lm_head float32 cast that OOMs
+            # on L4 24GB with OLMo-3-7B-Instruct 4-bit (tries to alloc 1.53 GiB).
             remote_ssh "python3 -m venv ${TRAIN_VENV} \
                 && ${TRAIN_VENV}/bin/pip install --quiet \
                     torch --index-url https://download.pytorch.org/whl/cu121 \
                 && ${TRAIN_VENV}/bin/pip install --quiet \
-                    trl peft transformers datasets bitsandbytes accelerate" \
+                    'trl==0.9.6' 'peft==0.12.0' 'bitsandbytes==0.43.3' \
+                    transformers datasets accelerate" \
                 >>"${LOG_FILE}" 2>&1 \
                 || log "  ERROR: venv install failed — check log above"
             remote_ssh "${TRAIN_VENV}/bin/python3 -c 'import torch, trl, peft' && echo '[dep-check] OK'" \
