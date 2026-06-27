@@ -72,7 +72,7 @@ LORA_R = 16
 LORA_ALPHA = 32
 LORA_DROPOUT = 0.05
 LORA_TARGET_MODULES = ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
-MAX_LENGTH = 1024   # L4 24GB OOM at 2048+bs2; 1024 fits with 4-bit+gradient_checkpointing
+MAX_LENGTH = 512    # float16 + LoRA; 512 safely fits L4 24GB; raise to 1024 after first pass
 BATCH_SIZE = 1      # OOM at bs=2 on L4 with OLMo-3-7B-Instruct 4-bit; effective=GRAD_ACCUM*1
 GRAD_ACCUM = 8      # effective batch size = 8
 # SFT-LoRA wants a hotter LR than full fine-tune or DPO. 2e-5 is a full-FT default and
@@ -244,7 +244,7 @@ def run_training(records: list[dict], base_model: str, output_dir: str,
         import torch
         from datasets import Dataset
         from peft import LoraConfig, TaskType
-        from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig, TrainerCallback
+        from transformers import AutoModelForCausalLM, AutoTokenizer, TrainerCallback
         from trl import SFTConfig, SFTTrainer
     except ImportError as e:
         print(f"[ERROR] Missing training library: {e}", file=sys.stderr)
@@ -257,19 +257,19 @@ def run_training(records: list[dict], base_model: str, output_dir: str,
     if torch.cuda.is_available():
         print(f"[train] GPU: {torch.cuda.get_device_name(0)}")
 
-    bnb_config = BitsAndBytesConfig(
-        load_in_4bit=True,
-        bnb_4bit_quant_type="nf4",
-        bnb_4bit_compute_dtype=torch.bfloat16,
-        bnb_4bit_use_double_quant=True,
-    )
+    # Load in float16 (no 4-bit). 4-bit quantization OOMs on L4 24GB because:
+    # 1. Loading stages model in bfloat16 (~14 GB), then PEFT's
+    #    prepare_model_for_kbit_training casts lm_head to float32 (+1.5 GB peak).
+    # Float16 full load: ~14 GB. L4 has 22 GB. LoRA+optimizer: ~200 MB.
+    # Activations at bs=1/seq=512 with gradient_checkpointing: ~1 GB.
     model = AutoModelForCausalLM.from_pretrained(
         base_model,
-        quantization_config=bnb_config,
+        torch_dtype=torch.float16,
         device_map="auto",
         trust_remote_code=True,
     )
     model.config.use_cache = False
+    model.enable_input_require_grads()  # required for LoRA without kbit training
     tokenizer = AutoTokenizer.from_pretrained(base_model, trust_remote_code=True)
     tokenizer.model_max_length = MAX_LENGTH  # TRL 1.x: set here instead of SFTConfig.max_seq_length
     if tokenizer.pad_token is None:
