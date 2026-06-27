@@ -271,6 +271,7 @@ def run_training(records: list[dict], base_model: str, output_dir: str,
     )
     model.config.use_cache = False
     tokenizer = AutoTokenizer.from_pretrained(base_model, trust_remote_code=True)
+    tokenizer.model_max_length = MAX_LENGTH  # TRL 1.x: set here instead of SFTConfig.max_seq_length
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
         model.config.pad_token_id = tokenizer.eos_token_id
@@ -328,7 +329,7 @@ def run_training(records: list[dict], base_model: str, output_dir: str,
         gradient_checkpointing=True,
         gradient_checkpointing_kwargs={"use_reentrant": False},
         learning_rate=LEARNING_RATE,
-        max_seq_length=MAX_LENGTH,
+        # max_seq_length moved out of SFTConfig in TRL 1.x — set on tokenizer instead.
         dataset_text_field="text",
         logging_steps=5,
         save_steps=5,
