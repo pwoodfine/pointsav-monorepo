@@ -710,11 +710,15 @@ if (( DRYRUN_OK == 1 )); then
         # Debian PEP 668 blocks pip from touching system python — venv is required.
         # ~/train-venv persists on the 100GB disk so subsequent runs skip this step.
         TRAIN_VENV="/home/mathew/train-venv"
-        # Pin marker: if venv was built with TRL 1.x (OOM on L4), rebuild with 0.9.x.
-        # Remove venv if trl version is 1.x so next run recreates with pinned versions.
+        # Rebuild venv if: TRL 1.x (OOM) OR bitsandbytes <0.46 (transformers requires >=0.46.1).
         remote_ssh "test -f ${TRAIN_VENV}/bin/python3 && \
-            ${TRAIN_VENV}/bin/python3 -c 'import trl; v=trl.__version__; exit(0 if v.startswith(\"0.\") else 1)' \
-            2>/dev/null || (echo '[venv] Removing TRL 1.x venv to rebuild with 0.9.x'; rm -rf ${TRAIN_VENV})" \
+            ${TRAIN_VENV}/bin/python3 -c '
+import trl, bitsandbytes as bnb, pkg_resources
+trl_ok = trl.__version__.startswith(\"0.\")
+bnb_ver = pkg_resources.get_distribution(\"bitsandbytes\").version
+bnb_ok = tuple(int(x) for x in bnb_ver.split(\".\")[:2]) >= (0, 46)
+exit(0 if (trl_ok and bnb_ok) else 1)
+' 2>/dev/null || (echo \"[venv] Rebuilding: TRL 1.x or bnb<0.46 detected\"; rm -rf ${TRAIN_VENV})" \
             >>"${LOG_FILE}" 2>&1 || true
         log "  Checking training venv (${TRAIN_VENV}) on VM..."
         if remote_ssh "test -f ${TRAIN_VENV}/bin/python3 && ${TRAIN_VENV}/bin/python3 -c 'import torch, trl, peft' 2>/dev/null"; then
@@ -727,7 +731,7 @@ if (( DRYRUN_OK == 1 )); then
                 && ${TRAIN_VENV}/bin/pip install --quiet \
                     torch --index-url https://download.pytorch.org/whl/cu121 \
                 && ${TRAIN_VENV}/bin/pip install --quiet \
-                    'trl==0.9.6' 'peft==0.12.0' 'bitsandbytes==0.43.3' \
+                    'trl==0.9.6' 'peft==0.12.0' 'bitsandbytes>=0.46.1' \
                     transformers datasets accelerate" \
                 >>"${LOG_FILE}" 2>&1 \
                 || log "  ERROR: venv install failed — check log above"
