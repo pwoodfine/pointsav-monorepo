@@ -1,6 +1,6 @@
 title: Disclaimer
 slug: disclaimer
-description: Legal disclaimer for Woodfine Capital Projects.
+description: Legal disclaimer, trademark notice, and investor disclosures for Woodfine Capital Projects.
 lang: en
 sections:
   - type: hero
@@ -8,12 +8,14 @@ sections:
 
   - type: prose
     body: |
-      ## Disclaimer
+      **Trademarks.** Woodfine Capital Projects™, Woodfine Management Corp™, PointSav Digital Systems™, Totebox Orchestration™, Totebox Archive™, and Capability Geometry™ are trademarks of Woodfine Capital Projects Inc., used in Canada, the United States, Latin America, and Europe. All other trademarks are the property of their respective owners.
 
-      The content on this site is provided for general information only and
-      does not constitute an offer, solicitation, or recommendation in any
-      jurisdiction. Forward-looking statements describe intended plans and may
-      change. Nothing here should be relied upon as financial, legal, or
-      investment advice.
+      **No offer of securities.** Nothing on this site constitutes an offer to sell, or a solicitation to buy, investment units in any Woodfine direct-hold solution. Any offering is made exclusively by means of the applicable Private Placement Memorandum, which contains detailed information concerning the terms and risks of an investment therein.
+
+      **Qualified investors only.** Access to Woodfine direct-hold solutions is restricted to verified Accredited Investors under National Instrument 45-106 — Prospectus Exemptions and equivalent frameworks in applicable jurisdictions, including Regulation D under the U.S. Securities Act of 1933, Mexico's Ley del Mercado de Valores, and the EU Prospectus Regulation (EU 2017/1129).
+
+      **Forward-looking statements.** This site contains forward-looking information within the meaning of applicable securities legislation, including National Instrument 51-102 Continuous Disclosure Obligations in Canada and equivalent regulatory frameworks globally. Statements regarding the development, integration, and operational capabilities of the direct-hold solutions model, the PointSav Digital Systems platform, and the proposed Woodfine direct-hold solutions are based on current expectations and are subject to known and unknown risks, uncertainties, and assumptions. Actual results may differ materially. Woodfine disclaims any obligation to update such statements except as required by applicable securities legislation.
+
+      **Registration.** Woodfine Capital Projects and its affiliates conduct registrable activities, where required, under the relevant categories prescribed by the British Columbia Securities Commission and other Canadian securities regulators. Specific registration details are available on request.
 
       © 2026 Woodfine Capital Projects Inc. All rights reserved.
