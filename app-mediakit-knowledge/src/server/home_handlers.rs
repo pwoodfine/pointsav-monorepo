@@ -343,6 +343,9 @@ fn home_chrome(
                                     div.featured__row {
                                         span.dot {}
                                         (section_featured)
+                                        @if let Some(ref d) = stats.last_updated {
+                                            span.featured__updated { "Updated " (d) }
+                                        }
                                     }
                                     h2.featured__title {
                                         a href={ "/wiki/" (featured.slug) } { (featured.title) }
@@ -476,12 +479,14 @@ fn home_chrome(
                             h2 { (s.section_browse) }
                         }
                         div.cat-grid {
-                            @for (display_name, primary_slug, description, slugs) in HOMEPAGE_CATEGORIES {
+                            @for (display_name, primary_slug, description, color, slugs) in HOMEPAGE_CATEGORIES {
                                 @let count: usize = slugs.iter()
                                     .flat_map(|s| buckets.get(*s).map(|v| v.as_slice()).unwrap_or(&[]).iter())
                                     .filter(|t| t.status.as_deref() != Some("stub"))
                                     .count();
-                                a.cat-card href={ "/category/" (primary_slug) } {
+                                a.cat-card href={ "/category/" (primary_slug) }
+                                    style={ "--cat-accent:" (color) }
+                                {
                                     div.cat-card__head {
                                         span.cat-card__name { (display_name) }
                                         @if count > 0 {
