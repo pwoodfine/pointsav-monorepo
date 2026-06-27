@@ -84,6 +84,23 @@ NUM_EPOCHS = 1
 MIN_DIFF_CHARS = 20
 
 
+def _validate_corpus_integrity(records: list, fields: list[str], threshold: float = 0.05) -> None:
+    """Sample up to 100 records; exit(1) if >threshold fraction have empty required fields."""
+    sample = records[:100] if len(records) > 100 else records
+    if not sample:
+        return
+    bad = sum(1 for r in sample if any(not (r.get(f) or "").strip() for f in fields))
+    rate = bad / len(sample)
+    print(f"[corpus] integrity: {bad}/{len(sample)} empty-field rows ({rate:.1%}) — checking {fields}")
+    if rate > threshold:
+        print(
+            f"[ERROR] Corpus quality check failed: {rate:.1%} rows have empty fields {fields} "
+            f"(threshold {threshold:.0%}). Fix corpus before training.",
+            file=__import__("sys").stderr,
+        )
+        __import__("sys").exit(1)
+
+
 def format_alpaca_prompt(instruction: str, output: str = "") -> str:
     """Alpaca chat template used for both training and inference."""
     prompt = f"### Instruction:\n{instruction}\n\n### Response:\n"
@@ -428,6 +445,7 @@ def main() -> None:
         print(f"[ERROR] Tried: {args.queue_done}", file=sys.stderr)
         sys.exit(1)
 
+    _validate_corpus_integrity(records, fields=["text"])
     output_dir = args.output_dir or f"./adapters/{args.adapter_name}-wip"
 
     run_training(

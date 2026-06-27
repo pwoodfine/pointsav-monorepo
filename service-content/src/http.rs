@@ -452,6 +452,159 @@ async fn graph_cleanup(
     }))
 }
 
+// ── enrichment endpoint ───────────────────────────────────────────────────────
+
+#[derive(Debug, Deserialize)]
+pub struct EnrichQuery {
+    pub module_id: String,
+    /// Only enrich entities of this classification (default: Person).
+    #[serde(default = "default_enrich_classification")]
+    pub classification: String,
+    /// Max entities to enrich per call (default: 10). Gate: total ≤ 50.
+    #[serde(default = "default_enrich_limit")]
+    pub limit: usize,
+    /// When true (default), report which entities WOULD be enriched without calling Tier A.
+    #[serde(default = "default_dry_run")]
+    pub dry_run: bool,
+}
+
+fn default_enrich_classification() -> String {
+    "Person".to_string()
+}
+
+fn default_enrich_limit() -> usize {
+    10
+}
+
+#[derive(Debug, Serialize)]
+pub struct EnrichResponse {
+    pub module_id: String,
+    pub classification: String,
+    pub null_vector_count: usize,
+    pub enriched: usize,
+    pub unchanged: usize,
+    pub dry_run: bool,
+    pub samples: Vec<String>,
+}
+
+/// `POST /v1/graph/enrich` — retroactively fill NULL role_vector entries via Tier A inference.
+///
+/// Queries LadybugDB for Person entities (or the requested classification) whose
+/// `role_vector` is NULL, then asks Tier A (local OLMo) "what is X's role?" for
+/// each entity and writes back any non-empty answer.
+///
+/// Default: dry_run=true — reports how many entities would be enriched without
+/// calling Tier A. Set dry_run=false to trigger live enrichment.
+///
+/// Note (I4, 2026-06-27): if the source corpus contains only technical text
+/// (code diffs, commit messages), Tier A will answer "unknown" for most entities.
+/// The real unlock is source diversification — routing CRM/people data through
+/// the extraction pipeline. This endpoint provides the infrastructure for when
+/// richer sources become available.
+///
+/// Example: curl -X POST 'http://127.0.0.1:9081/v1/graph/enrich?module_id=jennifer&dry_run=false&limit=5'
+async fn graph_enrich(
+    State(state): State<Arc<HttpState>>,
+    Query(params): Query<EnrichQuery>,
+) -> Result<Json<EnrichResponse>, (StatusCode, String)> {
+    let limit = params.limit.min(50);
+
+    // Find all entities for this module; filter NULL role_vector + matching classification.
+    let all = state.graph.list_entities(&params.module_id).map_err(|e| {
+        (StatusCode::INTERNAL_SERVER_ERROR, format!("list_entities: {e}"))
+    })?;
+
+    let candidates: Vec<_> = all
+        .into_iter()
+        .filter(|e| e.role_vector.is_none() && e.classification == params.classification)
+        .take(limit)
+        .collect();
+
+    let null_vector_count = candidates.len();
+    let mut samples: Vec<String> = candidates.iter().map(|e| e.entity_name.clone()).collect();
+    samples.truncate(20);
+
+    if params.dry_run || candidates.is_empty() {
+        return Ok(Json(EnrichResponse {
+            module_id: params.module_id,
+            classification: params.classification,
+            null_vector_count,
+            enriched: 0,
+            unchanged: 0,
+            dry_run: true,
+            samples,
+        }));
+    }
+
+    // Live enrichment: ask Tier A for each entity's role.
+    let client = reqwest::Client::new();
+    let chat_url = format!("{}/v1/chat/completions", state.doorman_endpoint);
+    let mut enriched = 0usize;
+    let mut unchanged = 0usize;
+
+    for entity in candidates {
+        let prompt = format!(
+            "What is the professional role or job title of {}? \
+             Answer in 3-7 words (e.g. \"Senior Software Engineer\" or \"CEO, Woodfine Management Corp.\"). \
+             If unknown, answer exactly: unknown",
+            entity.entity_name
+        );
+        let body = serde_json::json!({
+            "model": "local",
+            "messages": [{"role": "user", "content": prompt}],
+            "max_tokens": 30,
+            "temperature": 0.0
+        });
+        let res = client
+            .post(&chat_url)
+            .header("X-Foundry-Module-ID", &params.module_id)
+            .json(&body)
+            .timeout(Duration::from_secs(60))
+            .send()
+            .await;
+
+        let role_text = match res {
+            Ok(r) if r.status().is_success() => {
+                let j: serde_json::Value = r.json().await.unwrap_or_default();
+                j.pointer("/choices/0/message/content")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.trim().to_string())
+                    .filter(|s| !s.is_empty() && s.to_lowercase() != "unknown")
+            }
+            _ => None,
+        };
+
+        match role_text {
+            Some(role) => {
+                let mut updated = entity.clone();
+                updated.role_vector = Some(role);
+                if state
+                    .graph
+                    .upsert_entities(&params.module_id, &[updated])
+                    .is_ok()
+                {
+                    enriched += 1;
+                } else {
+                    unchanged += 1;
+                }
+            }
+            None => {
+                unchanged += 1;
+            }
+        }
+    }
+
+    Ok(Json(EnrichResponse {
+        module_id: params.module_id,
+        classification: params.classification,
+        null_vector_count,
+        enriched,
+        unchanged,
+        dry_run: false,
+        samples,
+    }))
+}
+
 // ── helpers ───────────────────────────────────────────────────────────────────
 
 fn format_entity_block(entities: &[GraphEntity]) -> String {
@@ -496,6 +649,7 @@ pub async fn run_server(
         .route("/v1/graph/context", get(graph_context))
         .route("/v1/graph/mutate", post(graph_mutate))
         .route("/v1/graph/cleanup", get(graph_cleanup))
+        .route("/v1/graph/enrich", post(graph_enrich))
         .route("/v1/draft/generate", post(draft_generate))
         .route("/v1/ingest", post(ingest_document))
         .merge(config_routes())

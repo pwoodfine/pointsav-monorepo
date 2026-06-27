@@ -47,11 +47,40 @@ impl Default for ErConfig {
     }
 }
 
+/// For ER blocking only: strip middle initials from Person names so surface variants
+/// ("Jennifer M. Woodfine" vs "Jennifer Woodfine") land in the same block and score
+/// as a 1.0-similarity pair → AutoMerge. Does NOT affect entity_key used for MERGE
+/// (changing MERGE keys would reassign IDs for existing nodes).
+///
+/// Rule: if a Person name has ≥ 3 whitespace tokens and a middle token is a single
+/// letter + period ("M."), strip it. "J.P. Morgan" → drops "J." as a middle initial
+/// (but "J." is index 0 = first token, so is NOT stripped).
+fn canonical_er_name(name: &str, classification: &str) -> String {
+    if classification != "Person" {
+        return normalize_entity_key(name);
+    }
+    let words: Vec<&str> = name.split_whitespace().collect();
+    if words.len() >= 3 {
+        let filtered: Vec<&str> = words
+            .iter()
+            .enumerate()
+            .filter_map(|(i, w)| {
+                let is_middle = i > 0 && i < words.len() - 1;
+                let is_initial = w.len() == 2 && w.ends_with('.');
+                if is_middle && is_initial { None } else { Some(*w) }
+            })
+            .collect();
+        normalize_entity_key(&filtered.join(" "))
+    } else {
+        normalize_entity_key(name)
+    }
+}
+
 /// Blocking key: only compare entities sharing classification + a short normalized-key
 /// prefix. Cuts the O(n^2) comparison space without losing recall on real variants
 /// (which share a stem).
 pub fn blocking_key(entity: &GraphEntity, cfg: &ErConfig) -> String {
-    let key = normalize_entity_key(&entity.entity_name);
+    let key = canonical_er_name(&entity.entity_name, &entity.classification);
     let prefix: String = key.chars().take(cfg.block_prefix_len).collect();
     format!("{}|{}", entity.classification, prefix)
 }

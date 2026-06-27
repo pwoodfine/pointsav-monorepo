@@ -158,6 +158,44 @@ _REAL_DIFF_MARKERS = ("diff --git", "--- a/", "+++ b/", "@@ ")
 _SYSTEM_PROMPT_EXAMPLE_MARKERS = ("path/to/file", "-old line", "+new line", " context line")
 
 
+def _validate_corpus_integrity(records: list, mode: str, threshold: float = 0.05) -> None:
+    """Sample up to 100 records; exit(1) if >threshold fraction fail structural checks.
+
+    SFT mode: messages[1] (user) + messages[2] (assistant) must be non-empty.
+    DPO/pref mode: chosen[0]["content"] and rejected[0]["content"] non-empty and distinct.
+    """
+    sample = records[:100] if len(records) > 100 else records
+    if not sample:
+        return
+    bad = 0
+    for r in sample:
+        try:
+            if mode == "sft":
+                msgs = r.get("messages", [])
+                user_text = msgs[1]["content"] if len(msgs) > 1 else ""
+                asst_text = msgs[2]["content"] if len(msgs) > 2 else ""
+                if not user_text.strip() or not asst_text.strip():
+                    bad += 1
+            else:
+                chosen_text = (r.get("chosen") or [{}])[0].get("content", "")
+                rejected_text = (r.get("rejected") or [{}])[0].get("content", "")
+                if not chosen_text.strip() or not rejected_text.strip():
+                    bad += 1
+                elif chosen_text.strip() == rejected_text.strip():
+                    bad += 1
+        except (IndexError, AttributeError, TypeError):
+            bad += 1
+    rate = bad / len(sample)
+    print(f"[corpus] integrity ({mode}): {bad}/{len(sample)} degenerate rows ({rate:.1%})")
+    if rate > threshold:
+        print(
+            f"[ERROR] Corpus integrity check failed: {rate:.1%} rows are degenerate "
+            f"in {mode} mode (threshold {threshold:.0%}). Fix corpus before training.",
+            file=__import__("sys").stderr,
+        )
+        __import__("sys").exit(1)
+
+
 def load_feedback_files(corpus_path: str) -> list[dict]:
     """Load DPO pairs from corpus_path.
 
@@ -890,6 +928,7 @@ def main() -> None:
         print(f"[ERROR] No valid {kind} found — check corpus path and field names", file=sys.stderr)
         sys.exit(1)
 
+    _validate_corpus_integrity(records, mode=args.mode)
     # Use a fixed -wip suffix so --resume finds the same checkpoint directory each day.
     # Only rename to a dated path when promoting the adapter to the registry.
     output_dir = args.output_dir or f"./adapters/{args.adapter_name}-wip"

@@ -469,11 +469,25 @@ fn main() -> NotifyResult<()> {
                                 // not re-queued. Do NOT add to processed_ledger — the file
                                 // failed to process and must remain operator-recoverable.
                                 let src = Path::new(&corpus_dir).join(&filename);
-                                let dst = Path::new(&dead_letter_dir).join(&filename);
+                                // Append failure reason before the extension so operators can
+                                // batch-replay dead-letters by failure category without reading logs.
+                                let dead_filename = {
+                                    let stem = Path::new(&filename)
+                                        .file_stem()
+                                        .and_then(|s| s.to_str())
+                                        .unwrap_or(&filename);
+                                    let ext = Path::new(&filename)
+                                        .extension()
+                                        .and_then(|s| s.to_str())
+                                        .map(|e| format!(".{e}"))
+                                        .unwrap_or_default();
+                                    format!("{stem}_FAILED_transient{ext}")
+                                };
+                                let dst = Path::new(&dead_letter_dir).join(&dead_filename);
                                 match std::fs::rename(&src, &dst) {
                                     Ok(()) => eprintln!(
-                                        "[WARN] {} quarantined after {} retries — inspect dead-letter/; replay by copying back to corpus dir",
-                                        filename, count
+                                        "[WARN] {} quarantined after {} retries → dead-letter/{} — replay by copying back to corpus dir",
+                                        filename, count, dead_filename
                                     ),
                                     Err(e) => {
                                         eprintln!(
@@ -658,25 +672,32 @@ fn call_tier_a_extract(
 }
 
 /// Convert raw entity JSON values into `GraphEntity` structs.
+/// Logs per-stage rejection telemetry at INFO level for every batch so
+/// operators can tune filter thresholds without reading LadybugDB directly.
 fn raw_entities_to_graph(
     raw: &[serde_json::Value],
     module_id: &str,
     confidence: f64,
 ) -> Vec<GraphEntity> {
-    raw.iter()
+    let (mut drop_empty, mut drop_noise, mut drop_word_count, mut drop_coerce, mut drop_oov) =
+        (0usize, 0usize, 0usize, 0usize, 0usize);
+    let result = raw.iter()
         .filter_map(|ent| {
             let entity_name = ent["entity_name"].as_str()?.to_string();
             let classification = ent["classification"].as_str()?.to_string();
             if entity_name.is_empty() || classification.is_empty() {
+                drop_empty += 1;
                 return None;
             }
             // Change 2: deterministic noise filter — rejects env vars, file paths,
             // snake_case identifiers, call expressions, fragments, and placeholders.
             if entity_filter::is_noise_entity_name(&entity_name) {
+                drop_noise += 1;
                 return None;
             }
             // Change 5: word-count gate — sentences and clauses are not entity names.
             if entity_name.split_whitespace().count() > 8 {
+                drop_word_count += 1;
                 return None;
             }
             // Change 4: type-coherence validation — corrects or rejects misclassified
@@ -684,12 +705,13 @@ fn raw_entities_to_graph(
             let classification =
                 match entity_filter::coerce_classification(&entity_name, &classification) {
                     Some(cls) => cls,
-                    None => return None,
+                    None => { drop_coerce += 1; return None; }
                 };
             // Reject out-of-vocabulary classifications. OLMo may emit values such as
             // "Licence" or "Technology" when the prompt omit list is insufficient.
             // Dropping them here prevents bad data from landing in LadybugDB.
             if !entity_filter::ALLOWED_CLASSIFICATIONS.contains(&classification.as_str()) {
+                drop_oov += 1;
                 return None;
             }
             Some(GraphEntity {
@@ -714,7 +736,18 @@ fn raw_entities_to_graph(
                 confidence,
             })
         })
-        .collect()
+        .collect::<Vec<_>>();
+    let total_in = raw.len();
+    let kept = result.len();
+    let dropped = total_in - kept;
+    if total_in > 0 {
+        println!(
+            "[entity_filter] module={module_id} kept={kept}/{total_in} \
+             drop=empty:{drop_empty} noise:{drop_noise} word_count:{drop_word_count} \
+             coerce:{drop_coerce} oov:{drop_oov}"
+        );
+    }
+    result
 }
 
 /// Write a DPO training pair when Tier B improves on Tier A's extraction.

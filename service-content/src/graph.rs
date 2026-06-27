@@ -389,8 +389,11 @@ impl GraphStore for LbugGraphStore {
         let conn = self.conn()?;
         let q_lower = query.to_lowercase();
 
-        // Phase 1: find matching entities. Drop stmt before Phase 2 prepares new stmts.
-        let initial: Vec<GraphEntity> = {
+        // Phase 1: find matching entities. Fetch up to 3× limit so we can rank
+        // by name-length proximity before alias resolution truncates to limit.
+        // Drop stmt before Phase 2 prepares new stmts.
+        let mut initial: Vec<GraphEntity> = {
+            let fetch_limit = (limit * 3).max(limit + 5);
             let mut stmt = conn
                 .prepare(
                     "MATCH (e:Entity) \
@@ -406,13 +409,22 @@ impl GraphStore for LbugGraphStore {
                     &mut stmt,
                     vec![
                         ("module_id", Value::String(module_id.to_string())),
-                        ("query", Value::String(q_lower)),
-                        ("limit", Value::Int64(limit as i64)),
+                        ("query", Value::String(q_lower.clone())),
+                        ("limit", Value::Int64(fetch_limit as i64)),
                     ],
                 )
                 .map_err(|e| anyhow!("Failed to execute query_context: {}", e))?;
             rows_to_entities(result)?
         }; // stmt dropped; conn free for Phase 2
+
+        // Rank by name-length proximity: abs(name_len - query_len) ascending.
+        // Exact-length matches rank first; longer names (supersets) rank before
+        // unrelated matches of similar length. Preserves insertion-order tie-break.
+        let q_len = query.len();
+        initial.sort_by_key(|e| {
+            let name_len = e.entity_name.len();
+            name_len.abs_diff(q_len)
+        });
 
         // Phase 2: alias resolution — if a matched entity is recorded as an alias,
         // return the canonical entity instead. Prevents the caller from receiving a
