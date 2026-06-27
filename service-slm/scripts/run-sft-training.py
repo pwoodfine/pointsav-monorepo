@@ -72,9 +72,9 @@ LORA_R = 16
 LORA_ALPHA = 32
 LORA_DROPOUT = 0.05
 LORA_TARGET_MODULES = ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
-MAX_LENGTH = 2048   # was 512 — truncated the majority of diffs mid-hunk (median chosen ~1000+ tok)
-BATCH_SIZE = 2
-GRAD_ACCUM = 8
+MAX_LENGTH = 1024   # L4 24GB OOM at 2048+bs2; 1024 fits with 4-bit+gradient_checkpointing
+BATCH_SIZE = 1      # OOM at bs=2 on L4 with OLMo-3-7B-Instruct 4-bit; effective=GRAD_ACCUM*1
+GRAD_ACCUM = 8      # effective batch size = 8
 # SFT-LoRA wants a hotter LR than full fine-tune or DPO. 2e-5 is a full-FT default and
 # under-fits an adapter; 1e-4..3e-4 is the LoRA-SFT band (verified research 2026-06-20).
 LEARNING_RATE = 2e-4

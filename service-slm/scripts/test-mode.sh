@@ -730,7 +730,8 @@ if (( DRYRUN_OK == 1 )); then
         # Launch training in the background on the VM, then poll kill-switch-aware.
         # Use venv python3 so torch/trl/peft are available.
         # Use --sft-input (pre-built Alpaca JSONL from export-sft.py) — NOT --queue-done.
-        remote_ssh "cd ${REMOTE_DIR} && nohup ${TRAIN_VENV}/bin/python3 run-sft-training.py \
+        remote_ssh "cd ${REMOTE_DIR} && PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
+            nohup ${TRAIN_VENV}/bin/python3 run-sft-training.py \
             --sft-input ${REMOTE_DIR}/corpus.jsonl \
             --adapter-name yoyo-test-${TS} \
             --output-dir ${REMOTE_DIR}/adapter \
