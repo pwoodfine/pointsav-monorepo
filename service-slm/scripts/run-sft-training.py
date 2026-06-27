@@ -445,12 +445,18 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.sft_input:
-        # Pre-built Alpaca JSONL from export-sft.py — used by test-mode.sh GPU runs.
+        # Pre-built corpus from export-sft.py — records have {prompt, completion} fields.
+        # Convert to Alpaca {text} format so the rest of the pipeline is uniform.
         if not os.path.isfile(args.sft_input):
             print(f"[ERROR] --sft-input file not found: {args.sft_input}", file=sys.stderr)
             sys.exit(1)
         with open(args.sft_input) as fh:
-            records = [json.loads(line) for line in fh if line.strip()]
+            raw = [json.loads(line) for line in fh if line.strip()]
+        records = [
+            {"text": format_alpaca_prompt(r.get("prompt", ""), r.get("completion", ""))}
+            for r in raw
+            if r.get("prompt") or r.get("completion")
+        ]
         print(f"[corpus] loaded {len(records)} records from --sft-input {args.sft_input}")
     else:
         records = load_sft_pairs(args.queue_done)
