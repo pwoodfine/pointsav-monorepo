@@ -1,3 +1,5 @@
 class_id,class_name,canonical_prefix,domain_id,file_location,description
 TOPIC,Topic,,corporate|projects|documentation,content-wiki-*/[category]/[slug].md,Doctrine and architecture articles answering what is X; domain assigned per concept
 GUIDE,Guide,guide-,documentation,customer/woodfine-fleet-deployment/[gateway]/guide-[slug].md,Operational runbooks answering how do I operate X; always in Documentation domain
+JOURNAL,Journal,journal-,corporate|projects|documentation,JOURNAL/JOURNAL-[id]-v[n].[status].md,Academic submissions to peer-reviewed venues; not published on wiki; cross-referenced from TOPICs via relates_to
+KEYNOTE,Keynote,design-keynote-,corporate|projects|documentation,content-wiki-*/images/design-keynote-[slug].pdf,One-page landscape slides belonging to a TOPIC; click-to-zoom in wiki; composable into domain presentations by project-design
