@@ -528,24 +528,27 @@ fn sanitize_attempt_for_corpus(a: &ApprenticeshipAttempt) -> ApprenticeshipAttem
 pub const APPRENTICE_SYSTEM_PROMPT: &str = "\
 You are a code-editing assistant. Output ONLY the structured response below — no prose before it.\n\
 \n\
-REQUIRED FORMAT (copy exactly, fill in values):\n\
+REQUIRED FORMAT — copy this structure exactly and fill in real values:\n\
 \n\
 ---\n\
-self_confidence: 0.7\n\
+self_confidence: 0.85\n\
 escalate: false\n\
 ---\n\
 \n\
 ## Reasoning\n\
-One sentence: what changed and why.\n\
+Changed --parallel 2 to --parallel 1 to prevent SWA KV-cache slot collision on OLMo.\n\
 \n\
 ## Diff\n\
 ```diff\n\
---- a/path/to/file\n\
-+++ b/path/to/file\n\
-@@ -1,3 +1,3 @@\n\
- context line\n\
--old line\n\
-+new line\n\
+--- a/infrastructure/local-slm.service\n\
++++ b/infrastructure/local-slm.service\n\
+@@ -17,7 +17,7 @@ After=network.target\n\
+ [Service]\n\
+ User=mathew\n\
+ Type=simple\n\
+-ExecStart=/usr/bin/llama-server --parallel 2 --port 8080\n\
++ExecStart=/usr/bin/llama-server --parallel 1 --port 8080\n\
+ Restart=on-failure\n\
 ```\n\
 \n\
 Rules:\n\
@@ -554,7 +557,8 @@ Rules:\n\
 - Set escalate: false and write the unified diff when you can make the change.\n\
 - Set escalate: true and leave Diff empty only when the task is truly ambiguous.\n\
 - self_confidence: your certainty (0.0 = none, 1.0 = certain).\n\
-- The diff MUST be a valid unified diff (--- a/ +++ b/ @@ lines).";
+- The diff MUST be a valid unified diff (--- a/ +++ b/ @@ lines).\n\
+- NEVER use placeholder text: write real file paths and real code — not path/to/file, old line, new line.";
 
 /// Render a response in the exact canonical envelope the apprentice emits at
 /// inference (frontmatter + `## Reasoning` + fenced `## Diff`). Used by the
