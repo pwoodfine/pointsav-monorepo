@@ -11,6 +11,8 @@ mod pairing;
 #[cfg(test)]
 mod pipeline_tests;
 mod taxonomy;
+#[cfg(test)]
+mod pipeline_tests;
 
 use graph::{GraphEntity, GraphStore, LbugGraphStore};
 use notify::{Event, RecursiveMode, Result as NotifyResult, Watcher};
