@@ -707,11 +707,14 @@ if (( DRYRUN_OK == 1 )); then
         remote_rsync "${SCRIPT_DIR}/run-sft-training.py" "${REMOTE_DIR}/run-sft-training.py" || log "  WARN trainer rsync failed"
 
         # Ensure training dependencies are installed on the VM.
-        # The disk persists between runs so after first install this is a no-op (~5s).
+        # Use python3 -c 'import torch' to verify the SAME python3 that runs the trainer
+        # can find the package — pip show can lie if pip != python3's pip.
+        # Disk persists between runs so after first install this is a ~3s no-op.
         log "  Checking/installing training dependencies on VM..."
-        remote_ssh "pip show torch trl peft 2>/dev/null | grep -c '^Name:' | grep -q '^3$' || \
-            pip install trl peft transformers datasets bitsandbytes accelerate \
-            --quiet --no-warn-script-location 2>&1 | tail -3" \
+        remote_ssh "python3 -c 'import torch, trl, peft' 2>/dev/null || \
+            python3 -m pip install --quiet \
+            trl peft transformers datasets bitsandbytes accelerate \
+            2>&1 | tail -5" \
             || log "  WARN: pip install may have failed — train.log will confirm"
 
         # Launch training in the background on the VM, then poll kill-switch-aware.
