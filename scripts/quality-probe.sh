@@ -72,8 +72,8 @@ journalctl -u local-content.service --no-pager -n 50 2>/dev/null \
 # ── C: Tier A inference quality ───────────────────────────────────────────────
 echo ""
 echo "── C: Tier A inference quality (POST :${DOORMAN_PORT}/v1/chat/completions)"
-echo "  (wall timeout: 90s — Tier A CPU inference)"
-INFER_RESULT=$(curl -sf --max-time 90 \
+echo "  (wall timeout: 150s — Tier A CPU inference; under extraction load can exceed 90s)"
+INFER_RESULT=$(curl -sf --max-time 150 \
     -X POST "http://127.0.0.1:${DOORMAN_PORT}/v1/chat/completions" \
     -H "Content-Type: application/json" \
     -H "X-Foundry-Module-ID: jennifer" \
