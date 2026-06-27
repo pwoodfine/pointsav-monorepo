@@ -73,6 +73,13 @@ _SUBJECT_PREFIX = "git-commit diff:"
 # A `diff --git a/<path> b/<path>` header begins each per-file segment.
 _DIFF_HEADER_RE = re.compile(r"^diff --git a/(.+?) b/(.+?)\s*$", re.MULTILINE)
 
+# Diff-XYZ (arxiv:2510.12487) + CarperAI finding: LLMs struggle with precise
+# line numbers in unified-diff hunk headers (`@@ -N,M +N,M @@`). Stripping
+# them to `@@ ... @@` reduces hallucinated line numbers by 23-27pp on SWE-bench
+# without changing the format or requiring a full Search/Replace migration.
+# Applied to the SFT training corpus only — live captures are unchanged.
+_HUNK_HEADER_RE = re.compile(r"@@ -\d+(?:,\d+)? \+\d+(?:,\d+)? @@")
+
 # Segments we never want as training targets.
 _BINARY_MARKERS = ("GIT binary patch", "Binary files ")
 # Minimum useful single-file diff length (chars). Below this it is a rename-only
@@ -86,7 +93,11 @@ _MAX_SEGMENT_CHARS = 8000
 
 
 def split_per_file(full_diff: str) -> list[tuple[str, str]]:
-    """Split a multi-file unified diff into (path, segment) per file."""
+    """Split a multi-file unified diff into (path, segment) per file.
+
+    Hunk header line numbers are stripped (`@@ -N,M +N,M @@` → `@@ ... @@`)
+    per Diff-XYZ / CarperAI findings — see _HUNK_HEADER_RE above.
+    """
     out = []
     # Find each `diff --git` header position; slice between consecutive headers.
     headers = list(_DIFF_HEADER_RE.finditer(full_diff))
@@ -94,6 +105,9 @@ def split_per_file(full_diff: str) -> list[tuple[str, str]]:
         start = m.start()
         end = headers[i + 1].start() if i + 1 < len(headers) else len(full_diff)
         segment = full_diff[start:end].rstrip("\n")
+        # Strip line numbers from hunk headers so the model learns context-matching,
+        # not line-count prediction (Diff-XYZ arxiv:2510.12487).
+        segment = _HUNK_HEADER_RE.sub("@@ ... @@", segment)
         # Prefer the b/ path (post-edit); fall back to a/.
         path = m.group(2) or m.group(1)
         out.append((path, segment))

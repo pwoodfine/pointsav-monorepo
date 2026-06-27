@@ -72,13 +72,14 @@ const TEMPLATE_ECHO_PREFIXES: &[&str] = &[
 /// `<unified diff:` (with colon) is caught earlier as a TEMPLATE_ECHO_PREFIX.
 const REAL_DIFF_MARKERS: &[&str] = &["diff --git", "--- a/", "+++ b/", "@@ "];
 
-/// Verbatim tokens from the `APPRENTICE_SYSTEM_PROMPT` diff example. When a
-/// rejected side contains two or more of these, OLMo copied the example rather
-/// than producing a real diff — a stub that nonetheless carries `--- a/`/`@@`
-/// markers and so slips past `REAL_DIFF_MARKERS`. Two-marker co-occurrence
-/// keeps the false-positive rate near zero (a real diff touching a file
-/// literally named `path/to/file` AND containing the lines `old line`/`new
-/// line` is effectively impossible). Mirrors run-dpo-training.py.
+/// Verbatim tokens from the OLD `APPRENTICE_SYSTEM_PROMPT` diff example (pre-e5986a64).
+/// The example was updated 2026-06-27 to use real infrastructure paths; the new
+/// example tokens (`local-slm.service`, `--parallel 2`) are too generic to use
+/// as rejection markers without false-positive risk. These old markers remain as
+/// a dead-code safety net for any pre-update captures still in the corpus.
+/// Two-marker co-occurrence in the rejected side indicates the OLMo attempt
+/// copied the old placeholder rather than producing a real diff.
+/// Mirrors run-dpo-training.py `_SYSTEM_PROMPT_EXAMPLE_MARKERS`.
 const SYSTEM_PROMPT_EXAMPLE_MARKERS: &[&str] =
     &["path/to/file", "-old line", "+new line", " context line"];
 
@@ -176,6 +177,9 @@ pub enum CorpusGateReject {
     /// Chosen is more than MAX_LENGTH_RATIO × longer than rejected — DPO
     /// cannot distinguish quality from token count at this ratio.
     LengthRatioTooExtreme { chosen_len: usize, rejected_len: usize, ratio: f64, max: f64 },
+    /// `git apply --check` failed on the chosen side — the diff is syntactically
+    /// plausible but would not apply cleanly. Enabled by CORPUS_GATE_GIT_APPLY_CHECK=true.
+    GitApplyFailed,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -219,6 +223,9 @@ impl From<CorpusGateReject> for DoormanError {
             ),
             CorpusGateReject::LengthRatioTooExtreme { chosen_len, rejected_len, ratio, max } => format!(
                 "DPO length ratio {ratio:.1}× exceeds {max:.1}× max (chosen={chosen_len} chars, rejected={rejected_len} chars); would teach token-count not quality"
+            ),
+            CorpusGateReject::GitApplyFailed => String::from(
+                "chosen side failed `git apply --check` — diff is syntactically plausible but would not apply cleanly; excluded from corpus (CORPUS_GATE_GIT_APPLY_CHECK=true)"
             ),
         };
         DoormanError::CorpusGateRejected { reason }
@@ -530,6 +537,29 @@ pub fn check_dpo_pair(rejected: &str, chosen: &str) -> Result<CorpusGateOutcome>
     let bcsc_violations = scan_bcsc_violations(rejected, chosen);
     let bcsc_flagged = !bcsc_violations.is_empty();
     let diff_hash = sha256_hex(chosen);
+
+    // 7. (opt-in) `git apply --check` on the chosen side.
+    // Catches diffs that are structurally plausible but would not apply to any
+    // real tree — a silent corruption mode not caught by steps 1-6.
+    // Enable with env var CORPUS_GATE_GIT_APPLY_CHECK=true. Off by default
+    // because each check spawns a subprocess (~5ms).
+    if std::env::var("CORPUS_GATE_GIT_APPLY_CHECK").as_deref() == Ok("true") {
+        let tmp_path = std::env::temp_dir()
+            .join(format!("corpus_gate_{}.patch", &diff_hash[..16]));
+        if std::fs::write(&tmp_path, chosen).is_ok() {
+            let passed = std::process::Command::new("git")
+                .args(["apply", "--check", "--stat"])
+                .arg(&tmp_path)
+                .output()
+                .map(|o| o.status.success())
+                .unwrap_or(false);
+            let _ = std::fs::remove_file(&tmp_path);
+            if !passed {
+                return Err(CorpusGateReject::GitApplyFailed.into());
+            }
+        }
+    }
+
     Ok(CorpusGateOutcome {
         brief_hash: String::new(),
         diff_hash,
