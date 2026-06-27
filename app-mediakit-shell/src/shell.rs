@@ -75,6 +75,9 @@ pub struct Brand {
     pub ld_json_description: &'static str,
     /// Google Search Console verification token (set from env at startup).
     pub google_verify: Option<String>,
+    /// Trademark disclaimer line rendered at the bottom of the page footer.
+    /// Source: factory-release-engineering/tokens/legal-tokens-woodfine.yaml § website.footer_trademark_en
+    pub trademark: Option<String>,
 }
 
 impl Brand {
@@ -109,6 +112,15 @@ impl Brand {
             ld_json_type: "Organization",
             ld_json_description: "A real property developer with 40 years\u{2019} experience in the procurement, development, and management of real property.",
             google_verify: None,
+            trademark: Some(
+                "Woodfine Capital Projects\u{2122}, Woodfine Management Corp\u{2122}, \
+                 PointSav Digital Systems\u{2122}, Totebox Orchestration\u{2122}, \
+                 Totebox Archive\u{2122}, and Capability Geometry\u{2122} are trademarks \
+                 of Woodfine Capital Projects Inc., used in Canada, the United States, \
+                 Latin America, and Europe. All other trademarks are the property of \
+                 their respective owners."
+                    .into(),
+            ),
         }
     }
 
@@ -137,6 +149,15 @@ impl Brand {
             ld_json_type: "SoftwareApplication",
             ld_json_description: "A fully transferable data management platform for the procurement, development, and management of real properties.",
             google_verify: None,
+            trademark: Some(
+                "Woodfine Capital Projects\u{2122}, Woodfine Management Corp\u{2122}, \
+                 PointSav Digital Systems\u{2122}, Totebox Orchestration\u{2122}, \
+                 Totebox Archive\u{2122}, and Capability Geometry\u{2122} are trademarks \
+                 of Woodfine Capital Projects Inc., used in Canada, the United States, \
+                 Latin America, and Europe. All other trademarks are the property of \
+                 their respective owners."
+                    .into(),
+            ),
         }
     }
 
@@ -193,6 +214,9 @@ fn footer(brand: &Brand) -> Markup {
             (render_nav(&brand.footer_nav, "footnav"))
         }
         div class="copyright" { (brand.copyright) }
+        @if let Some(tm) = &brand.trademark {
+            div class="trademark" { (tm) }
+        }
     }
 }
 
@@ -273,6 +297,7 @@ mod tests {
         assert!(html.contains("topnav"));
         assert!(html.contains("hero-headline"));
         assert!(html.contains("Woodfine Capital Projects"));
+        assert!(html.contains("Capability Geometry"));
         // The legacy fragile pattern must be structurally absent.
         assert!(!html.contains("__bundler/template"));
         assert!(html.contains("width=device-width"));
