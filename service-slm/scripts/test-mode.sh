@@ -706,6 +706,14 @@ if (( DRYRUN_OK == 1 )); then
         remote_rsync "${CORPUS_OUT}" "${REMOTE_DIR}/corpus.jsonl" || log "  WARN corpus rsync failed"
         remote_rsync "${SCRIPT_DIR}/run-sft-training.py" "${REMOTE_DIR}/run-sft-training.py" || log "  WARN trainer rsync failed"
 
+        # Ensure training dependencies are installed on the VM.
+        # The disk persists between runs so after first install this is a no-op (~5s).
+        log "  Checking/installing training dependencies on VM..."
+        remote_ssh "pip show torch trl peft 2>/dev/null | grep -c '^Name:' | grep -q '^3$' || \
+            pip install trl peft transformers datasets bitsandbytes accelerate \
+            --quiet --no-warn-script-location 2>&1 | tail -3" \
+            || log "  WARN: pip install may have failed — train.log will confirm"
+
         # Launch training in the background on the VM, then poll kill-switch-aware.
         # The trainer enforces its own --max-runtime-seconds checkpoint callback.
         # Use --sft-input (pre-built Alpaca JSONL from export-sft.py) — NOT --queue-done
