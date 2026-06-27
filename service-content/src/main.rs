@@ -4,6 +4,8 @@ mod er;
 mod graph;
 mod http;
 mod taxonomy;
+#[cfg(test)]
+mod pipeline_tests;
 
 use graph::{GraphEntity, GraphStore, LbugGraphStore};
 use notify::{Event, RecursiveMode, Result as NotifyResult, Watcher};
