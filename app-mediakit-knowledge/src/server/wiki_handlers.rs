@@ -626,7 +626,7 @@ async fn wiki_page_inner(
         }
         rails
     };
-    Ok(wiki_chrome(
+    let mut response = wiki_chrome(
         effective_locale,
         &title,
         &slug,
@@ -649,7 +649,12 @@ async fn wiki_page_inner(
         &nav_buckets,
         &article_category,
     )
-    .into_response())
+    .into_response();
+    response.headers_mut().insert(
+        header::CACHE_CONTROL,
+        HeaderValue::from_static("public, max-age=3600, must-revalidate"),
+    );
+    Ok(response)
 }
 
 async fn static_asset(Path(path): Path<String>) -> Response {
@@ -827,6 +832,15 @@ fn wiki_chrome(
                         link rel="alternate" hreflang="en" href={ "/wiki/" (slug) };
                         link rel="canonical" href={ "/es/wiki/" (slug) };
                     }
+                }
+                // Open Graph meta — enables rich previews on social + messaging platforms
+                meta property="og:type" content="article";
+                meta property="og:title" content=(page_title);
+                @if let Some(ref desc) = fm.short_description {
+                    meta property="og:description" content=(desc);
+                }
+                @if let Some(ref img) = fm.hero_image {
+                    meta property="og:image" content=(img);
                 }
                 // JSON-LD baseline (Phase 2 Step 1) — schema.org TechArticle /
                 // DefinedTerm. Cumulative across phases; AEO crawlers + downstream

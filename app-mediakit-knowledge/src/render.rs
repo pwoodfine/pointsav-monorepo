@@ -187,6 +187,11 @@ pub struct Frontmatter {
     #[serde(default, deserialize_with = "deser_string_or_vec")]
     pub aliases: Vec<String>,
 
+    /// Hero image URL for the featured card and OG meta (`og:image`).
+    /// Typically a path to a static asset, e.g. `/static/img/hero.jpg`.
+    #[serde(default)]
+    pub hero_image: Option<String>,
+
     #[serde(flatten)]
     pub extra: BTreeMap<String, serde_yaml::Value>,
 }

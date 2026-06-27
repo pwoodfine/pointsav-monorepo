@@ -40,12 +40,14 @@ async fn bucket_topics_by_category(
         let lede_first_line = first_body_line(&parsed.body_md);
         let last_edited = parsed.frontmatter.last_edited.clone();
         let short_description = parsed.frontmatter.short_description.clone();
+        let hero_image = parsed.frontmatter.hero_image.clone();
 
         let summary = TopicSummary {
             slug: tf.slug,
             title,
             last_edited,
             short_description,
+            hero_image,
             status: parsed.frontmatter.status.clone(),
             lede_first_line,
             file_path: tf.path,
@@ -129,6 +131,7 @@ async fn load_featured(content_dir: &FsPath, buckets: &CategoryBuckets) -> Optio
         title: summary.title.clone(),
         slug: summary.slug.clone(),
         snippet: summary.short_description.clone().unwrap_or_default(),
+        hero_image: summary.hero_image.clone(),
     })
 }
 
@@ -329,7 +332,14 @@ fn home_chrome(
 
                             // Featured article
                             @if let Some(ref featured) = featured {
-                                div.featured #mp-tfa data-content-type=(item_type_key(&featured.slug)) {
+                                div.featured
+                                    .featured--has-image[featured.hero_image.is_some()]
+                                    #mp-tfa
+                                    data-content-type=(item_type_key(&featured.slug))
+                                    style=(featured.hero_image.as_ref()
+                                        .map(|u| format!("--hero-img:url('{}')", u))
+                                        .unwrap_or_default())
+                                {
                                     div.featured__row {
                                         span.dot {}
                                         (section_featured)
