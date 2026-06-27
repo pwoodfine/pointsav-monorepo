@@ -707,15 +707,23 @@ if (( DRYRUN_OK == 1 )); then
         remote_rsync "${SCRIPT_DIR}/run-sft-training.py" "${REMOTE_DIR}/run-sft-training.py" || log "  WARN trainer rsync failed"
 
         # Ensure training dependencies are installed on the VM.
-        # Use python3 -c 'import torch' to verify the SAME python3 that runs the trainer
-        # can find the package — pip show can lie if pip != python3's pip.
-        # Disk persists between runs so after first install this is a ~3s no-op.
-        log "  Checking/installing training dependencies on VM..."
-        remote_ssh "python3 -c 'import torch, trl, peft' 2>/dev/null || \
-            python3 -m pip install --quiet \
-            trl peft transformers datasets bitsandbytes accelerate \
-            2>&1 | tail -5" \
-            || log "  WARN: pip install may have failed — train.log will confirm"
+        # Disk persists between runs so after first install subsequent runs are fast.
+        log "  Checking training dependencies on VM..."
+        if remote_ssh "python3 -c 'import torch, trl, peft' 2>/dev/null"; then
+            log "  torch/trl/peft already importable — skipping install."
+        else
+            log "  Installing torch + training libs (CUDA 12.1 index — L4 GPU)..."
+            # Log all pip output so failures are visible; --extra-index for CUDA-aware torch.
+            remote_ssh "python3 -m pip install \
+                torch --index-url https://download.pytorch.org/whl/cu121 \
+                && python3 -m pip install trl peft transformers datasets bitsandbytes accelerate" \
+                >>"${LOG_FILE}" 2>&1 \
+                || { log "  ERROR: pip install failed — check log above"; }
+            # Verify install landed for this python3.
+            remote_ssh "python3 -c 'import torch, trl, peft' && echo '[dep-check] OK'" \
+                >>"${LOG_FILE}" 2>&1 \
+                || log "  ERROR: deps still missing after install — train.log will confirm"
+        fi
 
         # Launch training in the background on the VM, then poll kill-switch-aware.
         # The trainer enforces its own --max-runtime-seconds checkpoint callback.
