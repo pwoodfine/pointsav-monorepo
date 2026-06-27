@@ -419,21 +419,27 @@ def run_training(records: list[dict], base_model: str, output_dir: str, dry_run:
         from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig, TrainerCallback
         from trl import DPOConfig, DPOTrainer
         if loss_type == "simpo":
+            # SimPOTrainer was native in trl 0.9–0.11. In trl ≥0.12 it was folded into
+            # CPOTrainer(loss_type='simpo', cpo_alpha=0.0) — same math, different class name
+            # (Meng et al. 2024, arxiv:2405.14734). Try native first; fall back to CPO.
+            _simpo_via_cpo = False
             try:
                 from trl import SimPOConfig, SimPOTrainer  # noqa: F401
             except ImportError:
-                print(
-                    "[ERROR] --loss-type simpo requested but SimPOConfig/SimPOTrainer are not\n"
-                    "        available in the installed trl. SimPO (reference-free) is the\n"
-                    "        load-bearing objective for affordable on-policy training; silently\n"
-                    "        degrading to DPO would defeat that and re-introduce the ref-model\n"
-                    "        memory cost. Aborting.\n"
-                    "        Fix: install a trl with SimPO, OR wire CPOTrainer(loss_type='simpo',\n"
-                    "        cpo_alpha=0.0) after verifying the installed trl API, OR pass\n"
-                    "        --loss-type dpo explicitly to opt into standard DPO.",
-                    file=sys.stderr,
-                )
-                sys.exit(1)
+                try:
+                    from trl import CPOConfig, CPOTrainer  # noqa: F401
+                    _simpo_via_cpo = True
+                    print("[train] SimPOConfig not available; using CPOTrainer(loss_type='simpo', cpo_alpha=0.0)")
+                except ImportError:
+                    print(
+                        "[ERROR] --loss-type simpo requested but neither SimPOConfig/SimPOTrainer\n"
+                        "        nor CPOTrainer are available in installed trl. Both implement SimPO;\n"
+                        "        SimPOTrainer was native in trl 0.9–0.11, then folded into CPOTrainer\n"
+                        "        as CPOConfig(loss_type='simpo', cpo_alpha=0.0) in trl >=0.12.\n"
+                        "        Fix: pip install 'trl>=0.9', OR pass --loss-type dpo.",
+                        file=sys.stderr,
+                    )
+                    sys.exit(1)
     except ImportError as e:
         print(f"[ERROR] Missing training library: {e}", file=sys.stderr)
         print("Install: pip install trl peft transformers datasets bitsandbytes", file=sys.stderr)
@@ -566,10 +572,12 @@ def run_training(records: list[dict], base_model: str, output_dir: str, dry_run:
         callbacks.append(RuntimeCapCallback(max_runtime_seconds, output_dir))
 
     if loss_type == "simpo":
-        # SimPO: no reference model needed; uses average log-prob per token with a margin
-        # (gamma). Directly addresses the length-discrimination artifact in standard DPO
+        # SimPO: no reference model needed; uses average log-prob per token with a margin.
+        # Directly addresses the length-discrimination artifact in standard DPO
         # (Jun-14 audit finding: logps/chosen −1592 vs logps/rejected −238 = 6.7× gap).
-        training_args = SimPOConfig(
+        # Two backends: native SimPOTrainer (trl 0.9–0.11) or CPOTrainer(loss_type='simpo')
+        # (trl >=0.12). Same math; CPO backend uses simpo_gamma instead of gamma.
+        _simpo_shared = dict(
             output_dir=output_dir,
             num_train_epochs=NUM_EPOCHS,
             per_device_train_batch_size=_batch_size,
@@ -577,7 +585,6 @@ def run_training(records: list[dict], base_model: str, output_dir: str, dry_run:
             gradient_checkpointing=True,
             gradient_checkpointing_kwargs={"use_reentrant": False},
             learning_rate=LEARNING_RATE,
-            gamma=simpo_gamma,
             max_length=_max_length,
             logging_steps=5,
             save_steps=5,
@@ -588,15 +595,28 @@ def run_training(records: list[dict], base_model: str, output_dir: str, dry_run:
             bf16=torch.cuda.is_available(),
             remove_unused_columns=False,
         )
-        trainer = SimPOTrainer(
-            model=model,
-            args=training_args,
-            train_dataset=split["train"],
-            eval_dataset=split["test"],
-            processing_class=tokenizer,
-            peft_config=peft_config,
-            callbacks=callbacks or None,
-        )
+        if _simpo_via_cpo:
+            training_args = CPOConfig(loss_type="simpo", simpo_gamma=simpo_gamma, cpo_alpha=0.0, **_simpo_shared)
+            trainer = CPOTrainer(
+                model=model,
+                args=training_args,
+                train_dataset=split["train"],
+                eval_dataset=split["test"],
+                processing_class=tokenizer,
+                peft_config=peft_config,
+                callbacks=callbacks or None,
+            )
+        else:
+            training_args = SimPOConfig(gamma=simpo_gamma, **_simpo_shared)
+            trainer = SimPOTrainer(
+                model=model,
+                args=training_args,
+                train_dataset=split["train"],
+                eval_dataset=split["test"],
+                processing_class=tokenizer,
+                peft_config=peft_config,
+                callbacks=callbacks or None,
+            )
     else:
         training_args = DPOConfig(
             output_dir=output_dir,
