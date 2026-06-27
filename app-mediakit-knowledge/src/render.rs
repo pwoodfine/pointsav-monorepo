@@ -344,7 +344,8 @@ pub fn render_html_raw(
 
     let mut raw = String::new();
     format_html(root, &options, &mut raw).expect("comrak format_html");
-    inject_wiki_prefixes(&raw, content_dir, extra_roots)
+    let with_prefixes = inject_wiki_prefixes(&raw, content_dir, extra_roots);
+    inject_pull_quotes(&with_prefixes)
 }
 
 /// B2/AC: Render an infobox YAML body as a Wikipedia-style float-right summary table.
@@ -632,6 +633,40 @@ pub fn inject_citation_markers(html: &str) -> String {
         } else {
             out.push_str(after_marker);
             break;
+        }
+    }
+    out.push_str(rest);
+    out
+}
+
+/// P5-9 — promote blockquotes whose first paragraph is entirely bold to pull-quotes.
+///
+/// Trigger: `> **text**` in Markdown — comrak emits `<blockquote>\n<p><strong>text</strong></p>`.
+/// Transform: adds `class="pull-quote"` to the `<blockquote>` and strips the `<strong>` wrapper
+/// from that paragraph so the italic display font is not double-bolded.
+/// Normal blockquotes (no leading bold paragraph) are left unchanged.
+pub fn inject_pull_quotes(html: &str) -> String {
+    const OPEN: &str = "<blockquote>\n<p><strong>";
+    const CLOSE_STRONG: &str = "</strong></p>";
+
+    if !html.contains(OPEN) {
+        return html.to_string();
+    }
+
+    let mut out = String::with_capacity(html.len());
+    let mut rest = html;
+
+    while let Some(pos) = rest.find(OPEN) {
+        out.push_str(&rest[..pos]);
+        let after_strong = &rest[pos + OPEN.len()..];
+        if let Some(close_rel) = after_strong.find(CLOSE_STRONG) {
+            out.push_str("<blockquote class=\"pull-quote\">\n<p>");
+            out.push_str(&after_strong[..close_rel]);
+            out.push_str("</p>");
+            rest = &after_strong[close_rel + CLOSE_STRONG.len()..];
+        } else {
+            out.push_str(OPEN);
+            rest = after_strong;
         }
     }
     out.push_str(rest);
@@ -1200,6 +1235,30 @@ mod tests {
         assert!(
             html2.contains("can verify integrity"),
             "inline claim prose must render: {html2}"
+        );
+    }
+
+    #[test]
+    fn pull_quote_promoted_when_bold_paragraph() {
+        let md = "> **This is a pull quote sentence.**";
+        let html = render_html(md, std::path::Path::new("."), &[]);
+        assert!(
+            html.contains(r#"<blockquote class="pull-quote">"#),
+            "bold-only blockquote must become pull-quote: {html}"
+        );
+        assert!(
+            !html.contains("<strong>"),
+            "strong wrapper must be stripped inside pull-quote: {html}"
+        );
+    }
+
+    #[test]
+    fn plain_blockquote_unchanged() {
+        let md = "> Just a regular blockquote without leading bold.";
+        let html = render_html(md, std::path::Path::new("."), &[]);
+        assert!(
+            html.contains("<blockquote>") && !html.contains(r#"class="pull-quote""#),
+            "non-bold blockquote must not become pull-quote: {html}"
         );
     }
 }

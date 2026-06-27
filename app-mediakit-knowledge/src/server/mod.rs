@@ -925,47 +925,56 @@ const RATIFIED_CATEGORIES: &[&str] = &[
 ///
 /// Mapping is exclusive (no internal category repeated) pending operator confirmation
 /// (see BRIEF-knowledge-platform-master.md §8.4 open decision #1).
-const HOMEPAGE_CATEGORIES: &[(&str, &str, &str, &[&str])] = &[
+/// Each entry: (display_name, primary_slug, description, accent_color, all_slugs).
+/// `accent_color` is a CSS color value used as `--cat-accent` on the tile border-top.
+const HOMEPAGE_CATEGORIES: &[(&str, &str, &str, &str, &[&str])] = &[
     (
         "Developer Platform",
         "reference",
         "Who we are, how you join, and the house style for everything running on the platform.",
+        "#7c3aed",
         &["design-system", "reference", "governance"],
     ),
     (
         "Operator Workspace",
         "applications",
         "The Console OS surfaces operators work in every day.",
+        "#0d9488",
         &["applications"],
     ),
     (
         "System of Record",
         "systems",
         "Toteboxes, archives, and the services that keep the records.",
+        "#164679",
         &["systems"],
     ),
     (
         "Integration & Data Portability",
         "services",
         "",
+        "#b45309",
         &["services", "patterns"],
     ),
     (
         "Machine-Based Authorization",
         "infrastructure",
         "Pairing as permission across the private network — authorization by device, not by role.",
+        "#4f46e5",
         &["infrastructure"],
     ),
     (
         "Multi-Entity Consolidation",
         "architecture",
         "Aggregating fleets of archives and scaling across user tiers and composition.",
+        "#c7a961",
         &["architecture"],
     ),
     (
         "Platform Foundation",
         "substrate",
         "Where the platform runs — on-prem, leased, public cloud, hybrid — and the GIS engine beneath it.",
+        "#166534",
         &["substrate"],
     ),
 ];
