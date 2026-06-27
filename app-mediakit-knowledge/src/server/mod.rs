@@ -831,6 +831,8 @@ pub struct TopicSummary {
     pub last_edited: Option<String>,
     /// `short_description` from frontmatter; may be None if not set.
     pub short_description: Option<String>,
+    /// `hero_image` from frontmatter; may be None if not set.
+    pub hero_image: Option<String>,
     /// `status` from frontmatter: `stable | pre-build | draft | stub`.
     pub status: Option<String>,
     /// First non-blank, non-heading line of the body Markdown.
@@ -861,6 +863,7 @@ struct FeaturedArticle {
     title: String,
     slug: String,
     snippet: String,
+    hero_image: Option<String>,
 }
 
 #[derive(Deserialize)]
