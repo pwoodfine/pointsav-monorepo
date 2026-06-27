@@ -706,30 +706,31 @@ if (( DRYRUN_OK == 1 )); then
         remote_rsync "${CORPUS_OUT}" "${REMOTE_DIR}/corpus.jsonl" || log "  WARN corpus rsync failed"
         remote_rsync "${SCRIPT_DIR}/run-sft-training.py" "${REMOTE_DIR}/run-sft-training.py" || log "  WARN trainer rsync failed"
 
-        # Ensure training dependencies are installed on the VM.
-        # Disk persists between runs so after first install subsequent runs are fast.
-        log "  Checking training dependencies on VM..."
-        if remote_ssh "python3 -c 'import torch, trl, peft' 2>/dev/null"; then
-            log "  torch/trl/peft already importable — skipping install."
+        # Ensure training dependencies are installed on the VM via a persistent venv.
+        # Debian PEP 668 blocks pip from touching system python — venv is required.
+        # ~/train-venv persists on the 100GB disk so subsequent runs skip this step.
+        TRAIN_VENV="/home/mathew/train-venv"
+        log "  Checking training venv (${TRAIN_VENV}) on VM..."
+        if remote_ssh "test -f ${TRAIN_VENV}/bin/python3 && ${TRAIN_VENV}/bin/python3 -c 'import torch, trl, peft' 2>/dev/null"; then
+            log "  Venv exists with torch/trl/peft — skipping install."
         else
-            log "  Installing torch + training libs (CUDA 12.1 index — L4 GPU)..."
-            # Log all pip output so failures are visible; --extra-index for CUDA-aware torch.
-            remote_ssh "python3 -m pip install \
-                torch --index-url https://download.pytorch.org/whl/cu121 \
-                && python3 -m pip install trl peft transformers datasets bitsandbytes accelerate" \
+            log "  Creating venv + installing torch (CUDA 12.1) + training libs..."
+            remote_ssh "python3 -m venv ${TRAIN_VENV} \
+                && ${TRAIN_VENV}/bin/pip install --quiet \
+                    torch --index-url https://download.pytorch.org/whl/cu121 \
+                && ${TRAIN_VENV}/bin/pip install --quiet \
+                    trl peft transformers datasets bitsandbytes accelerate" \
                 >>"${LOG_FILE}" 2>&1 \
-                || { log "  ERROR: pip install failed — check log above"; }
-            # Verify install landed for this python3.
-            remote_ssh "python3 -c 'import torch, trl, peft' && echo '[dep-check] OK'" \
+                || log "  ERROR: venv install failed — check log above"
+            remote_ssh "${TRAIN_VENV}/bin/python3 -c 'import torch, trl, peft' && echo '[dep-check] OK'" \
                 >>"${LOG_FILE}" 2>&1 \
-                || log "  ERROR: deps still missing after install — train.log will confirm"
+                || log "  ERROR: deps still missing after venv install — train.log will show reason"
         fi
 
         # Launch training in the background on the VM, then poll kill-switch-aware.
-        # The trainer enforces its own --max-runtime-seconds checkpoint callback.
-        # Use --sft-input (pre-built Alpaca JSONL from export-sft.py) — NOT --queue-done
-        # which expects a directory of *.brief.jsonl files that don't exist on the VM.
-        remote_ssh "cd ${REMOTE_DIR} && nohup python3 run-sft-training.py \
+        # Use venv python3 so torch/trl/peft are available.
+        # Use --sft-input (pre-built Alpaca JSONL from export-sft.py) — NOT --queue-done.
+        remote_ssh "cd ${REMOTE_DIR} && nohup ${TRAIN_VENV}/bin/python3 run-sft-training.py \
             --sft-input ${REMOTE_DIR}/corpus.jsonl \
             --adapter-name yoyo-test-${TS} \
             --output-dir ${REMOTE_DIR}/adapter \
