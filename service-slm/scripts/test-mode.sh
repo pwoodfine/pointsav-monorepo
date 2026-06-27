@@ -545,6 +545,24 @@ between_phases
 # ══════════════════════════════════════════════════════════════════════════════
 phase "DG — DataGraph injection (5 Doorman probes)"
 
+# Pause the apprenticeship drain loop so OLMo slots are free for interactive probes.
+# The drain loop saturates both slots (queue_pending can be 100+), causing all 5 probes
+# to time out at 60s each and report EMPTY. SLM_APPRENTICESHIP_DRAIN_PAUSED is read by
+# the Doorman's drain worker; it stops accepting new drain work within one poll cycle (~5s).
+DRAIN_WAS_PAUSED="$(systemctl show -p Environment local-doorman | grep -o 'SLM_APPRENTICESHIP_DRAIN_PAUSED=true' || true)"
+if [[ -z "${DRAIN_WAS_PAUSED}" ]]; then
+    log "  Pausing apprenticeship drain for DataGraph probes (SLM_DRAIN_PAUSED env drop-in)..."
+    mkdir -p /etc/systemd/system/local-doorman.service.d/
+    printf '[Service]\nEnvironment=SLM_APPRENTICESHIP_DRAIN_PAUSED=true\n' \
+        > /etc/systemd/system/local-doorman.service.d/zz-test-mode-drain-pause.conf
+    systemctl daemon-reload 2>/dev/null || true
+    systemctl restart local-doorman 2>/dev/null || true
+    log "  Waiting 15s for Doorman to restart and drain to stop..."
+    ks_sleep 15
+else
+    log "  Drain already paused — skipping restart."
+fi
+
 # Snapshot Doorman log cursor so we only read lines produced by our probes.
 DOORMAN_LOG_SINCE="$(date -u +'%Y-%m-%d %H:%M:%S')"
 
@@ -617,6 +635,14 @@ fi
 
 between_phases
 
+# Resume drain after DataGraph probes are complete.
+if [[ -z "${DRAIN_WAS_PAUSED}" ]]; then
+    log "  Resuming apprenticeship drain (removing zz-test-mode-drain-pause.conf)..."
+    rm -f /etc/systemd/system/local-doorman.service.d/zz-test-mode-drain-pause.conf
+    systemctl daemon-reload 2>/dev/null || true
+    systemctl restart local-doorman 2>/dev/null || true
+fi
+
 # ══════════════════════════════════════════════════════════════════════════════
 # PHASE — LoRA SFT smoke-train (capped at remaining budget)
 # ══════════════════════════════════════════════════════════════════════════════
@@ -682,9 +708,10 @@ if (( DRYRUN_OK == 1 )); then
 
         # Launch training in the background on the VM, then poll kill-switch-aware.
         # The trainer enforces its own --max-runtime-seconds checkpoint callback.
+        # Use --sft-input (pre-built Alpaca JSONL from export-sft.py) — NOT --queue-done
+        # which expects a directory of *.brief.jsonl files that don't exist on the VM.
         remote_ssh "cd ${REMOTE_DIR} && nohup python3 run-sft-training.py \
-            --queue-done ${REMOTE_DIR}/corpus.jsonl \
-            --engineering-corpus '' \
+            --sft-input ${REMOTE_DIR}/corpus.jsonl \
             --adapter-name yoyo-test-${TS} \
             --output-dir ${REMOTE_DIR}/adapter \
             --max-runtime-seconds ${TRAIN_CAP} \
@@ -724,6 +751,13 @@ if (( DRYRUN_OK == 1 )); then
         else
             record "sft-train" "fail" "no adapter produced before deadline"
         fi
+        # Always pull back the remote train.log for post-mortem, regardless of outcome.
+        rsync -az \
+            -e "ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no" \
+            "mathew@${VM_IP}:${REMOTE_DIR}/train.log" "${TEST_ROOT}/remote-train.log" \
+            >>"${LOG_FILE}" 2>&1 \
+            && log "  Remote train.log pulled to ${TEST_ROOT}/remote-train.log" \
+            || log "  WARN: remote train.log pull failed (VM may already be stopping)"
     fi
 fi
 

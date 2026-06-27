@@ -420,6 +420,13 @@ def main() -> None:
         help="Override output directory (default: ./adapters/<name>-wip)",
     )
     parser.add_argument(
+        "--sft-input",
+        default=None,
+        help="Path to a pre-built Alpaca JSONL file (output of export-sft.py). "
+             "When set, --queue-done and --engineering-corpus are ignored. "
+             "Enables test-mode.sh GPU runs: export corpus locally, rsync to VM, train.",
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Load corpus and report counts without training",
@@ -437,9 +444,18 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    records = load_sft_pairs(args.queue_done)
-    if args.engineering_corpus and os.path.isdir(args.engineering_corpus):
-        records += load_engineering_pairs(args.engineering_corpus)
+    if args.sft_input:
+        # Pre-built Alpaca JSONL from export-sft.py — used by test-mode.sh GPU runs.
+        if not os.path.isfile(args.sft_input):
+            print(f"[ERROR] --sft-input file not found: {args.sft_input}", file=sys.stderr)
+            sys.exit(1)
+        with open(args.sft_input) as fh:
+            records = [json.loads(line) for line in fh if line.strip()]
+        print(f"[corpus] loaded {len(records)} records from --sft-input {args.sft_input}")
+    else:
+        records = load_sft_pairs(args.queue_done)
+        if args.engineering_corpus and os.path.isdir(args.engineering_corpus):
+            records += load_engineering_pairs(args.engineering_corpus)
     if not records:
         print("[ERROR] No valid SFT pairs found — check queue-done path", file=sys.stderr)
         print(f"[ERROR] Tried: {args.queue_done}", file=sys.stderr)
