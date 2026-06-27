@@ -710,28 +710,29 @@ if (( DRYRUN_OK == 1 )); then
         # Debian PEP 668 blocks pip from touching system python — venv is required.
         # ~/train-venv persists on the 100GB disk so subsequent runs skip this step.
         TRAIN_VENV="/home/mathew/train-venv"
-        # Rebuild venv if: TRL 1.x (OOM) OR bitsandbytes <0.46 (transformers requires >=0.46.1).
+        # Rebuild venv if: TRL <0.12 (TRL 0.9.x passes tokenizer= to Trainer.__init__
+        # which modern transformers 4.47+ renamed to processing_class=). Float16 replaces
+        # 4-bit — bitsandbytes no longer needed.
         remote_ssh "test -f ${TRAIN_VENV}/bin/python3 && \
             ${TRAIN_VENV}/bin/python3 -c '
-import trl, bitsandbytes as bnb, pkg_resources
-trl_ok = trl.__version__.startswith(\"0.\")
-bnb_ver = pkg_resources.get_distribution(\"bitsandbytes\").version
-bnb_ok = tuple(int(x) for x in bnb_ver.split(\".\")[:2]) >= (0, 46)
-exit(0 if (trl_ok and bnb_ok) else 1)
-' 2>/dev/null || (echo \"[venv] Rebuilding: TRL 1.x or bnb<0.46 detected\"; rm -rf ${TRAIN_VENV})" \
+import trl, pkg_resources
+ver = tuple(int(x) for x in trl.__version__.split(\".\")[:2])
+trl_ok = ver >= (0, 12)
+exit(0 if trl_ok else 1)
+' 2>/dev/null || (echo \"[venv] Rebuilding: TRL <0.12 detected (need >=0.12 for transformers 4.47+)\"; rm -rf ${TRAIN_VENV})" \
             >>"${LOG_FILE}" 2>&1 || true
         log "  Checking training venv (${TRAIN_VENV}) on VM..."
         if remote_ssh "test -f ${TRAIN_VENV}/bin/python3 && ${TRAIN_VENV}/bin/python3 -c 'import torch, trl, peft' 2>/dev/null"; then
             log "  Venv exists with torch/trl/peft — skipping install."
         else
             log "  Creating venv + installing torch (CUDA 12.1) + training libs..."
-            # Pin TRL to 0.9.x — TRL 1.x adds chunked lm_head float32 cast that OOMs
-            # on L4 24GB with OLMo-3-7B-Instruct 4-bit (tries to alloc 1.53 GiB).
+            # TRL >=0.12: uses processing_class= when calling Trainer.__init__ (transformers 4.47+).
+            # Float16 model load (no 4-bit) — bitsandbytes not required.
             remote_ssh "python3 -m venv ${TRAIN_VENV} \
                 && ${TRAIN_VENV}/bin/pip install --quiet \
                     torch --index-url https://download.pytorch.org/whl/cu121 \
                 && ${TRAIN_VENV}/bin/pip install --quiet \
-                    'trl==0.9.6' 'peft==0.12.0' 'bitsandbytes>=0.46.1' \
+                    'trl>=0.12.0' 'peft>=0.12.0' \
                     transformers datasets accelerate" \
                 >>"${LOG_FILE}" 2>&1 \
                 || log "  ERROR: venv install failed — check log above"
