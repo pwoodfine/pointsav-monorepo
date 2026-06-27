@@ -347,7 +347,7 @@ def run_training(records: list[dict], base_model: str, output_dir: str,
         args=training_args,
         train_dataset=split["train"],
         eval_dataset=split["test"],
-        processing_class=tokenizer,
+        tokenizer=tokenizer,   # TRL 0.9.x: 'tokenizer'; TRL 1.x renamed to 'processing_class'
         peft_config=peft_config,
         callbacks=callbacks or None,
     )
