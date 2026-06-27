@@ -61,28 +61,44 @@
   --sys-accent:   #164679;
 }
 
-/* Dark mode — Woodfine Blue #164679 is 2.9:1 on #0B1220 (AA fail); lighten to 4.7:1 */
+/* Dark mode — chromatic navy surfaces + Woodfine link lightening (WCAG AA on dark bg) */
 html[data-theme="dark"] {
-  --interactive-link:           oklch(62% 0.14 250); /* ≈ #4d8fd1 */
-  --interactive-link-hover:     oklch(72% 0.12 250);
-  --interactive-link-visited:   oklch(55% 0.13 270);
-  --interactive-button-primary: oklch(62% 0.14 250);
-  --interactive-focus-ring:     oklch(62% 0.14 250);
-  --border-interactive:         oklch(62% 0.14 250);
-  --link:   oklch(62% 0.14 250);
-  --accent: oklch(62% 0.14 250);
+  --surface-background:   oklch(12% 0.04 250);
+  --surface-layer:        oklch(15% 0.05 250);
+  --surface-layer-accent: oklch(18% 0.05 250);
+  --surface-layer-hover:  oklch(20% 0.05 250);
+  --surface-inverse:      oklch(93% 0.007 255);
+  --text-primary:         oklch(93% 0.007 255);
+  --text-secondary:       oklch(72% 0.010 255);
+  --text-tertiary:        oklch(58% 0.008 255);
+  --interactive-link:           oklch(72% 0.13 255);
+  --interactive-link-hover:     oklch(80% 0.11 255);
+  --interactive-link-visited:   oklch(60% 0.12 270);
+  --interactive-button-primary: oklch(72% 0.13 255);
+  --interactive-focus-ring:     oklch(72% 0.13 255);
+  --border-interactive:         oklch(72% 0.13 255);
+  --link:   oklch(72% 0.13 255);
+  --accent: oklch(72% 0.13 255);
 }
 
 @media (prefers-color-scheme: dark) {
   html:not([data-theme="light"]) {
-    --interactive-link:           oklch(62% 0.14 250);
-    --interactive-link-hover:     oklch(72% 0.12 250);
-    --interactive-link-visited:   oklch(55% 0.13 270);
-    --interactive-button-primary: oklch(62% 0.14 250);
-    --interactive-focus-ring:     oklch(62% 0.14 250);
-    --border-interactive:         oklch(62% 0.14 250);
-    --link:   oklch(62% 0.14 250);
-    --accent: oklch(62% 0.14 250);
+    --surface-background:   oklch(12% 0.04 250);
+    --surface-layer:        oklch(15% 0.05 250);
+    --surface-layer-accent: oklch(18% 0.05 250);
+    --surface-layer-hover:  oklch(20% 0.05 250);
+    --surface-inverse:      oklch(93% 0.007 255);
+    --text-primary:         oklch(93% 0.007 255);
+    --text-secondary:       oklch(72% 0.010 255);
+    --text-tertiary:        oklch(58% 0.008 255);
+    --interactive-link:           oklch(72% 0.13 255);
+    --interactive-link-hover:     oklch(80% 0.11 255);
+    --interactive-link-visited:   oklch(60% 0.12 270);
+    --interactive-button-primary: oklch(72% 0.13 255);
+    --interactive-focus-ring:     oklch(72% 0.13 255);
+    --border-interactive:         oklch(72% 0.13 255);
+    --link:   oklch(72% 0.13 255);
+    --accent: oklch(72% 0.13 255);
   }
 }
 

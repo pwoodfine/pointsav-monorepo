@@ -147,7 +147,7 @@
 /* === Section 1: Custom properties === */
 
 :root {
-  --font-display:  "Instrument Serif", Georgia, "Times New Roman", serif;
+  --font-display:  "Playfair Display", Georgia, "Times New Roman", serif;
   --font-body:     "IBM Plex Sans", "Inter", system-ui, -apple-system, sans-serif;
   --font-reading:  "Source Serif 4", Georgia, ui-serif, serif;
   --font-mono:     "IBM Plex Mono", ui-monospace, "Cascadia Code", monospace;
@@ -237,9 +237,10 @@
   --ct-reference: oklch(52% 0.15 295);
 
   --topnav-bg:     #164679;
-  --footer-bg:     #0e1117;
-  --footer-fg:     rgba(255, 255, 255, 0.65);
-  --footer-border: rgba(255, 255, 255, 0.12);
+  --footer-bg:      oklch(16% 0.06 250);
+  --footer-divider: oklch(28% 0.05 250);
+  --footer-fg:      rgba(255, 255, 255, 0.65);
+  --footer-border:  rgba(255, 255, 255, 0.12);
 
   --s-subnav-height: 48px;
   --knowledge-toc-bg: var(--bg-subtle);
@@ -1485,6 +1486,22 @@ article[data-quality="complete"] .wiki-page-tabs::after {
   text-wrap: pretty;
 }
 .prose > * + * { margin-top: 1.3em; }
+.prose > p + p  { margin-top: 1.5em; }
+
+/* Pull-quote — editorial typographic device for notable passages */
+.pull-quote {
+  font-family: var(--font-display);
+  font-size: 1.35em;
+  font-weight: 400;
+  font-style: italic;
+  line-height: 1.35;
+  color: var(--fg-2);
+  border-left: 4px solid var(--s-accent);
+  padding: 0.5em 1.2em;
+  margin: 2em 0;
+  text-wrap: pretty;
+}
+/* Dark mode: --fg-2 and --s-accent resolve correctly via dark-mode token cascade; no override needed. */
 
 /* Section heading anchor + edit link — Wikipedia-style hover reveal */
 .edit-pencil {
@@ -3053,56 +3070,56 @@ ul.wiki-allpages-list a:hover { text-decoration: underline; }
 /* === Section 8: Dark mode === */
 
 html[data-theme="dark"] {
-  --bg:          oklch(12% 0.01 260);
-  --bg-elevated: oklch(14% 0.01 260);
-  --bg-subtle:   oklch(16% 0.01 260);
-  --bg-chrome:   oklch(14% 0.01 260);
-  --bg-hover:    oklch(18% 0.01 260);
-  --fg-1:        oklch(95% 0.005 260);
-  --fg-2:        oklch(80% 0.008 260);
-  --fg-3:        oklch(65% 0.008 260);
-  --fg-4:        oklch(50% 0.008 260);
+  --bg:          oklch(12% 0.04 250);
+  --bg-elevated: oklch(15% 0.05 250);
+  --bg-subtle:   oklch(18% 0.05 250);
+  --bg-chrome:   oklch(15% 0.05 250);
+  --bg-hover:    oklch(20% 0.05 250);
+  --fg-1:        oklch(93% 0.007 255);
+  --fg-2:        oklch(72% 0.010 255);
+  --fg-3:        oklch(58% 0.008 255);
+  --fg-4:        oklch(44% 0.008 255);
   --border:      rgba(255, 255, 255, 0.12);
   --rule:        rgba(255, 255, 255, 0.08);
-  --code-bg:     oklch(18% 0.01 260);
-  --code-fg:     oklch(88% 0.01 260);
-  --link:        oklch(72% 0.12 250);
-  --link-hover:  oklch(82% 0.12 250);
+  --code-bg:     oklch(18% 0.04 250);
+  --code-fg:     oklch(88% 0.006 255);
+  --link:        oklch(72% 0.13 255);
+  --link-hover:  oklch(80% 0.11 255);
   --shadow-sm:   0 1px 3px rgba(0, 0, 0, 0.6);
   --shadow-md:   0 8px 24px rgba(0, 0, 0, 0.55);
   --shadow-lg:   0 24px 48px -16px rgba(0, 0, 0, 0.7);
-  --navy:        oklch(62% 0.14 250);
-  --navy-deep:   oklch(52% 0.14 250);
-  --navy-soft:   oklch(70% 0.12 250);
-  --topnav-bg:   oklch(20% 0.06 262);
-  --footer-bg:   oklch(8% 0.01 260);
+  --navy:        oklch(72% 0.13 255);
+  --navy-deep:   oklch(62% 0.14 250);
+  --navy-soft:   oklch(80% 0.10 250);
+  --topnav-bg:   oklch(10% 0.05 250);
+  --footer-bg:   oklch(8% 0.05 250);
 }
 
 @media (prefers-color-scheme: dark) {
   html:not([data-theme="light"]) {
-    --bg:          oklch(12% 0.01 260);
-    --bg-elevated: oklch(14% 0.01 260);
-    --bg-subtle:   oklch(16% 0.01 260);
-    --bg-chrome:   oklch(14% 0.01 260);
-    --bg-hover:    oklch(18% 0.01 260);
-    --fg-1:        oklch(95% 0.005 260);
-    --fg-2:        oklch(80% 0.008 260);
-    --fg-3:        oklch(65% 0.008 260);
-    --fg-4:        oklch(50% 0.008 260);
+    --bg:          oklch(12% 0.04 250);
+    --bg-elevated: oklch(15% 0.05 250);
+    --bg-subtle:   oklch(18% 0.05 250);
+    --bg-chrome:   oklch(15% 0.05 250);
+    --bg-hover:    oklch(20% 0.05 250);
+    --fg-1:        oklch(93% 0.007 255);
+    --fg-2:        oklch(72% 0.010 255);
+    --fg-3:        oklch(58% 0.008 255);
+    --fg-4:        oklch(44% 0.008 255);
     --border:      rgba(255, 255, 255, 0.12);
     --rule:        rgba(255, 255, 255, 0.08);
-    --code-bg:     oklch(18% 0.01 260);
-    --code-fg:     oklch(88% 0.01 260);
-    --link:        oklch(72% 0.12 250);
-    --link-hover:  oklch(82% 0.12 250);
+    --code-bg:     oklch(18% 0.04 250);
+    --code-fg:     oklch(88% 0.006 255);
+    --link:        oklch(72% 0.13 255);
+    --link-hover:  oklch(80% 0.11 255);
     --shadow-sm:   0 1px 3px rgba(0, 0, 0, 0.6);
     --shadow-md:   0 8px 24px rgba(0, 0, 0, 0.55);
     --shadow-lg:   0 24px 48px -16px rgba(0, 0, 0, 0.7);
-    --navy:        oklch(62% 0.14 250);
-    --navy-deep:   oklch(52% 0.14 250);
-    --navy-soft:   oklch(70% 0.12 250);
-    --topnav-bg:   oklch(20% 0.06 262);
-    --footer-bg:   oklch(8% 0.01 260);
+    --navy:        oklch(72% 0.13 255);
+    --navy-deep:   oklch(62% 0.14 250);
+    --navy-soft:   oklch(80% 0.10 250);
+    --topnav-bg:   oklch(10% 0.05 250);
+    --footer-bg:   oklch(8% 0.05 250);
   }
 }
 
@@ -3110,9 +3127,9 @@ html[data-theme="dark"] .topnav,
 html[data-theme="dark"] .s-topnav,
 html:not([data-theme="light"]):is([data-theme="dark"]) .s-topnav { background: oklch(20% 0.06 262); box-shadow: 0 2px 12px rgba(0,0,0,0.5); }
 html[data-theme="dark"] .s-subnav { background: oklch(20% 0.06 262); }
-html[data-theme="dark"] .s-footer { background: oklch(8% 0.01 260); }
+html[data-theme="dark"] .s-footer { background: oklch(8% 0.05 250); }
 html[data-theme="dark"] img { filter: brightness(0.92) contrast(1.02); }
-html[data-theme="dark"] .prose blockquote { background: oklch(16% 0.02 260); border-left-color: var(--accent); }
+html[data-theme="dark"] .prose blockquote { background: oklch(18% 0.05 250); border-left-color: var(--accent); }
 html[data-theme="dark"] .prose pre,
 html[data-theme="dark"] .editor-container { background: var(--code-bg); }
 html[data-theme="dark"] .s-wordmark .logo-svg,
