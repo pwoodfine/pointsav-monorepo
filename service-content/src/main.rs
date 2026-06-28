@@ -839,25 +839,50 @@ const GLINER_ENDPOINT: &str = "http://127.0.0.1:9085";
 /// Call GLiNER Tier 0 microservice for entity extraction.
 /// Extractive (cannot hallucinate), 150x faster than OLMo.
 /// Returns None when GLiNER is unavailable — caller falls back to Tier A OLMo.
-/// Max chars sent to GLiNER. BERT encoder limit is ~512 tokens (~2000 chars).
-/// Long documents are truncated at a sentence boundary near the limit.
+/// Max chars per GLiNER chunk. BERT encoder limit is ~512 tokens (~2000 chars).
+/// Long documents are split into consecutive chunks; entities are merged + deduped.
 const GLINER_MAX_CHARS: usize = 2000;
+
+/// Split `text` into consecutive slices of at most `max_chars` bytes,
+/// cutting at the last sentence-ending punctuation within each window.
+/// Falls back to a hard byte cut when no sentence boundary is found.
+/// All returned slices are valid UTF-8 (cuts are aligned to char boundaries).
+fn chunk_for_gliner(text: &str, max_chars: usize) -> Vec<&str> {
+    if text.len() <= max_chars {
+        return vec![text];
+    }
+    let mut chunks = Vec::new();
+    let mut start = 0usize;
+    while start < text.len() {
+        // Align raw_end to a valid UTF-8 char boundary (handles multi-byte chars).
+        let mut raw_end = (start + max_chars).min(text.len());
+        if raw_end < text.len() {
+            while raw_end > start && !text.is_char_boundary(raw_end) {
+                raw_end -= 1;
+            }
+        }
+        // Prefer cutting at the last sentence boundary within the window.
+        let end = if raw_end < text.len() {
+            text[start..raw_end]
+                .rfind(|c: char| c == '.' || c == '!' || c == '?')
+                .map(|rel| start + rel + 1)
+                .unwrap_or(raw_end)
+        } else {
+            raw_end
+        };
+        // Safety: never produce a zero-length chunk that stalls the loop.
+        let end = end.max(start + 1).min(text.len());
+        chunks.push(&text[start..end]);
+        start = end;
+    }
+    chunks
+}
 
 fn call_tier_0_gliner(
     corpus_text: &str,
     domain_id: Option<&str>,
 ) -> Option<Vec<serde_json::Value>> {
-    // Truncate at sentence boundary to stay within BERT token budget.
-    let text_for_gliner = if corpus_text.len() > GLINER_MAX_CHARS {
-        let truncated = &corpus_text[..GLINER_MAX_CHARS];
-        // Walk back to last sentence-ending punctuation
-        truncated
-            .rfind(|c| c == '.' || c == '!' || c == '?')
-            .map(|i| &corpus_text[..=i])
-            .unwrap_or(truncated)
-    } else {
-        corpus_text
-    };
+    let chunks = chunk_for_gliner(corpus_text, GLINER_MAX_CHARS);
 
     let client = match reqwest::blocking::Client::builder()
         .timeout(Duration::from_secs(30))
@@ -869,44 +894,69 @@ fn call_tier_0_gliner(
             return None;
         }
     };
-    let body = serde_json::json!({
-        "text": text_for_gliner,
-        "domain_id": domain_id.unwrap_or("projects"),
-    });
-    let resp = match client
-        .post(format!("{GLINER_ENDPOINT}/v1/extract"))
-        .json(&body)
-        .send()
-    {
-        Ok(r) => r,
-        Err(e) => {
-            eprintln!("  -> [TIER-0] Request failed: {}", e);
+
+    let domain = domain_id.unwrap_or("projects");
+    let url = format!("{GLINER_ENDPOINT}/v1/extract");
+    let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
+    let mut all_entities: Vec<serde_json::Value> = Vec::new();
+
+    for chunk in &chunks {
+        let body = serde_json::json!({
+            "text": chunk,
+            "domain_id": domain,
+        });
+        let resp = match client.post(&url).json(&body).send() {
+            Ok(r) => r,
+            Err(e) => {
+                eprintln!("  -> [TIER-0] Request failed: {}", e);
+                return None;
+            }
+        };
+        if !resp.status().is_success() {
+            eprintln!("  -> [TIER-0] Non-2xx status: {}", resp.status());
             return None;
         }
-    };
-    if !resp.status().is_success() {
-        eprintln!("  -> [TIER-0] Non-2xx status: {}", resp.status());
+        let r: serde_json::Value = match resp.json() {
+            Ok(v) => v,
+            Err(e) => {
+                eprintln!("  -> [TIER-0] JSON parse failed: {}", e);
+                return None;
+            }
+        };
+        let entities = match r["entities"].as_array() {
+            Some(a) => a,
+            None => {
+                eprintln!("  -> [TIER-0] No 'entities' array in response");
+                return None;
+            }
+        };
+        for ent in entities {
+            let key = format!(
+                "{}__{}",
+                ent["entity_name"].as_str().unwrap_or("").to_lowercase(),
+                ent["classification"].as_str().unwrap_or(""),
+            );
+            if seen.insert(key) {
+                all_entities.push(ent.clone());
+            }
+        }
+    }
+
+    if all_entities.is_empty() {
+        eprintln!(
+            "  -> [TIER-0] Empty entities ({} chunk(s) processed)",
+            chunks.len()
+        );
         return None;
     }
-    let r: serde_json::Value = match resp.json() {
-        Ok(v) => v,
-        Err(e) => {
-            eprintln!("  -> [TIER-0] JSON parse failed: {}", e);
-            return None;
-        }
-    };
-    let entities = match r["entities"].as_array() {
-        Some(a) => a,
-        None => {
-            eprintln!("  -> [TIER-0] No 'entities' array in response");
-            return None;
-        }
-    };
-    if entities.is_empty() {
-        eprintln!("  -> [TIER-0] Empty entities array returned");
-        return None;
+    if chunks.len() > 1 {
+        eprintln!(
+            "  -> [TIER-0] {} unique entities from {} chunks",
+            all_entities.len(),
+            chunks.len()
+        );
     }
-    Some(entities.clone())
+    Some(all_entities)
 }
 
 /// Convert raw entity JSON values into `GraphEntity` structs.

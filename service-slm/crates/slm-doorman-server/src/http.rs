@@ -657,6 +657,9 @@ async fn extract(State(state): State<Arc<AppState>>, raw: Bytes) -> impl IntoRes
     };
 
     // 4. Build ComputeRequest targeting Yo-Yo "trainer" with JsonSchema grammar.
+    // Clone schema before moving into tier_b_req so the Tier A fallback path can also
+    // apply a grammar constraint (OLMo 3 7B on CPU handles JsonSchema reliably).
+    let schema_for_tier_a = req.schema.clone();
     let request_id = RequestId::new();
     let tier_b_req = ComputeRequest {
         request_id,
@@ -706,9 +709,9 @@ async fn extract(State(state): State<Arc<AppState>>, raw: Bytes) -> impl IntoRes
                 matches!(&tier_b_result, Err(DoormanError::TierUnavailable(_)));
 
             if tier_b_unavailable {
-                // Tier B offline — fall back to Tier A (OLMo 7B, no grammar).
-                // Grammar constraint is unreliable on CPU at 7B scale; pre-fill
-                // anchors JSON array format instead.
+                // Tier B offline — fall back to Tier A (OLMo 3 7B on CPU).
+                // Grammar constraint applied: OLMo 3 7B handles JsonSchema reliably.
+                // Pre-fill removed — grammar sampling anchors JSON array format.
                 // Uses route_local_background() so the background_sem cap applies:
                 // at most SLM_BACKGROUND_CONCURRENT extraction fallbacks in flight,
                 // leaving at least one OLMo slot free for interactive callers.
@@ -725,20 +728,16 @@ async fn extract(State(state): State<Arc<AppState>>, raw: Bytes) -> impl IntoRes
                             role: "user".to_string(),
                             content: req.text,
                         },
-                        ChatMessage {
-                            role: "assistant".to_string(),
-                            content: "[{\"".to_string(),
-                        },
                     ],
                     complexity: Complexity::Medium,
                     tier_hint: Some(Tier::Local),
                     stream: false,
-                    max_tokens: Some(512),
+                    max_tokens: Some(1024),
                     temperature: Some(0.1),
                     sanitised_outbound: true,
                     tier_c_label: None,
                     yoyo_label: None,
-                    grammar: None,
+                    grammar: Some(GrammarConstraint::JsonSchema(schema_for_tier_a)),
                     speculation: None,
                     graph_context_enabled: None,
                     tools: None,
