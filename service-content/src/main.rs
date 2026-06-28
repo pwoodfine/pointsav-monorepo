@@ -679,12 +679,18 @@ fn raw_entities_to_graph(
     module_id: &str,
     confidence: f64,
 ) -> Vec<GraphEntity> {
-    let (mut drop_empty, mut drop_noise, mut drop_word_count, mut drop_coerce, mut drop_oov) =
-        (0usize, 0usize, 0usize, 0usize, 0usize);
+    let (mut drop_empty, mut drop_noise, mut drop_word_count, mut drop_coerce, mut drop_oov, mut drop_field_missing) =
+        (0usize, 0usize, 0usize, 0usize, 0usize, 0usize);
     let result = raw.iter()
         .filter_map(|ent| {
-            let entity_name = ent["entity_name"].as_str()?.to_string();
-            let classification = ent["classification"].as_str()?.to_string();
+            let entity_name = match ent["entity_name"].as_str() {
+                Some(s) => s.to_string(),
+                None => { drop_field_missing += 1; return None; }
+            };
+            let classification = match ent["classification"].as_str() {
+                Some(s) => s.to_string(),
+                None => { drop_field_missing += 1; return None; }
+            };
             if entity_name.is_empty() || classification.is_empty() {
                 drop_empty += 1;
                 return None;
@@ -743,8 +749,8 @@ fn raw_entities_to_graph(
     if total_in > 0 {
         println!(
             "[entity_filter] module={module_id} kept={kept}/{total_in} \
-             drop=empty:{drop_empty} noise:{drop_noise} word_count:{drop_word_count} \
-             coerce:{drop_coerce} oov:{drop_oov}"
+             drop=field_missing:{drop_field_missing} empty:{drop_empty} noise:{drop_noise} \
+             word_count:{drop_word_count} coerce:{drop_coerce} oov:{drop_oov}"
         );
     }
     result
