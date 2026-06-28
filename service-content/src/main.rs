@@ -3,9 +3,9 @@ mod entity_filter;
 mod er;
 mod graph;
 mod http;
-mod taxonomy;
 #[cfg(test)]
 mod pipeline_tests;
+mod taxonomy;
 
 use graph::{GraphEntity, GraphStore, LbugGraphStore};
 use notify::{Event, RecursiveMode, Result as NotifyResult, Watcher};
@@ -350,15 +350,18 @@ fn main() -> NotifyResult<()> {
                 let mut tier_b_used = false;
                 let result = process_corpus(&path, &cd, &de, &mid, &gs, &fd, &mut tier_b_used, bpt);
                 if matches!(result, ExtractResult::Success) {
-                    write_tier_progress(&tp, serde_json::json!({
-                        "corpus_filename": fname,
-                        "tier_a_done": true,
-                        "tier_b_done": tier_b_used,
-                        "processed_at": std::time::SystemTime::now()
-                            .duration_since(std::time::UNIX_EPOCH)
-                            .unwrap_or_default()
-                            .as_secs(),
-                    }));
+                    write_tier_progress(
+                        &tp,
+                        serde_json::json!({
+                            "corpus_filename": fname,
+                            "tier_a_done": true,
+                            "tier_b_done": tier_b_used,
+                            "processed_at": std::time::SystemTime::now()
+                                .duration_since(std::time::UNIX_EPOCH)
+                                .unwrap_or_default()
+                                .as_secs(),
+                        }),
+                    );
                 }
                 match result {
                     ExtractResult::Success | ExtractResult::Failed => {
@@ -439,15 +442,18 @@ fn main() -> NotifyResult<()> {
                                     backpressure_threshold,
                                 );
                                 if matches!(watcher_result, ExtractResult::Success) {
-                                    write_tier_progress(&tier_progress_path, serde_json::json!({
-                                        "corpus_filename": filename,
-                                        "tier_a_done": true,
-                                        "tier_b_done": tier_b_used,
-                                        "processed_at": std::time::SystemTime::now()
-                                            .duration_since(std::time::UNIX_EPOCH)
-                                            .unwrap_or_default()
-                                            .as_secs(),
-                                    }));
+                                    write_tier_progress(
+                                        &tier_progress_path,
+                                        serde_json::json!({
+                                            "corpus_filename": filename,
+                                            "tier_a_done": true,
+                                            "tier_b_done": tier_b_used,
+                                            "processed_at": std::time::SystemTime::now()
+                                                .duration_since(std::time::UNIX_EPOCH)
+                                                .unwrap_or_default()
+                                                .as_secs(),
+                                        }),
+                                    );
                                 }
                                 match watcher_result {
                                     ExtractResult::Success | ExtractResult::Failed => {
@@ -500,15 +506,18 @@ fn main() -> NotifyResult<()> {
                         backpressure_threshold,
                     );
                     if matches!(retry_result, ExtractResult::Success) {
-                        write_tier_progress(&tier_progress_path, serde_json::json!({
-                            "corpus_filename": filename,
-                            "tier_a_done": true,
-                            "tier_b_done": tier_b_used,
-                            "processed_at": std::time::SystemTime::now()
-                                .duration_since(std::time::UNIX_EPOCH)
-                                .unwrap_or_default()
-                                .as_secs(),
-                        }));
+                        write_tier_progress(
+                            &tier_progress_path,
+                            serde_json::json!({
+                                "corpus_filename": filename,
+                                "tier_a_done": true,
+                                "tier_b_done": tier_b_used,
+                                "processed_at": std::time::SystemTime::now()
+                                    .duration_since(std::time::UNIX_EPOCH)
+                                    .unwrap_or_default()
+                                    .as_secs(),
+                            }),
+                        );
                     }
                     match retry_result {
                         ExtractResult::Success | ExtractResult::Failed => {
@@ -610,15 +619,18 @@ fn main() -> NotifyResult<()> {
                         backpressure_threshold,
                     );
                     if matches!(probe_result, ExtractResult::Success) {
-                        write_tier_progress(&tier_progress_path, serde_json::json!({
-                            "corpus_filename": probe,
-                            "tier_a_done": true,
-                            "tier_b_done": probe_tier_b,
-                            "processed_at": std::time::SystemTime::now()
-                                .duration_since(std::time::UNIX_EPOCH)
-                                .unwrap_or_default()
-                                .as_secs(),
-                        }));
+                        write_tier_progress(
+                            &tier_progress_path,
+                            serde_json::json!({
+                                "corpus_filename": probe,
+                                "tier_a_done": true,
+                                "tier_b_done": probe_tier_b,
+                                "processed_at": std::time::SystemTime::now()
+                                    .duration_since(std::time::UNIX_EPOCH)
+                                    .unwrap_or_default()
+                                    .as_secs(),
+                            }),
+                        );
                     }
                     match probe_result {
                         ExtractResult::DeferCircuitOpen => {
@@ -766,17 +778,30 @@ fn raw_entities_to_graph(
     module_id: &str,
     confidence: f64,
 ) -> Vec<GraphEntity> {
-    let (mut drop_empty, mut drop_noise, mut drop_word_count, mut drop_coerce, mut drop_oov, mut drop_field_missing) =
-        (0usize, 0usize, 0usize, 0usize, 0usize, 0usize);
-    let result = raw.iter()
+    let (
+        mut drop_empty,
+        mut drop_noise,
+        mut drop_word_count,
+        mut drop_coerce,
+        mut drop_oov,
+        mut drop_field_missing,
+    ) = (0usize, 0usize, 0usize, 0usize, 0usize, 0usize);
+    let result = raw
+        .iter()
         .filter_map(|ent| {
             let entity_name = match ent["entity_name"].as_str() {
                 Some(s) => s.to_string(),
-                None => { drop_field_missing += 1; return None; }
+                None => {
+                    drop_field_missing += 1;
+                    return None;
+                }
             };
             let classification = match ent["classification"].as_str() {
                 Some(s) => s.to_string(),
-                None => { drop_field_missing += 1; return None; }
+                None => {
+                    drop_field_missing += 1;
+                    return None;
+                }
             };
             if entity_name.is_empty() || classification.is_empty() {
                 drop_empty += 1;
@@ -798,7 +823,10 @@ fn raw_entities_to_graph(
             let classification =
                 match entity_filter::coerce_classification(&entity_name, &classification) {
                     Some(cls) => cls,
-                    None => { drop_coerce += 1; return None; }
+                    None => {
+                        drop_coerce += 1;
+                        return None;
+                    }
                 };
             // Reject out-of-vocabulary classifications. OLMo may emit values such as
             // "Licence" or "Technology" when the prompt omit list is insufficient.

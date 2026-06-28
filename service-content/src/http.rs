@@ -511,7 +511,10 @@ async fn graph_enrich(
 
     // Find all entities for this module; filter NULL role_vector + matching classification.
     let all = state.graph.list_entities(&params.module_id).map_err(|e| {
-        (StatusCode::INTERNAL_SERVER_ERROR, format!("list_entities: {e}"))
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("list_entities: {e}"),
+        )
     })?;
 
     let candidates: Vec<_> = all

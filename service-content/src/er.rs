@@ -67,7 +67,11 @@ fn canonical_er_name(name: &str, classification: &str) -> String {
             .filter_map(|(i, w)| {
                 let is_middle = i > 0 && i < words.len() - 1;
                 let is_initial = w.len() == 2 && w.ends_with('.');
-                if is_middle && is_initial { None } else { Some(*w) }
+                if is_middle && is_initial {
+                    None
+                } else {
+                    Some(*w)
+                }
             })
             .collect();
         normalize_entity_key(&filtered.join(" "))
