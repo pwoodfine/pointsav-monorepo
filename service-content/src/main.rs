@@ -860,7 +860,7 @@ fn raw_entities_to_graph(
         .collect::<Vec<_>>();
     let total_in = raw.len();
     let kept = result.len();
-    let dropped = total_in - kept;
+    let _dropped = total_in - kept;
     if total_in > 0 {
         println!(
             "[entity_filter] module={module_id} kept={kept}/{total_in} \
@@ -1077,6 +1077,7 @@ fn load_tier_b_pending(path: &Path) -> Vec<String> {
         .collect()
 }
 
+#[allow(clippy::too_many_arguments)]
 fn process_corpus(
     filepath: &Path,
     crm_dir: &str,
