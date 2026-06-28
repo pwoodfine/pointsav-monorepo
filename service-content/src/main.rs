@@ -249,6 +249,22 @@ fn main() -> NotifyResult<()> {
             processed_ledgers.len()
         );
     }
+    let tier_progress_path = Arc::new(Path::new(&graph_dir).join("tier_progress.jsonl"));
+    let backpressure_threshold: u64 = std::env::var("SERVICE_CONTENT_QUEUE_BACKPRESSURE_THRESHOLD")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(50);
+    let mut tier_b_enrichment_queue: std::collections::VecDeque<String> =
+        load_tier_b_pending(&tier_progress_path)
+            .into_iter()
+            .filter(|f| Path::new(&corpus_dir).join(f).exists())
+            .collect();
+    if !tier_b_enrichment_queue.is_empty() {
+        println!(
+            "[SYSTEM] {} doc(s) with tier_a_done=true, tier_b_done=false — queued for Tier B enrichment on recovery.",
+            tier_b_enrichment_queue.len()
+        );
+    }
     let max_defer_retries: u32 = std::env::var("SLM_MAX_DEFER_RETRIES")
         .ok()
         .and_then(|s| s.parse().ok())
@@ -321,6 +337,8 @@ fn main() -> NotifyResult<()> {
                 Arc::clone(&defer_files),
                 Arc::clone(&circ_files),
             );
+            let tp = Arc::clone(&tier_progress_path);
+            let bpt = backpressure_threshold;
             handles.push(thread::spawn(move || loop {
                 let Some(path) = q.lock().unwrap().pop_front() else {
                     break;
@@ -329,7 +347,20 @@ fn main() -> NotifyResult<()> {
                     Some(n) => n.to_string(),
                     None => continue,
                 };
-                match process_corpus(&path, &cd, &de, &mid, &gs, &fd) {
+                let mut tier_b_used = false;
+                let result = process_corpus(&path, &cd, &de, &mid, &gs, &fd, &mut tier_b_used, bpt);
+                if matches!(result, ExtractResult::Success) {
+                    write_tier_progress(&tp, serde_json::json!({
+                        "corpus_filename": fname,
+                        "tier_a_done": true,
+                        "tier_b_done": tier_b_used,
+                        "processed_at": std::time::SystemTime::now()
+                            .duration_since(std::time::UNIX_EPOCH)
+                            .unwrap_or_default()
+                            .as_secs(),
+                    }));
+                }
+                match result {
                     ExtractResult::Success | ExtractResult::Failed => {
                         let _g = ll.lock().unwrap();
                         append_processed_ledger(&lp, &fname);
@@ -396,14 +427,29 @@ fn main() -> NotifyResult<()> {
                                 // Mark in-flight in deferred to prevent double-fire
                                 // if the watcher emits multiple events for the same write.
                                 deferred_ledgers.push(filename.clone());
-                                match process_corpus(
+                                let mut tier_b_used = false;
+                                let watcher_result = process_corpus(
                                     &path,
                                     &crm_dir,
                                     &doorman_endpoint,
                                     &module_id,
                                     &graph_store,
                                     &feedback_dir,
-                                ) {
+                                    &mut tier_b_used,
+                                    backpressure_threshold,
+                                );
+                                if matches!(watcher_result, ExtractResult::Success) {
+                                    write_tier_progress(&tier_progress_path, serde_json::json!({
+                                        "corpus_filename": filename,
+                                        "tier_a_done": true,
+                                        "tier_b_done": tier_b_used,
+                                        "processed_at": std::time::SystemTime::now()
+                                            .duration_since(std::time::UNIX_EPOCH)
+                                            .unwrap_or_default()
+                                            .as_secs(),
+                                    }));
+                                }
+                                match watcher_result {
                                     ExtractResult::Success | ExtractResult::Failed => {
                                         deferred_ledgers.retain(|f| f != &filename);
                                         append_processed_ledger(&processed_ledgers_path, &filename);
@@ -442,14 +488,29 @@ fn main() -> NotifyResult<()> {
                         }
                     }
                     let path = Path::new(&corpus_dir).join(&filename);
-                    match process_corpus(
+                    let mut tier_b_used = false;
+                    let retry_result = process_corpus(
                         &path,
                         &crm_dir,
                         &doorman_endpoint,
                         &module_id,
                         &graph_store,
                         &feedback_dir,
-                    ) {
+                        &mut tier_b_used,
+                        backpressure_threshold,
+                    );
+                    if matches!(retry_result, ExtractResult::Success) {
+                        write_tier_progress(&tier_progress_path, serde_json::json!({
+                            "corpus_filename": filename,
+                            "tier_a_done": true,
+                            "tier_b_done": tier_b_used,
+                            "processed_at": std::time::SystemTime::now()
+                                .duration_since(std::time::UNIX_EPOCH)
+                                .unwrap_or_default()
+                                .as_secs(),
+                        }));
+                    }
+                    match retry_result {
                         ExtractResult::Success | ExtractResult::Failed => {
                             backoff_state.remove(&filename);
                             deferred_counts.remove(&filename);
@@ -537,14 +598,29 @@ fn main() -> NotifyResult<()> {
                 if !circuit_deferred_ledgers.is_empty() {
                     let probe = circuit_deferred_ledgers.remove(0);
                     let probe_path = Path::new(&corpus_dir).join(&probe);
-                    match process_corpus(
+                    let mut probe_tier_b = false;
+                    let probe_result = process_corpus(
                         &probe_path,
                         &crm_dir,
                         &doorman_endpoint,
                         &module_id,
                         &graph_store,
                         &feedback_dir,
-                    ) {
+                        &mut probe_tier_b,
+                        backpressure_threshold,
+                    );
+                    if matches!(probe_result, ExtractResult::Success) {
+                        write_tier_progress(&tier_progress_path, serde_json::json!({
+                            "corpus_filename": probe,
+                            "tier_a_done": true,
+                            "tier_b_done": probe_tier_b,
+                            "processed_at": std::time::SystemTime::now()
+                                .duration_since(std::time::UNIX_EPOCH)
+                                .unwrap_or_default()
+                                .as_secs(),
+                        }));
+                    }
+                    match probe_result {
                         ExtractResult::DeferCircuitOpen => {
                             // Still down — keep it dormant.
                             circuit_deferred_ledgers.push(probe);
@@ -565,6 +641,17 @@ fn main() -> NotifyResult<()> {
                                     circuit_deferred_ledgers.len()
                                 );
                                 deferred_ledgers.append(&mut circuit_deferred_ledgers);
+                            }
+                            // Promote any Tier-A-only docs for Tier B enrichment.
+                            if !tier_b_enrichment_queue.is_empty() {
+                                println!(
+                                    "[RECOVERY] Promoting {} tier_b_pending docs for Tier B enrichment.",
+                                    tier_b_enrichment_queue.len()
+                                );
+                                for f in tier_b_enrichment_queue.drain(..) {
+                                    processed_ledgers.remove(&f);
+                                    deferred_ledgers.push(f);
+                                }
                             }
                         }
                     }
@@ -909,6 +996,59 @@ fn mark_sweep_sha_complete(worm_id: &str) {
     }
 }
 
+/// Returns true if Doorman queue depth exceeds `threshold`.
+/// Returns false (conservative) if Doorman is unreachable — do not gate on unavailable info.
+fn check_doorman_backpressure(doorman_endpoint: &str, threshold: u64) -> bool {
+    if threshold == 0 {
+        return false;
+    }
+    let url = format!("{}/healthz", doorman_endpoint);
+    let client = reqwest::blocking::Client::new();
+    let Ok(resp) = client.get(&url).timeout(Duration::from_secs(3)).send() else {
+        return false;
+    };
+    let Ok(body) = resp.json::<serde_json::Value>() else {
+        return false;
+    };
+    body["queue_pending"]
+        .as_u64()
+        .map(|p| p > threshold)
+        .unwrap_or(false)
+}
+
+fn write_tier_progress(path: &Path, entry: serde_json::Value) {
+    use std::io::Write;
+    if let Ok(mut f) = fs::OpenOptions::new().create(true).append(true).open(path) {
+        let _ = writeln!(f, "{}", entry);
+    }
+}
+
+/// Read tier_progress.jsonl; return corpus filenames where tier_a_done=true AND tier_b_done=false.
+/// Last entry per corpus_filename wins (append-only; newer entries supersede older ones).
+fn load_tier_b_pending(path: &Path) -> Vec<String> {
+    let Ok(file) = fs::File::open(path) else {
+        return Vec::new();
+    };
+    use std::io::BufRead;
+    let mut latest: std::collections::HashMap<String, serde_json::Value> =
+        std::collections::HashMap::new();
+    for line in std::io::BufReader::new(file).lines().map_while(Result::ok) {
+        if let Ok(v) = serde_json::from_str::<serde_json::Value>(&line) {
+            if let Some(fname) = v["corpus_filename"].as_str() {
+                latest.insert(fname.to_string(), v);
+            }
+        }
+    }
+    latest
+        .into_values()
+        .filter(|v| {
+            v["tier_a_done"].as_bool().unwrap_or(false)
+                && !v["tier_b_done"].as_bool().unwrap_or(false)
+        })
+        .filter_map(|v| v["corpus_filename"].as_str().map(str::to_string))
+        .collect()
+}
+
 fn process_corpus(
     filepath: &Path,
     crm_dir: &str,
@@ -916,7 +1056,21 @@ fn process_corpus(
     module_id: &str,
     graph_store: &Arc<dyn GraphStore>,
     feedback_dir: &str,
+    tier_b_used: &mut bool,
+    backpressure_threshold: u64,
 ) -> ExtractResult {
+    *tier_b_used = false;
+    // Backpressure gate: defer if Doorman extraction queue is too deep.
+    // Prevents bulk CORPUS ingestion from creating 100+ hour drain backlogs.
+    // The file stays on disk; the drain loop retries after exponential backoff.
+    if check_doorman_backpressure(doorman_endpoint, backpressure_threshold) {
+        eprintln!(
+            "[BACKPRESSURE] queue_pending > {} — deferring {}",
+            backpressure_threshold,
+            filepath.display()
+        );
+        return ExtractResult::DeferTransient;
+    }
     // SC-5: log read failures instead of silently returning
     let content = match fs::read_to_string(filepath) {
         Ok(c) => c,
@@ -1102,6 +1256,7 @@ fn process_corpus(
 
             let graph_entities =
                 raw_entities_to_graph(&semantic_entities, effective_module_id, 0.95);
+            *tier_b_used = true;
 
             // Build legacy CRM record
             let mut enriched_crm = Vec::new();
