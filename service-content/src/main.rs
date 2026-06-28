@@ -878,10 +878,18 @@ fn chunk_for_gliner(text: &str, max_chars: usize) -> Vec<&str> {
     chunks
 }
 
-fn call_tier_0_gliner(
-    corpus_text: &str,
-    domain_id: Option<&str>,
-) -> Option<Vec<serde_json::Value>> {
+enum GlinerOutcome {
+    /// GLiNER found named entities — use them, skip Tier A.
+    Found(Vec<serde_json::Value>),
+    /// GLiNER is reachable but found nothing (structured data, contentless text).
+    /// Tier A OLMo won't improve on this — mark the file done with 0 entities.
+    Empty,
+    /// GLiNER service is unreachable or returned an unexpected response.
+    /// Fall through to Tier A with backpressure gate.
+    Unavailable,
+}
+
+fn call_tier_0_gliner(corpus_text: &str, domain_id: Option<&str>) -> GlinerOutcome {
     let chunks = chunk_for_gliner(corpus_text, GLINER_MAX_CHARS);
 
     let client = match reqwest::blocking::Client::builder()
@@ -891,7 +899,7 @@ fn call_tier_0_gliner(
         Ok(c) => c,
         Err(e) => {
             eprintln!("  -> [TIER-0] Client build failed: {}", e);
-            return None;
+            return GlinerOutcome::Unavailable;
         }
     };
 
@@ -909,25 +917,25 @@ fn call_tier_0_gliner(
             Ok(r) => r,
             Err(e) => {
                 eprintln!("  -> [TIER-0] Request failed: {}", e);
-                return None;
+                return GlinerOutcome::Unavailable;
             }
         };
         if !resp.status().is_success() {
             eprintln!("  -> [TIER-0] Non-2xx status: {}", resp.status());
-            return None;
+            return GlinerOutcome::Unavailable;
         }
         let r: serde_json::Value = match resp.json() {
             Ok(v) => v,
             Err(e) => {
                 eprintln!("  -> [TIER-0] JSON parse failed: {}", e);
-                return None;
+                return GlinerOutcome::Unavailable;
             }
         };
         let entities = match r["entities"].as_array() {
             Some(a) => a,
             None => {
                 eprintln!("  -> [TIER-0] No 'entities' array in response");
-                return None;
+                return GlinerOutcome::Unavailable;
             }
         };
         for ent in entities {
@@ -944,10 +952,10 @@ fn call_tier_0_gliner(
 
     if all_entities.is_empty() {
         eprintln!(
-            "  -> [TIER-0] Empty entities ({} chunk(s) processed)",
+            "  -> [TIER-0] No entities in {} chunk(s) — file done (GLiNER available)",
             chunks.len()
         );
-        return None;
+        return GlinerOutcome::Empty;
     }
     if chunks.len() > 1 {
         eprintln!(
@@ -956,7 +964,7 @@ fn call_tier_0_gliner(
             chunks.len()
         );
     }
-    Some(all_entities)
+    GlinerOutcome::Found(all_entities)
 }
 
 /// Convert raw entity JSON values into `GraphEntity` structs.
@@ -1358,30 +1366,46 @@ fn process_corpus(
 
     // ── Step 1: Tier 0 (GLiNER) with Tier A (OLMo) fallback ─────────────────
     // GLiNER (Tier 0) is direct HTTP to port 9085 — no Doorman involvement.
-    // Backpressure gate only applies if GLiNER is down and we must use Doorman.
-    let gliner_result = call_tier_0_gliner(corpus_text, domain_id);
-    let tier_a_raw: Option<Vec<serde_json::Value>> = if gliner_result.is_some() {
-        gliner_result
-    } else {
-        // GLiNER unavailable — check Doorman backpressure before using Tier A.
-        if check_doorman_backpressure(doorman_endpoint, backpressure_threshold) {
-            eprintln!(
-                "[BACKPRESSURE] GLiNER down + queue_pending > {} — deferring {}",
-                backpressure_threshold,
-                filepath.display()
+    // Backpressure gate only applies when GLiNER is down (Unavailable).
+    // When GLiNER is up but finds nothing (Empty — CSV, structured data, contentless
+    // text), Tier A OLMo won't improve on that result, so we mark the file done
+    // immediately rather than burning a Doorman slot on an unproductive call.
+    let tier_a_raw: Option<Vec<serde_json::Value>> = match call_tier_0_gliner(corpus_text, domain_id) {
+        GlinerOutcome::Found(ents) => {
+            println!(
+                "  -> [TIER-0/A] {} entities extracted (module: {}).",
+                ents.len(),
+                effective_module_id
             );
-            return ExtractResult::DeferTransient;
+            Some(ents)
         }
-        call_tier_a_extract(corpus_text, &entity_schema, doorman_endpoint)
+        GlinerOutcome::Empty => {
+            // GLiNER reachable, no entities — structured data or contentless text.
+            // Mark done with 0 entities; no Tier B call needed.
+            return ExtractResult::Success;
+        }
+        GlinerOutcome::Unavailable => {
+            // GLiNER down — check Doorman backpressure before using Tier A.
+            if check_doorman_backpressure(doorman_endpoint, backpressure_threshold) {
+                eprintln!(
+                    "[BACKPRESSURE] GLiNER down + queue_pending > {} — deferring {}",
+                    backpressure_threshold,
+                    filepath.display()
+                );
+                return ExtractResult::DeferTransient;
+            }
+            let tier_a = call_tier_a_extract(corpus_text, &entity_schema, doorman_endpoint);
+            match &tier_a {
+                Some(ents) => println!(
+                    "  -> [TIER-0/A] {} entities extracted via Tier A fallback (module: {}).",
+                    ents.len(),
+                    effective_module_id
+                ),
+                None => println!("  -> [TIER-0/A] Unavailable — proceeding to Tier B."),
+            }
+            tier_a
+        }
     };
-    match &tier_a_raw {
-        Some(ents) => println!(
-            "  -> [TIER-0/A] {} entities extracted (module: {}).",
-            ents.len(),
-            effective_module_id
-        ),
-        None => println!("  -> [TIER-0/A] Unavailable — proceeding to Tier B."),
-    }
 
     // ── Step 2: Tier B extraction (OLMo 32B via /v1/extract) ─────────────────
     println!(
