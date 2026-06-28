@@ -377,6 +377,17 @@ impl GraphStore for LbugGraphStore {
             }
         }
 
+        // Force checkpoint so cross-thread readers (HTTP tokio runtime) see the committed
+        // write immediately. Without this, Kuzu 0.16 write visibility is limited to the
+        // writer's own thread context — cross-OS-thread reads see a stale snapshot.
+        if count > 0 {
+            if let Err(e) = conn.query("CHECKPOINT") {
+                // Non-fatal: data is committed to WAL; checkpoint just enables cross-thread read.
+                // Emit a warning but do not fail the upsert.
+                eprintln!("[graph] CHECKPOINT after upsert failed (non-fatal): {}", e);
+            }
+        }
+
         Ok(count)
     }
 

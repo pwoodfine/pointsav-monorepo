@@ -718,7 +718,10 @@ fn call_tier_a_extract(
                 {"role": "system", "content": EXTRACTION_SYSTEM_PROMPT},
                 {"role": "user",   "content": corpus_text}
             ],
-            "grammar": {"type": "json-schema", "value": entity_schema}
+            "grammar": {"type": "json-schema", "value": entity_schema},
+            "temperature": 0.0,
+            "max_tokens": 1024,
+            "cache_prompt": true
         })
     } else {
         serde_json::json!({
@@ -726,7 +729,10 @@ fn call_tier_a_extract(
                 {"role": "system", "content": EXTRACTION_SYSTEM_PROMPT},
                 {"role": "user",   "content": corpus_text},
                 {"role": "assistant", "content": "[{\""}
-            ]
+            ],
+            "temperature": 0.0,
+            "max_tokens": 1024,
+            "cache_prompt": true
         })
     };
     let url = format!("{}/v1/chat/completions", doorman_endpoint);
@@ -768,6 +774,139 @@ fn call_tier_a_extract(
         }),
         _ => None,
     }
+}
+
+/// Remove `<https://…>` and `<http://…>` inline URL fragments from a string.
+fn strip_inline_urls(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    let mut chars = s.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c == '<' {
+            let rest: String = chars.clone().take(8).collect();
+            if rest.starts_with("https://") || rest.starts_with("http://") {
+                while let Some(c2) = chars.next() {
+                    if c2 == '>' {
+                        break;
+                    }
+                }
+                continue;
+            }
+        }
+        out.push(c);
+    }
+    out
+}
+
+/// Clean web-scraped corpus text before entity extraction.
+/// Removes nav links, inline URLs, and Unicode box-drawing/block characters.
+/// Clean Bloomberg/PDF text passes through unchanged (fast path).
+fn preprocess_corpus_text(text: &str) -> std::borrow::Cow<str> {
+    let needs_clean = text.contains('<')
+        || text.contains('\u{fffd}')
+        || text.chars().any(|c| matches!(c as u32, 0x2500..=0x259F | 0x25A0..=0x25FF));
+    if !needs_clean {
+        return std::borrow::Cow::Borrowed(text);
+    }
+    let mut out = String::with_capacity(text.len());
+    for line in text.lines() {
+        let trimmed = line.trim();
+        // Drop short navigation UI lines (nav link pattern: keyword + inline URL)
+        if trimmed.len() < 80
+            && (trimmed.starts_with("Home<")
+                || trimmed.starts_with("Blog<")
+                || trimmed.starts_with("Tweet")
+                || trimmed.starts_with("Share")
+                || trimmed.starts_with("Tenant Portal"))
+        {
+            continue;
+        }
+        // Strip inline URLs then box-drawing chars
+        let cleaned = strip_inline_urls(trimmed);
+        let cleaned: String = cleaned
+            .chars()
+            .filter(|c| !matches!(*c as u32, 0x2500..=0x259F | 0x25A0..=0x25FF | 0xFFFD))
+            .collect();
+        if !cleaned.trim().is_empty() {
+            out.push_str(&cleaned);
+            out.push('\n');
+        }
+    }
+    std::borrow::Cow::Owned(out)
+}
+
+const GLINER_ENDPOINT: &str = "http://127.0.0.1:9085";
+
+/// Call GLiNER Tier 0 microservice for entity extraction.
+/// Extractive (cannot hallucinate), 150x faster than OLMo.
+/// Returns None when GLiNER is unavailable — caller falls back to Tier A OLMo.
+/// Max chars sent to GLiNER. BERT encoder limit is ~512 tokens (~2000 chars).
+/// Long documents are truncated at a sentence boundary near the limit.
+const GLINER_MAX_CHARS: usize = 2000;
+
+fn call_tier_0_gliner(
+    corpus_text: &str,
+    domain_id: Option<&str>,
+) -> Option<Vec<serde_json::Value>> {
+    // Truncate at sentence boundary to stay within BERT token budget.
+    let text_for_gliner = if corpus_text.len() > GLINER_MAX_CHARS {
+        let truncated = &corpus_text[..GLINER_MAX_CHARS];
+        // Walk back to last sentence-ending punctuation
+        truncated
+            .rfind(|c| c == '.' || c == '!' || c == '?')
+            .map(|i| &corpus_text[..=i])
+            .unwrap_or(truncated)
+    } else {
+        corpus_text
+    };
+
+    let client = match reqwest::blocking::Client::builder()
+        .timeout(Duration::from_secs(30))
+        .build()
+    {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("  -> [TIER-0] Client build failed: {}", e);
+            return None;
+        }
+    };
+    let body = serde_json::json!({
+        "text": text_for_gliner,
+        "domain_id": domain_id.unwrap_or("projects"),
+    });
+    let resp = match client
+        .post(format!("{GLINER_ENDPOINT}/v1/extract"))
+        .json(&body)
+        .send()
+    {
+        Ok(r) => r,
+        Err(e) => {
+            eprintln!("  -> [TIER-0] Request failed: {}", e);
+            return None;
+        }
+    };
+    if !resp.status().is_success() {
+        eprintln!("  -> [TIER-0] Non-2xx status: {}", resp.status());
+        return None;
+    }
+    let r: serde_json::Value = match resp.json() {
+        Ok(v) => v,
+        Err(e) => {
+            eprintln!("  -> [TIER-0] JSON parse failed: {}", e);
+            return None;
+        }
+    };
+    let entities = match r["entities"].as_array() {
+        Some(a) => a,
+        None => {
+            eprintln!("  -> [TIER-0] No 'entities' array in response");
+            return None;
+        }
+    };
+    if entities.is_empty() {
+        eprintln!("  -> [TIER-0] Empty entities array returned");
+        return None;
+    }
+    Some(entities.clone())
 }
 
 /// Convert raw entity JSON values into `GraphEntity` structs.
@@ -1089,17 +1228,6 @@ fn process_corpus(
     backpressure_threshold: u64,
 ) -> ExtractResult {
     *tier_b_used = false;
-    // Backpressure gate: defer if Doorman extraction queue is too deep.
-    // Prevents bulk CORPUS ingestion from creating 100+ hour drain backlogs.
-    // The file stays on disk; the drain loop retries after exponential backoff.
-    if check_doorman_backpressure(doorman_endpoint, backpressure_threshold) {
-        eprintln!(
-            "[BACKPRESSURE] queue_pending > {} — deferring {}",
-            backpressure_threshold,
-            filepath.display()
-        );
-        return ExtractResult::DeferTransient;
-    }
     // SC-5: log read failures instead of silently returning
     let content = match fs::read_to_string(filepath) {
         Ok(c) => c,
@@ -1147,10 +1275,15 @@ fn process_corpus(
         .as_str()
         .filter(|s| !s.is_empty())
         .unwrap_or(module_id);
+    let domain_id = payload["domain_id"].as_str();
 
     if corpus_text.is_empty() {
         return ExtractResult::Failed;
     }
+
+    // Preprocess: strip nav links, inline URLs, OCR artifacts before extraction.
+    let corpus_text_owned = preprocess_corpus_text(corpus_text);
+    let corpus_text = corpus_text_owned.as_ref();
 
     // ── Shared entity schema used by both tiers ───────────────────────────────
     // additionalProperties:false prevents hallucinated fields from leaking into the graph.
@@ -1173,19 +1306,32 @@ fn process_corpus(
         }
     });
 
-    // ── Step 1: Tier A extraction (always first — fast local OLMo) ───────────
-    let tier_a_raw: Option<Vec<serde_json::Value>> = {
-        let result = call_tier_a_extract(corpus_text, &entity_schema, doorman_endpoint);
-        match &result {
-            Some(ents) => println!(
-                "  -> [TIER-A] {} entities extracted (module: {}).",
-                ents.len(),
-                effective_module_id
-            ),
-            None => println!("  -> [TIER-A] Unavailable — proceeding to Tier B."),
+    // ── Step 1: Tier 0 (GLiNER) with Tier A (OLMo) fallback ─────────────────
+    // GLiNER (Tier 0) is direct HTTP to port 9085 — no Doorman involvement.
+    // Backpressure gate only applies if GLiNER is down and we must use Doorman.
+    let gliner_result = call_tier_0_gliner(corpus_text, domain_id);
+    let tier_a_raw: Option<Vec<serde_json::Value>> = if gliner_result.is_some() {
+        gliner_result
+    } else {
+        // GLiNER unavailable — check Doorman backpressure before using Tier A.
+        if check_doorman_backpressure(doorman_endpoint, backpressure_threshold) {
+            eprintln!(
+                "[BACKPRESSURE] GLiNER down + queue_pending > {} — deferring {}",
+                backpressure_threshold,
+                filepath.display()
+            );
+            return ExtractResult::DeferTransient;
         }
-        result
+        call_tier_a_extract(corpus_text, &entity_schema, doorman_endpoint)
     };
+    match &tier_a_raw {
+        Some(ents) => println!(
+            "  -> [TIER-0/A] {} entities extracted (module: {}).",
+            ents.len(),
+            effective_module_id
+        ),
+        None => println!("  -> [TIER-0/A] Unavailable — proceeding to Tier B."),
+    }
 
     // ── Step 2: Tier B extraction (OLMo 32B via /v1/extract) ─────────────────
     println!(
@@ -1286,6 +1432,29 @@ fn process_corpus(
             let graph_entities =
                 raw_entities_to_graph(&semantic_entities, effective_module_id, 0.95);
             *tier_b_used = true;
+
+            // If Tier B succeeded but all entities failed the filter, use GLiNER Tier 0 as
+            // fallback. This handles the case where OLMo returns field_missing entities
+            // (grammar constraint not enforced on the Doorman path).
+            let graph_entities = if graph_entities.is_empty() {
+                if let Some(ta_ents) = &tier_a_raw {
+                    let gliner_ge = raw_entities_to_graph(ta_ents, effective_module_id, 0.75);
+                    if !gliner_ge.is_empty() {
+                        println!(
+                            "  -> [TIER-0 RESCUE] Tier B 0 valid — using {} GLiNER entities.",
+                            gliner_ge.len()
+                        );
+                        *tier_b_used = false;
+                        gliner_ge
+                    } else {
+                        graph_entities
+                    }
+                } else {
+                    graph_entities
+                }
+            } else {
+                graph_entities
+            };
 
             // Build legacy CRM record
             let mut enriched_crm = Vec::new();
