@@ -1030,7 +1030,7 @@ fn check_doorman_backpressure(doorman_endpoint: &str, threshold: u64) -> bool {
     if threshold == 0 {
         return false;
     }
-    let url = format!("{}/healthz", doorman_endpoint);
+    let url = format!("{}/readyz", doorman_endpoint);
     let client = reqwest::blocking::Client::new();
     let Ok(resp) = client.get(&url).timeout(Duration::from_secs(3)).send() else {
         return false;
