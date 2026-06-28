@@ -39,6 +39,15 @@ struct Config {
     content_endpoint: String,
     doorman_endpoint: String,
     http_client: reqwest::Client,
+    // Direct CORPUS emission path — bypasses service-fs + service-extraction.
+    // When set, /v1/migrate writes CORPUS_<stem>_<ts>.json directly to this
+    // directory. service-content must watch this dir via SERVICE_CONTENT_BASE_DIR.
+    // YAML ledger validation is skipped in this mode (all .md files included).
+    // When unset, the existing service-fs routing path is used.
+    emit_corpus_dir: Option<String>,
+    // Optional domain hint included in CORPUS envelope as "domain_id".
+    // service-content taxonomy.rs reads this for domain-aware extraction prompt.
+    domain_id: Option<String>,
 }
 
 // ---------------------------------------------------------------------------
@@ -566,6 +575,8 @@ async fn migrate(
     let mut stems_processed = Vec::new();
     let mut stems_skipped = Vec::new();
 
+    let direct_mode = cfg.emit_corpus_dir.is_some();
+
     for md_path in slice {
         let stem = md_path
             .file_stem()
@@ -573,15 +584,15 @@ async fn migrate(
             .unwrap_or("unknown")
             .to_string();
 
-        // Validate corresponding ledger
+        // YAML ledger validation — soft in direct-CORPUS mode (all .md included),
+        // hard in service-fs routing mode (calibration baseline requires ledgers).
         let ledger_path_src = format!("{}/{}.yaml", ledger_src_dir, stem);
         let ledger_bytes = std::fs::read(&ledger_path_src).unwrap_or_default();
-
         let ledger_valid = ledger_bytes.len() >= 60
             && !String::from_utf8_lossy(&ledger_bytes).contains("extraction_protocol")
             && !String::from_utf8_lossy(&ledger_bytes).contains("fidelity_mandate");
 
-        if !ledger_valid {
+        if !direct_mode && !ledger_valid {
             skipped += 1;
             stems_skipped.push(stem.clone());
             write_ledger_entry(
@@ -608,36 +619,68 @@ async fn migrate(
         };
 
         let sha = sha256_hex(&md_bytes);
-        let payload_id = format!("migrate-{}-{}", stem, &sha[..8]);
+        let ts = now_secs();
 
-        // Send to service-fs with correct extraction envelope
-        let filename = format!("{}.md", stem);
-        match post_to_fs(
-            &cfg.http_client,
-            &cfg.fs_endpoint,
-            &payload_id,
-            &filename,
-            &md_bytes,
-            &cfg.module_id,
-            &cfg.dest_archive,
-            "service-research",
-        )
-        .await
-        {
-            Ok(_) => {}
-            Err(e) => {
-                eprintln!("[service-input/migrate] fs POST {stem}: {e}");
+        if let Some(ref corpus_dir) = cfg.emit_corpus_dir {
+            // Direct CORPUS emission — bypasses service-fs + service-extraction.
+            // Worm_id matches service-extraction convention: DOC_<sha256_prefix>.
+            let worm_id = format!("DOC_{}", &sha[..16]);
+            let mut corpus_obj = serde_json::json!({
+                "worm_id": worm_id,
+                "corpus": String::from_utf8_lossy(&md_bytes),
+                "module_id": cfg.module_id,
+            });
+            if let Some(ref did) = cfg.domain_id {
+                corpus_obj["domain_id"] = serde_json::Value::String(did.clone());
+            }
+            let corpus_filename = format!("CORPUS_{}_{}.json", stem, ts);
+            let corpus_path = format!("{}/{}", corpus_dir, corpus_filename);
+            if let Err(e) = std::fs::create_dir_all(corpus_dir) {
+                eprintln!("[service-input/migrate] create corpus dir {corpus_dir}: {e}");
                 skipped += 1;
                 stems_skipped.push(stem.clone());
                 continue;
             }
-        }
+            if let Err(e) = std::fs::write(&corpus_path, corpus_obj.to_string()) {
+                eprintln!("[service-input/migrate] write corpus {corpus_path}: {e}");
+                skipped += 1;
+                stems_skipped.push(stem.clone());
+                continue;
+            }
+        } else {
+            // Service-fs routing path — requires service-extraction watcher on
+            // the target_service subdirectory.
+            let payload_id = format!("migrate-{}-{}", stem, &sha[..8]);
+            let filename = format!("{}.md", stem);
+            match post_to_fs(
+                &cfg.http_client,
+                &cfg.fs_endpoint,
+                &payload_id,
+                &filename,
+                &md_bytes,
+                &cfg.module_id,
+                &cfg.dest_archive,
+                "service-research",
+            )
+            .await
+            {
+                Ok(_) => {}
+                Err(e) => {
+                    eprintln!("[service-input/migrate] fs POST {stem}: {e}");
+                    skipped += 1;
+                    stems_skipped.push(stem.clone());
+                    continue;
+                }
+            }
 
-        // Copy reference YAML to jennifer-2 reference dir
-        let _ = std::fs::create_dir_all(&cfg.reference_dir);
-        let ledger_dst = format!("{}/{}.yaml", cfg.reference_dir, stem);
-        if let Err(e) = std::fs::copy(&ledger_path_src, &ledger_dst) {
-            eprintln!("[service-input/migrate] copy ledger {stem}: {e}");
+            // Copy reference YAML to jennifer-2 reference dir (calibration mode only).
+            if ledger_valid {
+                let _ = std::fs::create_dir_all(&cfg.reference_dir);
+                let ledger_dst = format!("{}/{}.yaml", cfg.reference_dir, stem);
+                if let Err(e) = std::fs::copy(&ledger_path_src, &ledger_dst) {
+                    eprintln!("[service-input/migrate] copy ledger {stem}: {e}");
+                }
+            }
         }
 
         write_ledger_entry(
@@ -645,8 +688,9 @@ async fn migrate(
             &serde_json::json!({
                 "stem": stem,
                 "sha256": sha,
-                "ts": now_secs(),
-                "ledger_valid": true,
+                "ts": ts,
+                "ledger_valid": ledger_valid,
+                "mode": if direct_mode { "corpus-direct" } else { "service-fs" },
                 "status": "migrated",
             }),
         );
@@ -918,6 +962,8 @@ async fn main() {
         .unwrap_or_else(|_| "http://127.0.0.1:9081".into());
     let doorman_endpoint = std::env::var("SERVICE_INPUT_DOORMAN_ENDPOINT")
         .unwrap_or_else(|_| "http://127.0.0.1:9080".into());
+    let emit_corpus_dir = std::env::var("SERVICE_INPUT_EMIT_CORPUS_DIR").ok();
+    let domain_id = std::env::var("SERVICE_INPUT_DOMAIN_ID").ok();
 
     let http_client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(30))
@@ -940,6 +986,8 @@ async fn main() {
         content_endpoint,
         doorman_endpoint,
         http_client,
+        emit_corpus_dir,
+        domain_id,
     });
     let shared: SharedState = Arc::new(Mutex::new(AppState::default()));
 
