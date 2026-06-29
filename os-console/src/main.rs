@@ -58,7 +58,7 @@ fn inner_main() -> anyhow::Result<()> {
         (9080, 9080), // Doorman
         (9081, 9081), // service-content
         (9092, 9092), // service-proofreader (F4)
-        (9100, 9100), // service-input (F12)
+        (9106, 9106), // service-input (F12)
         (9093, 9093), // service-email (F3)
         (9205, 9205), // pairing-server (F11)
         (2222, 2222), // MBA SSH
