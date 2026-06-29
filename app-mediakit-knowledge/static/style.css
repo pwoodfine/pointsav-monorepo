@@ -3160,18 +3160,19 @@ ul.wiki-allpages-list a:hover { text-decoration: underline; }
 /* === Section 8: Dark mode === */
 
 html[data-theme="dark"] {
-  --bg:          oklch(12% 0.04 250);
-  --bg-elevated: oklch(15% 0.05 250);
-  --bg-subtle:   oklch(18% 0.05 250);
-  --bg-chrome:   oklch(15% 0.05 250);
-  --bg-hover:    oklch(20% 0.05 250);
+  --bg:          oklch(11% 0.04 250);
+  --bg-elevated: oklch(14% 0.05 250);
+  --bg-subtle:   oklch(17% 0.05 250);
+  --bg-chrome:   oklch(14% 0.05 250);
+  --bg-overlay:  oklch(19% 0.05 250);
+  --bg-hover:    oklch(21% 0.05 250);
   --fg-1:        oklch(93% 0.007 255);
-  --fg-2:        oklch(72% 0.010 255);
-  --fg-3:        oklch(58% 0.008 255);
-  --fg-4:        oklch(44% 0.008 255);
-  --border:      rgba(255, 255, 255, 0.12);
+  --fg-2:        oklch(74% 0.012 255);
+  --fg-3:        oklch(60% 0.010 255);
+  --fg-4:        oklch(46% 0.008 255);
+  --border:      rgba(255, 255, 255, 0.13);
   --rule:        rgba(255, 255, 255, 0.08);
-  --code-bg:     oklch(18% 0.04 250);
+  --code-bg:     oklch(17% 0.04 250);
   --code-fg:     oklch(88% 0.006 255);
   --link:        oklch(72% 0.13 255);
   --link-hover:  oklch(80% 0.11 255);
@@ -3187,18 +3188,19 @@ html[data-theme="dark"] {
 
 @media (prefers-color-scheme: dark) {
   html:not([data-theme="light"]) {
-    --bg:          oklch(12% 0.04 250);
-    --bg-elevated: oklch(15% 0.05 250);
-    --bg-subtle:   oklch(18% 0.05 250);
-    --bg-chrome:   oklch(15% 0.05 250);
-    --bg-hover:    oklch(20% 0.05 250);
+    --bg:          oklch(11% 0.04 250);
+    --bg-elevated: oklch(14% 0.05 250);
+    --bg-subtle:   oklch(17% 0.05 250);
+    --bg-chrome:   oklch(14% 0.05 250);
+    --bg-overlay:  oklch(19% 0.05 250);
+    --bg-hover:    oklch(21% 0.05 250);
     --fg-1:        oklch(93% 0.007 255);
-    --fg-2:        oklch(72% 0.010 255);
-    --fg-3:        oklch(58% 0.008 255);
-    --fg-4:        oklch(44% 0.008 255);
-    --border:      rgba(255, 255, 255, 0.12);
+    --fg-2:        oklch(74% 0.012 255);
+    --fg-3:        oklch(60% 0.010 255);
+    --fg-4:        oklch(46% 0.008 255);
+    --border:      rgba(255, 255, 255, 0.13);
     --rule:        rgba(255, 255, 255, 0.08);
-    --code-bg:     oklch(18% 0.04 250);
+    --code-bg:     oklch(17% 0.04 250);
     --code-fg:     oklch(88% 0.006 255);
     --link:        oklch(72% 0.13 255);
     --link-hover:  oklch(80% 0.11 255);
@@ -3216,8 +3218,9 @@ html[data-theme="dark"] {
 html[data-theme="dark"] .topnav,
 html[data-theme="dark"] .s-topnav,
 html:not([data-theme="light"]):is([data-theme="dark"]) .s-topnav { background: oklch(20% 0.06 262); box-shadow: 0 2px 12px rgba(0,0,0,0.5); }
-html[data-theme="dark"] .s-subnav { background: oklch(20% 0.06 262); }
+html[data-theme="dark"] .s-subnav { background: var(--bg-elevated); }
 html[data-theme="dark"] .s-footer { background: oklch(8% 0.05 250); }
+html[data-theme="dark"] #search-autocomplete-dropdown { background: var(--bg-overlay); box-shadow: 0 8px 24px rgba(0,0,0,0.6); }
 html[data-theme="dark"] img { filter: brightness(0.92) contrast(1.02); }
 html[data-theme="dark"] .prose blockquote { background: oklch(18% 0.05 250); border-left-color: var(--accent); }
 html[data-theme="dark"] .prose pre,
