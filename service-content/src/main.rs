@@ -1539,7 +1539,21 @@ fn process_corpus(
         .as_str()
         .filter(|s| !s.is_empty())
         .unwrap_or(module_id);
-    let domain_id = payload["domain_id"].as_str();
+    // Explicit domain_id in CORPUS JSON wins. If absent, infer from worm_id prefix:
+    // - DOC_session-* / DOC_sweep-* are engineering session transcripts and git commit
+    //   text → "documentation" domain (developer/service/library entity labels).
+    //   "documentation" is the Foundry ontology domain for technical content; it maps
+    //   directly to domain_documentation.csv in the ontology directory.
+    // - Everything else falls to service-gliner DEFAULT_DOMAIN ("projects")
+    let domain_id: Option<&str> = payload["domain_id"]
+        .as_str()
+        .or_else(|| {
+            if worm_id.starts_with("DOC_session-") || worm_id.starts_with("DOC_sweep-") {
+                Some("documentation")
+            } else {
+                None
+            }
+        });
 
     if corpus_text.is_empty() {
         return ExtractResult::Failed;
