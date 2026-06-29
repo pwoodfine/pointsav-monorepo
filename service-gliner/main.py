@@ -62,6 +62,9 @@ _FALLBACK_DOMAIN_LABELS: dict[str, dict[str, str]] = {
         "Location": "a named city or country",
         "Account":  "a named financial account or contract",
     },
+    # Documentation domain: engineering sessions, code reviews, architecture docs,
+    # build logs, git commits. Same five entity types; descriptions tuned for
+    # technical prose rather than CRE or corporate content.
     "documentation": {
         "Person":   "a named developer, engineer, or contributor",
         "Company":  "a named company or technology organisation",
