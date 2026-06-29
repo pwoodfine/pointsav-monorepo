@@ -561,6 +561,12 @@ async fn wiki_page_inner(
         let hex = h.to_hex();
         hex[..16].to_string()
     };
+    // P6-G: short git SHA for article chrome records signal
+    let revision_sha_short = crate::history::topic_history(state.primary_path(), &slug, 1)
+        .ok()
+        .and_then(|mut h| h.drain(..).next())
+        .map(|e| e.sha[..e.sha.len().min(8)].to_string())
+        .unwrap_or_default();
     // Phase 9 — build claim-rail HTML from CITATIONS table entries found in body
     let claim_rail_html = {
         let re = regex::Regex::new(r##"href="#fn-(\d+)""##).unwrap();
@@ -648,6 +654,7 @@ async fn wiki_page_inner(
         &relates_to_rails,
         &nav_buckets,
         &article_category,
+        &revision_sha_short,
     )
     .into_response();
     response.headers_mut().insert(
@@ -768,6 +775,7 @@ fn wiki_chrome(
     relates_to_rails: &[(String, Vec<String>)],
     nav_buckets: &CategoryBuckets,
     article_category: &str,
+    revision_sha_short: &str,
 ) -> Markup {
     let woodfine_theme = matches!(brand_theme, Some("woodfine") | Some("woodfine-projects"));
     let _woodfine_projects = brand_theme == Some("woodfine-projects");
@@ -1054,6 +1062,12 @@ fn wiki_chrome(
                                         "Updated " (date)
                                         " · "
                                         a href={ "/history/" (slug) } { "History" }
+                                        @if !revision_sha_short.is_empty() {
+                                            " · "
+                                            span.doc-header__sha title="Git revision SHA" {
+                                                (revision_sha_short)
+                                            }
+                                        }
                                     }
                                 }
                                 // Phase 4b: reading time — word count set by wiki.js

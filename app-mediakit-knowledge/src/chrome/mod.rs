@@ -252,6 +252,9 @@ pub fn base_page(
                             "Projects Inc. used in Canada, the United States, Latin America, and Europe. "
                             "All other trademarks are the property of their respective owners."
                         }
+                        p class="site-footer__compliance" {
+                            "Git-versioned content · WCAG 2.1 AA · EN 301 549"
+                        }
                     }
                 }
 
