@@ -167,6 +167,37 @@ def _sync_batch(
     return entities
 
 
+def _sync_predict(text: str, domain_id: str) -> list[dict[str, str]]:
+    """Blocking GLiNER call — runs in _pool thread, not the event loop."""
+    label_map = DOMAIN_LABELS.get(domain_id, DOMAIN_LABELS[DEFAULT_DOMAIN])
+    labels = list(label_map.values())
+    desc_to_key = {v: k for k, v in label_map.items()}
+    raw = model.predict_entities(text, labels, threshold=0.5)
+    return [
+        {
+            "entity_name": e["text"],
+            "classification": desc_to_key.get(e["label"], e["label"]),
+        }
+        for e in raw
+    ]
+
+
+def _sync_batch(texts: list[str], domain_id: str) -> list[dict[str, str]]:
+    """Blocking GLiNER batch inference — runs in _pool thread."""
+    label_map = DOMAIN_LABELS.get(domain_id, DOMAIN_LABELS[DEFAULT_DOMAIN])
+    labels = list(label_map.values())
+    desc_to_key = {v: k for k, v in label_map.items()}
+    raw_batched = model.inference(texts, labels, threshold=0.5)
+    entities = []
+    for chunk_entities in raw_batched:
+        for e in chunk_entities:
+            entities.append({
+                "entity_name": e["text"],
+                "classification": desc_to_key.get(e["label"], e["label"]),
+            })
+    return entities
+
+
 @app.get("/healthz")
 async def health() -> dict[str, str]:
     return {"status": "ok", "model": MODEL_NAME}
