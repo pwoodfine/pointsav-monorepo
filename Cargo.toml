@@ -50,6 +50,8 @@ members = [
     # Marketing platform: shared chrome chassis + the marketing app
     "app-mediakit-shell",
     "app-mediakit-marketing",
+    # Cross-archive DataGraph federation gateway (Phase 1 scaffold; port 9181)
+    "app-orchestration-graph",
     # Design system browser (port 9094)
     "app-privategit-design",
     # Sovereign replacement stubs (wired into app-privategit-design)

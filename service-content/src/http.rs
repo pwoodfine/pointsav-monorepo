@@ -30,10 +30,28 @@ pub struct ContextQuery {
     pub module_id: String,
     #[serde(default = "default_limit")]
     pub limit: usize,
+    /// When >0, follow RelatedTo edges transitively (clamped to 1-4 hops).
+    #[serde(default)]
+    pub hops: usize,
 }
 
 fn default_limit() -> usize {
     20
+}
+
+/// Query params for GET /v1/graph/delta
+#[derive(Debug, Deserialize)]
+pub struct DeltaQuery {
+    /// ISO 8601 timestamp — return entities created at or after this instant.
+    /// Example: `2026-06-29T00:00:00Z`
+    pub since: String,
+    pub module_id: String,
+    #[serde(default = "default_delta_limit")]
+    pub limit: usize,
+}
+
+fn default_delta_limit() -> usize {
+    500
 }
 
 #[derive(Debug, Deserialize)]
@@ -147,11 +165,17 @@ async fn graph_context(
     State(state): State<Arc<HttpState>>,
     Query(params): Query<ContextQuery>,
 ) -> Result<Json<Vec<GraphEntity>>, (StatusCode, String)> {
-    state
-        .graph
-        .query_context(&params.module_id, &params.q, params.limit)
-        .map(Json)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
+    let result = if params.hops > 0 {
+        state.graph.query_context_transitive(
+            &params.module_id,
+            &params.q,
+            params.limit,
+            params.hops,
+        )
+    } else {
+        state.graph.query_context(&params.module_id, &params.q, params.limit)
+    };
+    result.map(Json).map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
 }
 
 async fn graph_mutate(
@@ -378,6 +402,20 @@ async fn ingest_document(
 ///
 /// Default is dry_run=true (safe). Pass dry_run=false to apply deletions.
 /// Example: curl 'http://127.0.0.1:9081/v1/graph/cleanup?module_id=jennifer&dry_run=true'
+/// GET /v1/graph/delta — federation delta sync.
+/// Returns entities created at or after `?since=<ISO-8601>` for a given `module_id`.
+/// Consumers (app-orchestration-graph) call this to pull incremental updates.
+async fn graph_delta(
+    State(state): State<Arc<HttpState>>,
+    Query(params): Query<DeltaQuery>,
+) -> Result<Json<Vec<GraphEntity>>, (StatusCode, String)> {
+    let entities = state
+        .graph
+        .query_entities_since(&params.module_id, &params.since, params.limit)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    Ok(Json(entities))
+}
+
 ///
 /// Uses the same noise filters as the ingest gate so cleanup matches exactly what
 /// the hardened binary would have rejected on ingestion.
@@ -650,6 +688,7 @@ pub async fn run_server(
     let app = Router::new()
         .route("/healthz", get(healthz))
         .route("/v1/graph/context", get(graph_context))
+        .route("/v1/graph/delta", get(graph_delta))
         .route("/v1/graph/mutate", post(graph_mutate))
         .route("/v1/graph/cleanup", get(graph_cleanup))
         .route("/v1/graph/enrich", post(graph_enrich))
