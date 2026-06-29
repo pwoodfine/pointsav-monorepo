@@ -556,6 +556,36 @@ aside.toc { grid-area: aside; }
 }
 .topnav.scrolled, .s-topnav.scrolled { box-shadow: 0 2px 16px rgba(0, 0, 0, 0.45); }
 
+/* Wiki topnav: left / center / right containers */
+.topnav .left { display: flex; align-items: center; }
+.topnav .right { display: flex; align-items: center; gap: var(--sp-1); }
+.topnav-center { display: flex; align-items: center; justify-content: center; width: 100%; }
+
+/* Wiki wordmark — text-based (no logo SVG) */
+.wordmark {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  text-decoration: none;
+  min-height: 44px;
+  padding: var(--sp-1) 0;
+  white-space: nowrap;
+}
+.brand__mark {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1;
+}
+.brand__wordmark {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.82);
+  letter-spacing: 0.02em;
+}
+
 /* Wordmark */
 .s-wordmark {
   display: flex;
@@ -587,10 +617,32 @@ aside.toc { grid-area: aside; }
   align-items: center;
   position: relative;
   width: 100%;
-  max-width: 480px;
+  max-width: 560px;
   justify-self: center;
 }
 .header-search-wrap { position: relative; flex: 1; }
+
+/* Wiki topnav search input — targets the unclassed input within .topnav-search */
+.topnav-search input[type="search"] {
+  width: 100%;
+  height: 40px;
+  padding: 0 var(--sp-10) 0 var(--sp-5);
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-family: var(--font-body);
+  font-size: 15px;
+  outline: none;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  -webkit-appearance: none;
+}
+.topnav-search input[type="search"]::placeholder { color: rgba(255, 255, 255, 0.52); }
+.topnav-search input[type="search"]:focus {
+  background: rgba(255, 255, 255, 0.20);
+  border-color: rgba(255, 255, 255, 0.50);
+  box-shadow: 0 0 0 2px color-mix(in oklch, var(--s-accent) 30%, transparent);
+}
 .s-search__input {
   width: 100%;
   height: 36px;
