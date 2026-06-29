@@ -37,6 +37,7 @@ const PAGES = [
   { path: '/wiki/about',            label: 'article'  },
   { path: '/special/categories',    label: 'category' },
   { path: '/special/all-pages',     label: 'all-pages'},
+  { path: '/notes/about',           label: 'notes'    },
 ];
 
 const CHROMIUM_EXEC = (function findChrome() {
@@ -115,6 +116,26 @@ async function checkPage(page, url, vp, instanceId) {
 
     // R8: slide-deck structural integrity (defensive — only fires when page has slides)
     const deck = document.querySelector('.slide-deck');
+
+    // R-notes-1: article pages must have a Notes tab (href contains /notes/)
+    if (document.querySelector('.article__body')) {
+      const notesTab = document.querySelector('.wiki-page-tabs a[href*="/notes/"]');
+      if (!notesTab) {
+        f.push({ rule: 'R-notes-1', detail: 'article page missing Notes tab link in .wiki-page-tabs' });
+      }
+    }
+
+    // R-notes-2: notes page must have the add-note form with F12 checkbox
+    if (location.pathname.startsWith('/notes/')) {
+      const notesForm = document.querySelector('.notes-form');
+      if (!notesForm) {
+        f.push({ rule: 'R-notes-2', detail: 'notes page missing .notes-form' });
+      }
+      const f12box = document.querySelector('.notes-form input[type="checkbox"][name="confirm"]');
+      if (!f12box) {
+        f.push({ rule: 'R-notes-3', detail: 'notes form missing F12 confirmation checkbox (name=confirm)' });
+      }
+    }
     if (deck) {
       if (!deck.querySelector('.slide-deck__viewport')) {
         f.push({ rule: 'slide-deck-viewport', detail: '.slide-deck__viewport missing inside .slide-deck' });

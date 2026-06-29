@@ -283,6 +283,8 @@ pub fn router(state: AppState) -> Router {
         .route("/special/statistics", get(statistics_page))
         // Sprint C4 — Talk namespace
         .route("/talk/{*slug}", get(talk_page).post(talk_post))
+        // P6-F — Notes (inline annotations)
+        .route("/notes/{*slug}", get(notes_page).post(notes_post))
         // Phase 4 Step 4.7 — read-only git remote (smart-HTTP)
         .route(
             "/git-server/{tenant}/info/refs",
@@ -1119,3 +1121,4 @@ include!("home_handlers.rs");
 include!("wiki_handlers.rs");
 include!("special_handlers.rs");
 include!("misc_handlers.rs");
+include!("notes_handlers.rs");
