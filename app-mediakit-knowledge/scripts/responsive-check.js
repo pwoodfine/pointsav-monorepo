@@ -113,6 +113,17 @@ async function checkPage(page, url, vp, instanceId) {
       }
     }
 
+    // R8: slide-deck structural integrity (defensive — only fires when page has slides)
+    const deck = document.querySelector('.slide-deck');
+    if (deck) {
+      if (!deck.querySelector('.slide-deck__viewport')) {
+        f.push({ rule: 'slide-deck-viewport', detail: '.slide-deck__viewport missing inside .slide-deck' });
+      }
+      if (!deck.querySelector('.slide-deck__controls')) {
+        f.push({ rule: 'slide-deck-controls', detail: '.slide-deck__controls missing inside .slide-deck' });
+      }
+    }
+
     return f;
   }, instanceId);
 

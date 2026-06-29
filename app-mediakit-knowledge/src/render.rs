@@ -274,6 +274,86 @@ pub fn render_html(
     inject_edit_pencils(&raw)
 }
 
+/// P5-7 — Pre-render `:::slides` fenced blocks into HTML slide decks.
+///
+/// Called BEFORE the comrak pass so the resulting `<div class="slide-deck">` is
+/// seen by comrak as an HTML block (CommonMark type-6, which starts with `<div`)
+/// and passed through verbatim with `options.render.unsafe = true`.
+///
+/// Slide content is split on `\n---\n` and each section rendered independently
+/// via `render_html_raw`. Nesting `:::slides` inside a slide is not supported.
+///
+/// Known limitation: `:::slides` inside a fenced code block is not filtered out
+/// and will be incorrectly transformed. Acceptable trade-off for current corpus.
+fn render_slides_blocks(
+    md: &str,
+    content_dir: &std::path::Path,
+    extra_roots: &[&std::path::Path],
+) -> String {
+    const OPEN: &str = ":::slides\n";
+    const CLOSE: &str = "\n:::";
+
+    let mut out = String::with_capacity(md.len() + 512);
+    let mut rest = md;
+
+    while let Some(open_pos) = rest.find(OPEN) {
+        out.push_str(&rest[..open_pos]);
+        let after_open = &rest[open_pos + OPEN.len()..];
+        if let Some(close_rel) = after_open.find(CLOSE) {
+            let block_content = &after_open[..close_rel];
+            let slides: Vec<&str> = block_content.split("\n---\n").collect();
+            let slide_count = slides.len();
+
+            let mut html = format!(
+                "<div class=\"slide-deck\" data-slide-count=\"{slide_count}\" role=\"region\" aria-label=\"Slide deck\">\n"
+            );
+            html.push_str("<div class=\"slide-deck__controls\">");
+            html.push_str(
+                "<button class=\"sd-prev\" aria-label=\"Previous slide\" aria-disabled=\"true\">←</button>",
+            );
+            html.push_str(&format!("<span class=\"sd-progress\">1 / {slide_count}</span>"));
+            html.push_str("<button class=\"sd-next\" aria-label=\"Next slide\">→</button>");
+            html.push_str("<button class=\"sd-fullscreen\" aria-label=\"Fullscreen\">⛶</button>");
+            html.push_str("</div>\n<div class=\"slide-deck__viewport\">\n");
+
+            for (i, slide_md) in slides.iter().enumerate() {
+                let slide_html = render_html_raw(slide_md.trim(), content_dir, extra_roots);
+                let label = format!("Slide {} of {}", i + 1, slide_count);
+                if i == 0 {
+                    html.push_str(&format!(
+                        "<section class=\"slide active\" aria-label=\"{label}\">{slide_html}</section>\n"
+                    ));
+                } else {
+                    html.push_str(&format!(
+                        "<section class=\"slide\" aria-label=\"{label}\" hidden>{slide_html}</section>\n"
+                    ));
+                }
+            }
+            html.push_str("</div>\n"); // viewport
+
+            // Transcript block: a11y fallback for screen readers and JS-off.
+            html.push_str("<details class=\"slide-deck__transcript\"><summary>Read transcript</summary><div class=\"sd-transcript__body\">\n");
+            for (i, slide_md) in slides.iter().enumerate() {
+                let label = format!("Slide {} of {}", i + 1, slide_count);
+                html.push_str(&format!(
+                    "<div class=\"sd-transcript__slide\"><p class=\"sd-transcript__label\">{label}</p>{}</div>\n",
+                    render_html_raw(slide_md.trim(), content_dir, extra_roots)
+                ));
+            }
+            html.push_str("</div></details>\n</div>\n"); // end transcript + slide-deck
+
+            out.push_str(&html);
+            rest = &after_open[close_rel + CLOSE.len()..];
+        } else {
+            // Unclosed block — emit the opening marker verbatim and continue.
+            out.push_str(OPEN);
+            rest = after_open;
+        }
+    }
+    out.push_str(rest);
+    out
+}
+
 /// Like `render_html` but returns the raw comrak output without edit-pencil
 /// injection. Use this as the input to `extract_headings` for TOC generation.
 ///
@@ -285,6 +365,16 @@ pub fn render_html_raw(
     content_dir: &std::path::Path,
     extra_roots: &[&std::path::Path],
 ) -> String {
+    // P5-7: pre-render :::slides blocks before comrak so the resulting
+    // <div class="slide-deck"> is treated as an HTML block (type 6).
+    let preprocessed;
+    let body_md: &str = if body_md.contains(":::slides\n") {
+        preprocessed = render_slides_blocks(body_md, content_dir, extra_roots);
+        &preprocessed
+    } else {
+        body_md
+    };
+
     let mut options = Options::default();
     options.extension.wikilinks_title_after_pipe = true;
     options.extension.table = true;
@@ -1259,6 +1349,52 @@ mod tests {
         assert!(
             html.contains("<blockquote>") && !html.contains(r#"class="pull-quote""#),
             "non-bold blockquote must not become pull-quote: {html}"
+        );
+    }
+
+    // P5-7 slides block tests.
+
+    #[test]
+    fn slides_block_renders_deck() {
+        let md = ":::slides\n# Slide 1\n\ncontent\n\n---\n\n# Slide 2\n\nmore\n\n:::\n";
+        let html = render_html(md, std::path::Path::new("."), &[]);
+        assert!(
+            html.contains(r#"class="slide-deck""#),
+            "slide-deck wrapper must be present: {html}"
+        );
+        assert!(
+            html.contains(r#"data-slide-count="2""#),
+            "slide count must be 2: {html}"
+        );
+        assert!(
+            html.contains(r#"class="slide active""#),
+            "first slide must carry active class: {html}"
+        );
+        assert!(
+            html.contains("hidden"),
+            "second slide must carry hidden attribute: {html}"
+        );
+        assert!(
+            html.contains("sd-progress"),
+            "progress indicator must be present: {html}"
+        );
+    }
+
+    #[test]
+    fn slides_block_transcript_present() {
+        let md = ":::slides\n# A\n\ncontent\n\n:::\n";
+        let html = render_html(md, std::path::Path::new("."), &[]);
+        assert!(
+            html.contains(r#"class="slide-deck__transcript""#),
+            "transcript details element must be present: {html}"
+        );
+        assert!(
+            html.contains("Read transcript"),
+            "transcript summary text must be present: {html}"
+        );
+        assert!(
+            html.contains("Slide 1 of 1"),
+            "transcript must label the slide: {html}"
         );
     }
 }
