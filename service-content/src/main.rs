@@ -13,7 +13,7 @@ use serde_json::Value;
 use std::fs;
 use std::io::{BufRead, Write};
 use std::path::Path;
-use std::sync::mpsc::{RecvTimeoutError, Sender};
+use std::sync::mpsc::{RecvTimeoutError, SyncSender};
 use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
@@ -308,7 +308,9 @@ fn main() -> NotifyResult<()> {
     // Guard: OLMo entities are only written if the entity name appears verbatim in
     // the corpus text (source grounding), preventing hallucinated names from polluting
     // the graph.  Written at confidence 0.65 (vs GLiNER's 0.75).
-    let (tier_a_tx, tier_a_rx) = std::sync::mpsc::channel::<TierAJob>();
+    // Bounded: 200 jobs ≈ 2 MB pending corpus. A full channel silently drops
+    // the DPO job (drain continues). Prevents unbounded growth when OLMo is slow.
+    let (tier_a_tx, tier_a_rx) = std::sync::mpsc::sync_channel::<TierAJob>(200);
     {
         let schema = entity_extraction_schema();
         let gs_worker = Arc::clone(&graph_store);
@@ -348,7 +350,8 @@ fn main() -> NotifyResult<()> {
                         .cloned()
                         .collect();
                     if !grounded.is_empty() {
-                        let ge = raw_entities_to_graph(&grounded, &job.module_id, 0.65);
+                        let mut ge = raw_entities_to_graph(&grounded, &job.module_id, 0.65);
+                        for e in &mut ge { e.source_doc = Some(job.worm_id.clone()); }
                         match gs_worker.upsert_entities(&job.module_id, &ge) {
                             Ok(n) => {
                                 if n > 0 {
@@ -963,7 +966,9 @@ fn chunk_for_gliner(text: &str, max_chars: usize) -> Vec<&str> {
         // Safety: never produce a zero-length chunk that stalls the loop.
         let end = end.max(start + 1).min(text.len());
         chunks.push(&text[start..end]);
-        start = end;
+        // 150-char overlap so entities at chunk boundaries are not split across two
+        // incomplete windows. Guard: only overlap when it still advances the cursor.
+        start = if end > start + 150 { end - 150 } else { end };
     }
     chunks
 }
@@ -1142,6 +1147,7 @@ fn raw_entities_to_graph(
                     .map(str::to_string),
                 module_id: module_id.to_string(),
                 confidence,
+                source_doc: None, // callers that know the worm_id may set this post-construction
             })
         })
         .collect::<Vec<_>>();
@@ -1489,7 +1495,7 @@ fn process_corpus(
     feedback_dir: &str,
     tier_b_used: &mut bool,
     backpressure_threshold: u64,
-    tier_a_tx: Option<&Sender<TierAJob>>,
+    tier_a_tx: Option<&SyncSender<TierAJob>>,
 ) -> ExtractResult {
     *tier_b_used = false;
     // SC-5: log read failures instead of silently returning
@@ -1582,9 +1588,9 @@ fn process_corpus(
                 ents.len(),
                 effective_module_id
             );
-            // Queue for async Tier A training pass (non-blocking)
+            // Queue for async Tier A training pass (non-blocking, drops if queue full)
             if let Some(tx) = tier_a_tx {
-                tx.send(TierAJob {
+                tx.try_send(TierAJob {
                     corpus_text: corpus_text.to_string(),
                     worm_id: worm_id.to_string(),
                     module_id: effective_module_id.to_string(),
@@ -1600,7 +1606,7 @@ fn process_corpus(
             // GLiNER reachable, no entities — queue for Tier A to catch GLiNER blind spots,
             // then mark done immediately (production path unblocked).
             if let Some(tx) = tier_a_tx {
-                tx.send(TierAJob {
+                tx.try_send(TierAJob {
                     corpus_text: corpus_text.to_string(),
                     worm_id: worm_id.to_string(),
                     module_id: effective_module_id.to_string(),
@@ -1657,10 +1663,13 @@ fn process_corpus(
         .send();
 
     // Helper: flush Tier A entities to graph when Tier B is unavailable.
+    // None  → Tier A was unreachable (no-SLM deployment) → DeferTransient (retry soon)
+    // Some([]) → Tier A reachable but empty → DeferCircuitOpen (wait for circuit recovery)
     let flush_tier_a = |tier_a: &Option<Vec<serde_json::Value>>, reason: &str| -> ExtractResult {
         if let Some(ta_ents) = tier_a {
             if !ta_ents.is_empty() {
-                let ge = raw_entities_to_graph(ta_ents, effective_module_id, 0.75);
+                let mut ge = raw_entities_to_graph(ta_ents, effective_module_id, 0.75);
+                for e in &mut ge { e.source_doc = Some(worm_id.to_string()); }
                 match graph_store.upsert_entities(effective_module_id, &ge) {
                     Ok(n) => {
                         println!("  -> [TIER-A] {} entities written ({}).", n, reason);
@@ -1669,8 +1678,11 @@ fn process_corpus(
                     Err(e) => eprintln!("  -> [TIER-A] Graph write failed: {}", e),
                 }
             }
+            ExtractResult::DeferCircuitOpen
+        } else {
+            println!("  -> [TIER-A] Unavailable — deferring transiently ({}).", reason);
+            ExtractResult::DeferTransient
         }
-        ExtractResult::DeferCircuitOpen
     };
 
     match res {
@@ -1731,8 +1743,9 @@ fn process_corpus(
                 .cloned()
                 .unwrap_or_default();
 
-            let graph_entities =
+            let mut graph_entities =
                 raw_entities_to_graph(&semantic_entities, effective_module_id, 0.95);
+            for e in &mut graph_entities { e.source_doc = Some(worm_id.to_string()); }
             *tier_b_used = true;
 
             // If Tier B succeeded but all entities failed the filter, use GLiNER Tier 0 as
@@ -1740,7 +1753,8 @@ fn process_corpus(
             // (grammar constraint not enforced on the Doorman path).
             let graph_entities = if graph_entities.is_empty() {
                 if let Some(ta_ents) = &tier_0_entities {
-                    let gliner_ge = raw_entities_to_graph(ta_ents, effective_module_id, 0.75);
+                    let mut gliner_ge = raw_entities_to_graph(ta_ents, effective_module_id, 0.75);
+                    for e in &mut gliner_ge { e.source_doc = Some(worm_id.to_string()); }
                     if !gliner_ge.is_empty() {
                         println!(
                             "  -> [TIER-0 RESCUE] Tier B 0 valid — using {} GLiNER entities.",
