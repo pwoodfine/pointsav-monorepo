@@ -167,7 +167,7 @@
   --leading-tight:    1.25;
   --leading-base:     1.55;
   --leading-relaxed:  1.7;
-  --leading-reading:  1.75;
+  --leading-reading:  1.78;
 
   --tracking-heading: -0.01em;
   --tracking-base:     0;
@@ -217,7 +217,7 @@
   --tabs-h:    48px;
   --toc-w:     220px;
   --sidebar-w: 200px;
-  --measure:   66ch;
+  --measure:   70ch;
   --bar-h:     56px;
 
   --radius-sm: 4px;
@@ -1356,8 +1356,8 @@ span.toc-numb { color: var(--fg-3); font-size: var(--text-xs); margin-right: 0.4
   font-family: var(--font-display);
   font-weight: 400;
   font-size: clamp(38px, 4.5vw, 60px);
-  line-height: var(--leading-tight);
-  letter-spacing: -0.01em;
+  line-height: 1.15;
+  letter-spacing: -0.025em;
   color: var(--fg-1);
   text-wrap: balance;
   font-optical-sizing: auto;
@@ -1484,9 +1484,10 @@ article[data-quality="complete"] .wiki-page-tabs::after {
   max-width: var(--measure);
   font-optical-sizing: auto;
   text-wrap: pretty;
+  text-align: left;
 }
 .prose > * + * { margin-top: 1.3em; }
-.prose > p + p  { margin-top: 1.5em; }
+.prose > p + p  { margin-top: 1.6em; }
 
 /* Pull-quote — editorial typographic device for notable passages */
 .pull-quote {
@@ -1615,7 +1616,7 @@ button.anchor-share:hover { color: var(--ct-color, var(--navy)); }
 .prose h2 {
   font-family: var(--font-reading);
   font-weight: 700;
-  font-size: 28px;
+  font-size: clamp(1.5rem, 2.5vw, 2rem);
   line-height: var(--leading-tight);
   color: var(--fg-1);
   margin-top: 2.8em;
@@ -1640,7 +1641,7 @@ button.anchor-share:hover { color: var(--ct-color, var(--navy)); }
 .prose h3 {
   font-family: var(--font-reading);
   font-weight: 600;
-  font-size: 22px;
+  font-size: clamp(1.2rem, 1.8vw, 1.4rem);
   line-height: var(--leading-tight);
   color: var(--fg-1);
   margin-top: 2.0em;
@@ -1714,6 +1715,7 @@ button.anchor-share:hover { color: var(--ct-color, var(--navy)); }
 .prose pre code { background: none; border: none; padding: 0; font-size: 0.875em; color: var(--code-fg); border-radius: 0; }
 
 .prose ul, .prose ol { padding-left: 1.25em; margin: 0; }
+.prose li { line-height: 1.65; }
 .prose li + li { margin-top: 0.55em; }
 .prose li > p { margin: 0; }
 
@@ -1725,6 +1727,8 @@ button.anchor-share:hover { color: var(--ct-color, var(--navy)); }
   border-radius: 0 var(--radius-md) var(--radius-md) 0;
   color: var(--fg-2);
   font-style: italic;
+  font-size: 1.1em;
+  line-height: 1.7;
 }
 .prose blockquote p { margin: 0; }
 .prose blockquote > * + * { margin-top: 0.8em; }
