@@ -2,9 +2,12 @@
   "mcpServers": {
     "foundry": {
       "command": "/usr/local/bin/slm-mcp-server",
-      "args": ["--doorman", "http://127.0.0.1:9080"],
+      "args": [
+        "--doorman",
+        "http://127.0.0.1:9080"
+      ],
       "env": {
-        "SLM_MODULE_ID": "jennifer",
+        "SLM_MODULE_ID": "gis",
         "RUST_LOG": "warn",
         "FOUNDRY_ROOT": "/srv/foundry"
       },
