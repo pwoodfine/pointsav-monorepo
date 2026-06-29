@@ -567,6 +567,9 @@ async fn wiki_page_inner(
         .and_then(|mut h| h.drain(..).next())
         .map(|e| e.sha[..e.sha.len().min(8)].to_string())
         .unwrap_or_default();
+    // P6-F/D2: annotation count for Notes tab badge
+    let annotation_count =
+        crate::annotations::count_open_annotations(state.primary_path(), &slug);
     // Phase 9 — build claim-rail HTML from CITATIONS table entries found in body
     let claim_rail_html = {
         let re = regex::Regex::new(r##"href="#fn-(\d+)""##).unwrap();
@@ -655,6 +658,7 @@ async fn wiki_page_inner(
         &nav_buckets,
         &article_category,
         &revision_sha_short,
+        annotation_count,
     )
     .into_response();
     response.headers_mut().insert(
@@ -776,6 +780,7 @@ fn wiki_chrome(
     nav_buckets: &CategoryBuckets,
     article_category: &str,
     revision_sha_short: &str,
+    annotation_count: usize,
 ) -> Markup {
     let woodfine_theme = matches!(brand_theme, Some("woodfine") | Some("woodfine-projects"));
     let _woodfine_projects = brand_theme == Some("woodfine-projects");
@@ -1012,8 +1017,14 @@ fn wiki_chrome(
                                 a.wiki-tab aria-current="page" href={ "/wiki/" (slug) } {
                                     (match locale { Locale::En => "Article", Locale::Es => "Artículo" })
                                 }
-                                a.wiki-tab href={ "/talk/" (slug) } {
-                                    (match locale { Locale::En => "Talk", Locale::Es => "Discusión" })
+                                a.wiki-tab href={ "/notes/" (slug) } title="Editorial notes and annotations" {
+                                    @if annotation_count > 0 {
+                                        (match locale { Locale::En => "Notes", Locale::Es => "Notas" })
+                                        " "
+                                        span.note-count-badge { (annotation_count) }
+                                    } @else {
+                                        (match locale { Locale::En => "Notes", Locale::Es => "Notas" })
+                                    }
                                 }
                                 a.wiki-tab href={ "/git/" (slug) } {
                                     (match locale { Locale::En => "Edit", Locale::Es => "Editar" })

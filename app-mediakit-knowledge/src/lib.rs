@@ -17,6 +17,7 @@ pub mod state;
 pub mod walker;
 
 // ── Feature modules (real implementations, live in production) ─────────────
+pub mod annotations;
 pub mod activitypub;
 pub mod citations;
 pub mod claim;
