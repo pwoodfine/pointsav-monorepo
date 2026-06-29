@@ -494,6 +494,9 @@ aside.toc { grid-area: aside; }
 }
 
 .site-footer { width: 100%; background: var(--fg-1); margin-top: var(--sp-16); }
+.site-footer__inner { max-width: var(--max-w); margin: 0 auto; padding: var(--sp-8) var(--sp-10); display: flex; flex-direction: column; gap: var(--sp-3); }
+.site-footer__trademark { font-family: var(--font-body); font-size: 11px; line-height: 1.6; color: rgba(255,255,255,0.38); margin: 0; }
+.site-footer__compliance { font-family: var(--font-body); font-size: 11px; color: rgba(255,255,255,0.28); letter-spacing: 0.04em; margin: 0; }
 
 .mobile-bottom-bar { display: none; }
 
@@ -1474,6 +1477,7 @@ article[data-quality="complete"] .wiki-page-tabs::after {
   line-height: 1.4;
 }
 .doc-header__edited { font-size: 13px; color: var(--fg-3); }
+.doc-header__sha { font-family: var(--font-mono); font-size: 11px; color: var(--fg-4); letter-spacing: 0.04em; }
 .doc-header__edited a {
   color: var(--fg-3);
   text-decoration: underline;
