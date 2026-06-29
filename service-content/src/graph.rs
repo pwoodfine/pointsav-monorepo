@@ -1,5 +1,5 @@
 use anyhow::{anyhow, Result};
-use lbug::{Connection, Database, SystemConfig, Value};
+use lbug::{Connection, Database, LogicalType, SystemConfig, Value};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
@@ -94,6 +94,22 @@ pub trait GraphStore: Send + Sync {
     /// Count alias records in entity_aliases. Used by /healthz + tests.
     #[allow(dead_code)]
     fn count_aliases(&self) -> Result<usize>;
+    /// Transitive closure query: returns entities reachable from any initial
+    /// match via up to `hops` RelatedTo edges. Deduplicates the result.
+    /// `hops` is clamped to 1..=4 to bound query cost.
+    #[allow(dead_code)]
+    fn query_context_transitive(
+        &self,
+        module_id: &str,
+        query: &str,
+        limit: usize,
+        hops: usize,
+    ) -> Result<Vec<GraphEntity>>;
+    /// Return entities whose `created_at` is >= `since` (ISO 8601 string, e.g.
+    /// "2026-06-29T00:00:00Z"). Used by GET /v1/graph/delta for federation delta sync.
+    /// String comparison works because dates are stored in YYYY-MM-DDThh:mm:ssZ format.
+    fn query_entities_since(&self, module_id: &str, since: &str, limit: usize)
+        -> Result<Vec<GraphEntity>>;
 }
 
 pub struct LbugGraphStore {
@@ -720,6 +736,101 @@ impl GraphStore for LbugGraphStore {
         }
         Ok(0)
     }
+
+    fn query_context_transitive(
+        &self,
+        module_id: &str,
+        query: &str,
+        limit: usize,
+        hops: usize,
+    ) -> Result<Vec<GraphEntity>> {
+        let hops = hops.clamp(1, 4);
+        // Seed: direct name-match entities (same logic as query_context Phase 1).
+        let seeds = self.query_context(module_id, query, limit)?;
+        if seeds.is_empty() {
+            return Ok(seeds);
+        }
+
+        let conn = self.conn()?;
+        // For each seed, follow RelatedTo edges up to `hops` hops.
+        let mut stmt = conn
+            .prepare(&format!(
+                "MATCH (seed:Entity)-[:RelatedTo*1..{}]->(target:Entity) \
+                 WHERE seed.module_id = $module_id AND seed.id = $seed_id \
+                 RETURN target.entity_name, target.classification, target.role_vector, \
+                        target.location_vector, target.contact_vector, target.module_id, \
+                        target.confidence, target.source_doc",
+                hops
+            ))
+            .map_err(|e| anyhow!("prepare transitive query: {}", e))?;
+
+        let mut seen: std::collections::HashSet<String> = seeds
+            .iter()
+            .map(|e| e.entity_name.to_lowercase())
+            .collect();
+        let mut out = seeds;
+
+        let seed_ids: Vec<String> = out
+            .iter()
+            .map(|e| format!("{}__{}", module_id, normalize_entity_key(&e.entity_name)))
+            .collect();
+
+        for seed_id in seed_ids {
+            let result = conn
+                .execute(
+                    &mut stmt,
+                    vec![
+                        ("module_id", Value::String(module_id.to_string())),
+                        ("seed_id", Value::String(seed_id)),
+                    ],
+                )
+                .map_err(|e| anyhow!("execute transitive query: {}", e))?;
+            for row in result {
+                let null_val = Value::Null(LogicalType::String);
+                let name = val_to_string(row.first().unwrap_or(&null_val));
+                if !name.is_empty() && seen.insert(name.to_lowercase()) {
+                    if let Some(ge) = row_to_entity(&row) {
+                        out.push(ge);
+                        if out.len() >= limit * 3 {
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(out)
+    }
+
+    fn query_entities_since(
+        &self,
+        module_id: &str,
+        since: &str,
+        limit: usize,
+    ) -> Result<Vec<GraphEntity>> {
+        let conn = self.conn()?;
+        let mut stmt = conn
+            .prepare(
+                "MATCH (e:Entity) \
+                 WHERE e.module_id = $module_id \
+                   AND e.created_at >= $since \
+                 RETURN e.entity_name, e.classification, e.role_vector, \
+                        e.location_vector, e.contact_vector, e.module_id, e.confidence, e.source_doc \
+                 LIMIT $limit",
+            )
+            .map_err(|e| anyhow!("prepare query_entities_since: {}", e))?;
+        let result = conn
+            .execute(
+                &mut stmt,
+                vec![
+                    ("module_id", Value::String(module_id.to_string())),
+                    ("since", Value::String(since.to_string())),
+                    ("limit", Value::Int64(limit as i64)),
+                ],
+            )
+            .map_err(|e| anyhow!("execute query_entities_since: {}", e))?;
+        rows_to_entities(result)
+    }
 }
 
 #[cfg(test)]
@@ -762,47 +873,31 @@ fn val_to_f64(v: &Value) -> f64 {
 /// Each row yields 8 columns in RETURN order:
 /// 0 entity_name, 1 classification, 2 role_vector, 3 location_vector,
 /// 4 contact_vector, 5 module_id, 6 confidence, 7 source_doc
-fn rows_to_entities(result: lbug::QueryResult<'_>) -> Result<Vec<GraphEntity>> {
-    let mut out = Vec::new();
-    for row in result {
-        if row.len() < 7 {
-            continue;
-        }
-        let entity_name = val_to_string(&row[0]);
-        let classification = val_to_string(&row[1]);
-        let role_vector = {
-            let s = val_to_string(&row[2]);
-            if s.is_empty() { None } else { Some(s) }
-        };
-        let location_vector = {
-            let s = val_to_string(&row[3]);
-            if s.is_empty() { None } else { Some(s) }
-        };
-        let contact_vector = {
-            let s = val_to_string(&row[4]);
-            if s.is_empty() { None } else { Some(s) }
-        };
-        let module_id = val_to_string(&row[5]);
-        let confidence = val_to_f64(&row[6]);
-        let source_doc = if row.len() > 7 {
-            let s = val_to_string(&row[7]);
-            if s.is_empty() { None } else { Some(s) }
-        } else {
-            None
-        };
-
-        out.push(GraphEntity {
-            entity_name,
-            classification,
-            role_vector,
-            location_vector,
-            contact_vector,
-            module_id,
-            confidence,
-            source_doc,
-        });
+fn row_to_entity(row: &[Value]) -> Option<GraphEntity> {
+    if row.len() < 7 {
+        return None;
     }
-    Ok(out)
+    let entity_name = val_to_string(&row[0]);
+    if entity_name.is_empty() {
+        return None;
+    }
+    let classification = val_to_string(&row[1]);
+    let role_vector = { let s = val_to_string(&row[2]); if s.is_empty() { None } else { Some(s) } };
+    let location_vector = { let s = val_to_string(&row[3]); if s.is_empty() { None } else { Some(s) } };
+    let contact_vector = { let s = val_to_string(&row[4]); if s.is_empty() { None } else { Some(s) } };
+    let module_id = val_to_string(&row[5]);
+    let confidence = val_to_f64(&row[6]);
+    let source_doc = if row.len() > 7 {
+        let s = val_to_string(&row[7]);
+        if s.is_empty() { None } else { Some(s) }
+    } else {
+        None
+    };
+    Some(GraphEntity { entity_name, classification, role_vector, location_vector, contact_vector, module_id, confidence, source_doc })
+}
+
+fn rows_to_entities(result: lbug::QueryResult<'_>) -> Result<Vec<GraphEntity>> {
+    Ok(result.filter_map(|row| row_to_entity(&row)).collect())
 }
 
 #[cfg(test)]

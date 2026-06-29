@@ -419,7 +419,7 @@ def upload_adapter_to_gcs(adapter_path: str, adapter_name: str) -> None:
 
 def run_training(records: list[dict], base_model: str, output_dir: str, dry_run: bool,
                  max_runtime_seconds: int = 0, resume: bool = False,
-                 loss_type: str = "simpo", simpo_gamma: float = 0.5) -> None:
+                 loss_type: str = "simpo", simpo_gamma: float = 1.2) -> None:
     """Fine-tune base_model with DPO or SimPO on records, save adapter to output_dir.
 
     loss_type='simpo' (default): uses SimPOTrainer + SimPOConfig. Eliminates the
@@ -729,6 +729,44 @@ def run_training(records: list[dict], base_model: str, output_dir: str, dry_run:
     print(f"[train] saving adapter to {output_dir}")
     trainer.save_model(output_dir)
     tokenizer.save_pretrained(output_dir)
+
+    # DARE/TIES "Merge before Forget" (arxiv 2512.23017): merge the new adapter
+    # with the previous rolling-base adapter to prevent catastrophic forgetting.
+    # Requires PEFT ≥ 0.9.0. Skipped on first run (no rolling base yet).
+    rolling_base = Path(output_dir).parent / "base-rolling"
+    if rolling_base.exists():
+        try:
+            from peft import PeftModel
+            print(f"[train] DARE/TIES merge: {rolling_base} + {output_dir} → {rolling_base}")
+            base = AutoModelForCausalLM.from_pretrained(
+                base_model,
+                torch_dtype=torch.float16,
+                device_map="auto",
+                trust_remote_code=True,
+            )
+            peft_model = PeftModel.from_pretrained(base, str(rolling_base), adapter_name="rolling")
+            peft_model.load_adapter(output_dir, adapter_name="new")
+            peft_model.add_weighted_adapter(
+                adapters=["rolling", "new"],
+                weights=[1.0, 1.0],
+                combination_type="dare_ties",
+                adapter_name="merged",
+                density=0.7,
+            )
+            peft_model.set_adapter("merged")
+            merged = peft_model.merge_and_unload()
+            merged.save_pretrained(str(rolling_base))
+            tokenizer.save_pretrained(str(rolling_base))
+            print("[train] DARE/TIES merge complete")
+        except Exception as e:
+            print(f"[train] DARE/TIES merge skipped (non-fatal): {e}")
+    else:
+        print(f"[train] no rolling base at {rolling_base} — first run; skipping DARE/TIES merge")
+        Path(rolling_base).mkdir(parents=True, exist_ok=True)
+        trainer.save_model(str(rolling_base))
+        tokenizer.save_pretrained(str(rolling_base))
+        print(f"[train] seeded rolling base from this run's adapter")
+
     print("[train] done")
 
 
@@ -908,10 +946,10 @@ def main() -> None:
                         help="Preference learning objective (--mode pref only). 'simpo' (default) "
                              "avoids the reference-model length-normalisation bias that caused "
                              "token-count discrimination in the Jun-14 run. 'dpo' for ablation.")
-    parser.add_argument("--simpo-gamma", type=float, default=0.5,
-                        help="SimPO margin (gamma). Default 0.5. Increase to widen the "
-                             "reward margin between chosen and rejected; decrease if training "
-                             "is unstable on small corpora. Ignored when --loss-type=dpo.")
+    parser.add_argument("--simpo-gamma", type=float, default=1.2,
+                        help="SimPO margin (gamma). Default 1.2 (NeurIPS 2024 recommended range "
+                             "1.0–1.4 for 7B models). Decrease toward 0.7 if training is unstable "
+                             "on small corpora. Ignored when --loss-type=dpo.")
     args = parser.parse_args()
 
     corpus_path = args.corpus

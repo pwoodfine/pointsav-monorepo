@@ -312,15 +312,14 @@ fn main() -> NotifyResult<()> {
     // the DPO job (drain continues). Prevents unbounded growth when OLMo is slow.
     let (tier_a_tx, tier_a_rx) = std::sync::mpsc::sync_channel::<TierAJob>(200);
     {
-        let schema = entity_extraction_schema();
         let gs_worker = Arc::clone(&graph_store);
         thread::spawn(move || {
             for job in tier_a_rx {
-                let tier_a_result =
-                    call_tier_a_extract(&job.corpus_text, &schema, &job.doorman_endpoint);
-                let tier_a_ents = tier_a_result.unwrap_or_default();
+                // Single combined OLMo call: entity extraction + open IE relation triples.
+                let (tier_a_ents, tier_a_rels) =
+                    call_tier_a_combined(&job.corpus_text, &job.doorman_endpoint);
 
-                // 1. DPO training pair
+                // 1. DPO training pair (entity comparison only — same format as before)
                 if write_gliner_olmo_dpo_pair(
                     &job.worm_id,
                     &job.corpus_text,
@@ -336,9 +335,10 @@ fn main() -> NotifyResult<()> {
                     );
                 }
 
+                let corpus_lower = job.corpus_text.to_lowercase();
+
                 // 2. Write source-grounded OLMo entities to graph
                 if !tier_a_ents.is_empty() {
-                    let corpus_lower = job.corpus_text.to_lowercase();
                     let grounded: Vec<serde_json::Value> = tier_a_ents
                         .iter()
                         .filter(|e| {
@@ -368,6 +368,47 @@ fn main() -> NotifyResult<()> {
                         }
                     }
                 }
+
+                // 3. Write source-grounded relation triples to RelatedTo
+                if !tier_a_rels.is_empty() {
+                    use crate::graph::RelatedToEdge;
+                    let edges: Vec<RelatedToEdge> = tier_a_rels
+                        .iter()
+                        .filter_map(|r| {
+                            let subj = r.get("subject")?.as_str()?;
+                            let pred = r.get("predicate")?.as_str()?;
+                            let obj  = r.get("object")?.as_str()?;
+                            // Source-grounding: both endpoints must appear verbatim in corpus
+                            if corpus_lower.contains(&subj.to_lowercase())
+                                && corpus_lower.contains(&obj.to_lowercase())
+                            {
+                                Some(RelatedToEdge {
+                                    src_entity_name: subj.to_string(),
+                                    tgt_entity_name: obj.to_string(),
+                                    relation_type:   pred.to_string(),
+                                })
+                            } else {
+                                None
+                            }
+                        })
+                        .collect();
+                    if !edges.is_empty() {
+                        match gs_worker.upsert_edges(&job.module_id, &edges) {
+                            Ok(n) => {
+                                if n > 0 {
+                                    println!(
+                                        "[TIER-A] {} relation triples written — {} (open IE)",
+                                        n, job.worm_id
+                                    );
+                                }
+                            }
+                            Err(e) => eprintln!(
+                                "[TIER-A] Relation write failed for {}: {}",
+                                job.worm_id, e
+                            ),
+                        }
+                    }
+                }
             }
         });
     }
@@ -388,21 +429,51 @@ fn main() -> NotifyResult<()> {
             .unwrap_or(4)
             .max(1);
 
-        let queue: Arc<Mutex<VecDeque<std::path::PathBuf>>> = Arc::new(Mutex::new(
-            fs::read_dir(Path::new(&corpus_dir))
-                .into_iter()
-                .flatten()
-                .flatten()
-                .map(|e| e.path())
-                .filter(|p| p.extension().and_then(|s| s.to_str()) == Some("json"))
-                .filter(|p| {
-                    p.file_name()
-                        .and_then(|n| n.to_str())
-                        .map(|n| n.starts_with("CORPUS_") && !processed_ledgers.contains(n))
-                        .unwrap_or(false)
-                })
-                .collect(),
-        ));
+        // Optional env var: comma-separated module IDs whose CORPUS files drain first.
+        // Uses a 1024-byte header scan — fast heuristic, no full JSON parse.
+        let priority_ids: std::collections::HashSet<String> = std::env::var(
+            "CORPUS_PRIORITY_MODULE_IDS",
+        )
+        .unwrap_or_default()
+        .split(',')
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(str::to_string)
+        .collect();
+
+        let corpus_files: Vec<std::path::PathBuf> = fs::read_dir(Path::new(&corpus_dir))
+            .into_iter()
+            .flatten()
+            .flatten()
+            .map(|e| e.path())
+            .filter(|p| p.extension().and_then(|s| s.to_str()) == Some("json"))
+            .filter(|p| {
+                p.file_name()
+                    .and_then(|n| n.to_str())
+                    .map(|n| n.starts_with("CORPUS_") && !processed_ledgers.contains(n))
+                    .unwrap_or(false)
+            })
+            .collect();
+
+        // Partition into priority-first if CORPUS_PRIORITY_MODULE_IDS is set.
+        let queue_deque: VecDeque<std::path::PathBuf> = if priority_ids.is_empty() {
+            corpus_files.into()
+        } else {
+            let is_priority = |p: &std::path::PathBuf| -> bool {
+                use std::io::Read;
+                let mut buf = [0u8; 1024];
+                let Ok(mut f) = std::fs::File::open(p) else { return false };
+                let n = f.read(&mut buf).unwrap_or(0);
+                let head = std::str::from_utf8(&buf[..n]).unwrap_or("");
+                priority_ids.iter().any(|id| head.contains(id.as_str()))
+            };
+            let (hi, lo): (Vec<_>, Vec<_>) =
+                corpus_files.into_iter().partition(is_priority);
+            hi.into_iter().chain(lo).collect()
+        };
+
+        let queue: Arc<Mutex<VecDeque<std::path::PathBuf>>> =
+            Arc::new(Mutex::new(queue_deque));
 
         let done_files: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
         let defer_files: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
@@ -791,6 +862,146 @@ fn append_processed_ledger(path: &Path, filename: &str) {
 
 /// Call Tier A (OLMo 7B via /v1/chat/completions) and return raw entity JSON.
 /// Returns None when Tier A is unavailable or response is unparseable.
+/// System prompt for open IE relation extraction — runs alongside entity extraction in
+/// a single combined Tier A OLMo call. Returns (subject, predicate, object) triples.
+/// Both subject and object must be entity names from the text (source-grounding enforced
+/// at write time before upsert_edges). Predicate is a short English verb phrase.
+const RELATION_EXTRACTION_ADDITION: &str = "\n\nAFTER the entities array, also extract relationships between named entities.\n\
+Return them under a \"relations\" key as an array of triples:\n\
+  {\"subject\": \"<entity_name>\", \"predicate\": \"<verb phrase>\", \"object\": \"<entity_name>\"}\n\
+Rules:\n\
+- subject and object must be entity names that appear verbatim in the text.\n\
+- predicate is a short English verb phrase (e.g., \"acquired\", \"employed by\", \"invested in\", \"owns\").\n\
+- omit any triple where subject or object does not name a specific entity from the text.\n\
+- return [] for relations when no clear relationships are stated.\n\
+Return format: {\"entities\": [...], \"relations\": [...]}";
+
+fn relation_extraction_schema() -> serde_json::Value {
+    serde_json::json!({
+        "type": "object",
+        "properties": {
+            "entities": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "entity_name": {"type": "string"},
+                        "classification": {
+                            "type": "string",
+                            "enum": ["Person", "Company", "Project", "Account", "Location"]
+                        },
+                        "role_vector":     {"type": ["string", "null"]},
+                        "location_vector": {"type": ["string", "null"]},
+                        "contact_vector":  {"type": ["string", "null"]}
+                    },
+                    "required": ["entity_name", "classification"],
+                    "additionalProperties": false
+                }
+            },
+            "relations": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "subject":   {"type": "string"},
+                        "predicate": {"type": "string"},
+                        "object":    {"type": "string"}
+                    },
+                    "required": ["subject", "predicate", "object"],
+                    "additionalProperties": false
+                }
+            }
+        },
+        "required": ["entities", "relations"],
+        "additionalProperties": false
+    })
+}
+
+/// Combined entity + relation extraction in one Tier A OLMo call.
+/// Returns `(entities, relations)` parsed from the combined JSON object.
+/// Falls back to `(tier_a_entities_only, [])` on parse failure.
+fn call_tier_a_combined(
+    corpus_text: &str,
+    doorman_endpoint: &str,
+) -> (Vec<serde_json::Value>, Vec<serde_json::Value>) {
+    let combined_prompt = format!("{}{}", EXTRACTION_SYSTEM_PROMPT, RELATION_EXTRACTION_ADDITION);
+    let schema = relation_extraction_schema();
+    let use_grammar = std::env::var("SERVICE_CONTENT_TIER_A_GRAMMAR")
+        .map(|v| v == "json_schema")
+        .unwrap_or(false);
+
+    let chat_body = if use_grammar {
+        serde_json::json!({
+            "messages": [
+                {"role": "system", "content": combined_prompt},
+                {"role": "user",   "content": corpus_text}
+            ],
+            "grammar": {"type": "json-schema", "value": schema},
+            "temperature": 0.0,
+            "max_tokens": 1536,
+            "cache_prompt": true
+        })
+    } else {
+        serde_json::json!({
+            "messages": [
+                {"role": "system", "content": combined_prompt},
+                {"role": "user",   "content": corpus_text},
+                {"role": "assistant", "content": "{\"entities\": [{\""}
+            ],
+            "temperature": 0.0,
+            "max_tokens": 1536,
+            "cache_prompt": true
+        })
+    };
+
+    let url = format!("{}/v1/chat/completions", doorman_endpoint);
+    let client = reqwest::blocking::Client::new();
+    let raw = match client
+        .post(&url)
+        .header("X-Foundry-Complexity", "low")
+        .header("X-Foundry-Background", "true")
+        .json(&chat_body)
+        .timeout(Duration::from_secs(180))
+        .send()
+    {
+        Ok(r) if r.status().is_success() => r.json::<serde_json::Value>().ok(),
+        _ => None,
+    };
+
+    let content = raw.as_ref().and_then(|v| {
+        v["content"]
+            .as_str()
+            .or_else(|| v["choices"][0]["message"]["content"].as_str())
+            .map(|s| s.to_string())
+    });
+
+    if let Some(mut content) = content {
+        // Re-attach pre-fill prefix when the model returned only the continuation.
+        if !content.trim_start().starts_with('{') {
+            content = format!("{{\"entities\": [{{\"{}\"", content);
+        }
+        let content = content
+            .trim()
+            .strip_prefix("```json")
+            .unwrap_or(content.trim())
+            .strip_prefix("```")
+            .unwrap_or(content.trim());
+        let content = content.strip_suffix("```").unwrap_or(content).trim();
+        if let Ok(v) = serde_json::from_str::<serde_json::Value>(content) {
+            let entities = v["entities"]
+                .as_array()
+                .cloned()
+                .unwrap_or_default();
+            let relations = v["relations"]
+                .as_array()
+                .cloned()
+                .unwrap_or_default();
+            return (entities, relations);
+        }
+    }
+    (vec![], vec![])
+}
+
 fn call_tier_a_extract(
     corpus_text: &str,
     entity_schema: &serde_json::Value,
