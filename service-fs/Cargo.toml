@@ -10,18 +10,8 @@ autobenches = false
 [[bin]]
 name = "service-fs"
 path = "src/main.rs"
-test = false
-
-[[bin]]
-name = "service-fs"
-path = "src/main.rs"
+# no_std/no_main — cannot be tested with std test harness
 test = false
 
 [dependencies]
 # Pure bare-metal enclave. Zero OS dependencies permitted.
-
-[[bin]]
-name = "service-fs"
-path = "src/main.rs"
-# no_std/no_main — cannot be tested with std test harness
-test = false
