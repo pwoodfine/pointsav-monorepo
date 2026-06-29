@@ -13,7 +13,7 @@ use serde_json::Value;
 use std::fs;
 use std::io::{BufRead, Write};
 use std::path::Path;
-use std::sync::mpsc::RecvTimeoutError;
+use std::sync::mpsc::{RecvTimeoutError, Sender};
 use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
@@ -24,6 +24,19 @@ enum ExtractResult {
     DeferTransient,
     DeferCircuitOpen,
     Failed,
+}
+
+/// Job queued for the async Tier A (OLMo 7B) training pass.
+/// Every document processed by Tier 0 (GLiNER) is also queued here so the
+/// (GLiNER output, OLMo output) delta can be written as a DPO training pair.
+/// The worker runs at background priority and never blocks the drain loop.
+struct TierAJob {
+    corpus_text: String,
+    worm_id: String,
+    module_id: String,
+    tier_0_entities: Vec<serde_json::Value>,
+    feedback_dir: String,
+    doorman_endpoint: String,
 }
 
 // Classification vocabulary defined in entity_filter::ALLOWED_CLASSIFICATIONS — single source of truth.
@@ -283,6 +296,40 @@ fn main() -> NotifyResult<()> {
         );
     }
 
+    // ── Async Tier A training queue ───────────────────────────────────────────
+    // Every document processed by Tier 0 (GLiNER Found or Empty) is enqueued
+    // here for a secondary OLMo 7B extraction pass.  The (GLiNER, OLMo) delta
+    // becomes a DPO training pair: GLiNER=chosen (extractive, zero hallucinations),
+    // OLMo=rejected (student).  The worker runs at background priority and never
+    // blocks the drain loop; the unbounded mpsc channel means drain threads never
+    // block on send.  Memory overhead: O(docs_in_flight × corpus_text_size); at
+    // 84 k docs × ~500 bytes/job ≈ 42 MB worst case.
+    let (tier_a_tx, tier_a_rx) = std::sync::mpsc::channel::<TierAJob>();
+    {
+        let schema = entity_extraction_schema();
+        thread::spawn(move || {
+            for job in tier_a_rx {
+                let tier_a_result =
+                    call_tier_a_extract(&job.corpus_text, &schema, &job.doorman_endpoint);
+                let tier_a_ents = tier_a_result.unwrap_or_default();
+                if write_gliner_olmo_dpo_pair(
+                    &job.worm_id,
+                    &job.corpus_text,
+                    &job.tier_0_entities,
+                    &tier_a_ents,
+                    &job.feedback_dir,
+                ) {
+                    println!(
+                        "[TIER-A-TRAIN] DPO pair written — {} (gliner:{} olmo:{} entities)",
+                        job.worm_id,
+                        job.tier_0_entities.len(),
+                        tier_a_ents.len(),
+                    );
+                }
+            }
+        });
+    }
+
     // ── Parallel startup drain ────────────────────────────────────────────────
     // Collects unprocessed CORPUS files, then processes them with N concurrent
     // worker threads. CONTENT_DRAIN_THREADS defaults to 4.
@@ -339,6 +386,7 @@ fn main() -> NotifyResult<()> {
             );
             let tp = Arc::clone(&tier_progress_path);
             let bpt = backpressure_threshold;
+            let tx_clone = tier_a_tx.clone();
             handles.push(thread::spawn(move || loop {
                 let Some(path) = q.lock().unwrap().pop_front() else {
                     break;
@@ -348,7 +396,7 @@ fn main() -> NotifyResult<()> {
                     None => continue,
                 };
                 let mut tier_b_used = false;
-                let result = process_corpus(&path, &cd, &de, &mid, &gs, &fd, &mut tier_b_used, bpt);
+                let result = process_corpus(&path, &cd, &de, &mid, &gs, &fd, &mut tier_b_used, bpt, Some(&tx_clone));
                 if matches!(result, ExtractResult::Success) {
                     write_tier_progress(
                         &tp,
@@ -440,6 +488,7 @@ fn main() -> NotifyResult<()> {
                                     &feedback_dir,
                                     &mut tier_b_used,
                                     backpressure_threshold,
+                                    Some(&tier_a_tx),
                                 );
                                 if matches!(watcher_result, ExtractResult::Success) {
                                     write_tier_progress(
@@ -504,6 +553,7 @@ fn main() -> NotifyResult<()> {
                         &feedback_dir,
                         &mut tier_b_used,
                         backpressure_threshold,
+                        Some(&tier_a_tx),
                     );
                     if matches!(retry_result, ExtractResult::Success) {
                         write_tier_progress(
@@ -617,6 +667,7 @@ fn main() -> NotifyResult<()> {
                         &feedback_dir,
                         &mut probe_tier_b,
                         backpressure_threshold,
+                        Some(&tier_a_tx),
                     );
                     if matches!(probe_result, ExtractResult::Success) {
                         write_tier_progress(
@@ -1083,7 +1134,7 @@ fn raw_entities_to_graph(
 fn write_enrichment_dpo_pair(
     worm_id: &str,
     corpus_text: &str,
-    tier_a_raw: &[serde_json::Value],
+    tier_0_entities: &[serde_json::Value],
     tier_b_raw: &[serde_json::Value],
     feedback_dir: &str,
 ) -> bool {
@@ -1097,14 +1148,14 @@ fn write_enrichment_dpo_pair(
     if tier_b_raw.is_empty() {
         return false;
     }
-    if tier_a_raw.is_empty() {
+    if tier_0_entities.is_empty() {
         return false; // no rejected signal — DPO pair would teach verbosity, not accuracy
     }
     // DPO pre-save validator — applies the SAME filter chain as raw_entities_to_graph:
     // noise rejection + word-count gate + coerce_classification + ALLOWED_CLASSIFICATIONS.
     // Ensures the chosen side of the DPO pair matches what actually lands in LadybugDB.
     let tier_b_clean = entity_filter::clean_dpo_side(tier_b_raw);
-    let tier_a_clean = entity_filter::clean_dpo_side(tier_a_raw);
+    let tier_a_clean = entity_filter::clean_dpo_side(tier_0_entities);
     if tier_b_clean.is_empty() {
         return false; // all Tier B entities were noise — no training signal after cleaning
     }
@@ -1113,7 +1164,7 @@ fn write_enrichment_dpo_pair(
     }
     // Shadow-rebind: rest of function operates on cleaned slices.
     let tier_b_raw = tier_b_clean.as_slice();
-    let tier_a_raw = tier_a_clean.as_slice();
+    let tier_0_entities = tier_a_clean.as_slice();
     // Source-grounding: reject the pair if any Tier B entity name is absent
     // (case-insensitive) from the source corpus text. Prevents Tier B hallucinations
     // (verified: "Woodfine Management Corp.", "service-slm", "Vancouver" fabricated
@@ -1131,7 +1182,7 @@ fn write_enrichment_dpo_pair(
     }
     // Normalize Tier A to {classification, entity_name} only — strips role_vector,
     // location_vector, contact_vector that are absent in Tier B's raw response.
-    let tier_a_normalized: Vec<serde_json::Value> = tier_a_raw
+    let tier_a_normalized: Vec<serde_json::Value> = tier_0_entities
         .iter()
         .map(|e| {
             serde_json::json!({
@@ -1176,6 +1227,121 @@ fn write_enrichment_dpo_pair(
     let _ = fs::create_dir_all(feedback_dir);
     let filename = format!(
         "{}/enrichment-{}-{}.jsonl",
+        feedback_dir,
+        worm_id,
+        now.timestamp_millis()
+    );
+    if let Ok(mut f) = fs::OpenOptions::new()
+        .create(true)
+        .write(true)
+        .truncate(true)
+        .open(&filename)
+    {
+        let _ = writeln!(f, "{}", pair);
+        return true;
+    }
+    false
+}
+
+/// JSON Schema shared by both Tier A (OLMo 7B) and the Tier A training worker.
+fn entity_extraction_schema() -> serde_json::Value {
+    serde_json::json!({
+        "type": "array",
+        "items": {
+            "type": "object",
+            "properties": {
+                "entity_name": {"type": "string"},
+                "classification": {
+                    "type": "string",
+                    "enum": ["Person", "Company", "Project", "Account", "Location"]
+                },
+                "role_vector":     {"type": ["string", "null"]},
+                "location_vector": {"type": ["string", "null"]},
+                "contact_vector":  {"type": ["string", "null"]}
+            },
+            "required": ["entity_name", "classification"],
+            "additionalProperties": false
+        }
+    })
+}
+
+/// Write a DPO training pair from the GLiNER vs OLMo comparison.
+/// GLiNER is the teacher (extractive, zero hallucinations); OLMo is the student.
+/// chosen = GLiNER output (when non-empty); OLMo=chosen only when GLiNER returned [].
+/// Returns true if a pair was written.
+fn write_gliner_olmo_dpo_pair(
+    worm_id: &str,
+    corpus_text: &str,
+    tier_0_entities: &[serde_json::Value],
+    tier_a_entities: &[serde_json::Value],
+    feedback_dir: &str,
+) -> bool {
+    if worm_id.starts_with("DOC_sweep-") {
+        return false; // git commit text — hallucination risk too high
+    }
+    // Both empty → both models agree nothing is here; no training signal
+    if tier_0_entities.is_empty() && tier_a_entities.is_empty() {
+        return false;
+    }
+    // Normalize + sort both sides to {classification, entity_name} for stable comparison
+    let normalize_sorted = |ents: &[serde_json::Value]| -> Vec<serde_json::Value> {
+        let mut v = entity_filter::clean_dpo_side(ents);
+        v.sort_by_key(|e| {
+            format!(
+                "{}__{}",
+                e.get("classification").and_then(|v| v.as_str()).unwrap_or(""),
+                e.get("entity_name").and_then(|v| v.as_str()).unwrap_or(""),
+            )
+        });
+        v.iter()
+            .map(|e| {
+                serde_json::json!({
+                    "classification": e.get("classification").unwrap_or(&serde_json::Value::Null),
+                    "entity_name":    e.get("entity_name").unwrap_or(&serde_json::Value::Null),
+                })
+            })
+            .collect()
+    };
+    let t0_norm = normalize_sorted(tier_0_entities);
+    let ta_norm = normalize_sorted(tier_a_entities);
+    // Identical → no training delta
+    if serde_json::to_string(&t0_norm).unwrap_or_default()
+        == serde_json::to_string(&ta_norm).unwrap_or_default()
+    {
+        return false;
+    }
+    // GLiNER non-empty → GLiNER=chosen; GLiNER empty → OLMo=chosen (caught a miss)
+    let (chosen, rejected, pair_type) = if !t0_norm.is_empty() {
+        (&t0_norm, &ta_norm, "gliner-distillation")
+    } else {
+        (&ta_norm, &t0_norm, "gliner-empty-olmo-found")
+    };
+    // Source grounding: verify chosen entities appear in corpus text
+    let corpus_lower = corpus_text.to_lowercase();
+    let all_grounded = chosen.iter().all(|e| {
+        e.get("entity_name")
+            .and_then(|v| v.as_str())
+            .map(|name| corpus_lower.contains(&name.to_lowercase()))
+            .unwrap_or(false)
+    });
+    if !all_grounded {
+        return false; // hallucinated entity in chosen side — discard
+    }
+    let chosen_json = serde_json::to_string(chosen).unwrap_or_default();
+    let rejected_json = serde_json::to_string(rejected).unwrap_or_default();
+    let prompt = format!("{}\n\nText:\n{}", EXTRACTION_SYSTEM_PROMPT, corpus_text);
+    let now = chrono::Utc::now();
+    let pair = serde_json::json!({
+        "prompt":      prompt,
+        "chosen":      chosen_json,
+        "rejected":    rejected_json,
+        "source_type": pair_type,
+        "worm_id":     worm_id,
+        "timestamp":   now.to_rfc3339(),
+    });
+    let _ = fs::create_dir_all(feedback_dir);
+    let filename = format!(
+        "{}/gliner-distill-{}-{}.jsonl",
         feedback_dir,
         worm_id,
         now.timestamp_millis()
@@ -1284,6 +1450,7 @@ fn process_corpus(
     feedback_dir: &str,
     tier_b_used: &mut bool,
     backpressure_threshold: u64,
+    tier_a_tx: Option<&Sender<TierAJob>>,
 ) -> ExtractResult {
     *tier_b_used = false;
     // SC-5: log read failures instead of silently returning
@@ -1344,44 +1511,52 @@ fn process_corpus(
     let corpus_text = corpus_text_owned.as_ref();
 
     // ── Shared entity schema used by both tiers ───────────────────────────────
-    // additionalProperties:false prevents hallucinated fields from leaking into the graph.
-    let entity_schema = serde_json::json!({
-        "type": "array",
-        "items": {
-            "type": "object",
-            "properties": {
-                "entity_name": {"type": "string"},
-                "classification": {
-                    "type": "string",
-                    "enum": ["Person", "Company", "Project", "Account", "Location"]
-                },
-                "role_vector": {"type": ["string", "null"]},
-                "location_vector": {"type": ["string", "null"]},
-                "contact_vector": {"type": ["string", "null"]}
-            },
-            "required": ["entity_name", "classification"],
-            "additionalProperties": false
-        }
-    });
+    let entity_schema = entity_extraction_schema();
 
     // ── Step 1: Tier 0 (GLiNER) with Tier A (OLMo) fallback ─────────────────
     // GLiNER (Tier 0) is direct HTTP to port 9085 — no Doorman involvement.
     // Backpressure gate only applies when GLiNER is down (Unavailable).
-    // When GLiNER is up but finds nothing (Empty — CSV, structured data, contentless
-    // text), Tier A OLMo won't improve on that result, so we mark the file done
-    // immediately rather than burning a Doorman slot on an unproductive call.
-    let tier_a_raw: Option<Vec<serde_json::Value>> = match call_tier_0_gliner(corpus_text, domain_id) {
+    //
+    // Every document that passes Tier 0 is also queued for an async Tier A
+    // pass via tier_a_tx (fire-and-forget).  The worker writes a DPO training
+    // pair: GLiNER=chosen (extractive, no hallucinations), OLMo=rejected (student).
+    // When GLiNER returns Empty and OLMo finds entities the roles reverse so we
+    // capture GLiNER's blind spots.  This fire-and-forget never blocks the drain.
+    let tier_0_entities: Option<Vec<serde_json::Value>> = match call_tier_0_gliner(corpus_text, domain_id) {
         GlinerOutcome::Found(ents) => {
             println!(
                 "  -> [TIER-0/A] {} entities extracted (module: {}).",
                 ents.len(),
                 effective_module_id
             );
+            // Queue for async Tier A training pass (non-blocking)
+            if let Some(tx) = tier_a_tx {
+                tx.send(TierAJob {
+                    corpus_text: corpus_text.to_string(),
+                    worm_id: worm_id.to_string(),
+                    module_id: effective_module_id.to_string(),
+                    tier_0_entities: ents.clone(),
+                    feedback_dir: feedback_dir.to_string(),
+                    doorman_endpoint: doorman_endpoint.to_string(),
+                })
+                .ok();
+            }
             Some(ents)
         }
         GlinerOutcome::Empty => {
-            // GLiNER reachable, no entities — structured data or contentless text.
-            // Mark done with 0 entities; no Tier B call needed.
+            // GLiNER reachable, no entities — queue for Tier A to catch GLiNER blind spots,
+            // then mark done immediately (production path unblocked).
+            if let Some(tx) = tier_a_tx {
+                tx.send(TierAJob {
+                    corpus_text: corpus_text.to_string(),
+                    worm_id: worm_id.to_string(),
+                    module_id: effective_module_id.to_string(),
+                    tier_0_entities: vec![],
+                    feedback_dir: feedback_dir.to_string(),
+                    doorman_endpoint: doorman_endpoint.to_string(),
+                })
+                .ok();
+            }
             return ExtractResult::Success;
         }
         GlinerOutcome::Unavailable => {
@@ -1452,14 +1627,14 @@ fn process_corpus(
                     "  -> [SYS_HALT] Doorman rejected payload: {}",
                     response.status()
                 );
-                return flush_tier_a(&tier_a_raw, "Tier B rejected");
+                return flush_tier_a(&tier_0_entities, "Tier B rejected");
             }
 
             let extract_resp = match response.json::<serde_json::Value>() {
                 Ok(v) => v,
                 Err(_) => {
                     println!("  -> [SYS_HALT] Doorman returned invalid JSON.");
-                    return flush_tier_a(&tier_a_raw, "Tier B parse failed");
+                    return flush_tier_a(&tier_0_entities, "Tier B parse failed");
                 }
             };
 
@@ -1469,11 +1644,11 @@ fn process_corpus(
                 return match reason {
                     "yoyo-circuit-open" => {
                         println!("  -> [TIER-B] Circuit open — using Tier A results.");
-                        flush_tier_a(&tier_a_raw, "Tier B circuit-open")
+                        flush_tier_a(&tier_0_entities, "Tier B circuit-open")
                     }
                     _ => {
                         // Transient: use Tier A if available, otherwise retry
-                        if let Some(ta_ents) = &tier_a_raw {
+                        if let Some(ta_ents) = &tier_0_entities {
                             if !ta_ents.is_empty() {
                                 let ge = raw_entities_to_graph(ta_ents, effective_module_id, 0.75);
                                 if let Ok(n) = graph_store.upsert_entities(effective_module_id, &ge)
@@ -1494,7 +1669,7 @@ fn process_corpus(
 
             if !extract_resp["extraction_ok"].as_bool().unwrap_or(false) {
                 println!("  -> [SYS_HALT] Extraction failed: extraction_ok false.");
-                return flush_tier_a(&tier_a_raw, "Tier B extraction_ok=false");
+                return flush_tier_a(&tier_0_entities, "Tier B extraction_ok=false");
             }
 
             // ── Tier B succeeded ─────────────────────────────────────────────
@@ -1511,7 +1686,7 @@ fn process_corpus(
             // fallback. This handles the case where OLMo returns field_missing entities
             // (grammar constraint not enforced on the Doorman path).
             let graph_entities = if graph_entities.is_empty() {
-                if let Some(ta_ents) = &tier_a_raw {
+                if let Some(ta_ents) = &tier_0_entities {
                     let gliner_ge = raw_entities_to_graph(ta_ents, effective_module_id, 0.75);
                     if !gliner_ge.is_empty() {
                         println!(
@@ -1617,7 +1792,7 @@ fn process_corpus(
             // For sweep docs (DOC_sweep-*): write_enrichment_dpo_pair returns false early
             // (policy: skip pair generation for commit text), but mark the SHA complete
             // unconditionally — otherwise the same commit SHAs re-submit every nightly cycle.
-            if let Some(ref ta_ents) = tier_a_raw {
+            if let Some(ref ta_ents) = tier_0_entities {
                 let saved = write_enrichment_dpo_pair(
                     worm_id,
                     corpus_text,
@@ -1635,7 +1810,7 @@ fn process_corpus(
         Err(e) => {
             // Transport error — Tier B unreachable. Use Tier A to avoid losing the document.
             println!("  -> [SYS_HALT] Doorman routing failed (transient): {}", e);
-            let result = flush_tier_a(&tier_a_raw, &format!("Tier B transport error: {}", e));
+            let result = flush_tier_a(&tier_0_entities, &format!("Tier B transport error: {}", e));
             if matches!(result, ExtractResult::DeferCircuitOpen) {
                 ExtractResult::DeferTransient
             } else {
