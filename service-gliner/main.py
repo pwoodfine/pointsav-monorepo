@@ -14,7 +14,7 @@ os.environ["TRANSFORMERS_CACHE"] = WEIGHTS_DIR
 model = GLiNER.from_pretrained(MODEL_NAME)
 
 # Domain-specific label descriptions — plain English, GLiNER reads these literally.
-# "projects" covers jennifer CRE content; "corporate" for general org content.
+# Concrete examples in descriptions act as KoGNER-style entity hints.
 DOMAIN_LABELS: dict[str, dict[str, str]] = {
     "projects": {
         "Person":   "a named human individual — executive, broker, developer, or professional",
@@ -30,12 +30,15 @@ DOMAIN_LABELS: dict[str, dict[str, str]] = {
         "Location": "a named city or country",
         "Account":  "a named financial account or contract",
     },
+    # Documentation domain: engineering sessions, code reviews, architecture docs,
+    # build logs, git commits. Same five entity types; descriptions tuned for
+    # technical prose rather than CRE or corporate content.
     "documentation": {
-        "Person":   "a named human individual — engineer, author, or contributor",
-        "Company":  "a named company or organisation",
-        "Project":  "a named software project, library, or service",
-        "Location": "a named city or country",
-        "Account":  "a named account or service endpoint",
+        "Person":   "a named developer, engineer, or contributor",
+        "Company":  "a named company or technology organisation",
+        "Project":  "a named software project, service, crate, or library",
+        "Account":  "a named running service, system account, or API endpoint",
+        "Location": "a named server, deployment environment, or infrastructure location",
     },
 }
 
