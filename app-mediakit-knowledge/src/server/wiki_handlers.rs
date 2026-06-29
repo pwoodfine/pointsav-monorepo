@@ -1382,6 +1382,9 @@ fn wiki_chrome(
                 // Markdown source at /git/{slug}).
                 script src="/static/wiki.js" defer="true" {}
                 script src="/static/toc-persistence.js" defer="true" {}
+                @if fm.content_type.as_deref() == Some("slides") {
+                    script src="/static/slide-deck.js" defer="true" {}
+                }
             }
         }
     }
