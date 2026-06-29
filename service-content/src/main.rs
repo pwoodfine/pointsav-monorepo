@@ -428,6 +428,47 @@ fn main() -> NotifyResult<()> {
                         }
                     }
                 }
+
+                // 3. Write source-grounded relation triples to RelatedTo
+                if !tier_a_rels.is_empty() {
+                    use crate::graph::RelatedToEdge;
+                    let edges: Vec<RelatedToEdge> = tier_a_rels
+                        .iter()
+                        .filter_map(|r| {
+                            let subj = r.get("subject")?.as_str()?;
+                            let pred = r.get("predicate")?.as_str()?;
+                            let obj  = r.get("object")?.as_str()?;
+                            // Source-grounding: both endpoints must appear verbatim in corpus
+                            if corpus_lower.contains(&subj.to_lowercase())
+                                && corpus_lower.contains(&obj.to_lowercase())
+                            {
+                                Some(RelatedToEdge {
+                                    src_entity_name: subj.to_string(),
+                                    tgt_entity_name: obj.to_string(),
+                                    relation_type:   pred.to_string(),
+                                })
+                            } else {
+                                None
+                            }
+                        })
+                        .collect();
+                    if !edges.is_empty() {
+                        match gs_worker.upsert_edges(&job.module_id, &edges) {
+                            Ok(n) => {
+                                if n > 0 {
+                                    println!(
+                                        "[TIER-A] {} relation triples written — {} (open IE)",
+                                        n, job.worm_id
+                                    );
+                                }
+                            }
+                            Err(e) => eprintln!(
+                                "[TIER-A] Relation write failed for {}: {}",
+                                job.worm_id, e
+                            ),
+                        }
+                    }
+                }
             }
         });
     }
