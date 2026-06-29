@@ -298,20 +298,27 @@ fn main() -> NotifyResult<()> {
 
     // ── Async Tier A training queue ───────────────────────────────────────────
     // Every document processed by Tier 0 (GLiNER Found or Empty) is enqueued
-    // here for a secondary OLMo 7B extraction pass.  The (GLiNER, OLMo) delta
-    // becomes a DPO training pair: GLiNER=chosen (extractive, zero hallucinations),
-    // OLMo=rejected (student).  The worker runs at background priority and never
-    // blocks the drain loop; the unbounded mpsc channel means drain threads never
-    // block on send.  Memory overhead: O(docs_in_flight × corpus_text_size); at
-    // 84 k docs × ~500 bytes/job ≈ 42 MB worst case.
+    // here for a secondary OLMo 7B extraction pass.  The worker does two things
+    // per document:
+    //   1. Write a DPO training pair (GLiNER=chosen teacher, OLMo=rejected student)
+    //   2. Write source-grounded OLMo entities to the graph — since we are already
+    //      paying for the OLMo call, the marginal cost of a graph upsert is negligible.
+    //      OLMo may find entities GLiNER missed; on GlinerOutcome::Empty docs these
+    //      are the only entities in the graph at all.
+    // Guard: OLMo entities are only written if the entity name appears verbatim in
+    // the corpus text (source grounding), preventing hallucinated names from polluting
+    // the graph.  Written at confidence 0.65 (vs GLiNER's 0.75).
     let (tier_a_tx, tier_a_rx) = std::sync::mpsc::channel::<TierAJob>();
     {
         let schema = entity_extraction_schema();
+        let gs_worker = Arc::clone(&graph_store);
         thread::spawn(move || {
             for job in tier_a_rx {
                 let tier_a_result =
                     call_tier_a_extract(&job.corpus_text, &schema, &job.doorman_endpoint);
                 let tier_a_ents = tier_a_result.unwrap_or_default();
+
+                // 1. DPO training pair
                 if write_gliner_olmo_dpo_pair(
                     &job.worm_id,
                     &job.corpus_text,
@@ -325,6 +332,38 @@ fn main() -> NotifyResult<()> {
                         job.tier_0_entities.len(),
                         tier_a_ents.len(),
                     );
+                }
+
+                // 2. Write source-grounded OLMo entities to graph
+                if !tier_a_ents.is_empty() {
+                    let corpus_lower = job.corpus_text.to_lowercase();
+                    let grounded: Vec<serde_json::Value> = tier_a_ents
+                        .iter()
+                        .filter(|e| {
+                            e.get("entity_name")
+                                .and_then(|v| v.as_str())
+                                .map(|name| corpus_lower.contains(&name.to_lowercase()))
+                                .unwrap_or(false)
+                        })
+                        .cloned()
+                        .collect();
+                    if !grounded.is_empty() {
+                        let ge = raw_entities_to_graph(&grounded, &job.module_id, 0.65);
+                        match gs_worker.upsert_entities(&job.module_id, &ge) {
+                            Ok(n) => {
+                                if n > 0 {
+                                    println!(
+                                        "[TIER-A] {} new entities written to graph — {} (olmo, grounded)",
+                                        n, job.worm_id
+                                    );
+                                }
+                            }
+                            Err(e) => eprintln!(
+                                "[TIER-A] Graph write failed for {}: {}",
+                                job.worm_id, e
+                            ),
+                        }
+                    }
                 }
             }
         });
