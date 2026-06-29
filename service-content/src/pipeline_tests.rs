@@ -32,6 +32,7 @@ fn apply_filter(name: &str, classification: &str, module_id: &str) -> Option<Gra
         contact_vector: None,
         module_id: module_id.to_string(),
         confidence: 0.95,
+        source_doc: None,
     })
 }
 

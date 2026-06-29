@@ -53,6 +53,7 @@ pub struct GraphEntity {
     pub contact_vector: Option<String>,
     pub module_id: String,
     pub confidence: f64,
+    pub source_doc: Option<String>, // CORPUS worm_id that first introduced this entity
 }
 
 /// A typed directed edge between two Entity nodes. Input to `upsert_edges`.
@@ -131,10 +132,15 @@ impl GraphStore for LbugGraphStore {
                 contact_vector STRING, \
                 module_id STRING, \
                 confidence DOUBLE, \
-                created_at STRING\
+                created_at STRING, \
+                source_doc STRING\
             )",
         )
         .map_err(|e| anyhow!("init_schema Entity table failed: {}", e))?;
+
+        // Migration: add source_doc to existing databases that pre-date this column.
+        // "column already exists" is silently ignored via let _.
+        let _ = conn.query("ALTER TABLE Entity ADD source_doc STRING");
 
         conn.query(
             "CREATE REL TABLE IF NOT EXISTS RelatedTo(\
@@ -194,7 +200,8 @@ impl GraphStore for LbugGraphStore {
                          e.location_vector = $location_vector, \
                          e.contact_vector = $contact_vector, \
                          e.module_id = $module_id, \
-                         e.confidence = $confidence",
+                         e.confidence = $confidence, \
+                         e.source_doc = $source_doc",
                 )
                 .map_err(|e| anyhow!("Failed to prepare upsert statement: {}", e))?;
 
@@ -239,6 +246,10 @@ impl GraphStore for LbugGraphStore {
                         ),
                         ("module_id", Value::String(entity.module_id.clone())),
                         ("confidence", Value::Double(entity.confidence)),
+                        (
+                            "source_doc",
+                            Value::String(entity.source_doc.clone().unwrap_or_default()),
+                        ),
                     ],
                 )
                 .map_err(|e| anyhow!("Failed to upsert entity '{}': {}", entity.entity_name, e))?;
@@ -411,7 +422,7 @@ impl GraphStore for LbugGraphStore {
                      WHERE e.module_id = $module_id \
                        AND lower(e.entity_name) CONTAINS $query \
                      RETURN e.entity_name, e.classification, e.role_vector, \
-                            e.location_vector, e.contact_vector, e.module_id, e.confidence \
+                            e.location_vector, e.contact_vector, e.module_id, e.confidence, e.source_doc \
                      LIMIT $limit",
                 )
                 .map_err(|e| anyhow!("Failed to prepare query_context statement: {}", e))?;
@@ -449,7 +460,7 @@ impl GraphStore for LbugGraphStore {
             .prepare(
                 "MATCH (e:Entity {id: $id}) \
                  RETURN e.entity_name, e.classification, e.role_vector, \
-                        e.location_vector, e.contact_vector, e.module_id, e.confidence",
+                        e.location_vector, e.contact_vector, e.module_id, e.confidence, e.source_doc",
             )
             .map_err(|e| anyhow!("prepare canonical entity lookup: {}", e))?;
 
@@ -517,7 +528,7 @@ impl GraphStore for LbugGraphStore {
                 "MATCH (e:Entity) \
                  WHERE e.module_id = $module_id \
                  RETURN e.entity_name, e.classification, e.role_vector, \
-                        e.location_vector, e.contact_vector, e.module_id, e.confidence",
+                        e.location_vector, e.contact_vector, e.module_id, e.confidence, e.source_doc",
             )
             .map_err(|e| anyhow!("Failed to prepare list_entities statement: {}", e))?;
 
@@ -748,9 +759,9 @@ fn val_to_f64(v: &Value) -> f64 {
 }
 
 /// Convert a `QueryResult` iterator into `Vec<GraphEntity>`.
-/// Each row yields 7 columns in RETURN order:
+/// Each row yields 8 columns in RETURN order:
 /// 0 entity_name, 1 classification, 2 role_vector, 3 location_vector,
-/// 4 contact_vector, 5 module_id, 6 confidence
+/// 4 contact_vector, 5 module_id, 6 confidence, 7 source_doc
 fn rows_to_entities(result: lbug::QueryResult<'_>) -> Result<Vec<GraphEntity>> {
     let mut out = Vec::new();
     for row in result {
@@ -761,30 +772,24 @@ fn rows_to_entities(result: lbug::QueryResult<'_>) -> Result<Vec<GraphEntity>> {
         let classification = val_to_string(&row[1]);
         let role_vector = {
             let s = val_to_string(&row[2]);
-            if s.is_empty() {
-                None
-            } else {
-                Some(s)
-            }
+            if s.is_empty() { None } else { Some(s) }
         };
         let location_vector = {
             let s = val_to_string(&row[3]);
-            if s.is_empty() {
-                None
-            } else {
-                Some(s)
-            }
+            if s.is_empty() { None } else { Some(s) }
         };
         let contact_vector = {
             let s = val_to_string(&row[4]);
-            if s.is_empty() {
-                None
-            } else {
-                Some(s)
-            }
+            if s.is_empty() { None } else { Some(s) }
         };
         let module_id = val_to_string(&row[5]);
         let confidence = val_to_f64(&row[6]);
+        let source_doc = if row.len() > 7 {
+            let s = val_to_string(&row[7]);
+            if s.is_empty() { None } else { Some(s) }
+        } else {
+            None
+        };
 
         out.push(GraphEntity {
             entity_name,
@@ -794,6 +799,7 @@ fn rows_to_entities(result: lbug::QueryResult<'_>) -> Result<Vec<GraphEntity>> {
             contact_vector,
             module_id,
             confidence,
+            source_doc,
         });
     }
     Ok(out)
@@ -813,6 +819,7 @@ mod tests {
             contact_vector: None,
             module_id: "test".into(),
             confidence: 0.9,
+            source_doc: None,
         }
     }
 
@@ -825,6 +832,7 @@ mod tests {
             contact_vector: None,
             module_id: "test".into(),
             confidence: 0.9,
+            source_doc: None,
         }
     }
 

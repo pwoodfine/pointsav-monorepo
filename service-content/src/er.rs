@@ -145,6 +145,7 @@ mod tests {
             contact_vector: None,
             module_id: "test".into(),
             confidence: 0.9,
+            source_doc: None,
         }
     }
 
