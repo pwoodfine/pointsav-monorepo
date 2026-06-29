@@ -144,6 +144,35 @@ No automated overnight runs — pick one task at a time from below.
       `project-gis-20260619-perf-nginx-prod`. maplibre-gl.js 784KB→~200KB. [2026-06-19 totebox@claude-code]
 - [x] **Stage 6 canonical sync DONE 2026-06-23** — targeted `_www-sync` branch (commit ab182536) pushed to canonical; `app-orchestration-gis/www/` now at 4421 lines + lib/ + research pages. promote.sh bypassed due to ADD/ADD conflict bug on pre-existing path. [2026-06-23 totebox@claude-code]
 - [ ] **check --strict gate** — F2/F3 dead links at project-editorial must resolve first. [2026-06-17 command@claude-code]
+## Fix-2 finding: GLiNER batch endpoint (2026-06-28)
+
+`/v1/batch-extract` endpoint added to `service-gliner/main.py` and committed.
+Uses `model.inference(texts, labels)` which accepts `List[str]`.
+
+**CPU result:** 5-text batch took 19m 23s vs ~1s sequential. PyTorch attention
+mechanism scales as `O(batch × seq_len²)` on CPU — no parallelism benefit without
+GPU CUDA cores. Batch is NOT used by service-content on this VM.
+
+**batch endpoint kept as infrastructure** — will be used when:
+1. GLiNER bi-encoder (gliner_bi-edge-v2.0) deployed — bi-encoder pre-computes
+   label embeddings offline, so batch cost is near-constant regardless of label count
+2. GPU node available — CUDA batching gives linear scaling
+
+**Correct CPU throughput path:** `CONTENT_DRAIN_THREADS` env var (already wired).
+Set to 4 in local-content.service to run 4 parallel drain workers, each making
+sequential /v1/extract calls to separate uvicorn workers on GLiNER.
+But GLiNER runs single-worker by default — need `--workers 4` in local-gliner.service
+first (or run 4 separate GLiNER processes).
+
+- [ ] **Enable multi-worker GLiNER**: add `--workers 4` to local-gliner.service ExecStart;
+  requires `if __name__ == '__main__': ...` guard already in main.py [2026-06-28 totebox@claude-code]
+- [ ] **CONTENT_DRAIN_THREADS=4**: set in local-content.service after GLiNER multi-worker active [2026-06-28 totebox@claude-code]
+- [ ] **Plan: GLiNER bi-encoder** (gliner_bi-edge-v2.0): evaluate after multi-worker baseline;
+  replaces medium-v2.1; requires different inference call in service-gliner [2026-06-28 totebox@claude-code]
+
+---
+
+## Hot — done (2026-06-28, GLiNER Tier 0)
 
 ## Completed (recent)
 

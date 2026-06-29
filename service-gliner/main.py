@@ -50,6 +50,35 @@ async def health() -> dict[str, str]:
     return {"status": "ok", "model": MODEL_NAME}
 
 
+@app.post("/v1/batch-extract")
+async def batch_extract(request: Request) -> dict[str, list]:
+    """Accept multiple text chunks in one call; process in one forward pass."""
+    body: dict[str, Any] = await request.json()
+    texts: list[str] = body.get("texts", [])
+    domain_id: str = body.get("domain_id", DEFAULT_DOMAIN)
+
+    non_empty = [t for t in texts if t.strip()]
+    if not non_empty:
+        return {"entities": []}
+
+    label_map = DOMAIN_LABELS.get(domain_id, DOMAIN_LABELS[DEFAULT_DOMAIN])
+    labels = list(label_map.values())
+    desc_to_key = {v: k for k, v in label_map.items()}
+
+    # inference() accepts List[str] and returns List[List[entity_dict]]
+    raw_batched = model.inference(non_empty, labels, threshold=0.5)
+
+    entities = []
+    for chunk_entities in raw_batched:
+        for e in chunk_entities:
+            entities.append({
+                "entity_name": e["text"],
+                "classification": desc_to_key.get(e["label"], e["label"]),
+            })
+
+    return {"entities": entities}
+
+
 @app.post("/v1/extract")
 async def extract(request: Request) -> dict[str, list]:
     body: dict[str, Any] = await request.json()
