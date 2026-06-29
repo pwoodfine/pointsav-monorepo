@@ -1,0 +1,14 @@
+{
+  "name": "Sourdough Tracker",
+  "short_name": "Bread",
+  "description": "Track every loaf — ingredients, scores, and photos",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#F7F9FA",
+  "theme_color": "#54924E",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
