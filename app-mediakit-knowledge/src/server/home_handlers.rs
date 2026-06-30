@@ -237,6 +237,7 @@ fn home_chrome(
     start_here: &[crate::config::StartHereEntry],
     user: Option<&User>,
     _pending_count: i64,
+    ratified_categories: &[&str],
 ) -> Markup {
     let woodfine_theme = matches!(brand_theme, Some("woodfine") | Some("woodfine-projects"));
     let _title = home_fm.title.as_deref().unwrap_or(site_title);
@@ -265,7 +266,7 @@ fn home_chrome(
         guides.iter().map(|g| g.slug.as_str()).collect();
     let mut uncategorised: Vec<&TopicSummary> = buckets
         .iter()
-        .filter(|(cat, _)| !RATIFIED_CATEGORIES.contains(&cat.as_str()) && cat.as_str() != "root")
+        .filter(|(cat, _)| !ratified_categories.contains(&cat.as_str()) && cat.as_str() != "root")
         .flat_map(|(_, topics)| topics.iter())
         .filter(|t| !guide_slug_set.contains(t.slug.as_str()))
         .collect();

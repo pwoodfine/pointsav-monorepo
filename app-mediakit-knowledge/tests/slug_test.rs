@@ -33,6 +33,7 @@ async fn make_state(content_dir: &tempfile::TempDir, state_dir: &tempfile::TempD
         canonical_url: None,
         activitypub_outbox_url: None,
         start_here: vec![],
+        site_categories: vec![],
     }
 }
 

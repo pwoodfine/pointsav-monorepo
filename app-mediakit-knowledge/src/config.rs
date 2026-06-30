@@ -142,6 +142,13 @@ pub struct SiteConfig {
     /// Allowed values: `"documentation"`, `"projects"`, `"corporate"`.
     #[serde(default)]
     pub instance: Option<String>,
+
+    /// Ratified navigation category slugs for this instance, in preferred display order.
+    /// When empty, the engine falls back to the built-in documentation category set.
+    /// Override per instance via `SITE_CATEGORIES` (comma-separated env var) or this key.
+    /// Example: `categories = ["co-location", "markets", "urban", "architecture", "gis", "reference"]`
+    #[serde(default)]
+    pub categories: Vec<String>,
 }
 
 fn default_site_title() -> String {

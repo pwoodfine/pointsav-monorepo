@@ -78,8 +78,9 @@ async fn home_inner(
     let featured = load_featured(state.primary_path(), &buckets).await;
     let dyk = load_dyk_localized(state.primary_path(), locale).await;
     let ref_inv = load_reference_invariants(state.primary_path()).await;
+    let ratified = state.ratified_categories();
     let cat_descriptions =
-        load_category_descriptions(state.primary_path(), RATIFIED_CATEGORIES).await;
+        load_category_descriptions(state.primary_path(), &ratified).await;
 
     let mut guide_summaries: Vec<TopicSummary> = buckets
         .values()
@@ -114,6 +115,7 @@ async fn home_inner(
         &state.start_here,
         maybe_user.as_ref(),
         pending_count,
+        &ratified,
     ))
 }
 
@@ -635,6 +637,7 @@ async fn wiki_page_inner(
         }
         rails
     };
+    let article_ratified = state.ratified_categories();
     let mut response = wiki_chrome(
         effective_locale,
         &title,
@@ -659,6 +662,7 @@ async fn wiki_page_inner(
         &article_category,
         &revision_sha_short,
         annotation_count,
+        &article_ratified,
     )
     .into_response();
     response.headers_mut().insert(
@@ -781,6 +785,7 @@ fn wiki_chrome(
     article_category: &str,
     revision_sha_short: &str,
     annotation_count: usize,
+    ratified_categories: &[&str],
 ) -> Markup {
     let woodfine_theme = matches!(brand_theme, Some("woodfine") | Some("woodfine-projects"));
     let _woodfine_projects = brand_theme == Some("woodfine-projects");
@@ -970,7 +975,7 @@ fn wiki_chrome(
                     // --- Left sidenav: internal category navigation (hidden below 1024px) ---
                     nav.docs-sidenav aria-label="Documentation navigation" {
                         div.docs-sidenav__inner {
-                            @for cat_slug in RATIFIED_CATEGORIES {
+                            @for cat_slug in ratified_categories {
                                 @let cat_articles = nav_buckets.get(*cat_slug)
                                     .map(|v| v.as_slice())
                                     .unwrap_or(&[]);
