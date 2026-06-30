@@ -474,12 +474,12 @@ fn home_chrome(
                         }
                     }
 
-                    // ── Browse by area — documentation instance only ─────────
-                    @if brand_instance == "documentation" {
-                        div.section-head {
-                            h2 { (s.section_browse) }
-                        }
-                        div.cat-grid {
+                    // ── Browse by area ───────────────────────────────────────
+                    div.section-head {
+                        h2 { (s.section_browse) }
+                    }
+                    div.cat-grid {
+                        @if brand_instance == "documentation" {
                             @for (display_name, primary_slug, description, color, slugs) in HOMEPAGE_CATEGORIES {
                                 @let count: usize = slugs.iter()
                                     .flat_map(|s| buckets.get(*s).map(|v| v.as_slice()).unwrap_or(&[]).iter())
@@ -499,6 +499,35 @@ fn home_chrome(
                                         .map(|s| s.as_str())
                                         .filter(|s| !s.is_empty())
                                         .unwrap_or(description);
+                                    @if !desc_text.is_empty() {
+                                        p.cat-card__desc { (desc_text) }
+                                    } @else if count == 0 {
+                                        p.cat-card__desc.cat-card__desc--empty { "In preparation." }
+                                    }
+                                }
+                            }
+                        } @else {
+                            @for (idx, cat_slug) in ratified_categories.iter().enumerate() {
+                                @let count: usize = buckets.get(*cat_slug)
+                                    .map(|v| v.as_slice()).unwrap_or(&[])
+                                    .iter()
+                                    .filter(|t| t.status.as_deref() != Some("stub"))
+                                    .count();
+                                @let color = CAT_ACCENT_PALETTE[idx % CAT_ACCENT_PALETTE.len()];
+                                @let desc_text = cat_descriptions
+                                    .get(*cat_slug)
+                                    .map(|s| s.as_str())
+                                    .filter(|s| !s.is_empty())
+                                    .unwrap_or("");
+                                a.cat-card href={ "/category/" (cat_slug) }
+                                    style={ "--cat-accent:" (color) }
+                                {
+                                    div.cat-card__head {
+                                        span.cat-card__name { (humanize_category(cat_slug)) }
+                                        @if count > 0 {
+                                            span.cat-card__count { (count) }
+                                        }
+                                    }
                                     @if !desc_text.is_empty() {
                                         p.cat-card__desc { (desc_text) }
                                     } @else if count == 0 {

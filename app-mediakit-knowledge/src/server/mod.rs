@@ -944,6 +944,12 @@ const RATIFIED_CATEGORIES: &[&str] = &[
 /// (see BRIEF-knowledge-platform-master.md §8.4 open decision #1).
 /// Each entry: (display_name, primary_slug, description, accent_color, all_slugs).
 /// `accent_color` is a CSS color value used as `--cat-accent` on the tile border-top.
+/// Accent colours cycled across per-instance category cards (non-documentation instances).
+const CAT_ACCENT_PALETTE: &[&str] = &[
+    "#164679", "#0d9488", "#7c3aed", "#166534",
+    "#b45309", "#4f46e5", "#c7a961", "#9f1239",
+];
+
 const HOMEPAGE_CATEGORIES: &[(&str, &str, &str, &str, &[&str])] = &[
     (
         "Developer Platform",
