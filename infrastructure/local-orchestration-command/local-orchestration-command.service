@@ -1,0 +1,64 @@
+[Unit]
+Description=app-orchestration-command (PointSav Totebox OS — CommandCentre)
+Documentation=file:///srv/foundry/infrastructure/local-orchestration-command/README.md
+Documentation=file:///srv/foundry/clones/project-orchestration/.agent/manifest.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=local-orchestration-command
+Group=local-orchestration-command
+
+WorkingDirectory=/var/lib/local-orchestration-command
+
+# app-orchestration-command binds 127.0.0.1:8020 (loopback; Phase 3 constraint).
+# Phase 4 will add WireGuard VPN bind (10.42.0.9:8020) when Part A lands.
+#
+# COMMAND_PAIRINGS_PATH: workspace pairings.yaml (read-only at startup; topology source).
+# COMMAND_CLONES_ROOT: workspace clones/ root (archive manifest + inbox resolution).
+# COMMAND_INSTANCE_ID: stable instance label used in WORM ledger and pairing records.
+# COMMAND_AUDIT_LEDGER_PATH: append-only JSONL; never truncated.
+# COMMAND_LICENSE_TOKEN / COMMAND_LICENSE_PUBKEY_HEX: set by operator at license time;
+#   absent = observation mode (read-only endpoints; invite/pair return 402).
+
+Environment="HOME=/var/lib/local-orchestration-command"
+Environment="COMMAND_BIND_ADDR=127.0.0.1:8020"
+Environment="COMMAND_INSTANCE_ID=gateway-orchestration-command-1"
+Environment="COMMAND_PAIRINGS_PATH=/srv/foundry/pairings.yaml"
+Environment="COMMAND_CLONES_ROOT=/srv/foundry/clones"
+Environment="COMMAND_AUDIT_LEDGER_PATH=/var/lib/local-orchestration-command/audit.jsonl"
+Environment="RUST_LOG=info"
+
+# COMMAND_LICENSE_TOKEN and COMMAND_LICENSE_PUBKEY_HEX are intentionally absent here.
+# Set them via a drop-in override: systemctl edit local-orchestration-command
+# and add them under [Service] Environment= lines. Do NOT commit license tokens.
+
+ExecStart=/usr/local/bin/orchestration-command-server
+
+Restart=on-failure
+RestartSec=5s
+
+# RSS target: ≤96 MB idle (1.7 MB binary; Tokio current_thread). 128M is generous.
+MemoryMax=128M
+CPUQuota=100%
+
+# Hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+# Read-only: workspace source paths
+ReadOnlyPaths=/srv/foundry/pairings.yaml
+ReadOnlyPaths=/srv/foundry/clones
+# Read-write: audit ledger + deployment instance
+ReadWritePaths=/var/lib/local-orchestration-command
+ReadWritePaths=/srv/foundry/deployments/gateway-orchestration-command-1
+# user-pairings.yaml lives alongside pairings.yaml (infrastructure ACK 2026-06-29)
+ReadWritePaths=/srv/foundry/user-pairings.yaml
+
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
