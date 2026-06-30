@@ -1,10 +1,13 @@
 use axum::{
-    extract::{Query, State},
+    extract::{Query, Request, State},
     http::StatusCode,
-    response::Json,
+    middleware::{self, Next},
+    response::{Json, Response},
     routing::{get, post},
     Router,
 };
+use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+use base64::Engine as _;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
@@ -13,7 +16,7 @@ use std::time::Duration;
 use crate::config_http::config_routes;
 use crate::entity_filter;
 use crate::graph::{GraphEntity, GraphStore};
-use crate::pairing::{NonceCache, PairingKeypair, PairingRecord, PairingStore};
+use crate::pairing::{InterfaceAuditLog, NonceCache, PairingKeypair, PairingRecord, PairingStore};
 
 // ── shared server state ───────────────────────────────────────────────────────
 
@@ -27,6 +30,7 @@ pub struct HttpState {
     pub pairing_store: Mutex<PairingStore>,
     pub nonce_cache: NonceCache,
     pub pairing_key: PairingKeypair,
+    pub capability_audit: InterfaceAuditLog,
 }
 
 // ── pairing request / response ────────────────────────────────────────────────
@@ -495,9 +499,7 @@ async fn graph_cleanup(
             .is_none()
             {
                 Some("type-incoherent")
-            } else if !entity_filter::ALLOWED_CLASSIFICATIONS
-                .contains(&entity.classification.as_str())
-            {
+            } else if !entity_filter::is_allowed_classification(&entity.classification) {
                 Some("oov-classification")
             } else {
                 None
@@ -776,6 +778,11 @@ async fn pair_peer(
     }))
 }
 
+/// List all paired peers — public_key, role, node_label, paired_on.
+async fn list_pairs(State(state): State<Arc<HttpState>>) -> Json<Vec<PairingRecord>> {
+    Json(state.pairing_store.lock().unwrap().list())
+}
+
 /// Issue a new signed invite token (Totebox → caller).
 async fn issue_pair_token(
     State(state): State<Arc<HttpState>>,
@@ -801,6 +808,89 @@ async fn issue_pair_token(
     }))
 }
 
+// ── capability gate middleware ────────────────────────────────────────────────
+
+/// Verifies a forwarded `X-Foundry-Capability` header on WORM-touching routes.
+///
+/// Requests with no header pass through unchanged — this preserves the current
+/// localhost-trusted path (the Doorman calls `/v1/graph/mutate` directly and
+/// does not yet send this header). Requests that DO present the header must
+/// verify against a registered peer's public key (resolved by `from_instance`
+/// via `PairingStore::find_by_instance`) or are rejected. A verified request
+/// is recorded to `interface-audit.jsonl` before continuing.
+async fn capability_gate(
+    State(state): State<Arc<HttpState>>,
+    req: Request,
+    next: Next,
+) -> Result<Response, (StatusCode, String)> {
+    use crate::pairing::{verify_capability, CapabilityError};
+
+    let Some(header_value) = req.headers().get("X-Foundry-Capability") else {
+        return Ok(next.run(req).await);
+    };
+    let header_str = header_value.to_str().map_err(|_| {
+        (
+            StatusCode::BAD_REQUEST,
+            "malformed X-Foundry-Capability header".to_string(),
+        )
+    })?;
+
+    let (payload_b64, _) = header_str.split_once('.').ok_or((
+        StatusCode::UNAUTHORIZED,
+        "malformed capability token".to_string(),
+    ))?;
+    let payload_bytes = URL_SAFE_NO_PAD.decode(payload_b64).map_err(|_| {
+        (
+            StatusCode::UNAUTHORIZED,
+            "malformed capability token".to_string(),
+        )
+    })?;
+    let unverified: serde_json::Value = serde_json::from_slice(&payload_bytes).map_err(|_| {
+        (
+            StatusCode::UNAUTHORIZED,
+            "malformed capability payload".to_string(),
+        )
+    })?;
+    let from_instance = unverified
+        .get("from_instance")
+        .and_then(|v| v.as_str())
+        .ok_or((
+            StatusCode::UNAUTHORIZED,
+            "capability payload missing from_instance".to_string(),
+        ))?;
+
+    let public_key = {
+        let store = state.pairing_store.lock().unwrap();
+        store
+            .find_by_instance(from_instance)
+            .map(|r| r.public_key.clone())
+    }
+    .ok_or((
+        StatusCode::FORBIDDEN,
+        format!("{from_instance} is not a paired peer"),
+    ))?;
+
+    let verified = verify_capability(header_str, &public_key).map_err(|e| match e {
+        CapabilityError::Malformed => (StatusCode::BAD_REQUEST, e.to_string()),
+        CapabilityError::BadSignature => (StatusCode::UNAUTHORIZED, e.to_string()),
+        CapabilityError::Expired => (StatusCode::UNAUTHORIZED, e.to_string()),
+    })?;
+
+    if !state.nonce_cache.try_insert(&verified.nonce) {
+        return Err((
+            StatusCode::CONFLICT,
+            "capability nonce already used".to_string(),
+        ));
+    }
+
+    let endpoint = req.uri().path().to_string();
+    if let Err(e) = state.capability_audit.record(&endpoint, &verified) {
+        eprintln!("[HTTP] interface-audit write failed: {e}");
+    }
+
+    Ok(next.run(req).await)
+}
+
 // ── server entrypoint ─────────────────────────────────────────────────────────
 
 pub async fn run_server(
@@ -820,6 +910,8 @@ pub async fn run_server(
         PairingKeypair::load_or_generate("/tmp").expect("fallback keypair")
     });
 
+    let capability_audit = InterfaceAuditLog::new(&graph_dir);
+
     let state = Arc::new(HttpState {
         graph: store,
         doorman_endpoint,
@@ -829,19 +921,31 @@ pub async fn run_server(
         pairing_store: Mutex::new(pairing_store),
         nonce_cache: NonceCache::new(),
         pairing_key,
+        capability_audit,
     });
+
+    // WORM-touching: graph mutation is gated by the capability middleware when
+    // an X-Foundry-Capability header is present (forwarded INTERFACE-peer
+    // requests); absent-header (local Doorman) calls pass through unchanged.
+    let worm_protected = Router::new()
+        .route("/v1/graph/mutate", post(graph_mutate))
+        .route_layer(middleware::from_fn_with_state(
+            state.clone(),
+            capability_gate,
+        ));
 
     let app = Router::new()
         .route("/healthz", get(healthz))
         .route("/v1/graph/context", get(graph_context))
         .route("/v1/graph/delta", get(graph_delta))
-        .route("/v1/graph/mutate", post(graph_mutate))
         .route("/v1/graph/cleanup", get(graph_cleanup))
         .route("/v1/graph/enrich", post(graph_enrich))
         .route("/v1/draft/generate", post(draft_generate))
         .route("/v1/ingest", post(ingest_document))
         .route("/v1/pair", post(pair_peer))
         .route("/v1/pair/token", get(issue_pair_token))
+        .route("/v1/pairs", get(list_pairs))
+        .merge(worm_protected)
         .merge(config_routes())
         .with_state(state);
 
