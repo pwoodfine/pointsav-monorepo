@@ -3,6 +3,7 @@ mod entity_filter;
 mod er;
 mod graph;
 mod http;
+mod pairing;
 #[cfg(test)]
 mod pipeline_tests;
 mod taxonomy;
@@ -202,6 +203,7 @@ fn main() -> NotifyResult<()> {
     let doorman_for_http = doorman_endpoint.clone();
     let ontology_for_http = ontology_dir.clone();
     let corpus_dir_for_http = corpus_dir.clone();
+    let graph_dir_for_http = graph_dir.clone();
     std::thread::spawn(move || {
         let rt = tokio::runtime::Runtime::new().expect("Failed to build HTTP tokio runtime");
         rt.block_on(http::run_server(
@@ -210,6 +212,7 @@ fn main() -> NotifyResult<()> {
             doorman_for_http,
             ontology_for_http,
             corpus_dir_for_http,
+            graph_dir_for_http,
         ));
     });
 

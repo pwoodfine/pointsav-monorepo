@@ -5,13 +5,15 @@ use axum::{
     routing::{get, post},
     Router,
 };
+use chrono::Utc;
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use crate::config_http::config_routes;
 use crate::entity_filter;
 use crate::graph::{GraphEntity, GraphStore};
+use crate::pairing::{NonceCache, PairingKeypair, PairingRecord, PairingStore};
 
 // ── shared server state ───────────────────────────────────────────────────────
 
@@ -20,6 +22,46 @@ pub struct HttpState {
     pub doorman_endpoint: String,
     pub ontology_dir: String,
     pub corpus_dir: String,
+    pub graph_dir: String,
+    pub pairing_store: Mutex<PairingStore>,
+    pub nonce_cache: NonceCache,
+    pub pairing_key: PairingKeypair,
+}
+
+// ── pairing request / response ────────────────────────────────────────────────
+
+#[derive(Debug, Deserialize)]
+pub struct PairRequest {
+    /// `<base64url(payload_json)>.<base64url(ed25519_sig)>`
+    pub token: String,
+    /// Base64url Ed25519 verifying key (32 bytes) of the issuing node.
+    pub public_key: String,
+    pub node_label: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct PairResponse {
+    pub status: &'static str,
+    pub paired_on: String,
+    pub role: String,
+    pub archive_scope: Vec<String>,
+}
+
+/// Issue a new pairing invite token.
+#[derive(Debug, Deserialize)]
+pub struct PairTokenQuery {
+    pub role: String,
+    #[serde(default)]
+    pub node_label: String,
+    /// Comma-separated archive scope IDs (optional).
+    #[serde(default)]
+    pub archive_scope: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct PairTokenResponse {
+    pub token: String,
+    pub public_key: String,
 }
 
 // ── request / response types ──────────────────────────────────────────────────
@@ -669,6 +711,88 @@ fn format_entity_block(entities: &[GraphEntity]) -> String {
     out
 }
 
+// ── pairing handlers ─────────────────────────────────────────────────────────
+
+async fn pair_peer(
+    State(state): State<Arc<HttpState>>,
+    Json(body): Json<PairRequest>,
+) -> Result<Json<PairResponse>, (StatusCode, String)> {
+    use crate::pairing::{verify_pair_token, PairError};
+
+    let payload = verify_pair_token(&body.token, &body.public_key).map_err(|e| match e {
+        PairError::Malformed => (StatusCode::BAD_REQUEST, e.to_string()),
+        PairError::BadSignature => (StatusCode::UNAUTHORIZED, e.to_string()),
+        PairError::Expired => (StatusCode::UNAUTHORIZED, "token expired".into()),
+        PairError::NonceReused => (StatusCode::CONFLICT, "nonce already used".into()),
+    })?;
+
+    // already_paired check before nonce uniqueness — a re-submit of an existing
+    // pairing must return already_paired even if the nonce was previously used.
+    {
+        let store = state.pairing_store.lock().unwrap();
+        if let Some(existing) = store.get(&body.public_key) {
+            return Ok(Json(PairResponse {
+                status: "already_paired",
+                paired_on: existing.paired_on.clone(),
+                role: existing.role.clone(),
+                archive_scope: existing.archive_scope.clone(),
+            }));
+        }
+    }
+
+    if !state.nonce_cache.try_insert(&payload.nonce) {
+        return Err((StatusCode::CONFLICT, "nonce already used".into()));
+    }
+
+    let paired_on = Utc::now().to_rfc3339();
+    let rec = PairingRecord {
+        public_key: body.public_key.clone(),
+        issuer: payload.issuer.clone(),
+        peer_type: payload.peer_type.clone(),
+        role: payload.role.clone(),
+        archive_scope: payload.archive_scope.clone(),
+        node_label: body.node_label.clone(),
+        paired_on: paired_on.clone(),
+        nonce: payload.nonce.clone(),
+    };
+
+    state
+        .pairing_store
+        .lock()
+        .unwrap()
+        .insert(rec)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    Ok(Json(PairResponse {
+        status: "paired",
+        paired_on,
+        role: payload.role,
+        archive_scope: payload.archive_scope,
+    }))
+}
+
+/// Issue a new signed invite token (Totebox → caller).
+async fn issue_pair_token(
+    State(state): State<Arc<HttpState>>,
+    Query(q): Query<PairTokenQuery>,
+) -> Result<Json<PairTokenResponse>, (StatusCode, String)> {
+    let scope: Vec<String> = if q.archive_scope.is_empty() {
+        vec![]
+    } else {
+        q.archive_scope.split(',').map(|s| s.trim().to_string()).collect()
+    };
+    let label = if q.node_label.is_empty() {
+        "totebox"
+    } else {
+        &q.node_label
+    };
+    let token = state.pairing_key.issue_token(&q.role, scope, label);
+    Ok(Json(PairTokenResponse {
+        token,
+        public_key: state.pairing_key.verifying_key_b64.clone(),
+    }))
+}
+
 // ── server entrypoint ─────────────────────────────────────────────────────────
 
 pub async fn run_server(
@@ -677,12 +801,26 @@ pub async fn run_server(
     doorman_endpoint: String,
     ontology_dir: String,
     corpus_dir: String,
+    graph_dir: String,
 ) {
+    let pairing_store = PairingStore::load(&graph_dir).unwrap_or_else(|e| {
+        eprintln!("[HTTP] pairing store load failed: {e}; starting empty");
+        PairingStore::load("/tmp").expect("fallback pairing store")
+    });
+    let pairing_key = PairingKeypair::load_or_generate(&graph_dir).unwrap_or_else(|e| {
+        eprintln!("[HTTP] pairing keypair init failed: {e}");
+        PairingKeypair::load_or_generate("/tmp").expect("fallback keypair")
+    });
+
     let state = Arc::new(HttpState {
         graph: store,
         doorman_endpoint,
         ontology_dir,
         corpus_dir,
+        graph_dir,
+        pairing_store: Mutex::new(pairing_store),
+        nonce_cache: NonceCache::new(),
+        pairing_key,
     });
 
     let app = Router::new()
@@ -694,6 +832,8 @@ pub async fn run_server(
         .route("/v1/graph/enrich", post(graph_enrich))
         .route("/v1/draft/generate", post(draft_generate))
         .route("/v1/ingest", post(ingest_document))
+        .route("/v1/pair", post(pair_peer))
+        .route("/v1/pair/token", get(issue_pair_token))
         .merge(config_routes())
         .with_state(state);
 
