@@ -68,6 +68,7 @@ async fn build_state(content_dir: &Path) -> (AppState, tempfile::TempDir) {
         canonical_url: None,
         activitypub_outbox_url: None,
         start_here: vec![],
+        site_categories: vec![],
     };
     (state, state_dir)
 }

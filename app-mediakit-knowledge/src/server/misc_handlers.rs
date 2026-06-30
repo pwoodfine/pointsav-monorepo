@@ -119,6 +119,7 @@ mod tests {
             canonical_url: None,
             activitypub_outbox_url: None,
             start_here: vec![],
+            site_categories: vec![],
             },
             dir,
             state_dir,
@@ -327,6 +328,7 @@ mod tests {
             canonical_url: None,
             activitypub_outbox_url: None,
             start_here: vec![],
+            site_categories: vec![],
         };
         let app = router(state);
         let resp = app
@@ -405,6 +407,7 @@ mod tests {
             canonical_url: None,
             activitypub_outbox_url: None,
             start_here: vec![],
+            site_categories: vec![],
         };
         let app = router(state);
         let resp = app
@@ -460,6 +463,7 @@ mod tests {
             canonical_url: None,
             activitypub_outbox_url: None,
             start_here: vec![],
+            site_categories: vec![],
         };
         let app = router(state);
         let resp = app
@@ -518,6 +522,7 @@ mod tests {
             canonical_url: None,
             activitypub_outbox_url: None,
             start_here: vec![],
+            site_categories: vec![],
         };
         let app = router(state);
         let resp = app
@@ -576,6 +581,7 @@ mod tests {
             canonical_url: None,
             activitypub_outbox_url: None,
             start_here: vec![],
+            site_categories: vec![],
         };
         let app = router(state);
         let resp = app
@@ -636,6 +642,7 @@ mod tests {
             canonical_url: None,
             activitypub_outbox_url: None,
             start_here: vec![],
+            site_categories: vec![],
         };
         let app = router(state);
         let resp = app
@@ -697,6 +704,7 @@ mod tests {
             canonical_url: None,
             activitypub_outbox_url: None,
             start_here: vec![],
+            site_categories: vec![],
         };
         let app = router(state);
         let resp = app
@@ -763,6 +771,7 @@ mod tests {
             canonical_url: None,
             activitypub_outbox_url: None,
             start_here: vec![],
+            site_categories: vec![],
         };
         let app = router(state);
         let resp = app
@@ -826,6 +835,7 @@ mod tests {
             canonical_url: None,
             activitypub_outbox_url: None,
             start_here: vec![],
+            site_categories: vec![],
         };
         let app = router(state);
         let resp = app
@@ -891,6 +901,7 @@ mod tests {
             canonical_url: None,
             activitypub_outbox_url: None,
             start_here: vec![],
+            site_categories: vec![],
         };
         let app = router(state);
         let resp = app
@@ -949,6 +960,7 @@ mod tests {
             canonical_url: None,
             activitypub_outbox_url: None,
             start_here: vec![],
+            site_categories: vec![],
         };
         let app = router(state);
         let resp = app

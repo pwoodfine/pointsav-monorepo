@@ -150,6 +150,7 @@ async fn main() -> Result<()> {
                 eff_canonical_url,
                 eff_activitypub_outbox_url,
                 eff_start_here,
+                eff_site_categories,
             ) = if let Some(ref toml_path) = knowledge_toml {
                 let cfg = app_mediakit_knowledge::config::load_config(toml_path)?;
                 let parsed_bind: SocketAddr = cfg.site.bind.parse()?;
@@ -184,6 +185,15 @@ async fn main() -> Result<()> {
                     peers = cfg.peers.len(),
                     "loaded knowledge.toml"
                 );
+                // Resolve categories: TOML field → SITE_CATEGORIES env var → empty (handler fallback).
+                let toml_cats = cfg.site.categories.clone();
+                let site_categories = if !toml_cats.is_empty() {
+                    toml_cats
+                } else {
+                    std::env::var("SITE_CATEGORIES")
+                        .map(|v| v.split(',').map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect())
+                        .unwrap_or_default()
+                };
                 (
                     primary.path.clone(),
                     parsed_bind,
@@ -198,6 +208,7 @@ async fn main() -> Result<()> {
                     cfg.site.canonical_url.clone(),
                     cfg.federation.outbox_url.clone(),
                     cfg.start_here.clone(),
+                    site_categories,
                 )
             } else {
                 // Legacy env-var path.
@@ -206,6 +217,9 @@ async fn main() -> Result<()> {
                         "either --knowledge-toml or --content-dir / WIKI_CONTENT_DIR is required"
                     )
                 })?;
+                let legacy_site_categories = std::env::var("SITE_CATEGORIES")
+                    .map(|v| v.split(',').map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect())
+                    .unwrap_or_default();
                 (
                     cd,
                     bind,
@@ -220,6 +234,7 @@ async fn main() -> Result<()> {
                     None,
                     None,
                     vec![],
+                    legacy_site_categories,
                 )
             };
 
@@ -239,6 +254,7 @@ async fn main() -> Result<()> {
                 eff_canonical_url,
                 eff_activitypub_outbox_url,
                 eff_start_here,
+                eff_site_categories,
             )
             .await
         }
@@ -302,6 +318,7 @@ async fn serve(
     canonical_url: Option<String>,
     activitypub_outbox_url: Option<String>,
     start_here: Vec<app_mediakit_knowledge::config::StartHereEntry>,
+    site_categories: Vec<String>,
 ) -> Result<()> {
     if !content_dir.is_dir() {
         bail!(
@@ -454,6 +471,7 @@ async fn serve(
         canonical_url,
         activitypub_outbox_url,
         start_here,
+        site_categories,
     };
     let app = router(state);
     let listener = tokio::net::TcpListener::bind(bind).await?;

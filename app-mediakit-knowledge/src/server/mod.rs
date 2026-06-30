@@ -210,6 +210,10 @@ pub struct AppState {
     /// Per-instance "New here? Start with these" chips from `[[start_here]]` in knowledge.toml.
     /// Empty → engine renders four hardcoded PointSav documentation chips (backward-compat default).
     pub start_here: Vec<crate::config::StartHereEntry>,
+    /// Ratified navigation category slugs for this instance in display order.
+    /// Populated from `knowledge.toml [site] categories` or the `SITE_CATEGORIES` env var.
+    /// When empty, `ratified_categories()` falls back to the built-in documentation set.
+    pub site_categories: Vec<String>,
 }
 
 impl AppState {
@@ -229,6 +233,17 @@ impl AppState {
     pub fn guide_dirs_arr(&self) -> [Option<&std::path::Path>; 2] {
         let roots = crate::mounts::link_roots(&self.mounts);
         [roots.first().copied(), roots.get(1).copied()]
+    }
+
+    /// Effective ratified category list for this instance.
+    /// Returns `site_categories` when configured, otherwise falls back to the
+    /// built-in documentation set so existing instances need no config change.
+    pub fn ratified_categories(&self) -> Vec<&str> {
+        if self.site_categories.is_empty() {
+            RATIFIED_CATEGORIES.to_vec()
+        } else {
+            self.site_categories.iter().map(String::as_str).collect()
+        }
     }
 }
 
