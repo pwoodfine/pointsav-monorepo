@@ -12,6 +12,7 @@ use app_console_keys::{
     cartridge::{Cartridge, CartridgeAction},
     colors::{tc_accent, tc_muted},
     fkey::FKey,
+    IntentArgs, IntentId, IntentScope, IntentSpec, MouseAffordance,
 };
 
 #[derive(Debug, Clone)]
@@ -343,5 +344,49 @@ impl Cartridge for PeopleCartridge {
         }
 
         CartridgeAction::Consumed
+    }
+
+    fn intent_scope(&self) -> Option<&'static str> {
+        Some("people")
+    }
+
+    fn intents(&self) -> Vec<IntentSpec> {
+        vec![
+            IntentSpec::new(
+                "people.refresh",
+                "Refresh contact list",
+                IntentScope::Cartridge("people"),
+            )
+            .key("r")
+            .mouse(MouseAffordance::CLICK),
+            IntentSpec::new(
+                "people.view_detail",
+                "Open contact detail",
+                IntentScope::Cartridge("people"),
+            )
+            .key("enter")
+            .mouse(MouseAffordance::CLICK),
+        ]
+    }
+
+    fn dispatch(&mut self, id: IntentId, _args: &IntentArgs) -> CartridgeAction {
+        match id.0 {
+            "people.refresh" => {
+                self.status = "Loading\u{2026}".into();
+                self.trigger_refresh();
+                CartridgeAction::Consumed
+            }
+            "people.view_detail" => {
+                if let PeopleView::List = self.view {
+                    if let Some(idx) = self.list_state.selected() {
+                        if idx < self.people.len() {
+                            self.view = PeopleView::Detail(idx);
+                        }
+                    }
+                }
+                CartridgeAction::Consumed
+            }
+            _ => CartridgeAction::None,
+        }
     }
 }

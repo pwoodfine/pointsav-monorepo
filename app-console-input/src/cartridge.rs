@@ -3,7 +3,10 @@ use std::thread;
 
 use sha2::{Digest, Sha256};
 
-use app_console_keys::{Cartridge, CartridgeAction, FKey};
+use app_console_keys::{
+    Cartridge, CartridgeAction, FKey, IntentArgs, IntentId, IntentScope, IntentSpec,
+    MouseAffordance,
+};
 use crossterm::event::{Event, KeyCode, KeyModifiers};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
@@ -662,6 +665,36 @@ impl Cartridge for InputCartridge {
                 self.reset();
                 CartridgeAction::GoBack
             }
+        }
+    }
+
+    fn intent_scope(&self) -> Option<&'static str> {
+        Some("input")
+    }
+
+    fn intents(&self) -> Vec<IntentSpec> {
+        vec![
+            // SYS-ADR-10: ingest-class verbs (submit, confirm) are intentionally absent.
+            // The confirm gate (y/n modal) must be a direct keyboard action — no palette
+            // or mouse path may bypass it. Only the audit viewer is palette-reachable.
+            IntentSpec::new(
+                "input.audit",
+                "View ingest audit log",
+                IntentScope::Cartridge("input"),
+            )
+            .key("ctrl-a")
+            .mouse(MouseAffordance::CLICK),
+        ]
+    }
+
+    fn dispatch(&mut self, id: IntentId, _args: &IntentArgs) -> CartridgeAction {
+        match id.0 {
+            "input.audit" => {
+                let records = audit::query_recent(200).unwrap_or_default();
+                self.state = InputState::AuditLog { records, scroll: 0 };
+                CartridgeAction::Consumed
+            }
+            _ => CartridgeAction::None,
         }
     }
 }
