@@ -28,6 +28,16 @@
   - Three-node mesh verified: Laptop A + foundry-workspace + iMac
 - `[ ]` Sign daemon AppImage with `identity/id_pointsav-administrator` Ed25519 key
 - `[ ]` Upload to software.pointsav.com at $1 USDC (after three-node mesh test passes)
+  - Three-node mesh verified (D7): Laptop A + foundry-workspace + iMac
+- `[ ]` Sign daemon binary with `identity/id_pointsav-administrator` Ed25519 key
+- `[ ]` Send daemon binary to project-software for BETA listing on software.pointsav.com:
+  - Gate: binary builds clean (DONE — 526 KB ELF x86-64)
+  - Send outbox to project-software: binary path + sig path + version `0.1.0-beta.1`
+  - Instruct project-software: BETA label, payment disconnected, CLI curl download URL
+  - Include system requirements: CAP_NET_ADMIN, WireGuard kernel module, x86-64 Linux
+  - project-software also needs to build full product catalog page structure (all projects)
+  - Do NOT wait for D7 mesh test — BETA upload is for proof-of-existence
+  - D7 mesh test gates the PAID listing ($1 USDC) only — separate operator approval
 
 ## Phase S4 — Genesis Protocol
 
