@@ -11,6 +11,7 @@ use std::time::{Duration, Instant};
 
 use app_console_keys::cartridge::{Cartridge, CartridgeAction};
 use app_console_keys::fkey::FKey;
+use app_console_keys::{IntentArgs, IntentId, IntentScope, IntentSpec, MouseAffordance};
 
 use crate::health::{
     fetch_cost, fetch_queue, fetch_readyz, fetch_tier_a, fetch_yoyo, CostStatus, DoormanHealth,
@@ -443,6 +444,39 @@ impl Cartridge for SlmCartridge {
             }
         } else {
             CartridgeAction::None
+        }
+    }
+
+    fn intent_scope(&self) -> Option<&'static str> {
+        Some("slm")
+    }
+
+    fn intents(&self) -> Vec<IntentSpec> {
+        vec![
+            IntentSpec::new("slm.refresh", "Refresh dashboard", IntentScope::Cartridge("slm"))
+                .key("r")
+                .mouse(MouseAffordance::CLICK),
+            IntentSpec::new(
+                "slm.toggle_help",
+                "Toggle help overlay",
+                IntentScope::Cartridge("slm"),
+            )
+            .key("?")
+            .mouse(MouseAffordance::CLICK),
+        ]
+    }
+
+    fn dispatch(&mut self, id: IntentId, _args: &IntentArgs) -> CartridgeAction {
+        match id.0 {
+            "slm.refresh" => {
+                self.trigger_refresh();
+                CartridgeAction::Consumed
+            }
+            "slm.toggle_help" => {
+                self.show_help = !self.show_help;
+                CartridgeAction::Consumed
+            }
+            _ => CartridgeAction::None,
         }
     }
 }

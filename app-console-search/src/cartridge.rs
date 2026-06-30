@@ -1,7 +1,7 @@
 use std::sync::mpsc;
 use std::thread;
 
-use app_console_keys::{Cartridge, CartridgeAction, FKey};
+use app_console_keys::{Cartridge, CartridgeAction, FKey, IntentArgs, IntentId, IntentScope, IntentSpec, MouseAffordance};
 use crossterm::event::{Event, KeyCode, KeyModifiers};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
@@ -469,5 +469,35 @@ impl Cartridge for SearchCartridge {
         }
 
         CartridgeAction::None
+    }
+
+    fn intent_scope(&self) -> Option<&'static str> {
+        Some("search")
+    }
+
+    fn intents(&self) -> Vec<IntentSpec> {
+        vec![
+            IntentSpec::new(
+                "search.send_to_content",
+                "Send result to Content",
+                IntentScope::Cartridge("search"),
+            )
+            .key("s")
+            .mouse(MouseAffordance::CLICK),
+        ]
+    }
+
+    fn dispatch(&mut self, id: IntentId, _args: &IntentArgs) -> CartridgeAction {
+        match id.0 {
+            "search.send_to_content" => {
+                if let SearchState::Results { selected, results, .. } = &self.state {
+                    if let Some(r) = results.get(*selected) {
+                        return CartridgeAction::SendToContent(r.title.clone());
+                    }
+                }
+                CartridgeAction::Consumed
+            }
+            _ => CartridgeAction::None,
+        }
     }
 }

@@ -2,6 +2,7 @@ use std::sync::mpsc;
 use std::thread;
 use std::time::Instant;
 
+use app_console_keys::{IntentArgs, IntentId, IntentScope, IntentSpec, MouseAffordance};
 use app_console_keys::motion::{self, Anim};
 use app_console_keys::session::SessionState;
 use app_console_keys::{Cartridge, CartridgeAction, FKey};
@@ -1895,6 +1896,134 @@ impl Cartridge for ContentCartridge {
                 .and_then(|s| s.execute(Print(osc8)));
         }
     }
+
+    fn intent_scope(&self) -> Option<&'static str> {
+        Some("content")
+    }
+
+    fn intents(&self) -> Vec<IntentSpec> {
+        vec![
+            IntentSpec::new(
+                "content.submit",
+                "Submit for proofreading",
+                IntentScope::Cartridge("content"),
+            )
+            .key("ctrl-s")
+            .mouse(MouseAffordance::CLICK),
+            IntentSpec::new(
+                "content.accept",
+                "Accept proofreading result",
+                IntentScope::Cartridge("content"),
+            )
+            .key("a")
+            .mouse(MouseAffordance::CLICK),
+            IntentSpec::new(
+                "content.reject",
+                "Reject proofreading result",
+                IntentScope::Cartridge("content"),
+            )
+            .key("r")
+            .mouse(MouseAffordance::CLICK),
+            IntentSpec::new(
+                "content.pick_protocol",
+                "Select language protocol",
+                IntentScope::Cartridge("content"),
+            )
+            .key("tab")
+            .mouse(MouseAffordance::CLICK),
+        ]
+    }
+
+    fn dispatch(&mut self, id: IntentId, _args: &IntentArgs) -> CartridgeAction {
+        match id.0 {
+            "content.submit" => {
+                if let ContentState::Input { protocol_idx } = self.state {
+                    let text = self.textarea.lines().join("\n");
+                    if text.trim().is_empty() {
+                        return CartridgeAction::None;
+                    }
+                    let text = text.trim().to_string();
+                    let protocol = PROTOCOLS[protocol_idx].0.to_string();
+                    let tenant = self.tenant.clone();
+                    let endpoint = self.proof_endpoint.clone();
+                    let cert = self.tls_cert_pem.clone();
+                    let text_clone = text.clone();
+                    let (tx, rx) = mpsc::channel();
+                    thread::spawn(move || {
+                        let _ = tx.send(proofreader::submit_proofread(
+                            &text_clone,
+                            &protocol,
+                            &tenant,
+                            &endpoint,
+                            cert.as_deref(),
+                        ));
+                    });
+                    self.state = ContentState::Submitting {
+                        original: text,
+                        protocol_idx,
+                        rx,
+                        wait_since: Instant::now(),
+                    };
+                    CartridgeAction::Consumed
+                } else {
+                    CartridgeAction::None
+                }
+            }
+            "content.accept" => {
+                if let ContentState::Results { response, .. } = &self.state {
+                    let rid = response.request_id.clone();
+                    let tenant = self.tenant.clone();
+                    let endpoint = self.proof_endpoint.clone();
+                    let cert = self.tls_cert_pem.clone();
+                    thread::spawn(move || {
+                        let _ = proofreader::post_verdict(
+                            &rid,
+                            &tenant,
+                            "accept",
+                            &endpoint,
+                            cert.as_deref(),
+                        );
+                    });
+                }
+                self.reset_textarea(DEFAULT_PROTOCOL_IDX);
+                CartridgeAction::Consumed
+            }
+            "content.reject" => {
+                if let ContentState::Results { response, .. } = &self.state {
+                    let rid = response.request_id.clone();
+                    let tenant = self.tenant.clone();
+                    let endpoint = self.proof_endpoint.clone();
+                    let cert = self.tls_cert_pem.clone();
+                    thread::spawn(move || {
+                        let _ = proofreader::post_verdict(
+                            &rid,
+                            &tenant,
+                            "reject",
+                            &endpoint,
+                            cert.as_deref(),
+                        );
+                    });
+                }
+                self.reset_textarea(DEFAULT_PROTOCOL_IDX);
+                CartridgeAction::Consumed
+            }
+            "content.pick_protocol" => {
+                if let ContentState::Input { protocol_idx } = self.state {
+                    let saved: Vec<String> =
+                        self.textarea.lines().iter().map(|s| s.to_string()).collect();
+                    self.state = ContentState::PickProtocol {
+                        saved_text: saved,
+                        selected: protocol_idx,
+                    };
+                    CartridgeAction::Consumed
+                } else {
+                    CartridgeAction::None
+                }
+            }
+            _ => CartridgeAction::None,
+        }
+    }
+
 }
 
 #[cfg(test)]

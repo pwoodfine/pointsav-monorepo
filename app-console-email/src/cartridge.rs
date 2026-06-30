@@ -12,6 +12,7 @@ use std::time::Duration;
 
 use app_console_keys::cartridge::{Cartridge, CartridgeAction};
 use app_console_keys::fkey::FKey;
+use app_console_keys::{IntentArgs, IntentId, IntentScope, IntentSpec, MouseAffordance};
 
 #[derive(Debug, Clone, Deserialize, Default)]
 pub struct EmailSummary {
@@ -609,6 +610,59 @@ impl Cartridge for EmailCartridge {
             }
         } else {
             CartridgeAction::None
+        }
+    }
+
+    fn intent_scope(&self) -> Option<&'static str> {
+        Some("email")
+    }
+
+    fn intents(&self) -> Vec<IntentSpec> {
+        vec![
+            IntentSpec::new(
+                "email.compose",
+                "Compose new email",
+                IntentScope::Cartridge("email"),
+            )
+            .key("n")
+            .mouse(MouseAffordance::CLICK),
+            IntentSpec::new(
+                "email.refresh",
+                "Refresh inbox",
+                IntentScope::Cartridge("email"),
+            )
+            .key("r")
+            .mouse(MouseAffordance::CLICK),
+            IntentSpec::new(
+                "email.reply",
+                "Reply to message",
+                IntentScope::Cartridge("email"),
+            )
+            .key("r")
+            .mouse(MouseAffordance::CLICK),
+        ]
+    }
+
+    fn dispatch(&mut self, id: IntentId, _args: &IntentArgs) -> CartridgeAction {
+        match id.0 {
+            "email.compose" => {
+                self.start_compose();
+                CartridgeAction::Consumed
+            }
+            "email.refresh" => {
+                if matches!(self.state, EmailState::InboxList) {
+                    self.status = "Refreshing...".into();
+                    let _ = self.refresh_tx.try_send(());
+                }
+                CartridgeAction::Consumed
+            }
+            "email.reply" => {
+                if matches!(self.state, EmailState::ReadMessage) {
+                    self.start_reply();
+                }
+                CartridgeAction::Consumed
+            }
+            _ => CartridgeAction::None,
         }
     }
 }
