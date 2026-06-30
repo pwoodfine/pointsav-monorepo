@@ -270,7 +270,10 @@ fn inner_main() -> anyhow::Result<()> {
         &p.ingest_endpoint,
     )));
     chassis.register(Box::new(SlmCartridge::new(&p.slm_endpoint, p.plain_mode)));
-    chassis.register(Box::new(SystemCartridge::new(&p.pair_endpoint)));
+    chassis.register(Box::new(SystemCartridge::new(
+        &p.pair_endpoint,
+        &p.content_endpoint,
+    )));
     metrics::spawn_metrics_server(p.metrics_port);
     let _ = ctrlc::set_handler(|| {
         app_console_keys::request_shutdown();

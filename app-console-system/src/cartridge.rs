@@ -13,10 +13,19 @@ use ratatui::{
     Frame,
 };
 
+use crate::peers::{self, PeerRecord};
 use crate::pending::{self, PendingRequest};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum SystemView {
+    Pending,
+    Peers,
+}
 
 pub struct SystemCartridge {
     base_url: String,
+    content_endpoint: String,
+    view: SystemView,
     pending: Vec<PendingRequest>,
     selected: usize,
     // Feedback line shown after approve/deny action.
@@ -27,14 +36,23 @@ pub struct SystemCartridge {
     // Whether the fingerprint detail block is visible for the selected request.
     show_fingerprint: bool,
     truecolor: bool,
+    // Peers (paired nodes) — service-content GET /v1/pairs.
+    peers: Vec<PeerRecord>,
+    peers_selected: usize,
+    peers_poll_rx: mpsc::Receiver<Vec<PeerRecord>>,
+    peers_feedback: Option<String>,
 }
 
 impl SystemCartridge {
-    pub fn new(base_url: impl Into<String>) -> Self {
+    pub fn new(base_url: impl Into<String>, content_endpoint: impl Into<String>) -> Self {
         let base_url = base_url.into();
+        let content_endpoint = content_endpoint.into();
         let poll_rx = Self::spawn_poller(base_url.clone());
+        let peers_poll_rx = Self::spawn_peers_poller(content_endpoint.clone());
         Self {
             base_url,
+            content_endpoint,
+            view: SystemView::Pending,
             pending: Vec::new(),
             selected: 0,
             feedback: None,
@@ -42,6 +60,10 @@ impl SystemCartridge {
             last_manual_refresh: Instant::now(),
             show_fingerprint: false,
             truecolor: false,
+            peers: Vec::new(),
+            peers_selected: 0,
+            peers_poll_rx,
+            peers_feedback: None,
         }
     }
 
@@ -96,6 +118,58 @@ impl SystemCartridge {
             self.pending = list;
             if self.selected >= self.pending.len() {
                 self.selected = self.pending.len().saturating_sub(1);
+            }
+        }
+    }
+
+    fn spawn_peers_poller(content_endpoint: String) -> mpsc::Receiver<Vec<PeerRecord>> {
+        let (tx, rx) = mpsc::channel();
+        std::thread::spawn(move || loop {
+            match peers::fetch_peers(&content_endpoint) {
+                Ok(list) => {
+                    if tx.send(list).is_err() {
+                        break;
+                    }
+                }
+                Err(_) => {
+                    // Silently swallow poll errors (network blip); keep stale data displayed.
+                    if tx.send(Vec::new()).is_err() {
+                        break;
+                    }
+                }
+            }
+            // Peers change far less often than pending approvals — poll at a slower cadence.
+            std::thread::sleep(Duration::from_secs(15));
+        });
+        rx
+    }
+
+    fn drain_peers_poll(&mut self) {
+        let mut latest: Option<Vec<PeerRecord>> = None;
+        while let Ok(list) = self.peers_poll_rx.try_recv() {
+            latest = Some(list);
+        }
+        if let Some(list) = latest {
+            if !list.is_empty() || self.peers.is_empty() {
+                self.peers = list;
+            }
+            if self.peers_selected >= self.peers.len() {
+                self.peers_selected = self.peers.len().saturating_sub(1);
+            }
+        }
+    }
+
+    fn refresh_peers_now(&mut self) {
+        match peers::fetch_peers(&self.content_endpoint) {
+            Ok(list) => {
+                self.peers = list;
+                if self.peers_selected >= self.peers.len() {
+                    self.peers_selected = self.peers.len().saturating_sub(1);
+                }
+                self.peers_feedback = None;
+            }
+            Err(e) => {
+                self.peers_feedback = Some(format!("Error: {e}"));
             }
         }
     }
@@ -166,6 +240,7 @@ impl Cartridge for SystemCartridge {
 
     fn tick(&mut self) {
         self.drain_poll();
+        self.drain_peers_poll();
     }
 
     fn pending_badge(&self) -> u16 {
@@ -208,13 +283,43 @@ impl Cartridge for SystemCartridge {
     }
 
     fn render(&mut self, frame: &mut Frame, area: Rect) {
+        let title = match self.view {
+            SystemView::Pending => " F11: System — Operator Panel [Pending] ",
+            SystemView::Peers => " F11: System — Operator Panel [Peers] ",
+        };
         let block = Block::default()
             .borders(Borders::ALL)
             .border_style(Style::default().fg(self.muted_color()))
-            .title(" F11: System — Operator Panel ");
+            .title(title);
         let inner = block.inner(area);
         frame.render_widget(block, area);
 
+        match self.view {
+            SystemView::Pending => self.render_pending(frame, inner),
+            SystemView::Peers => self.render_peers(frame, inner),
+        }
+    }
+
+    fn handle_event(&mut self, event: &Event) -> CartridgeAction {
+        if let Event::Key(key) = event {
+            if key.code == KeyCode::Tab {
+                self.view = match self.view {
+                    SystemView::Pending => SystemView::Peers,
+                    SystemView::Peers => SystemView::Pending,
+                };
+                return CartridgeAction::Consumed;
+            }
+            return match self.view {
+                SystemView::Pending => self.handle_pending_event(key.code),
+                SystemView::Peers => self.handle_peers_event(key.code),
+            };
+        }
+        CartridgeAction::None
+    }
+}
+
+impl SystemCartridge {
+    fn render_pending(&mut self, frame: &mut Frame, inner: Rect) {
         let fp_height = if self.show_fingerprint && !self.pending.is_empty() {
             3u16
         } else {
@@ -340,44 +445,156 @@ impl Cartridge for SystemCartridge {
         frame.render_widget(Paragraph::new(hint), chunks[3]);
     }
 
-    fn handle_event(&mut self, event: &Event) -> CartridgeAction {
-        if let Event::Key(key) = event {
-            match key.code {
-                KeyCode::Up | KeyCode::Char('k') => {
-                    if !self.pending.is_empty() {
-                        self.selected = self.selected.saturating_sub(1);
-                    }
-                    return CartridgeAction::Consumed;
+    fn handle_pending_event(&mut self, code: KeyCode) -> CartridgeAction {
+        match code {
+            KeyCode::Up | KeyCode::Char('k') => {
+                if !self.pending.is_empty() {
+                    self.selected = self.selected.saturating_sub(1);
                 }
-                KeyCode::Down | KeyCode::Char('j') => {
-                    if !self.pending.is_empty() {
-                        self.selected =
-                            (self.selected + 1).min(self.pending.len().saturating_sub(1));
-                    }
-                    return CartridgeAction::Consumed;
-                }
-                KeyCode::Enter => {
-                    self.do_approve();
-                    return CartridgeAction::Consumed;
-                }
-                KeyCode::Char('d') | KeyCode::Char('D') => {
-                    self.do_deny();
-                    return CartridgeAction::Consumed;
-                }
-                KeyCode::Char('r') | KeyCode::Char('R') => {
-                    self.feedback = None;
-                    self.refresh_now();
-                    return CartridgeAction::Consumed;
-                }
-                KeyCode::Char('?') => {
-                    if !self.pending.is_empty() {
-                        self.show_fingerprint = !self.show_fingerprint;
-                    }
-                    return CartridgeAction::Consumed;
-                }
-                _ => {}
+                CartridgeAction::Consumed
             }
+            KeyCode::Down | KeyCode::Char('j') => {
+                if !self.pending.is_empty() {
+                    self.selected = (self.selected + 1).min(self.pending.len().saturating_sub(1));
+                }
+                CartridgeAction::Consumed
+            }
+            KeyCode::Enter => {
+                self.do_approve();
+                CartridgeAction::Consumed
+            }
+            KeyCode::Char('d') | KeyCode::Char('D') => {
+                self.do_deny();
+                CartridgeAction::Consumed
+            }
+            KeyCode::Char('r') | KeyCode::Char('R') => {
+                self.feedback = None;
+                self.refresh_now();
+                CartridgeAction::Consumed
+            }
+            KeyCode::Char('?') => {
+                if !self.pending.is_empty() {
+                    self.show_fingerprint = !self.show_fingerprint;
+                }
+                CartridgeAction::Consumed
+            }
+            _ => CartridgeAction::None,
         }
-        CartridgeAction::None
+    }
+
+    fn render_peers(&mut self, frame: &mut Frame, inner: Rect) {
+        let chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Length(2), // heading
+                Constraint::Fill(1),   // list
+                Constraint::Length(1), // feedback / hint
+            ])
+            .split(inner);
+
+        let heading = Paragraph::new(Line::from(vec![
+            Span::styled(
+                "Paired Nodes",
+                Style::default()
+                    .fg(Color::White)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(
+                format!("  ({})", self.peers.len()),
+                Style::default().fg(self.muted_color()),
+            ),
+        ]));
+        frame.render_widget(heading, chunks[0]);
+
+        if self.peers.is_empty() {
+            let msg = Paragraph::new(Line::from(Span::styled(
+                "  No paired nodes.",
+                Style::default().fg(self.muted_color()),
+            )));
+            frame.render_widget(msg, chunks[1]);
+        } else {
+            let items: Vec<ListItem> = self
+                .peers
+                .iter()
+                .enumerate()
+                .map(|(i, peer)| {
+                    let marker = if i == self.peers_selected { ">" } else { " " };
+                    let ts = peer.paired_on.get(..19).unwrap_or(&peer.paired_on);
+                    let scope = if peer.archive_scope.is_empty() {
+                        "(all)".to_string()
+                    } else {
+                        peer.archive_scope.join(",")
+                    };
+                    let line = Line::from(vec![
+                        Span::styled(
+                            format!(" {marker} "),
+                            Style::default().fg(self.accent_color()),
+                        ),
+                        Span::styled(
+                            format!("{:<16}", peer.node_label),
+                            Style::default()
+                                .fg(self.accent_color())
+                                .add_modifier(Modifier::BOLD),
+                        ),
+                        Span::styled(
+                            format!("{:<13}", peer.role),
+                            Style::default().fg(Color::White),
+                        ),
+                        Span::styled(
+                            format!("{:<22}", peer.peer_type),
+                            Style::default().fg(self.muted_color()),
+                        ),
+                        Span::styled(
+                            format!("{:<28}", scope),
+                            Style::default().fg(self.muted_color()),
+                        ),
+                        Span::styled(ts.to_string(), Style::default().fg(self.muted_color())),
+                    ]);
+                    if i == self.peers_selected {
+                        ListItem::new(line).style(Style::default().bg(self.muted_color()))
+                    } else {
+                        ListItem::new(line)
+                    }
+                })
+                .collect();
+            frame.render_widget(List::new(items), chunks[1]);
+        }
+
+        let hint = if let Some(msg) = &self.peers_feedback {
+            Line::from(Span::styled(
+                msg.clone(),
+                Style::default().fg(self.warn_color()),
+            ))
+        } else {
+            Line::from(vec![
+                Span::styled("[Tab] pending  ", Style::default().fg(self.muted_color())),
+                Span::styled("[R] refresh  ", Style::default().fg(self.muted_color())),
+                Span::styled("[↑↓] select", Style::default().fg(self.muted_color())),
+            ])
+        };
+        frame.render_widget(Paragraph::new(hint), chunks[2]);
+    }
+
+    fn handle_peers_event(&mut self, code: KeyCode) -> CartridgeAction {
+        match code {
+            KeyCode::Up | KeyCode::Char('k') => {
+                if !self.peers.is_empty() {
+                    self.peers_selected = self.peers_selected.saturating_sub(1);
+                }
+                CartridgeAction::Consumed
+            }
+            KeyCode::Down | KeyCode::Char('j') => {
+                if !self.peers.is_empty() {
+                    self.peers_selected =
+                        (self.peers_selected + 1).min(self.peers.len().saturating_sub(1));
+                }
+                CartridgeAction::Consumed
+            }
+            KeyCode::Char('r') | KeyCode::Char('R') => {
+                self.refresh_peers_now();
+                CartridgeAction::Consumed
+            }
+            _ => CartridgeAction::None,
+        }
     }
 }
