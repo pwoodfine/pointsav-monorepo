@@ -1,15 +1,21 @@
 # NEXT.md — app-mediakit-knowledge
 
-> Last updated: 2026-06-30 (session 21 — per-instance categories bug fix)
+> Last updated: 2026-06-30 (session 22 — cat-grid fix)
 > **SOURCE OF TRUTH:** `.agent/briefs/BRIEF-phase2-redesign.md` — read this first.
+
+## Session 22 — cat-grid fix — 2026-06-30
+
+**Committed:** `7d0d8a62` (jwoodfine) — home-page category grid was gated by `brand_instance == "documentation"` causing zero cards on projects + corporate. Added `CAT_ACCENT_PALETTE`, `@else` branch in `home_chrome` using `ratified_categories` + `humanize_category()` + `cat_descriptions`. 143/143 tests pass. Installed to foundry-workspace — all 3 instances show correct cat-cards.
+
+**Stage 6 pending (both commits):** detailed message sent to Command inbox via MCP (`command-20260630-stage-6-app-mediakit-knowledge-two-commi`). Covers `d4b0ae3e` + `7d0d8a62` in sequence, config lines for foundry-prod `/etc/local-knowledge/*.toml`, 8-step checklist.
+
+**Live site status:** documentation.pointsav.com correct ✅; projects + corporate showing old binary ❌ — pending Command Stage 6 + prod rebuild.
 
 ## Session 21 — per-instance categories fix — 2026-06-30
 
 **Committed:** `d4b0ae3e` (jwoodfine) — `site_categories` field on `AppState`; `categories` in `SiteConfig`; `ratified_categories()` helper; `home_chrome` + `wiki_chrome` parameterised. 23 files, 139/139 tests.
 
-**Stage 6 pending:** outbox sent to Command (`project-knowledge-20260630-stage6-categories-fix`). Command must promote + rebuild on foundry-prod. project-software is waiting on confirmed binary SHA before listing the BETA product.
-
-**Config live on foundry-workspace:** operator applied `categories = [...]` to all three `/etc/local-knowledge/*.toml` files.
+**Stage 6 pending:** outbox sent to Command. Config live on foundry-workspace.
 
 ## Phase 4 Wikipedia-effect — COMPLETE (2026-06-25 session)
 
