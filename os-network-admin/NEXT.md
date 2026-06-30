@@ -58,6 +58,8 @@
   - Signed 2026-06-29: SHA256 `a3becd581fb841fc9bc8893b6a6a5fbecc87dd1ca37a787f3430d511263a14ec`
   - Sig at `/srv/foundry/cargo-target/mathew/release/os-network-admin.sig` (294 B)
 - `[x]` Send daemon binary to project-software for BETA listing on software.pointsav.com:
+- `[ ]` Sign daemon binary with `identity/id_pointsav-administrator` Ed25519 key
+- `[ ]` Send daemon binary to project-software for BETA listing on software.pointsav.com:
   - Gate: binary builds clean (DONE — 526 KB ELF x86-64)
   - Send outbox to project-software: binary path + sig path + version `0.1.0-beta.1`
   - Instruct project-software: BETA label, payment disconnected, CLI curl download URL
