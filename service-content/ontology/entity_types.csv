@@ -1,0 +1,6 @@
+label,description_projects,description_corporate,description_documentation,coa_link
+Person,"a named human individual — executive, broker, developer, or professional","a named human individual","a named developer, engineer, or contributor",Personal
+Company,"a named company, fund, REIT, or investment firm","a named company or organisation","a named company or technology organisation",Compliance|Collaborators|Finance|IT Support
+Project,"a named real estate development, building, property, or investment fund","a named business initiative, building, or fund","a named software project, service, crate, or library",Real Estate
+Location,"a named city, address, district, or country","a named city or country","a named server, deployment environment, or infrastructure location",Real Estate
+Account,"a named financial account, lease, or contract","a named financial account or contract","a named running service, system account, or API endpoint",Compliance

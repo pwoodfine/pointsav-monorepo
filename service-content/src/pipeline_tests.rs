@@ -7,7 +7,9 @@
 //
 // Pattern follows graph.rs tests: std::env::temp_dir() + LbugGraphStore::new.
 
-use crate::entity_filter::{coerce_classification, is_noise_entity_name, ALLOWED_CLASSIFICATIONS};
+use crate::entity_filter::{
+    coerce_classification, is_allowed_classification, is_noise_entity_name,
+};
 use crate::graph::{GraphEntity, GraphStore, LbugGraphStore};
 
 /// Run one entity through the full filter chain used in raw_entities_to_graph:
@@ -21,7 +23,7 @@ fn apply_filter(name: &str, classification: &str, module_id: &str) -> Option<Gra
         return None;
     }
     let coerced = coerce_classification(name, classification)?;
-    if !ALLOWED_CLASSIFICATIONS.contains(&coerced.as_str()) {
+    if !is_allowed_classification(&coerced) {
         return None;
     }
     Some(GraphEntity {

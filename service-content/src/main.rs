@@ -169,6 +169,11 @@ fn main() -> NotifyResult<()> {
         .expect("[SYSTEM] Failed to initialise graph schema");
     println!("[SYSTEM] Graph store ready: {}", graph_db_path);
 
+    // COA-driven entity type labels: load the classification vocabulary from
+    // entity_types.csv before any entity filtering runs. Additive — falls
+    // back to the compile-time ALLOWED_CLASSIFICATIONS if the CSV is absent.
+    entity_filter::init_ontology_classifications(&ontology_dir);
+
     // ── Startup taxonomy load ─────────────────────────────────────────────────
     match taxonomy::load_taxonomy_from_dir(&ontology_dir) {
         Ok(bundle) => {
@@ -1090,6 +1095,68 @@ fn call_tier_a_extract(
     }
 }
 
+/// Detects CSV-flavoured structured-data corpus text (e.g. CRM people
+/// exports emitted as `CORPUS_csv-people-*.json`) rather than prose. GLiNER's
+/// NER model correctly returns empty for these — there's no natural-language
+/// context to extract entities from — so callers should skip the Tier 0 call
+/// entirely and route straight to Tier A, which parses the delimited
+/// `Entity Name:` fields directly. Requires the marker on 2+ lines so prose
+/// that merely mentions "Entity Name" once isn't misrouted.
+fn is_csv_structured_data(text: &str) -> bool {
+    text.lines().filter(|l| l.contains("Entity Name:")).count() >= 2
+}
+
+/// Max chars per Tier A (OLMo 7B) chunk. Larger than GLINER_MAX_CHARS since
+/// OLMo's context window is far bigger than the GLiNER BERT encoder's ~512
+/// tokens — this still keeps prompt + system prompt + output comfortably
+/// inside a single chat-completion call.
+const TIER_A_MAX_CHARS: usize = 6000;
+
+/// Chunked wrapper around `call_tier_a_extract` — EQ5: long documents (10KB+
+/// Bloomberg articles) lose second-half entities in a single unchunked call.
+/// Splits via the same sentence-boundary chunker used for GLiNER, merges and
+/// dedupes entities across chunks. Returns `None` only when every chunk's
+/// call failed (Tier A genuinely unavailable) — a single-chunk document
+/// behaves exactly as the unchunked call did.
+fn call_tier_a_extract_chunked(
+    corpus_text: &str,
+    entity_schema: &serde_json::Value,
+    doorman_endpoint: &str,
+) -> Option<Vec<serde_json::Value>> {
+    let chunks = chunk_for_gliner(corpus_text, TIER_A_MAX_CHARS);
+    if chunks.len() == 1 {
+        return call_tier_a_extract(corpus_text, entity_schema, doorman_endpoint);
+    }
+
+    let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
+    let mut merged: Vec<serde_json::Value> = Vec::new();
+    let mut any_succeeded = false;
+    for chunk in &chunks {
+        if let Some(ents) = call_tier_a_extract(chunk, entity_schema, doorman_endpoint) {
+            any_succeeded = true;
+            for ent in ents {
+                let key = format!(
+                    "{}__{}",
+                    ent["entity_name"].as_str().unwrap_or("").to_lowercase(),
+                    ent["classification"].as_str().unwrap_or(""),
+                );
+                if seen.insert(key) {
+                    merged.push(ent);
+                }
+            }
+        }
+    }
+    if !any_succeeded {
+        return None;
+    }
+    println!(
+        "  -> [TIER-A] {} unique entities from {} chunks",
+        merged.len(),
+        chunks.len()
+    );
+    Some(merged)
+}
+
 /// Remove `<https://…>` and `<http://…>` inline URL fragments from a string.
 fn strip_inline_urls(s: &str) -> String {
     let mut out = String::with_capacity(s.len());
@@ -1344,7 +1411,7 @@ fn raw_entities_to_graph(
             // Reject out-of-vocabulary classifications. OLMo may emit values such as
             // "Licence" or "Technology" when the prompt omit list is insufficient.
             // Dropping them here prevents bad data from landing in LadybugDB.
-            if !entity_filter::ALLOWED_CLASSIFICATIONS.contains(&classification.as_str()) {
+            if !entity_filter::is_allowed_classification(&classification) {
                 drop_oov += 1;
                 return None;
             }
@@ -1802,7 +1869,34 @@ fn process_corpus(
     // pair: GLiNER=chosen (extractive, no hallucinations), OLMo=rejected (student).
     // When GLiNER returns Empty and OLMo finds entities the roles reverse so we
     // capture GLiNER's blind spots.  This fire-and-forget never blocks the drain.
-    let tier_0_entities: Option<Vec<serde_json::Value>> =
+    //
+    // CSV structured-data files (e.g. CORPUS_csv-people-*.json) have no natural-
+    // language context for GLiNER's NER model — it correctly returns empty.
+    // Skip the wasted Tier 0 round-trip and route straight to Tier A, which can
+    // parse delimited "Entity Name:" fields directly.
+    let tier_0_entities: Option<Vec<serde_json::Value>> = if is_csv_structured_data(corpus_text) {
+        println!(
+            "  -> [CSV] Structured-data pattern detected — skipping GLiNER, routing to Tier A."
+        );
+        if check_doorman_backpressure(doorman_endpoint, backpressure_threshold) {
+            eprintln!(
+                "[BACKPRESSURE] CSV structured-data + queue_pending > {} — deferring {}",
+                backpressure_threshold,
+                filepath.display()
+            );
+            return ExtractResult::DeferTransient;
+        }
+        let tier_a = call_tier_a_extract_chunked(corpus_text, &entity_schema, doorman_endpoint);
+        match &tier_a {
+            Some(ents) => println!(
+                "  -> [CSV/A] {} entities extracted via Tier A (module: {}).",
+                ents.len(),
+                effective_module_id
+            ),
+            None => println!("  -> [CSV/A] Tier A unavailable — proceeding to Tier B."),
+        }
+        tier_a
+    } else {
         match call_tier_0_gliner(corpus_text, domain_id) {
             GlinerOutcome::Found(ents) => {
                 println!(
@@ -1850,7 +1944,8 @@ fn process_corpus(
                     );
                     return ExtractResult::DeferTransient;
                 }
-                let tier_a = call_tier_a_extract(corpus_text, &entity_schema, doorman_endpoint);
+                let tier_a =
+                    call_tier_a_extract_chunked(corpus_text, &entity_schema, doorman_endpoint);
                 match &tier_a {
                     Some(ents) => println!(
                         "  -> [TIER-0/A] {} entities extracted via Tier A fallback (module: {}).",
@@ -1861,7 +1956,8 @@ fn process_corpus(
                 }
                 tier_a
             }
-        };
+        }
+    };
 
     // ── Step 2: Tier B extraction (OLMo 32B via /v1/extract) ─────────────────
     println!(
@@ -1942,7 +2038,11 @@ fn process_corpus(
                         // Transient: use Tier A if available, otherwise retry
                         if let Some(ta_ents) = &tier_0_entities {
                             if !ta_ents.is_empty() {
-                                let ge = raw_entities_to_graph(ta_ents, effective_module_id, 0.75);
+                                let mut ge =
+                                    raw_entities_to_graph(ta_ents, effective_module_id, 0.75);
+                                for e in &mut ge {
+                                    e.source_doc = Some(worm_id.to_string());
+                                }
                                 if let Ok(n) = graph_store.upsert_entities(effective_module_id, &ge)
                                 {
                                     println!(
@@ -2132,6 +2232,71 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("sc-test-{}-{}", suffix, ms));
         fs::create_dir_all(&dir).unwrap();
         dir
+    }
+
+    #[test]
+    fn is_csv_structured_data_detects_entity_name_rows() {
+        let csv_text =
+            "Entity Name: John Smith, Role: Broker\nEntity Name: Jane Doe, Role: Agent\n";
+        assert!(is_csv_structured_data(csv_text));
+    }
+
+    #[test]
+    fn is_csv_structured_data_ignores_single_mention_in_prose() {
+        let prose = "The Entity Name: field in our schema maps to the entity's display name.";
+        assert!(!is_csv_structured_data(prose));
+    }
+
+    #[test]
+    fn is_csv_structured_data_ignores_plain_prose() {
+        let prose = "Jennifer Woodfine met with PointSav Digital Systems in London today.";
+        assert!(!is_csv_structured_data(prose));
+    }
+
+    #[test]
+    fn chunk_for_gliner_single_chunk_under_limit() {
+        let text = "Short document. Three sentences here. Done.";
+        let chunks = chunk_for_gliner(text, 2000);
+        assert_eq!(chunks, vec![text]);
+    }
+
+    #[test]
+    fn chunk_for_gliner_splits_long_document_with_overlap() {
+        // Build a document well over the limit out of short sentences so we can
+        // verify both that it's split into multiple chunks AND that consecutive
+        // chunks overlap (no entity is lost at a chunk boundary).
+        let sentence = "Jennifer Woodfine met with PointSav Digital Systems today. ";
+        let text: String = sentence.repeat(50); // ~3050 chars
+        let chunks = chunk_for_gliner(&text, 1000);
+        assert!(chunks.len() > 1, "document over the limit must be split");
+        for c in &chunks {
+            assert!(
+                c.len() <= 1000 + 200,
+                "chunk must respect max_chars (+ small slack for sentence-boundary search)"
+            );
+        }
+        // Consecutive chunks overlap: the tail of chunk[i] reappears at the head of chunk[i+1].
+        for w in chunks.windows(2) {
+            let (a, b) = (w[0], w[1]);
+            let tail = &a[a.len().saturating_sub(100)..];
+            assert!(
+                b.starts_with(&tail[tail.len().saturating_sub(50)..])
+                    || b.contains(&tail[tail.len().saturating_sub(20)..]),
+                "consecutive chunks must overlap so boundary entities aren't lost"
+            );
+        }
+    }
+
+    #[test]
+    fn chunk_for_gliner_never_stalls_on_short_overlap_window() {
+        // Regression guard: a naive `start = end.saturating_sub(150)` overlap calc
+        // can fail to advance `start` when a chunk is <=150 chars, looping forever.
+        // chunk_for_gliner's `end > start + 150` guard must always make progress.
+        let text = "a".repeat(5000);
+        let chunks = chunk_for_gliner(&text, 100);
+        // If this returns at all (vs. hanging), progress was guaranteed on every step.
+        assert!(chunks.len() > 10);
+        assert!(chunks.concat().len() >= text.len());
     }
 
     #[test]
