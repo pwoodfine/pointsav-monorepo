@@ -571,9 +571,9 @@ fn home_chrome(
                     p.home-stats-oneliner {
                         (fmt_commas(stats.article_count))
                         " articles"
-                        @if brand_instance == "documentation" {
+                        @if !ratified_categories.is_empty() {
                             " · "
-                            (HOMEPAGE_CATEGORIES.len())
+                            (ratified_categories.len())
                             " categories"
                         }
                         @if let Some(ref d) = stats.last_updated {
@@ -710,6 +710,12 @@ type NavCacheMap = std::collections::HashMap<PathBuf, NavCacheEntry>;
 static NAV_CACHE: std::sync::OnceLock<tokio::sync::RwLock<NavCacheMap>> =
     std::sync::OnceLock::new();
 const NAV_TTL: std::time::Duration = std::time::Duration::from_secs(20);
+
+// Accent colours for non-documentation wiki category cards (cycles by index).
+const GENERIC_CAT_COLORS: &[&str] = &[
+    "#7c3aed", "#0d9488", "#164679", "#b45309",
+    "#4f46e5", "#c7a961", "#166534", "#dc2626",
+];
 
 /// Return the category buckets for the left navigation, parsing the content
 /// tree at most once per [`NAV_TTL`] window. The expensive frontmatter parse

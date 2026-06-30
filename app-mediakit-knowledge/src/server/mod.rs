@@ -1002,6 +1002,12 @@ const HOMEPAGE_CATEGORIES: &[(&str, &str, &str, &str, &[&str])] = &[
     ),
 ];
 
+/// Accent colours cycled across per-instance category cards (non-documentation instances).
+const CAT_ACCENT_PALETTE: &[&str] = &[
+    "#164679", "#0d9488", "#7c3aed", "#166534",
+    "#b45309", "#4f46e5", "#c7a961", "#9f1239",
+];
+
 // ─── Home-page helpers ──────────────────────────────────────────────────────
 
 /// A single topic file discovered during a recursive walk of `content_dir`.
