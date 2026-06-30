@@ -437,7 +437,7 @@ fn main() -> NotifyResult<()> {
                         .filter_map(|r| {
                             let subj = r.get("subject")?.as_str()?;
                             let pred = r.get("predicate")?.as_str()?;
-                            let obj  = r.get("object")?.as_str()?;
+                            let obj = r.get("object")?.as_str()?;
                             // Source-grounding: both endpoints must appear verbatim in corpus
                             if corpus_lower.contains(&subj.to_lowercase())
                                 && corpus_lower.contains(&obj.to_lowercase())
@@ -445,7 +445,7 @@ fn main() -> NotifyResult<()> {
                                 Some(RelatedToEdge {
                                     src_entity_name: subj.to_string(),
                                     tgt_entity_name: obj.to_string(),
-                                    relation_type:   pred.to_string(),
+                                    relation_type: pred.to_string(),
                                 })
                             } else {
                                 None
