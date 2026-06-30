@@ -28,6 +28,31 @@
   - Three-node mesh verified: Laptop A + foundry-workspace + iMac
 - `[ ]` Sign daemon AppImage with `identity/id_pointsav-administrator` Ed25519 key
 - `[ ]` Upload to software.pointsav.com at $1 USDC (after three-node mesh test passes)
+- `[x]` Add daemon build mode feature flag (done 2026-06-29):
+  - `Cargo.toml`: `[features] daemon = []` + `[workspace]` self-contained
+  - `src/fleet_watch.rs`: Phase S3 fleet watch loop — 30s poll, `wg set` via subprocess, WORM event append; 3/3 tests pass
+  - `src/main.rs`: `#[cfg(feature = "daemon")]` guards; Phase S1 UDP path preserved under `#[cfg(not(feature = "daemon"))]`
+  - `cargo build --release --features daemon` → ELF x86-64, 526 KB
+  - `scripts/package-appimage.sh`: AppImage scaffold (requires appimagetool on PATH)
+  - TODO: wire HTTP fleet polling (FLEET_URL) + HTTP WORM append (SERVICE_FS_URL) when fleet endpoint is live
+- `[x]` Package daemon as AppImage (Linux) — done 2026-06-29:
+  - appimagetool installed from AppImageKit release 13 (`obsolete-appimagetool-x86_64.AppImage`, APPIMAGE_EXTRACT_AND_RUN=1)
+  - `APPIMAGE_EXTRACT_AND_RUN=1 CARGO_TARGET_DIR=/srv/foundry/cargo-target/mathew ./scripts/package-appimage.sh 0.1.0-beta.1`
+  - Output: `os-network-admin-0.1.0-beta.1-x86_64.AppImage` (414 KB, gitignored)
+  - Binary deps: libc + libgcc_s only — works on any Linux Mint 21.x without bundling
+- `[ ]` Test daemon on iMac Linux Mint (Intel x86-64, 2010-2012) — **UNBLOCKED 2026-06-30**:
+  - **Live download URL (confirmed 200):** `https://software.pointsav.com/releases/os-network-admin/latest/x86_64`
+  - iMac already on WireGuard mesh at `10.8.0.7` — no WireGuard setup needed
+  - Dogfood install on iMac:
+    ```bash
+    curl -fsSL https://software.pointsav.com/releases/os-network-admin/latest/x86_64 -o os-network-admin
+    chmod +x os-network-admin
+    mkdir -p ~/.local/share/ppn
+    echo '{"public_key":"32i7rpMPWmABjs83ojsiW7spn/v+CPlWv2vBCIRJdDc=","wg_ip":"10.8.0.9"}' > ~/.local/share/ppn/nodes.jsonl
+    sudo APPIMAGE_EXTRACT_AND_RUN=1 WG_IFACE=wg0 NODES_JSONL_PATH=/home/$USER/.local/share/ppn/nodes.jsonl ./os-network-admin
+    ```
+  - Note: URL convention from project-software differs from spec — `/releases/.../latest/` not `/download/.../beta/`
+  - Confirm peer joins fleet (service-vm-fleet at foundry-workspace): `sudo wg show wg0`
   - Three-node mesh verified (D7): Laptop A + foundry-workspace + iMac
 - `[x]` Sign daemon binary with `identity/id_pointsav-administrator` Ed25519 key
   - Signed 2026-06-29: SHA256 `a3becd581fb841fc9bc8893b6a6a5fbecc87dd1ca37a787f3430d511263a14ec`
