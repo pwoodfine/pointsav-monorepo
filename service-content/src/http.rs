@@ -22,6 +22,7 @@ pub struct HttpState {
     pub doorman_endpoint: String,
     pub ontology_dir: String,
     pub corpus_dir: String,
+    #[allow(dead_code)]
     pub graph_dir: String,
     pub pairing_store: Mutex<PairingStore>,
     pub nonce_cache: NonceCache,
@@ -215,9 +216,13 @@ async fn graph_context(
             params.hops,
         )
     } else {
-        state.graph.query_context(&params.module_id, &params.q, params.limit)
+        state
+            .graph
+            .query_context(&params.module_id, &params.q, params.limit)
     };
-    result.map(Json).map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
+    result
+        .map(Json)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
 }
 
 async fn graph_mutate(
@@ -779,7 +784,10 @@ async fn issue_pair_token(
     let scope: Vec<String> = if q.archive_scope.is_empty() {
         vec![]
     } else {
-        q.archive_scope.split(',').map(|s| s.trim().to_string()).collect()
+        q.archive_scope
+            .split(',')
+            .map(|s| s.trim().to_string())
+            .collect()
     };
     let label = if q.node_label.is_empty() {
         "totebox"

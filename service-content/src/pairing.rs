@@ -67,6 +67,7 @@ pub enum PairError {
     Malformed,
     BadSignature,
     Expired,
+    #[allow(dead_code)]
     NonceReused,
 }
 
@@ -168,8 +169,7 @@ impl PairingStore {
 
     /// Persist a new pairing and return it.
     pub fn insert(&mut self, rec: PairingRecord) -> std::io::Result<()> {
-        let line = serde_json::to_string(&rec)
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+        let line = serde_json::to_string(&rec).map_err(std::io::Error::other)?;
 
         let mut f = std::fs::OpenOptions::new()
             .create(true)
@@ -222,7 +222,7 @@ impl PairingKeypair {
             let mut f = std::fs::File::open("/dev/urandom")?;
             use std::io::Read as _;
             f.read_exact(&mut s)?;
-            std::fs::write(&seed_path, &s)?;
+            std::fs::write(&seed_path, s)?;
             s
         };
 
@@ -244,8 +244,11 @@ impl PairingKeypair {
                 use std::io::Read as _;
                 let _ = f.read_exact(&mut b);
             }
-            format!("{:x}{:x}", u64::from_le_bytes(b[..8].try_into().unwrap_or_default()),
-                                 u64::from_le_bytes(b[8..].try_into().unwrap_or_default()))
+            format!(
+                "{:x}{:x}",
+                u64::from_le_bytes(b[..8].try_into().unwrap_or_default()),
+                u64::from_le_bytes(b[8..].try_into().unwrap_or_default())
+            )
         };
 
         let payload = TokenPayload {
