@@ -354,7 +354,9 @@ fn main() -> NotifyResult<()> {
                         .collect();
                     if !grounded.is_empty() {
                         let mut ge = raw_entities_to_graph(&grounded, &job.module_id, 0.65);
-                        for e in &mut ge { e.source_doc = Some(job.worm_id.clone()); }
+                        for e in &mut ge {
+                            e.source_doc = Some(job.worm_id.clone());
+                        }
                         match gs_worker.upsert_entities(&job.module_id, &ge) {
                             Ok(n) => {
                                 if n > 0 {
@@ -364,10 +366,9 @@ fn main() -> NotifyResult<()> {
                                     );
                                 }
                             }
-                            Err(e) => eprintln!(
-                                "[TIER-A] Graph write failed for {}: {}",
-                                job.worm_id, e
-                            ),
+                            Err(e) => {
+                                eprintln!("[TIER-A] Graph write failed for {}: {}", job.worm_id, e)
+                            }
                         }
                     }
                 }
@@ -380,7 +381,7 @@ fn main() -> NotifyResult<()> {
                         .filter_map(|r| {
                             let subj = r.get("subject")?.as_str()?;
                             let pred = r.get("predicate")?.as_str()?;
-                            let obj  = r.get("object")?.as_str()?;
+                            let obj = r.get("object")?.as_str()?;
                             // Source-grounding: both endpoints must appear verbatim in corpus
                             if corpus_lower.contains(&subj.to_lowercase())
                                 && corpus_lower.contains(&obj.to_lowercase())
@@ -388,7 +389,7 @@ fn main() -> NotifyResult<()> {
                                 Some(RelatedToEdge {
                                     src_entity_name: subj.to_string(),
                                     tgt_entity_name: obj.to_string(),
-                                    relation_type:   pred.to_string(),
+                                    relation_type: pred.to_string(),
                                 })
                             } else {
                                 None
@@ -434,15 +435,14 @@ fn main() -> NotifyResult<()> {
 
         // Optional env var: comma-separated module IDs whose CORPUS files drain first.
         // Uses a 1024-byte header scan — fast heuristic, no full JSON parse.
-        let priority_ids: std::collections::HashSet<String> = std::env::var(
-            "CORPUS_PRIORITY_MODULE_IDS",
-        )
-        .unwrap_or_default()
-        .split(',')
-        .map(str::trim)
-        .filter(|s| !s.is_empty())
-        .map(str::to_string)
-        .collect();
+        let priority_ids: std::collections::HashSet<String> =
+            std::env::var("CORPUS_PRIORITY_MODULE_IDS")
+                .unwrap_or_default()
+                .split(',')
+                .map(str::trim)
+                .filter(|s| !s.is_empty())
+                .map(str::to_string)
+                .collect();
 
         let corpus_files: Vec<std::path::PathBuf> = fs::read_dir(Path::new(&corpus_dir))
             .into_iter()
@@ -465,18 +465,18 @@ fn main() -> NotifyResult<()> {
             let is_priority = |p: &std::path::PathBuf| -> bool {
                 use std::io::Read;
                 let mut buf = [0u8; 1024];
-                let Ok(mut f) = std::fs::File::open(p) else { return false };
+                let Ok(mut f) = std::fs::File::open(p) else {
+                    return false;
+                };
                 let n = f.read(&mut buf).unwrap_or(0);
                 let head = std::str::from_utf8(&buf[..n]).unwrap_or("");
                 priority_ids.iter().any(|id| head.contains(id.as_str()))
             };
-            let (hi, lo): (Vec<_>, Vec<_>) =
-                corpus_files.into_iter().partition(is_priority);
+            let (hi, lo): (Vec<_>, Vec<_>) = corpus_files.into_iter().partition(is_priority);
             hi.into_iter().chain(lo).collect()
         };
 
-        let queue: Arc<Mutex<VecDeque<std::path::PathBuf>>> =
-            Arc::new(Mutex::new(queue_deque));
+        let queue: Arc<Mutex<VecDeque<std::path::PathBuf>>> = Arc::new(Mutex::new(queue_deque));
 
         let done_files: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
         let defer_files: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
@@ -512,7 +512,17 @@ fn main() -> NotifyResult<()> {
                     None => continue,
                 };
                 let mut tier_b_used = false;
-                let result = process_corpus(&path, &cd, &de, &mid, &gs, &fd, &mut tier_b_used, bpt, Some(&tx_clone));
+                let result = process_corpus(
+                    &path,
+                    &cd,
+                    &de,
+                    &mid,
+                    &gs,
+                    &fd,
+                    &mut tier_b_used,
+                    bpt,
+                    Some(&tx_clone),
+                );
                 if matches!(result, ExtractResult::Success) {
                     write_tier_progress(
                         &tp,
@@ -927,7 +937,10 @@ fn call_tier_a_combined(
     corpus_text: &str,
     doorman_endpoint: &str,
 ) -> (Vec<serde_json::Value>, Vec<serde_json::Value>) {
-    let combined_prompt = format!("{}{}", EXTRACTION_SYSTEM_PROMPT, RELATION_EXTRACTION_ADDITION);
+    let combined_prompt = format!(
+        "{}{}",
+        EXTRACTION_SYSTEM_PROMPT, RELATION_EXTRACTION_ADDITION
+    );
     let schema = relation_extraction_schema();
     let use_grammar = std::env::var("SERVICE_CONTENT_TIER_A_GRAMMAR")
         .map(|v| v == "json_schema")
@@ -991,14 +1004,8 @@ fn call_tier_a_combined(
             .unwrap_or(content.trim());
         let content = content.strip_suffix("```").unwrap_or(content).trim();
         if let Ok(v) = serde_json::from_str::<serde_json::Value>(content) {
-            let entities = v["entities"]
-                .as_array()
-                .cloned()
-                .unwrap_or_default();
-            let relations = v["relations"]
-                .as_array()
-                .cloned()
-                .unwrap_or_default();
+            let entities = v["entities"].as_array().cloned().unwrap_or_default();
+            let relations = v["relations"].as_array().cloned().unwrap_or_default();
             return (entities, relations);
         }
     }
@@ -1091,7 +1098,7 @@ fn strip_inline_urls(s: &str) -> String {
         if c == '<' {
             let rest: String = chars.clone().take(8).collect();
             if rest.starts_with("https://") || rest.starts_with("http://") {
-                while let Some(c2) = chars.next() {
+                for c2 in chars.by_ref() {
                     if c2 == '>' {
                         break;
                     }
@@ -1107,10 +1114,10 @@ fn strip_inline_urls(s: &str) -> String {
 /// Clean web-scraped corpus text before entity extraction.
 /// Removes nav links, inline URLs, and Unicode box-drawing/block characters.
 /// Clean Bloomberg/PDF text passes through unchanged (fast path).
-fn preprocess_corpus_text(text: &str) -> std::borrow::Cow<str> {
+fn preprocess_corpus_text(text: &str) -> std::borrow::Cow<'_, str> {
     let needs_clean = text.contains('<')
         || text.contains('\u{fffd}')
-        || text.chars().any(|c| matches!(c as u32, 0x2500..=0x259F | 0x25A0..=0x25FF));
+        || text.chars().any(|c| matches!(c as u32, 0x2500..=0x25FF));
     if !needs_clean {
         return std::borrow::Cow::Borrowed(text);
     }
@@ -1171,7 +1178,7 @@ fn chunk_for_gliner(text: &str, max_chars: usize) -> Vec<&str> {
         // Prefer cutting at the last sentence boundary within the window.
         let end = if raw_end < text.len() {
             text[start..raw_end]
-                .rfind(|c: char| c == '.' || c == '!' || c == '?')
+                .rfind(['.', '!', '?'])
                 .map(|rel| start + rel + 1)
                 .unwrap_or(raw_end)
         } else {
@@ -1548,7 +1555,9 @@ fn write_gliner_olmo_dpo_pair(
         v.sort_by_key(|e| {
             format!(
                 "{}__{}",
-                e.get("classification").and_then(|v| v.as_str()).unwrap_or(""),
+                e.get("classification")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or(""),
                 e.get("entity_name").and_then(|v| v.as_str()).unwrap_or(""),
             )
         });
@@ -1765,15 +1774,13 @@ fn process_corpus(
     //   "documentation" is the Foundry ontology domain for technical content; it maps
     //   directly to domain_documentation.csv in the ontology directory.
     // - Everything else falls to service-gliner DEFAULT_DOMAIN ("projects")
-    let domain_id: Option<&str> = payload["domain_id"]
-        .as_str()
-        .or_else(|| {
-            if worm_id.starts_with("DOC_session-") || worm_id.starts_with("DOC_sweep-") {
-                Some("documentation")
-            } else {
-                None
-            }
-        });
+    let domain_id: Option<&str> = payload["domain_id"].as_str().or_else(|| {
+        if worm_id.starts_with("DOC_session-") || worm_id.starts_with("DOC_sweep-") {
+            Some("documentation")
+        } else {
+            None
+        }
+    });
 
     if corpus_text.is_empty() {
         return ExtractResult::Failed;
@@ -1795,65 +1802,66 @@ fn process_corpus(
     // pair: GLiNER=chosen (extractive, no hallucinations), OLMo=rejected (student).
     // When GLiNER returns Empty and OLMo finds entities the roles reverse so we
     // capture GLiNER's blind spots.  This fire-and-forget never blocks the drain.
-    let tier_0_entities: Option<Vec<serde_json::Value>> = match call_tier_0_gliner(corpus_text, domain_id) {
-        GlinerOutcome::Found(ents) => {
-            println!(
-                "  -> [TIER-0/A] {} entities extracted (module: {}).",
-                ents.len(),
-                effective_module_id
-            );
-            // Queue for async Tier A training pass (non-blocking, drops if queue full)
-            if let Some(tx) = tier_a_tx {
-                tx.try_send(TierAJob {
-                    corpus_text: corpus_text.to_string(),
-                    worm_id: worm_id.to_string(),
-                    module_id: effective_module_id.to_string(),
-                    tier_0_entities: ents.clone(),
-                    feedback_dir: feedback_dir.to_string(),
-                    doorman_endpoint: doorman_endpoint.to_string(),
-                })
-                .ok();
-            }
-            Some(ents)
-        }
-        GlinerOutcome::Empty => {
-            // GLiNER reachable, no entities — queue for Tier A to catch GLiNER blind spots,
-            // then mark done immediately (production path unblocked).
-            if let Some(tx) = tier_a_tx {
-                tx.try_send(TierAJob {
-                    corpus_text: corpus_text.to_string(),
-                    worm_id: worm_id.to_string(),
-                    module_id: effective_module_id.to_string(),
-                    tier_0_entities: vec![],
-                    feedback_dir: feedback_dir.to_string(),
-                    doorman_endpoint: doorman_endpoint.to_string(),
-                })
-                .ok();
-            }
-            return ExtractResult::Success;
-        }
-        GlinerOutcome::Unavailable => {
-            // GLiNER down — check Doorman backpressure before using Tier A.
-            if check_doorman_backpressure(doorman_endpoint, backpressure_threshold) {
-                eprintln!(
-                    "[BACKPRESSURE] GLiNER down + queue_pending > {} — deferring {}",
-                    backpressure_threshold,
-                    filepath.display()
-                );
-                return ExtractResult::DeferTransient;
-            }
-            let tier_a = call_tier_a_extract(corpus_text, &entity_schema, doorman_endpoint);
-            match &tier_a {
-                Some(ents) => println!(
-                    "  -> [TIER-0/A] {} entities extracted via Tier A fallback (module: {}).",
+    let tier_0_entities: Option<Vec<serde_json::Value>> =
+        match call_tier_0_gliner(corpus_text, domain_id) {
+            GlinerOutcome::Found(ents) => {
+                println!(
+                    "  -> [TIER-0/A] {} entities extracted (module: {}).",
                     ents.len(),
                     effective_module_id
-                ),
-                None => println!("  -> [TIER-0/A] Unavailable — proceeding to Tier B."),
+                );
+                // Queue for async Tier A training pass (non-blocking, drops if queue full)
+                if let Some(tx) = tier_a_tx {
+                    tx.try_send(TierAJob {
+                        corpus_text: corpus_text.to_string(),
+                        worm_id: worm_id.to_string(),
+                        module_id: effective_module_id.to_string(),
+                        tier_0_entities: ents.clone(),
+                        feedback_dir: feedback_dir.to_string(),
+                        doorman_endpoint: doorman_endpoint.to_string(),
+                    })
+                    .ok();
+                }
+                Some(ents)
             }
-            tier_a
-        }
-    };
+            GlinerOutcome::Empty => {
+                // GLiNER reachable, no entities — queue for Tier A to catch GLiNER blind spots,
+                // then mark done immediately (production path unblocked).
+                if let Some(tx) = tier_a_tx {
+                    tx.try_send(TierAJob {
+                        corpus_text: corpus_text.to_string(),
+                        worm_id: worm_id.to_string(),
+                        module_id: effective_module_id.to_string(),
+                        tier_0_entities: vec![],
+                        feedback_dir: feedback_dir.to_string(),
+                        doorman_endpoint: doorman_endpoint.to_string(),
+                    })
+                    .ok();
+                }
+                return ExtractResult::Success;
+            }
+            GlinerOutcome::Unavailable => {
+                // GLiNER down — check Doorman backpressure before using Tier A.
+                if check_doorman_backpressure(doorman_endpoint, backpressure_threshold) {
+                    eprintln!(
+                        "[BACKPRESSURE] GLiNER down + queue_pending > {} — deferring {}",
+                        backpressure_threshold,
+                        filepath.display()
+                    );
+                    return ExtractResult::DeferTransient;
+                }
+                let tier_a = call_tier_a_extract(corpus_text, &entity_schema, doorman_endpoint);
+                match &tier_a {
+                    Some(ents) => println!(
+                        "  -> [TIER-0/A] {} entities extracted via Tier A fallback (module: {}).",
+                        ents.len(),
+                        effective_module_id
+                    ),
+                    None => println!("  -> [TIER-0/A] Unavailable — proceeding to Tier B."),
+                }
+                tier_a
+            }
+        };
 
     // ── Step 2: Tier B extraction (OLMo 32B via /v1/extract) ─────────────────
     println!(
@@ -1883,7 +1891,9 @@ fn process_corpus(
         if let Some(ta_ents) = tier_a {
             if !ta_ents.is_empty() {
                 let mut ge = raw_entities_to_graph(ta_ents, effective_module_id, 0.75);
-                for e in &mut ge { e.source_doc = Some(worm_id.to_string()); }
+                for e in &mut ge {
+                    e.source_doc = Some(worm_id.to_string());
+                }
                 match graph_store.upsert_entities(effective_module_id, &ge) {
                     Ok(n) => {
                         println!("  -> [TIER-A] {} entities written ({}).", n, reason);
@@ -1894,7 +1904,10 @@ fn process_corpus(
             }
             ExtractResult::DeferCircuitOpen
         } else {
-            println!("  -> [TIER-A] Unavailable — deferring transiently ({}).", reason);
+            println!(
+                "  -> [TIER-A] Unavailable — deferring transiently ({}).",
+                reason
+            );
             ExtractResult::DeferTransient
         }
     };
@@ -1959,7 +1972,9 @@ fn process_corpus(
 
             let mut graph_entities =
                 raw_entities_to_graph(&semantic_entities, effective_module_id, 0.95);
-            for e in &mut graph_entities { e.source_doc = Some(worm_id.to_string()); }
+            for e in &mut graph_entities {
+                e.source_doc = Some(worm_id.to_string());
+            }
             *tier_b_used = true;
 
             // If Tier B succeeded but all entities failed the filter, use GLiNER Tier 0 as
@@ -1968,7 +1983,9 @@ fn process_corpus(
             let graph_entities = if graph_entities.is_empty() {
                 if let Some(ta_ents) = &tier_0_entities {
                     let mut gliner_ge = raw_entities_to_graph(ta_ents, effective_module_id, 0.75);
-                    for e in &mut gliner_ge { e.source_doc = Some(worm_id.to_string()); }
+                    for e in &mut gliner_ge {
+                        e.source_doc = Some(worm_id.to_string());
+                    }
                     if !gliner_ge.is_empty() {
                         println!(
                             "  -> [TIER-0 RESCUE] Tier B 0 valid — using {} GLiNER entities.",

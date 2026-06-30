@@ -108,8 +108,12 @@ pub trait GraphStore: Send + Sync {
     /// Return entities whose `created_at` is >= `since` (ISO 8601 string, e.g.
     /// "2026-06-29T00:00:00Z"). Used by GET /v1/graph/delta for federation delta sync.
     /// String comparison works because dates are stored in YYYY-MM-DDThh:mm:ssZ format.
-    fn query_entities_since(&self, module_id: &str, since: &str, limit: usize)
-        -> Result<Vec<GraphEntity>>;
+    fn query_entities_since(
+        &self,
+        module_id: &str,
+        since: &str,
+        limit: usize,
+    ) -> Result<Vec<GraphEntity>>;
 }
 
 pub struct LbugGraphStore {
@@ -764,10 +768,8 @@ impl GraphStore for LbugGraphStore {
             ))
             .map_err(|e| anyhow!("prepare transitive query: {}", e))?;
 
-        let mut seen: std::collections::HashSet<String> = seeds
-            .iter()
-            .map(|e| e.entity_name.to_lowercase())
-            .collect();
+        let mut seen: std::collections::HashSet<String> =
+            seeds.iter().map(|e| e.entity_name.to_lowercase()).collect();
         let mut out = seeds;
 
         let seed_ids: Vec<String> = out
@@ -882,18 +884,52 @@ fn row_to_entity(row: &[Value]) -> Option<GraphEntity> {
         return None;
     }
     let classification = val_to_string(&row[1]);
-    let role_vector = { let s = val_to_string(&row[2]); if s.is_empty() { None } else { Some(s) } };
-    let location_vector = { let s = val_to_string(&row[3]); if s.is_empty() { None } else { Some(s) } };
-    let contact_vector = { let s = val_to_string(&row[4]); if s.is_empty() { None } else { Some(s) } };
+    let role_vector = {
+        let s = val_to_string(&row[2]);
+        if s.is_empty() {
+            None
+        } else {
+            Some(s)
+        }
+    };
+    let location_vector = {
+        let s = val_to_string(&row[3]);
+        if s.is_empty() {
+            None
+        } else {
+            Some(s)
+        }
+    };
+    let contact_vector = {
+        let s = val_to_string(&row[4]);
+        if s.is_empty() {
+            None
+        } else {
+            Some(s)
+        }
+    };
     let module_id = val_to_string(&row[5]);
     let confidence = val_to_f64(&row[6]);
     let source_doc = if row.len() > 7 {
         let s = val_to_string(&row[7]);
-        if s.is_empty() { None } else { Some(s) }
+        if s.is_empty() {
+            None
+        } else {
+            Some(s)
+        }
     } else {
         None
     };
-    Some(GraphEntity { entity_name, classification, role_vector, location_vector, contact_vector, module_id, confidence, source_doc })
+    Some(GraphEntity {
+        entity_name,
+        classification,
+        role_vector,
+        location_vector,
+        contact_vector,
+        module_id,
+        confidence,
+        source_doc,
+    })
 }
 
 fn rows_to_entities(result: lbug::QueryResult<'_>) -> Result<Vec<GraphEntity>> {
