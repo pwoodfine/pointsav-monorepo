@@ -15,8 +15,8 @@ The PPN mesh control plane. Manages WireGuard peer tables, node join approval
 1. **Bootable seL4 OS** for dedicated hardware (`.iso`/`.qcow2`)
 2. **Daemon** for existing Linux (AppImage/.deb) — primary test-milestone path
 
-**Price:** $1 USDC on software.pointsav.com.
 **Distribution:** `.iso` (bare metal), `.qcow2` (cloud), AppImage/.deb (Linux daemon).
+**Listing:** BETA — free download, payment disconnected. $1 USDC paid listing after D7 mesh test + operator approval.
 
 ---
 
@@ -80,13 +80,17 @@ apt). Configure wg0, start daemon. Peers register in fleet automatically (Phase 
 
 ## Software.pointsav.com listing
 
-Gate: three-node mesh test (D7). See `BRIEF-ppn-infrastructure-reference.md` §21.
+**BETA listing (upload now, before D7):** Daemon binary uploads to software.pointsav.com
+as soon as it is built and signed. BETA = free download, no USDC payment, public `curl` URL.
+project-software handles the upload and page setup on receipt of the outbox message.
 
+**Paid listing gate (D7 mesh test):**
 1. Laptop A: os-infrastructure ISO → seL4 + Linux guest + WireGuard
 2. foundry-workspace: os-infrastructure QCOW2 under QEMU
 3. **iMac: os-network-admin daemon** → installs on Linux Mint, joins mesh
 
-All three nodes in `service-vm-fleet` → upload + list at $1 USDC.
+All three nodes in `service-vm-fleet` → operator approves → project-software enables
+$1 USDC payment modal. See `BRIEF-ppn-infrastructure-reference.md` §21 for full pipeline.
 
 ---
 
@@ -101,6 +105,9 @@ All three nodes in `service-vm-fleet` → upload + list at $1 USDC.
 - **CAP_NET_ADMIN:** The daemon requires elevated capability (or root) for `wg set`.
   Document this prominently in GUIDE. Do not silently drop capability.
 - **Ed25519 signing:** Required for all distribution artifacts before upload.
+- **BETA distribution policy:** Upload binary to software.pointsav.com immediately after
+  build + sign — do not wait for D7 mesh test. BETA listing has payment disconnected.
+  CLI `curl` download must work without token or wallet. D7 gates only the paid listing.
 
 ---
 
