@@ -1,10 +1,71 @@
 use serde_json::Value;
+use std::sync::OnceLock;
 
 /// Canonical classification vocabulary — shared with `raw_entities_to_graph`.
 /// Both ingest gate and DPO pre-save validator must use this constant so they
 /// agree on what is acceptable and the training signal matches what lands in LadybugDB.
+///
+/// This is the compile-time fallback. The live vocabulary is the `label`
+/// column of `ontology/entity_types.csv` (COA-driven entity type labels,
+/// operator direction 2026-06-28) — see [`init_ontology_classifications`].
 pub const ALLOWED_CLASSIFICATIONS: [&str; 5] =
     ["Person", "Company", "Project", "Account", "Location"];
+
+static ONTOLOGY_CLASSIFICATIONS: OnceLock<Vec<String>> = OnceLock::new();
+
+/// Load the classification vocabulary from `entity_types.csv`'s `label`
+/// column. Call once at startup, alongside taxonomy loading. Additive only:
+/// if the CSV is missing, unreadable, or empty, [`is_allowed_classification`]
+/// keeps using the compile-time [`ALLOWED_CLASSIFICATIONS`] fallback — adding
+/// a new entity type is then just a CSV edit, with no code change required.
+pub fn init_ontology_classifications(ontology_dir: &str) {
+    let path = std::path::Path::new(ontology_dir).join("entity_types.csv");
+    let labels = std::fs::read_to_string(&path).ok().and_then(|content| {
+        let mut rdr = csv::Reader::from_reader(content.as_bytes());
+        let headers = rdr.headers().ok()?.clone();
+        let label_idx = headers.iter().position(|h| h == "label")?;
+        let mut out = Vec::new();
+        for rec in rdr.records().flatten() {
+            if let Some(label) = rec.get(label_idx) {
+                let label = label.trim();
+                if !label.is_empty() {
+                    out.push(label.to_string());
+                }
+            }
+        }
+        if out.is_empty() {
+            None
+        } else {
+            Some(out)
+        }
+    });
+    match labels {
+        Some(labels) => {
+            println!(
+                "[entity_filter] loaded {} classification(s) from {}",
+                labels.len(),
+                path.display()
+            );
+            let _ = ONTOLOGY_CLASSIFICATIONS.set(labels);
+        }
+        None => {
+            println!(
+                "[entity_filter] {} not found or empty; using compile-time ALLOWED_CLASSIFICATIONS",
+                path.display()
+            );
+        }
+    }
+}
+
+/// Returns true if `classification` is in the active vocabulary: the
+/// ontology CSV if [`init_ontology_classifications`] loaded one, else the
+/// compile-time [`ALLOWED_CLASSIFICATIONS`] fallback.
+pub fn is_allowed_classification(classification: &str) -> bool {
+    match ONTOLOGY_CLASSIFICATIONS.get() {
+        Some(labels) => labels.iter().any(|l| l == classification),
+        None => ALLOWED_CLASSIFICATIONS.contains(&classification),
+    }
+}
 
 /// Returns true if `name` looks like a code or environment identifier rather
 /// than a proper entity name. Used as a deterministic backstop in
@@ -167,7 +228,7 @@ pub fn clean_dpo_side(side: &[Value]) -> Vec<Value> {
                 return None;
             }
             let coerced = coerce_classification(name, cls)?;
-            if !ALLOWED_CLASSIFICATIONS.contains(&coerced.as_str()) {
+            if !is_allowed_classification(&coerced) {
                 return None;
             }
             if coerced != cls {
@@ -286,6 +347,34 @@ pub fn coerce_classification(entity_name: &str, classification: &str) -> Option<
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn is_allowed_classification_falls_back_to_const_when_unset() {
+        // No init_ontology_classifications call in this test — must use the
+        // compile-time fallback regardless of whether another test in this
+        // binary has already set the (process-global, set-once) ontology cache.
+        for label in ALLOWED_CLASSIFICATIONS {
+            assert!(is_allowed_classification(label));
+        }
+        assert!(!is_allowed_classification("Technology"));
+    }
+
+    #[test]
+    fn ontology_classifications_load_from_real_csv() {
+        // Verify the actual on-disk entity_types.csv parses and matches the
+        // compile-time vocabulary (same 5 labels — additive migration, see
+        // BRIEF-flow-build-plan.md §COA-driven entity type labels).
+        // Path relative to the manifest directory (service-content/).
+        let ontology_dir = concat!(env!("CARGO_MANIFEST_DIR"), "/ontology");
+        init_ontology_classifications(ontology_dir);
+        for label in ALLOWED_CLASSIFICATIONS {
+            assert!(
+                is_allowed_classification(label),
+                "{label} must be allowed after loading entity_types.csv"
+            );
+        }
+        assert!(!is_allowed_classification("Technology"));
+    }
 
     #[test]
     fn noise_rejects_env_var() {

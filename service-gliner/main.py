@@ -1,4 +1,5 @@
 import asyncio
+import csv
 import os
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any
@@ -23,9 +24,27 @@ model.eval()
 # full model (769 MB × N).
 _pool = ThreadPoolExecutor(max_workers=4)
 
-# Domain-specific label descriptions — plain English, GLiNER reads these literally.
-# Concrete examples in descriptions act as KoGNER-style entity hints.
-DOMAIN_LABELS: dict[str, dict[str, str]] = {
+DEFAULT_DOMAIN = "projects"
+
+# Same ontology dir as service-content (SERVICE_CONTENT_ONTOLOGY_DIR) — both
+# services read entity_types.csv as the single source of truth for entity
+# type labels, per the COA-driven entity type direction (operator, 2026-06-28).
+ONTOLOGY_DIR = os.environ.get(
+    "GLINER_ONTOLOGY_DIR",
+    "/srv/foundry/clones/project-totebox/service-content/ontology",
+)
+
+_DOMAIN_COLUMNS = {
+    "projects": "description_projects",
+    "corporate": "description_corporate",
+    "documentation": "description_documentation",
+}
+
+# Fallback label descriptions — used only if entity_types.csv is missing or
+# malformed, so a misconfigured ontology dir degrades rather than crashes.
+# Adding a new entity type going forward = update entity_types.csv only;
+# this table should not need further edits.
+_FALLBACK_DOMAIN_LABELS: dict[str, dict[str, str]] = {
     "projects": {
         "Person":   "a named human individual — executive, broker, developer, or professional",
         "Company":  "a named company, fund, REIT, or investment firm",
@@ -40,9 +59,6 @@ DOMAIN_LABELS: dict[str, dict[str, str]] = {
         "Location": "a named city or country",
         "Account":  "a named financial account or contract",
     },
-    # Documentation domain: engineering sessions, code reviews, architecture docs,
-    # build logs, git commits. Same five entity types; descriptions tuned for
-    # technical prose rather than CRE or corporate content.
     "documentation": {
         "Person":   "a named developer, engineer, or contributor",
         "Company":  "a named company or technology organisation",
@@ -52,7 +68,41 @@ DOMAIN_LABELS: dict[str, dict[str, str]] = {
     },
 }
 
-DEFAULT_DOMAIN = "projects"
+
+def _load_domain_labels() -> dict[str, dict[str, str]]:
+    """Load entity type labels from ontology/entity_types.csv.
+
+    Falls back to _FALLBACK_DOMAIN_LABELS if the CSV is missing, unreadable,
+    or doesn't cover every domain — a misconfigured deployment should degrade
+    to the known-good table rather than crash at startup.
+    """
+    csv_path = os.path.join(ONTOLOGY_DIR, "entity_types.csv")
+    domains: dict[str, dict[str, str]] = {d: {} for d in _DOMAIN_COLUMNS}
+    try:
+        with open(csv_path, newline="", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                label = (row.get("label") or "").strip()
+                if not label:
+                    continue
+                for domain_id, column in _DOMAIN_COLUMNS.items():
+                    desc = (row.get(column) or "").strip()
+                    if desc:
+                        domains[domain_id][label] = desc
+        if all(domains[d] for d in _DOMAIN_COLUMNS):
+            print(f"[GLINER] loaded entity type labels from {csv_path}")
+            return domains
+        print(
+            f"[GLINER] {csv_path} missing rows for one or more domains; using fallback labels"
+        )
+    except (OSError, csv.Error, KeyError) as e:
+        print(f"[GLINER] failed to load {csv_path}: {e}; using fallback labels")
+    return _FALLBACK_DOMAIN_LABELS
+
+
+# Domain-specific label descriptions — plain English, GLiNER reads these literally.
+# Concrete examples in descriptions act as KoGNER-style entity hints.
+DOMAIN_LABELS: dict[str, dict[str, str]] = _load_domain_labels()
 
 
 def _sync_predict(text: str, domain_id: str) -> list[dict[str, str]]:
