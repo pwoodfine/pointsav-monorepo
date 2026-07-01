@@ -26,8 +26,9 @@
 }
 
 /* --- Prose column --------------------------------------------------------- */
+/* Fills the content column (Wikipedia-style full width). A measure is applied
+   only to running paragraphs for readability, not to tables/code/figures. */
 .k-prose {
-  max-width: var(--k-prose-measure);
   font-family: var(--k-prose-font);
   font-size: var(--k-prose-fs);
   line-height: var(--k-prose-leading);
@@ -35,7 +36,9 @@
 }
 .k-prose > * + * { margin-top: var(--k-prose-gap); }
 
-.k-prose p { margin: 0; }
+/* Running paragraphs get a readable measure; block elements stay full width. */
+.k-prose p { margin: 0; max-width: var(--k-prose-measure); }
+.k-prose ul, .k-prose ol { max-width: var(--k-prose-measure); }
 
 /* Section headings — Wikipedia rules the h2 with a hairline underline. */
 .k-prose h2 {
@@ -186,23 +189,15 @@
   border: 1px solid var(--k-border-light);
   border-radius: var(--k-radius-sm);
   cursor: pointer;
-  opacity: 0;
-  transition: opacity var(--k-motion-fast) var(--k-ease),
-              color var(--k-motion-fast) var(--k-ease),
+  opacity: 1;                          /* always visible */
+  transition: color var(--k-motion-fast) var(--k-ease),
               border-color var(--k-motion-fast) var(--k-ease);
 }
-.k-codeblock:hover .k-codeblock__copy,
-.k-codeblock:focus-within .k-codeblock__copy { opacity: 1; }
 .k-codeblock__copy:hover { color: var(--k-accent); border-color: var(--k-accent); }
 .k-codeblock__copy:focus-visible {
-  opacity: 1; outline: var(--k-focus-outline); outline-offset: 2px;
+  outline: var(--k-focus-outline); outline-offset: 2px;
 }
 .k-codeblock__copy.is-copied { color: #1a7f37; border-color: #1a7f37; }
-
-/* Touch devices have no hover — keep the button visible. */
-@media (hover: none) {
-  .k-codeblock__copy { opacity: 1; }
-}
 
 /* --- Responsive ----------------------------------------------------------- */
 @media (max-width: 768px) {
