@@ -116,7 +116,16 @@ async fn home(State(state): State<AppState>) -> Response {
     }
     let total: usize = state.index.article_count();
 
-    let body = ui::home_page(tenant, &lede, total, &cats);
+    // How-to guides (content_type/category "how-to") — surfaced as their own
+    // section, distinct from the topic areas. Show a sample + a browse-all link.
+    let guides: Vec<(String, String)> = state
+        .index
+        .in_category("how-to")
+        .into_iter()
+        .map(|d| (d.slug.clone(), d.title.clone()))
+        .collect();
+
+    let body = ui::home_page(tenant, &lede, total, &cats, &guides);
     let head = ui::doc_head(tenant.home_label(), &description, tenant);
     Html(ui::page(tenant, "en", head, body).into_string()).into_response()
 }

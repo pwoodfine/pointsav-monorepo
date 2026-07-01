@@ -278,6 +278,47 @@
   color: var(--k-ink-muted);
 }
 
+/* How-to guides section */
+.k-home__guides { margin-top: var(--k-space-7); }
+.k-home__guides-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--k-space-4);
+  flex-wrap: wrap;
+  margin: 0 0 var(--k-space-4);
+  padding-bottom: 0.25em;
+  border-bottom: 1px solid var(--k-heading-rule);
+}
+.k-home__guides-head .k-home__browse-title { margin: 0; padding: 0; border: 0; }
+.k-home__browse-all {
+  font-family: var(--k-font-sans);
+  font-size: var(--k-text-sm);
+  font-weight: var(--k-weight-medium);
+  white-space: nowrap;
+}
+.k-home__guides-lede {
+  max-width: var(--k-prose-measure);
+  margin: 0 0 var(--k-space-4);
+  color: var(--k-ink-secondary);
+  font-size: var(--k-text-base);
+}
+.k-guide-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr));
+  gap: var(--k-space-2) var(--k-space-5);
+}
+.k-guide-list__link {
+  display: flex;
+  align-items: center;
+  gap: var(--k-space-2);
+  padding: var(--k-space-2) 0;
+  font-family: var(--k-font-sans);
+  font-size: var(--k-text-md);
+  border-bottom: 1px solid var(--k-border-subtle);
+}
+.k-guide-list__icon { color: var(--k-accent); flex-shrink: 0; display: inline-flex; }
+
 /* Category listing page */
 .k-catpage__eyebrow {
   font-family: var(--k-font-sans);
