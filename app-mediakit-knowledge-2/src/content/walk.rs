@@ -115,9 +115,14 @@ fn walk_dir(root: &Path, dir: &Path, mount_index: usize, idx: &mut ContentIndex)
     }
 }
 
-/// A content file is a `.md` that is not a repo-meta uppercase doc.
+/// A content file is a `.md` that is not a repo-meta doc or a section index.
 fn is_content_file(name: &str) -> bool {
     if !name.ends_with(".md") {
+        return false;
+    }
+    // `_index.md` files are category/section landing metadata, not articles —
+    // they must not count, list, or appear in the guides/browse surfaces.
+    if name == "_index.md" || name == "_index.es.md" {
         return false;
     }
     // Exclude repo governance files that are not wiki content.

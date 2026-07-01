@@ -309,7 +309,14 @@ pub fn article(title: &str, body_html: &str) -> Markup {
 /// Home page — the front page (Main Page): title, the index lede, an article
 /// count, and a "Browse by area" grid of category cards. `cats` is
 /// `(slug, label, count)` in display order.
-pub fn home_page(tenant: Tenant, lede_html: &str, total: usize, cats: &[(String, String, usize)]) -> Markup {
+pub fn home_page(
+    tenant: Tenant,
+    lede_html: &str,
+    total: usize,
+    cats: &[(String, String, usize)],
+    guides: &[(String, String)],
+) -> Markup {
+    let guides_shown = guides.len().min(8);
     html! {
         div."k-home" {
             h1."k-article__title" { (tenant.home_label()) }
@@ -326,6 +333,35 @@ pub fn home_page(tenant: Tenant, lede_html: &str, total: usize, cats: &[(String,
                         a."k-cat-card" href={ "/category/" (slug) } {
                             span."k-cat-card__name" { (label) }
                             span."k-cat-card__count" { (count) " " (count_word(*count)) }
+                        }
+                    }
+                }
+            }
+
+            // How-to guides — operational runbooks, distinct from the reference topics.
+            @if !guides.is_empty() {
+                section."k-home__guides" aria-label="How-to guides" {
+                    div."k-home__guides-head" {
+                        h2."k-home__browse-title" { "How-to guides" }
+                        a."k-home__browse-all" href="/category/how-to" {
+                            "All " (guides.len()) " guides \u{2192}"
+                        }
+                    }
+                    p."k-home__guides-lede" {
+                        "Step-by-step operational runbooks — how to install, configure, and run the platform."
+                    }
+                    ul."k-guide-list" {
+                        @for (slug, title) in guides.iter().take(guides_shown) {
+                            li {
+                                a."k-guide-list__link" href={ "/wiki/" (slug) } {
+                                    span."k-guide-list__icon" aria-hidden="true" {
+                                        svg viewBox="0 0 16 16" width="14" height="14" {
+                                            path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" d="M6 3.5 10.5 8 6 12.5" {}
+                                        }
+                                    }
+                                    (title)
+                                }
+                            }
                         }
                     }
                 }
