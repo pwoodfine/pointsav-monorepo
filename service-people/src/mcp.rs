@@ -1,14 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0 OR MIT
 
-use axum::{
-    http::StatusCode,
-    response::IntoResponse,
-    Json,
-};
-use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
 use crate::acs;
 use crate::person::Person;
+use axum::{http::StatusCode, response::IntoResponse, Json};
+use serde::{Deserialize, Serialize};
+use serde_json::{json, Value};
 use uuid::Uuid;
 
 use crate::http::AppState;
@@ -183,7 +179,10 @@ async fn tools_call_handler(state: &AppState, request: &JsonRpcRequest) -> JsonR
         }
     };
 
-    let arguments = params.get("arguments").cloned().unwrap_or(Value::Object(Default::default()));
+    let arguments = params
+        .get("arguments")
+        .cloned()
+        .unwrap_or(Value::Object(Default::default()));
 
     match tool_name {
         "identity.append" => append_tool_handler(state, &arguments, request).await,
@@ -221,7 +220,13 @@ async fn append_tool_handler(
 
     let primary_email = match args.get("primary_email").and_then(|v| v.as_str()) {
         Some(e) => e,
-        None => return error_response(-32602, "Missing 'primary_email' argument", request.id.clone()),
+        None => {
+            return error_response(
+                -32602,
+                "Missing 'primary_email' argument",
+                request.id.clone(),
+            )
+        }
     };
 
     let mut person = Person::new(name, primary_email);
@@ -242,7 +247,7 @@ async fn append_tool_handler(
     match state.fs_client.append(&person) {
         Ok(cursor) => {
             // Cache locally
-            if let Err(_) = state.people_store.append(person.clone()) {
+            if state.people_store.append(person.clone()).is_err() {
                 // Log but don't fail - ledger is source of truth
             }
 
@@ -256,9 +261,11 @@ async fn append_tool_handler(
                 id: request.id.clone(),
             }
         }
-        Err(e) => {
-            error_response(-32603, &format!("Failed to append to ledger: {}", e), request.id.clone())
-        }
+        Err(e) => error_response(
+            -32603,
+            &format!("Failed to append to ledger: {}", e),
+            request.id.clone(),
+        ),
     }
 }
 
@@ -286,31 +293,33 @@ async fn lookup_tool_handler(
 
     let result = match query_type {
         "email" => state.people_store.lookup_by_email(value),
-        "uuid" => {
-            match Uuid::parse_str(value) {
-                Ok(id) => state.people_store.lookup_by_id(id),
-                Err(_) => {
-                    return error_response(-32602, "Invalid UUID format", request.id.clone());
-                }
+        "uuid" => match Uuid::parse_str(value) {
+            Ok(id) => state.people_store.lookup_by_id(id),
+            Err(_) => {
+                return error_response(-32602, "Invalid UUID format", request.id.clone());
             }
-        }
+        },
         _ => {
-            return error_response(-32602, "Invalid query_type (must be 'email' or 'uuid')", request.id.clone());
+            return error_response(
+                -32602,
+                "Invalid query_type (must be 'email' or 'uuid')",
+                request.id.clone(),
+            );
         }
     };
 
     match result {
-        Ok(person) => {
-            JsonRpcResponse {
-                jsonrpc: "2.0".to_string(),
-                result: Some(serde_json::to_value(&person).unwrap_or(Value::Null)),
-                error: None,
-                id: request.id.clone(),
-            }
-        }
-        Err(e) => {
-            error_response(-32603, &format!("Person not found: {}", e), request.id.clone())
-        }
+        Ok(person) => JsonRpcResponse {
+            jsonrpc: "2.0".to_string(),
+            result: Some(serde_json::to_value(&person).unwrap_or(Value::Null)),
+            error: None,
+            id: request.id.clone(),
+        },
+        Err(e) => error_response(
+            -32603,
+            &format!("Person not found: {}", e),
+            request.id.clone(),
+        ),
     }
 }
 
@@ -454,10 +463,7 @@ mod tests {
 
         let schema = scan_tool.get("inputSchema").unwrap();
         let required = schema.get("required").unwrap().as_array().unwrap();
-        let required_names: Vec<&str> = required
-            .iter()
-            .filter_map(|v| v.as_str())
-            .collect();
+        let required_names: Vec<&str> = required.iter().filter_map(|v| v.as_str()).collect();
         assert!(required_names.contains(&"text"));
         assert!(required_names.contains(&"source_id"));
     }

@@ -109,10 +109,7 @@ impl EwsClient {
     }
 
     /// Fetches the raw MIME bytes for one item (the `.eml` content).
-    pub async fn get_mime(
-        &self,
-        item_id: &str,
-    ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    pub async fn get_mime(&self, item_id: &str) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
         let body = format!(
             r#"<m:GetItem>
       <m:ItemShape>
@@ -142,10 +139,7 @@ impl EwsClient {
     }
 
     /// Marks one item as read via EWS UpdateItem.
-    pub async fn mark_read(
-        &self,
-        item_id: &str,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn mark_read(&self, item_id: &str) -> Result<(), Box<dyn std::error::Error>> {
         let body = format!(
             r#"<m:UpdateItem MessageDisposition="SaveOnly" ConflictResolution="AlwaysOverwrite">
       <m:ItemChanges>
@@ -235,8 +229,14 @@ mod tests {
         let client = test_client();
         let body = "<m:GetItem><m:ItemIds/></m:GetItem>";
         let envelope = client.soap_envelope(body);
-        assert!(envelope.contains(body), "envelope must contain the supplied body fragment");
-        assert!(envelope.contains("<soap:Body>"), "envelope must have a soap:Body element");
+        assert!(
+            envelope.contains(body),
+            "envelope must contain the supplied body fragment"
+        );
+        assert!(
+            envelope.contains("<soap:Body>"),
+            "envelope must have a soap:Body element"
+        );
     }
 
     #[test]
@@ -296,7 +296,10 @@ mod tests {
   </s:Body>
 </s:Envelope>"#;
         let ids = extract_item_ids(xml);
-        assert!(ids.is_empty(), "SOAP fault response must produce empty id list");
+        assert!(
+            ids.is_empty(),
+            "SOAP fault response must produce empty id list"
+        );
     }
 
     #[test]
@@ -319,7 +322,10 @@ mod tests {
   </s:Body>
 </s:Envelope>"#;
         let ids = extract_item_ids(xml);
-        assert!(ids.is_empty(), "empty inbox response must produce empty id list");
+        assert!(
+            ids.is_empty(),
+            "empty inbox response must produce empty id list"
+        );
     }
 
     // ── GetItem response fixtures ─────────────────────────────────────
@@ -351,9 +357,15 @@ mod tests {
             b64
         );
         let extracted = extract_mime_content(&xml);
-        assert!(extracted.is_some(), "must extract MimeContent from full GetItem response");
+        assert!(
+            extracted.is_some(),
+            "must extract MimeContent from full GetItem response"
+        );
         let decoded = BASE64.decode(extracted.unwrap().trim()).unwrap();
-        assert_eq!(decoded, b"From: sender@example.com\r\nSubject: Test\r\n\r\nHello.");
+        assert_eq!(
+            decoded,
+            b"From: sender@example.com\r\nSubject: Test\r\n\r\nHello."
+        );
     }
 
     // ── existing helper tests ─────────────────────────────────────────
@@ -375,17 +387,18 @@ mod tests {
     #[test]
     fn extract_item_ids_empty_on_no_match() {
         assert!(
-            extract_item_ids(
-                "<soap:Fault><faultstring>Error</faultstring></soap:Fault>"
-            )
-            .is_empty()
+            extract_item_ids("<soap:Fault><faultstring>Error</faultstring></soap:Fault>")
+                .is_empty()
         );
     }
 
     #[test]
     fn extract_mime_content_returns_base64_body() {
         let b64 = "SGVsbG8gV29ybGQ=";
-        let xml = format!(r#"<t:MimeContent CharacterSet="UTF-8">{}</t:MimeContent>"#, b64);
+        let xml = format!(
+            r#"<t:MimeContent CharacterSet="UTF-8">{}</t:MimeContent>"#,
+            b64
+        );
         assert_eq!(extract_mime_content(&xml), Some(b64));
     }
 

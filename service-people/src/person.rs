@@ -69,7 +69,10 @@ mod tests {
     fn new_derives_deterministic_id_from_email() {
         let a = Person::new("Alice", "Alice@Example.com");
         let b = Person::new("Alice (copy)", "alice@example.com");
-        assert_eq!(a.id, b.id, "UUIDv5 must be case-insensitive (email normalised to lowercase)");
+        assert_eq!(
+            a.id, b.id,
+            "UUIDv5 must be case-insensitive (email normalised to lowercase)"
+        );
     }
 
     #[test]
@@ -93,7 +96,10 @@ mod tests {
         let p = Person::new("Carol", "carol@example.com")
             .with_alias("Carol@OldDomain.COM")
             .with_alias("c.smith@example.com");
-        assert_eq!(p.email_aliases, vec!["carol@olddomain.com", "c.smith@example.com"]);
+        assert_eq!(
+            p.email_aliases,
+            vec!["carol@olddomain.com", "c.smith@example.com"]
+        );
     }
 
     #[test]

@@ -8,15 +8,27 @@ use uuid::Uuid;
 #[derive(Debug)]
 pub enum PeopleStoreError {
     NotFound(String),
-    ConflictingIdentity { email: String, existing_id: Uuid, new_id: Uuid },
+    ConflictingIdentity {
+        email: String,
+        existing_id: Uuid,
+        new_id: Uuid,
+    },
 }
 
 impl std::fmt::Display for PeopleStoreError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             PeopleStoreError::NotFound(query) => write!(f, "Person not found: {}", query),
-            PeopleStoreError::ConflictingIdentity { email, existing_id, new_id } => {
-                write!(f, "Email {} already bound to {}, cannot rebind to {}", email, existing_id, new_id)
+            PeopleStoreError::ConflictingIdentity {
+                email,
+                existing_id,
+                new_id,
+            } => {
+                write!(
+                    f,
+                    "Email {} already bound to {}, cannot rebind to {}",
+                    email, existing_id, new_id
+                )
             }
         }
     }
@@ -27,6 +39,12 @@ impl std::error::Error for PeopleStoreError {}
 pub struct PeopleStore {
     by_email: RwLock<HashMap<String, Person>>,
     by_id: RwLock<HashMap<Uuid, Person>>,
+}
+
+impl Default for PeopleStore {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl PeopleStore {
@@ -119,8 +137,7 @@ mod tests {
     #[test]
     fn lookup_by_alias() {
         let store = PeopleStore::new();
-        let person = Person::new("Carol", "carol@work.com")
-            .with_alias("carol@personal.com");
+        let person = Person::new("Carol", "carol@work.com").with_alias("carol@personal.com");
         store.append(person.clone()).unwrap();
 
         let found = store.lookup_by_email("carol@personal.com").unwrap();

@@ -71,11 +71,7 @@ impl FsClient {
     /// Wire body: `{ "payload_id": message_id, "payload": EmailRecord }`.
     /// Header: `X-Foundry-Module-ID: <module_id>` (per-tenant boundary,
     /// Doctrine §IV.b).
-    pub fn append_email(
-        &self,
-        message_id: &str,
-        raw_eml: &[u8],
-    ) -> Result<u64, FsClientError> {
+    pub fn append_email(&self, message_id: &str, raw_eml: &[u8]) -> Result<u64, FsClientError> {
         let record = EmailRecord {
             message_id: message_id.to_string(),
             raw_eml_b64: BASE64.encode(raw_eml),

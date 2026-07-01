@@ -43,9 +43,6 @@ async fn readyz(State(state): State<AppState>) -> impl IntoResponse {
     )
 }
 
-async fn mcp_endpoint(
-    State(state): State<AppState>,
-    body: String,
-) -> impl IntoResponse {
+async fn mcp_endpoint(State(state): State<AppState>, body: String) -> impl IntoResponse {
     mcp::handler(state, &body).await
 }
