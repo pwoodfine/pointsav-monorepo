@@ -373,17 +373,22 @@ pub fn home_page(
     }
 }
 
-/// Category listing — a category's articles as a simple index.
-/// `docs` is `(slug, title)` sorted.
-pub fn category_index(label: &str, docs: &[(String, String)]) -> Markup {
+/// Category listing — a category's articles as a scannable index.
+/// `docs` is `(slug, title, description)` sorted.
+pub fn category_index(label: &str, docs: &[(String, String, String)]) -> Markup {
     html! {
         div."k-catpage" {
             div."k-catpage__eyebrow" { "Category" }
             h1."k-article__title" { (label) }
             div."k-home__stat" { strong { (docs.len()) } " " (count_word(docs.len())) }
             ul."k-cat-list" {
-                @for (slug, title) in docs {
-                    li { a."k-cat-list__link" href={ "/wiki/" (slug) } { (title) } }
+                @for (slug, title, desc) in docs {
+                    li."k-cat-entry" {
+                        a."k-cat-entry__title" href={ "/wiki/" (slug) } { (title) }
+                        @if !desc.is_empty() {
+                            p."k-cat-entry__desc" { (desc) }
+                        }
+                    }
                 }
             }
         }

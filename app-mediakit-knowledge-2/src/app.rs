@@ -139,11 +139,17 @@ async fn home(State(state): State<AppState>) -> Response {
 /// Category listing page — every article in one category.
 async fn category_page(State(state): State<AppState>, Path(name): Path<String>) -> Response {
     let tenant = state.tenant;
-    let docs: Vec<(String, String)> = state
+    let docs: Vec<(String, String, String)> = state
         .index
         .in_category(&name)
         .into_iter()
-        .map(|d| (d.slug.clone(), d.title.clone()))
+        .map(|d| {
+            (
+                d.slug.clone(),
+                d.title.clone(),
+                d.short_description.clone().unwrap_or_default(),
+            )
+        })
         .collect();
     if docs.is_empty() {
         return (StatusCode::NOT_FOUND, format!("no such category: {name}")).into_response();
