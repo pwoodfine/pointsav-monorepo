@@ -704,6 +704,16 @@ if (( DRYRUN_OK == 1 )); then
         (( TRAIN_CAP > 1500 )) && TRAIN_CAP=1500   # never spend >25 min on the train itself
         log "  Running capped SFT on VM (--max-runtime-seconds=${TRAIN_CAP}, r=16/a=8, LR 2e-4)..."
 
+        # yoyo-batch's boot image auto-starts llama-server.service serving the 32B Tier B
+        # model (~16 GiB on the L4's 22 GiB usable) — training a 7B float16 model (~14 GiB)
+        # alongside it OOMs in model.to("cuda") before a single training step runs (confirmed
+        # 2026-07-01, PID 1354/1477 holding 15.75-16.1 GiB). Stop it for the duration of the
+        # training phase; the VM is unconditionally stopped at the end of this script regardless
+        # of outcome, so there's no need to restart it here — it comes back on next VM boot.
+        log "  Stopping llama-server.service on VM to free GPU memory for training..."
+        remote_ssh "sudo systemctl stop llama-server" \
+            || log "  WARN: could not stop llama-server (may not be running — continuing)"
+
         # Stage corpus + trainer to the VM.
         remote_ssh "mkdir -p ${REMOTE_DIR}/adapter" || true
         remote_rsync "${CORPUS_OUT}" "${REMOTE_DIR}/corpus.jsonl" || log "  WARN corpus rsync failed"
