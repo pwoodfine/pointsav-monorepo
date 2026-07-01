@@ -363,6 +363,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "app-mediakit-knowledge-2"
+version = "0.0.1"
+dependencies = [
+ "anyhow",
+ "axum 0.8.9",
+ "clap",
+ "comrak",
+ "http-body-util",
+ "maud",
+ "mime_guess",
+ "rust-embed",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+ "toml",
+ "tower",
+ "tower-http 0.6.11",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "app-mediakit-marketing"
 version = "0.1.0"
 dependencies = [

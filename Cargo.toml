@@ -46,6 +46,8 @@ members = [
     "service-vm-tenant",
     # Knowledge wiki engine
     "app-mediakit-knowledge",
+    # Knowledge wiki engine — ground-up rewrite (temporary -2; renamed at cutover)
+    "app-mediakit-knowledge-2",
     # Jennifer ingest pipeline
     "service-input",
     "service-extraction",
@@ -81,6 +83,12 @@ strip = true        # Strip debug symbols from output binary
 # not the bare-metal size-optimised defaults. Preserves the standalone Cargo.toml
 # [profile.release] settings (moved here on workspace integration 2026-05-31).
 [profile.release.package.app-mediakit-knowledge]
+opt-level = 3
+strip = "symbols"
+
+# app-mediakit-knowledge-2 is the rewrite of the runtime HTTP server —
+# same speed-optimised profile as the engine it replaces.
+[profile.release.package.app-mediakit-knowledge-2]
 opt-level = 3
 strip = "symbols"
 
