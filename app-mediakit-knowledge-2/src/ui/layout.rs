@@ -67,9 +67,11 @@ pub fn utility_bar(tenant: Tenant) -> Markup {
     html! {
         div."k-utility" {
             div."k-utility__inner" {
-                // Right-aligned cross-property links only — no entity label here
-                // (the header wordmark carries the wiki's identity), so the two
-                // don't stack redundantly.
+                // Left: the maintaining entity → its corporate home.
+                a."k-utility__home" href=(tenant.marketing_home()) {
+                    (tenant.entity_name())
+                }
+                // Right: the property links (GitHub · Software · Design System).
                 nav."k-utility__nav" aria-label="Network" {
                     @for (label, url) in tenant.cross_property_links() {
                         a."k-utility__link" href=(url) target="_blank" rel="noopener" {
@@ -215,21 +217,20 @@ pub fn footer(tenant: Tenant) -> Markup {
                         }
                     }
                 }
-                // Info line — cities + copyright/licence text (Wikipedia footer-info).
-                div."k-footer__info" {
-                    div."k-footer__cities" {
-                        @for (i, city) in tenant.cities().iter().enumerate() {
-                            @if i > 0 { span."k-footer__cities-sep" aria-hidden="true" { "|" } }
-                            span { (city) }
+                // Base row — copyright + cities on the left, badges on the right.
+                div."k-footer__base" {
+                    div."k-footer__meta" {
+                        p."k-footer__copyright" {
+                            "\u{00a9} 2026 " (tenant.copyright_holder())
+                        }
+                        div."k-footer__cities" {
+                            @for (i, city) in tenant.cities().iter().enumerate() {
+                                @if i > 0 { span."k-footer__cities-sep" aria-hidden="true" { "|" } }
+                                span { (city) }
+                            }
                         }
                     }
-                    p."k-footer__copyright" {
-                        "\u{00a9} 2026 " (tenant.copyright_holder())
-                        " \u{00b7} Content available under CC BY 4.0."
-                    }
-                }
-                // Badges last — homage to Wikipedia's footer buttons (bottom of footer).
-                div."k-footer__badges" {
+                    div."k-footer__badges" {
                         // Powered by MediaKit (the engine).
                         a."k-badge" href="/wiki/about" {
                             span."k-badge__glyph" aria-hidden="true" {
@@ -261,6 +262,7 @@ pub fn footer(tenant: Tenant) -> Markup {
                             }
                         }
                     }
+                }
             }
         }
     }
