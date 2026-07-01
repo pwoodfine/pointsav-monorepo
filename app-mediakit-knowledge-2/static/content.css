@@ -1,0 +1,220 @@
+/* ============================================================================
+   app-mediakit-knowledge-2 · Article body · content stylesheet
+   ----------------------------------------------------------------------------
+   The reading surface: article title, ruled section headings, prose typography,
+   Wikipedia-style tables ("wikitable"), code blocks with a copy button, inline
+   code, blockquotes, lists, figures. Namespace: k-*. Depends on tokens.css.
+   Structure emitted by the render pipeline (comrak): plain <table>, <pre><code
+   class="language-…">, <h2>/<h3>, <blockquote>, <ul>/<ol>, inline <code>.
+   ========================================================================== */
+
+/* --- Article shell -------------------------------------------------------- */
+.k-article {
+  padding-block: var(--k-space-5) var(--k-space-7);
+}
+
+.k-article__title {
+  font-family: var(--k-title-font);
+  font-size: var(--k-title-fs);
+  font-weight: var(--k-weight-bold);
+  line-height: var(--k-leading-tight);
+  letter-spacing: -0.015em;
+  color: var(--k-ink);
+  margin: 0 0 var(--k-space-4);
+  padding-bottom: var(--k-space-3);
+  border-bottom: 1px solid var(--k-heading-rule);
+}
+
+/* --- Prose column --------------------------------------------------------- */
+.k-prose {
+  max-width: var(--k-prose-measure);
+  font-family: var(--k-prose-font);
+  font-size: var(--k-prose-fs);
+  line-height: var(--k-prose-leading);
+  color: var(--k-prose-ink);
+}
+.k-prose > * + * { margin-top: var(--k-prose-gap); }
+
+.k-prose p { margin: 0; }
+
+/* Section headings — Wikipedia rules the h2 with a hairline underline. */
+.k-prose h2 {
+  font-family: var(--k-title-font);
+  font-size: var(--k-h2-fs);
+  font-weight: var(--k-weight-semibold);
+  line-height: var(--k-leading-snug);
+  color: var(--k-ink);
+  margin: 1.8em 0 0.6em;
+  padding-bottom: 0.25em;
+  border-bottom: 1px solid var(--k-heading-rule);
+  scroll-margin-top: calc(var(--k-header-height) + var(--k-space-4));
+}
+.k-prose h3 {
+  font-family: var(--k-title-font);
+  font-size: var(--k-h3-fs);
+  font-weight: var(--k-weight-semibold);
+  color: var(--k-ink);
+  margin: 1.5em 0 0.5em;
+  scroll-margin-top: calc(var(--k-header-height) + var(--k-space-4));
+}
+.k-prose h4 {
+  font-family: var(--k-title-font);
+  font-size: 1.05rem;
+  font-weight: var(--k-weight-semibold);
+  margin: 1.3em 0 0.4em;
+}
+
+/* Links */
+.k-prose a { color: var(--k-link); text-underline-offset: 0.15em; }
+.k-prose a:hover { color: var(--k-link-hover); text-decoration: underline; }
+.k-prose a:visited { color: var(--k-link-visited); }
+.k-prose a:focus-visible {
+  outline: var(--k-focus-outline); outline-offset: 2px; border-radius: var(--k-radius-xs);
+}
+
+/* Emphasis */
+.k-prose strong { font-weight: var(--k-weight-bold); color: var(--k-ink); }
+.k-prose em { font-style: italic; }
+
+/* Lists */
+.k-prose ul, .k-prose ol { padding-left: 1.5em; }
+.k-prose ul { list-style: disc; }
+.k-prose ol { list-style: decimal; }
+.k-prose li { margin-top: 0.35em; }
+.k-prose li > ul, .k-prose li > ol { margin-top: 0.35em; }
+
+/* Blockquote */
+.k-prose blockquote {
+  margin: var(--k-prose-gap) 0;
+  padding: 0.4em 0 0.4em 1.1em;
+  border-left: 3px solid var(--k-quote-rule);
+  color: var(--k-quote-ink);
+  font-style: italic;
+}
+.k-prose blockquote p { margin: 0; }
+
+/* Horizontal rule */
+.k-prose hr {
+  border: 0;
+  border-top: 1px solid var(--k-border-subtle);
+  margin: var(--k-space-6) 0;
+}
+
+/* Figures / images */
+.k-prose img { max-width: 100%; height: auto; border-radius: var(--k-radius-sm); }
+.k-prose figure { margin: var(--k-space-5) 0; }
+.k-prose figcaption {
+  margin-top: var(--k-space-2);
+  font-size: var(--k-text-sm);
+  color: var(--k-ink-muted);
+}
+
+/* --- Tables (wikitable register) ------------------------------------------ */
+/* Wrapper added by JS for horizontal scroll on narrow viewports. */
+.k-table-wrap { overflow-x: auto; margin: var(--k-space-5) 0; }
+.k-prose table {
+  border-collapse: collapse;
+  width: auto;
+  max-width: 100%;
+  font-size: var(--k-table-fs);
+  line-height: var(--k-leading-snug);
+  background: var(--k-surface);
+}
+.k-prose th, .k-prose td {
+  border: 1px solid var(--k-table-border);
+  padding: var(--k-table-cell-pad);
+  text-align: left;
+  vertical-align: top;
+}
+.k-prose thead th, .k-prose th {
+  background: var(--k-table-head-bg);
+  color: var(--k-table-head-ink);
+  font-weight: var(--k-weight-semibold);
+}
+.k-prose tbody tr:nth-child(even) { background: var(--k-table-stripe); }
+
+/* --- Inline code ---------------------------------------------------------- */
+.k-prose :not(pre) > code {
+  font-family: var(--k-code-font);
+  font-size: var(--k-code-fs);
+  background: var(--k-code-inline-bg);
+  color: var(--k-code-inline-ink);
+  padding: 0.12em 0.36em;
+  border-radius: var(--k-radius-xs);
+  word-break: break-word;
+}
+
+/* --- Code blocks + copy button -------------------------------------------- */
+/* JS wraps each <pre> in .k-codeblock and adds the copy button. Absent JS the
+   <pre> still styles correctly (progressive enhancement). */
+.k-codeblock { position: relative; margin: var(--k-space-5) 0; }
+.k-prose pre {
+  margin: var(--k-space-5) 0;
+  padding: var(--k-space-4);
+  background: var(--k-code-block-bg);
+  color: var(--k-code-block-ink);
+  border: 1px solid var(--k-code-border);
+  border-radius: var(--k-code-radius);
+  overflow-x: auto;
+  line-height: 1.5;
+  -webkit-overflow-scrolling: touch;
+}
+.k-codeblock > pre { margin: 0; }
+.k-prose pre code {
+  font-family: var(--k-code-font);
+  font-size: var(--k-code-fs);
+  background: none;
+  color: inherit;
+  padding: 0;
+  border: 0;
+  white-space: pre;
+}
+
+.k-codeblock__copy {
+  position: absolute;
+  top: var(--k-space-2);
+  right: var(--k-space-2);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+  padding: 0.25em 0.6em;
+  font-family: var(--k-font-sans);
+  font-size: var(--k-text-xs);
+  font-weight: var(--k-weight-medium);
+  color: var(--k-ink-secondary);
+  background: var(--k-surface);
+  border: 1px solid var(--k-border-light);
+  border-radius: var(--k-radius-sm);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--k-motion-fast) var(--k-ease),
+              color var(--k-motion-fast) var(--k-ease),
+              border-color var(--k-motion-fast) var(--k-ease);
+}
+.k-codeblock:hover .k-codeblock__copy,
+.k-codeblock:focus-within .k-codeblock__copy { opacity: 1; }
+.k-codeblock__copy:hover { color: var(--k-accent); border-color: var(--k-accent); }
+.k-codeblock__copy:focus-visible {
+  opacity: 1; outline: var(--k-focus-outline); outline-offset: 2px;
+}
+.k-codeblock__copy.is-copied { color: #1a7f37; border-color: #1a7f37; }
+
+/* Touch devices have no hover — keep the button visible. */
+@media (hover: none) {
+  .k-codeblock__copy { opacity: 1; }
+}
+
+/* --- Responsive ----------------------------------------------------------- */
+@media (max-width: 768px) {
+  .k-article__title { font-size: 1.7rem; }
+  .k-prose { font-size: 1rem; }
+  .k-prose h2 { font-size: 1.3rem; }
+  .k-prose h3 { font-size: 1.1rem; }
+}
+
+/* --- Print ---------------------------------------------------------------- */
+@media print {
+  .k-codeblock__copy { display: none !important; }
+  .k-prose pre { border: 1px solid #999; }
+  .k-prose { max-width: none; }
+}

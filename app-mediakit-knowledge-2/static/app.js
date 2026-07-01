@@ -260,11 +260,84 @@
   }
 
   /* ------------------------------------------------------------------------ *
+   * Article body: copy buttons on code blocks
+   * ------------------------------------------------------------------------ *
+   * Wraps each `.k-prose pre` in a positioned `.k-codeblock` and adds a Copy
+   * button that writes the block's text to the clipboard. Progressive: absent
+   * this script the <pre> still renders and scrolls normally.
+   */
+  function copyText(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(text);
+    }
+    return new Promise(function (resolve, reject) {
+      try {
+        var ta = document.createElement("textarea");
+        ta.value = text;
+        ta.setAttribute("readonly", "");
+        ta.style.position = "absolute";
+        ta.style.left = "-9999px";
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+        resolve();
+      } catch (e) { reject(e); }
+    });
+  }
+
+  function initCodeCopy() {
+    qsa(".k-prose pre").forEach(function (pre) {
+      if (pre.parentNode && pre.parentNode.classList.contains("k-codeblock")) return;
+      var wrap = document.createElement("div");
+      wrap.className = "k-codeblock";
+      pre.parentNode.insertBefore(wrap, pre);
+      wrap.appendChild(pre);
+
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "k-codeblock__copy";
+      btn.textContent = "Copy";
+      btn.setAttribute("aria-label", "Copy code to clipboard");
+      wrap.appendChild(btn);
+
+      var resetTimer = null;
+      on(btn, "click", function () {
+        var code = pre.querySelector("code") || pre;
+        copyText(code.innerText).then(function () {
+          btn.textContent = "Copied";
+          btn.classList.add("is-copied");
+          if (resetTimer) clearTimeout(resetTimer);
+          resetTimer = setTimeout(function () {
+            btn.textContent = "Copy";
+            btn.classList.remove("is-copied");
+          }, 1800);
+        }).catch(function () {
+          btn.textContent = "Press ⌘/Ctrl-C";
+        });
+      });
+    });
+  }
+
+  /* Wrap wide tables so they scroll horizontally instead of overflowing. */
+  function initTables() {
+    qsa(".k-prose table").forEach(function (table) {
+      if (table.parentNode && table.parentNode.classList.contains("k-table-wrap")) return;
+      var wrap = document.createElement("div");
+      wrap.className = "k-table-wrap";
+      table.parentNode.insertBefore(wrap, table);
+      wrap.appendChild(table);
+    });
+  }
+
+  /* ------------------------------------------------------------------------ *
    * Bootstrap
    * ------------------------------------------------------------------------ */
   function boot() {
     initTheme();
     initDrawer();
+    initCodeCopy();
+    initTables();
     initToc();          /* stub */
     initArticleTabs();  /* stub */
   }

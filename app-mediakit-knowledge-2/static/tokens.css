@@ -140,6 +140,44 @@
   --k-z-overlay:    200;
   --k-z-drawer:     210;
   --k-z-skip-link:  300;
+
+  /* --- Article body (prose, headings, tables, code) ------------------------ */
+  /* Reading column: serif prose for the document register; sans headings.     */
+  --k-prose-font:      var(--k-font-serif);
+  --k-prose-fs:        1.0625rem;   /* 17px — comfortable long-form reading    */
+  --k-prose-leading:   1.65;
+  --k-prose-measure:   44rem;       /* ~72ch line length                       */
+  --k-prose-gap:       1.1em;       /* paragraph rhythm                        */
+  --k-prose-ink:       var(--k-ink);
+
+  /* Article title + section headings (sans, Wikipedia-style ruled) */
+  --k-title-font:      var(--k-font-sans);
+  --k-title-fs:        2.125rem;    /* 34px h1                                 */
+  --k-h2-fs:          1.5rem;       /* 24px section                            */
+  --k-h3-fs:          1.2rem;       /* 19px sub-section                        */
+  --k-heading-rule:    var(--k-border-light);
+
+  /* Tables (Wikipedia "wikitable" register) */
+  --k-table-border:    var(--k-border-light);
+  --k-table-head-bg:   var(--k-surface-sunken);
+  --k-table-head-ink:  var(--k-ink);
+  --k-table-stripe:    color-mix(in srgb, var(--k-surface-sunken) 55%, var(--k-surface));
+  --k-table-cell-pad:  0.45rem 0.7rem;
+  --k-table-fs:        0.9375rem;
+
+  /* Code (blocks + inline) */
+  --k-code-font:       var(--k-font-mono);
+  --k-code-fs:         0.875em;
+  --k-code-block-bg:   #f6f8fa;
+  --k-code-block-ink:  #1f2328;
+  --k-code-border:     var(--k-border-subtle);
+  --k-code-inline-bg:  color-mix(in srgb, var(--k-surface-sunken) 70%, var(--k-surface));
+  --k-code-inline-ink: #b1002f;     /* subtle brick for inline literals        */
+  --k-code-radius:     var(--k-radius-md);
+
+  /* Blockquote */
+  --k-quote-rule:      var(--k-accent);
+  --k-quote-ink:       var(--k-ink-secondary);
 }
 
 /* ============================================================================
@@ -205,6 +243,13 @@
 
   --k-shadow-header:  0 1px 0 var(--k-border);
   --k-shadow-drawer:  2px 0 16px rgba(0, 0, 0, 0.5);
+
+  /* Article body — dark register */
+  --k-code-block-bg:   #161b22;
+  --k-code-block-ink:  #d1d7e0;
+  --k-code-inline-ink: #ff9d8a;
+  --k-table-head-bg:   #1b2027;
+  --k-table-stripe:    #14181d;
 }
 
 :root[data-theme="dark"][data-instance="documentation"] {

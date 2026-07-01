@@ -102,28 +102,46 @@ impl Tenant {
         }
     }
 
-    /// Verbatim trademark line (TRADEMARK.md). Woodfine instances name the
-    /// customer-side marks in addition to the vendor marks.
-    pub fn trademark_line(&self) -> &'static str {
-        match self {
-            Tenant::Documentation => {
-                "PointSav Digital Systems\u{2122}, Totebox Orchestration\u{2122}, and \
-                 Totebox Archive\u{2122} are trademarks of Woodfine Capital Projects Inc., \
-                 used in Canada, the United States, Latin America, and Europe. All other \
-                 trademarks are the property of their respective owners."
-            }
-            Tenant::Projects | Tenant::Corporate => {
-                "Woodfine Capital Projects\u{2122}, Woodfine Management Corp\u{2122}, \
-                 PointSav Digital Systems\u{2122}, Totebox Orchestration\u{2122}, and \
-                 Totebox Archive\u{2122} are trademarks of Woodfine Capital Projects Inc., \
-                 used in Canada, the United States, Latin America, and Europe. All other \
-                 trademarks are the property of their respective owners."
-            }
-        }
-    }
-
     /// Copyright holder — the parent company, for every instance.
     pub fn copyright_holder(&self) -> &'static str {
         "Woodfine Capital Projects Inc."
+    }
+
+    /// The marketing home site (the "Home" cross-property link).
+    pub fn marketing_home(&self) -> &'static str {
+        match self {
+            Tenant::Documentation => "https://home.pointsav.com/",
+            Tenant::Projects | Tenant::Corporate => "https://home.woodfinegroup.com/",
+        }
+    }
+
+    /// Cross-property links for the top utility strip — mirrors the marketing
+    /// site's right-hand nav. `(label, url)`, self-links omitted.
+    pub fn cross_property_links(&self) -> Vec<(&'static str, &'static str)> {
+        match self {
+            Tenant::Documentation => vec![
+                ("Home", "https://home.pointsav.com/"),
+                ("Monorepo", "https://software.pointsav.com/"),
+                ("Design System", "https://design.pointsav.com/"),
+                ("GitHub", "https://github.com/pointsav"),
+            ],
+            Tenant::Projects => vec![
+                ("Home", "https://home.woodfinegroup.com/"),
+                ("Corporate", "https://corporate.woodfinegroup.com/"),
+                ("Newsroom", "https://newsroom.woodfinegroup.com/"),
+                ("GitHub", "https://github.com/woodfine/woodfine-fleet-deployment"),
+            ],
+            Tenant::Corporate => vec![
+                ("Home", "https://home.woodfinegroup.com/"),
+                ("Projects", "https://projects.woodfinegroup.com/"),
+                ("Newsroom", "https://newsroom.woodfinegroup.com/"),
+                ("GitHub", "https://github.com/woodfine/woodfine-fleet-deployment"),
+            ],
+        }
+    }
+
+    /// Office cities for the footer line — mirrors the marketing footer.
+    pub fn cities(&self) -> &'static [&'static str] {
+        &["Vancouver", "New York"]
     }
 }
