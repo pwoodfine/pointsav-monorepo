@@ -244,9 +244,10 @@
   --k-shadow-header:  0 1px 0 var(--k-border);
   --k-shadow-drawer:  2px 0 16px rgba(0, 0, 0, 0.5);
 
-  /* Article body — dark register */
-  --k-code-block-bg:   #161b22;
-  --k-code-block-ink:  #d1d7e0;
+  /* Article body — dark register. Code blocks stay LIGHT even in dark mode so
+     the server-side syntect light theme (dark-on-light tokens) stays readable. */
+  --k-code-block-bg:   #f6f8fa;
+  --k-code-block-ink:  #1f2328;
   --k-code-inline-ink: #ff9d8a;
   --k-table-head-bg:   #1b2027;
   --k-table-stripe:    #14181d;

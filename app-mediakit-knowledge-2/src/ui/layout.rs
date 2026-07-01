@@ -218,12 +218,13 @@ pub fn footer(tenant: Tenant) -> Markup {
                             span { (city) }
                         }
                     }
-                    // Subtle badges — a homage to Wikipedia's footer buttons.
+                    // Subtle badges — homage to Wikipedia's footer buttons.
                     div."k-footer__badges" {
+                        // Powered by MediaKit (the engine).
                         a."k-badge" href="/wiki/about" {
                             span."k-badge__glyph" aria-hidden="true" {
-                                svg viewBox="0 0 24 24" width="16" height="16" {
-                                    path fill="currentColor" d="M4 5h7l2 2h7a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm2.5 6.5h11v-1.5h-11v1.5zm0 3h11V13h-11v1.5z" {}
+                                svg viewBox="0 0 24 24" width="15" height="15" {
+                                    path fill="currentColor" d="M3 5.5A1.5 1.5 0 0 1 4.5 4h15A1.5 1.5 0 0 1 21 5.5v13A1.5 1.5 0 0 1 19.5 20h-15A1.5 1.5 0 0 1 3 18.5v-13zM6 8v8l3.2-2.4L6 8zm7 6.5h5V13h-5v1.5zm0-3h5V10h-5v1.5z" {}
                                 }
                             }
                             span."k-badge__text" {
@@ -231,18 +232,29 @@ pub fn footer(tenant: Tenant) -> Markup {
                                 span."k-badge__name" { "MediaKit" }
                             }
                         }
-                        a."k-badge" href="/wiki/disclaimers" {
-                            span."k-badge__glyph" aria-hidden="true" {
-                                svg viewBox="0 0 24 24" width="16" height="16" {
-                                    path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 2a8 8 0 1 1 0 16 8 8 0 0 1 0-16zm-.9 3.2c.55-.9 2.25-.7 2.25.55 0 .8-.75 1.1-1.2 1.5-.5.45-.6.9-.6 1.55h-1.4c0-1 .15-1.5.75-2.05.45-.4.85-.65.85-1.1 0-.55-.85-.6-.9.1l-1.4-.1c.05-.35.2-.65.35-.9zM11.3 13h1.4v1.4h-1.4V13z" {}
+                        // CC BY 4.0 — the content licence (Wikipedia-style badge).
+                        a."k-badge k-badge--license" href="https://creativecommons.org/licenses/by/4.0/"
+                          target="_blank" rel="noopener license" aria-label="Content licensed CC BY 4.0" {
+                            span."k-badge__roundels" aria-hidden="true" {
+                                svg viewBox="0 0 48 24" width="42" height="21" {
+                                    circle cx="12" cy="12" r="10.4" fill="none" stroke="currentColor" stroke-width="1.6" {}
+                                    text x="12" y="16" text-anchor="middle" font-size="11" font-weight="700"
+                                         font-family="var(--k-font-sans)" fill="currentColor" { "cc" }
+                                    circle cx="36" cy="12" r="10.4" fill="none" stroke="currentColor" stroke-width="1.6" {}
+                                    circle cx="36" cy="8.4" r="2.1" fill="currentColor" {}
+                                    path fill="currentColor" d="M32.4 17.6c0-2.2 1.6-3.7 3.6-3.7s3.6 1.5 3.6 3.7h-1.8v-.2c0-1-.8-1.8-1.8-1.8s-1.8.8-1.8 1.8v.2h-1.8z" {}
                                 }
                             }
                             span."k-badge__text" {
-                                span."k-badge__lead" { "\u{00a9} 2026" }
-                                span."k-badge__name" { (tenant.copyright_holder()) }
+                                span."k-badge__lead" { "Licensed" }
+                                span."k-badge__name" { "CC BY 4.0" }
                             }
                         }
                     }
+                }
+                p."k-footer__copyline" {
+                    "\u{00a9} 2026 " (tenant.copyright_holder())
+                    ". Content licensed under CC BY 4.0."
                 }
             }
         }

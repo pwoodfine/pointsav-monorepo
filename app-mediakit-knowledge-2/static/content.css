@@ -34,11 +34,13 @@
   line-height: var(--k-prose-leading);
   color: var(--k-prose-ink);
 }
+/* Vertical rhythm — direct children carry the paragraph gap. Reset first so a
+   later same-specificity rule can re-add the top gap (do NOT use `.k-prose p
+   { margin: 0 }`, which out-specifies this and kills the spacing). */
+.k-prose > * { margin-top: 0; margin-bottom: 0; }
 .k-prose > * + * { margin-top: var(--k-prose-gap); }
 
-/* Running paragraphs get a readable measure; block elements stay full width. */
-.k-prose p { margin: 0; max-width: var(--k-prose-measure); }
-.k-prose ul, .k-prose ol { max-width: var(--k-prose-measure); }
+/* Fill the content column left-to-right (Wikipedia-style) — no narrow measure. */
 
 /* Section headings — Wikipedia rules the h2 with a hairline underline. */
 .k-prose h2 {

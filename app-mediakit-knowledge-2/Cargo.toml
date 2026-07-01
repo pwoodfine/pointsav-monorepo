@@ -25,7 +25,7 @@ tokio = { version = "1", features = ["rt-multi-thread", "macros", "signal", "fs"
 tower = "0.5"
 tower-http = { version = "0.6", features = ["trace", "set-header", "compression-br", "compression-gzip"] }
 maud = { version = "0.27", features = ["axum"] }
-comrak = "0.52"
+comrak = { version = "0.52", features = ["syntect"] }
 rust-embed = { version = "8", features = ["compression"] }
 mime_guess = "2"
 tracing = "0.1"
