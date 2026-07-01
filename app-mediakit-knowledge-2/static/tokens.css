@@ -108,7 +108,8 @@
   /* --- Chrome geometry ----------------------------------------------------- */
   --k-header-height:      3.5rem;    /* 56px */
   --k-sitenotice-height:  2rem;      /* 32px */
-  --k-content-max:        75rem;     /* 1200px chrome max-width              */
+  --k-content-max:        none;      /* fill viewport (gutters only); the P3
+                                        left sidebar will re-form the 2-column  */
   --k-search-max:         480px;
   --k-drawer-width:       min(20rem, 84vw);
   --k-gutter:             var(--k-space-5);
@@ -244,11 +245,12 @@
   --k-shadow-header:  0 1px 0 var(--k-border);
   --k-shadow-drawer:  2px 0 16px rgba(0, 0, 0, 0.5);
 
-  /* Article body — dark register. Code blocks stay LIGHT even in dark mode so
-     the server-side syntect light theme (dark-on-light tokens) stays readable. */
-  --k-code-block-bg:   #f6f8fa;
-  --k-code-block-ink:  #1f2328;
+  /* Article body — dark register. Code blocks are DARK in dark mode (the syntax
+     palette switches to a dark theme via syntax.css). */
+  --k-code-block-bg:   #2b303b;   /* base16-ocean.dark panel                   */
+  --k-code-block-ink:  #c0c5ce;
   --k-code-inline-ink: #ff9d8a;
+  --k-code-border:     #3a4149;
   --k-table-head-bg:   #1b2027;
   --k-table-stripe:    #14181d;
 }

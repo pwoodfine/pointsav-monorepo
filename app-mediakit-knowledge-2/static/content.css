@@ -152,8 +152,11 @@
 /* --- Code blocks + copy button -------------------------------------------- */
 /* JS wraps each <pre> in .k-codeblock and adds the copy button. Absent JS the
    <pre> still styles correctly (progressive enhancement). */
-.k-codeblock { position: relative; margin: var(--k-space-5) 0; }
+.k-codeblock { position: relative; width: 100%; margin: var(--k-space-5) 0; }
 .k-prose pre {
+  display: block;
+  width: 100%;                       /* full left-to-right, like Google Docs   */
+  box-sizing: border-box;
   margin: var(--k-space-5) 0;
   padding: var(--k-space-4);
   background: var(--k-code-block-bg);
@@ -161,7 +164,7 @@
   border: 1px solid var(--k-code-border);
   border-radius: var(--k-code-radius);
   overflow-x: auto;
-  line-height: 1.5;
+  line-height: 1.55;
   -webkit-overflow-scrolling: touch;
 }
 .k-codeblock > pre { margin: 0; }
@@ -186,16 +189,22 @@
   font-family: var(--k-font-sans);
   font-size: var(--k-text-xs);
   font-weight: var(--k-weight-medium);
-  color: var(--k-ink-secondary);
-  background: var(--k-surface);
-  border: 1px solid var(--k-border-light);
+  /* Panel-relative so it reads on both the light and dark code background. */
+  color: var(--k-code-block-ink);
+  background: color-mix(in srgb, var(--k-code-block-ink) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--k-code-block-ink) 24%, transparent);
   border-radius: var(--k-radius-sm);
   cursor: pointer;
   opacity: 1;                          /* always visible */
   transition: color var(--k-motion-fast) var(--k-ease),
+              background var(--k-motion-fast) var(--k-ease),
               border-color var(--k-motion-fast) var(--k-ease);
 }
-.k-codeblock__copy:hover { color: var(--k-accent); border-color: var(--k-accent); }
+.k-codeblock__copy:hover {
+  color: var(--k-code-block-bg);
+  background: var(--k-code-block-ink);
+  border-color: var(--k-code-block-ink);
+}
 .k-codeblock__copy:focus-visible {
   outline: var(--k-focus-outline); outline-offset: 2px;
 }

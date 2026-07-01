@@ -22,6 +22,7 @@ pub fn doc_head(title: &str, tenant: Tenant) -> Markup {
         link rel="stylesheet" href="/static/tokens.css";
         link rel="stylesheet" href="/static/app.css";
         link rel="stylesheet" href="/static/content.css";
+        link rel="stylesheet" href="/static/syntax.css";
         // Pre-paint theme guard — sets data-theme before first paint (no flash).
         // Key 'k-theme' is shared with app.js.
         script {
