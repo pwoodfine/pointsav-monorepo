@@ -220,14 +220,14 @@ pub fn footer(tenant: Tenant) -> Markup {
                 // Base row — copyright + cities on the left, badges on the right.
                 div."k-footer__base" {
                     div."k-footer__meta" {
-                        p."k-footer__copyright" {
-                            "\u{00a9} 2026 " (tenant.copyright_holder())
-                        }
                         div."k-footer__cities" {
                             @for (i, city) in tenant.cities().iter().enumerate() {
                                 @if i > 0 { span."k-footer__cities-sep" aria-hidden="true" { "|" } }
                                 span { (city) }
                             }
+                        }
+                        p."k-footer__copyright" {
+                            "\u{00a9} 2026 " (tenant.copyright_holder())
                         }
                     }
                     div."k-footer__badges" {
