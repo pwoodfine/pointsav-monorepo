@@ -209,11 +209,12 @@ pub fn footer(tenant: Tenant) -> Markup {
                         h2."k-footer__col-title" { "Network" }
                         ul."k-footer__list" {
                             li { a."k-footer__link" href=(tenant.marketing_home()) target="_blank" rel="noopener" { (tenant.entity_name()) } }
-                            @let (other_label, other_url) = tenant.other_org();
-                            li { a."k-footer__link" href=(other_url) target="_blank" rel="noopener" { (other_label) } }
                             @for (label, url) in tenant.cross_property_links() {
                                 li { a."k-footer__link" href=(url) target="_blank" rel="noopener" { (label) } }
                             }
+                            // Cross-company link last — related but separate org.
+                            @let (other_label, other_url) = tenant.other_org();
+                            li { a."k-footer__link" href=(other_url) target="_blank" rel="noopener" { (other_label) } }
                         }
                     }
                 }
