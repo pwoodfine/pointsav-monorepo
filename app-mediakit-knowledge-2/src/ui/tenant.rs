@@ -77,12 +77,29 @@ impl Tenant {
         }
     }
 
-    /// Accessible label / wordmark text.
+    /// Accessible label / wordmark text (brand + descriptor combined).
     pub fn home_label(&self) -> &'static str {
         match self {
             Tenant::Documentation => "PointSav Documentation",
             Tenant::Projects => "Woodfine Projects",
             Tenant::Corporate => "Woodfine Corporate",
+        }
+    }
+
+    /// Brand word for the wordmark lockup (display face).
+    pub fn brand_word(&self) -> &'static str {
+        match self {
+            Tenant::Documentation => "PointSav",
+            Tenant::Projects | Tenant::Corporate => "Woodfine",
+        }
+    }
+
+    /// Descriptor for the wordmark lockup (sans, lighter — the wiki's role).
+    pub fn descriptor(&self) -> &'static str {
+        match self {
+            Tenant::Documentation => "Documentation",
+            Tenant::Projects => "Projects",
+            Tenant::Corporate => "Corporate",
         }
     }
 
@@ -116,26 +133,25 @@ impl Tenant {
     }
 
     /// Cross-property links for the top utility strip — mirrors the marketing
-    /// site's right-hand nav. `(label, url)`, self-links omitted.
+    /// site's right-hand nav exactly. `(label, url)`, self-links omitted.
+    /// (No separate GitHub entry — the marketing "Monorepo" link already leads
+    /// to the source-of-record property, so a GitHub link would be redundant.)
     pub fn cross_property_links(&self) -> Vec<(&'static str, &'static str)> {
         match self {
+            // "Home" is intentionally omitted — the entity label links to the
+            // corporate home, and the wiki logo links to this wiki's front page.
+            // Listing a third "Home" here conflates the two.
             Tenant::Documentation => vec![
-                ("Home", "https://home.pointsav.com/"),
                 ("Monorepo", "https://software.pointsav.com/"),
                 ("Design System", "https://design.pointsav.com/"),
-                ("GitHub", "https://github.com/pointsav"),
             ],
             Tenant::Projects => vec![
-                ("Home", "https://home.woodfinegroup.com/"),
                 ("Corporate", "https://corporate.woodfinegroup.com/"),
                 ("Newsroom", "https://newsroom.woodfinegroup.com/"),
-                ("GitHub", "https://github.com/woodfine/woodfine-fleet-deployment"),
             ],
             Tenant::Corporate => vec![
-                ("Home", "https://home.woodfinegroup.com/"),
                 ("Projects", "https://projects.woodfinegroup.com/"),
                 ("Newsroom", "https://newsroom.woodfinegroup.com/"),
-                ("GitHub", "https://github.com/woodfine/woodfine-fleet-deployment"),
             ],
         }
     }

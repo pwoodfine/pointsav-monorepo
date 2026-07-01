@@ -66,7 +66,9 @@ pub fn utility_bar(tenant: Tenant) -> Markup {
     html! {
         div."k-utility" {
             div."k-utility__inner" {
-                span."k-utility__label" { (tenant.entity_name()) }
+                a."k-utility__home" href=(tenant.marketing_home()) {
+                    (tenant.entity_name())
+                }
                 nav."k-utility__nav" aria-label="PointSav network" {
                     @for (label, url) in tenant.cross_property_links() {
                         a."k-utility__link" href=(url) target="_blank" rel="noopener" {
@@ -87,7 +89,10 @@ pub fn header(tenant: Tenant, lang: &str) -> Markup {
                 div."k-header__start" {
                     a."k-logo" href="/" aria-label=(tenant.home_label()) {
                         (logo_mark())
-                        span."k-logo__text" { (tenant.home_label()) }
+                        span."k-logo__lockup" {
+                            span."k-logo__brand" { (tenant.brand_word()) }
+                            span."k-logo__descriptor" { (tenant.descriptor()) }
+                        }
                     }
                 }
                 div."k-header__center" { (search_block("k-search-input")) }
@@ -157,6 +162,11 @@ pub fn mobile_nav(tenant: Tenant) -> Markup {
                 section."k-nav-section" {
                     h2."k-nav-section__title" { "PointSav network" }
                     ul."k-nav-list" {
+                        li {
+                            a."k-nav-link" href=(tenant.marketing_home()) target="_blank" rel="noopener" {
+                                (tenant.entity_name())
+                            }
+                        }
                         @for (label, url) in tenant.cross_property_links() {
                             li { a."k-nav-link" href=(url) target="_blank" rel="noopener" { (label) } }
                         }
@@ -186,10 +196,10 @@ pub fn footer(tenant: Tenant) -> Markup {
                     div."k-footer__col" {
                         h2."k-footer__col-title" { "This site" }
                         ul."k-footer__list" {
-                            li { a."k-footer__link" href="/page/about" { "About" } }
-                            li { a."k-footer__link" href="/page/disclaimer" { "Disclaimer" } }
-                            li { a."k-footer__link" href="/page/contact" { "Contact us" } }
-                            li { a."k-footer__link" href="/page/privacy" { "Privacy" } }
+                            li { a."k-footer__link" href="/wiki/about" { "About" } }
+                            li { a."k-footer__link" href="/wiki/disclaimers" { "Disclaimer" } }
+                            li { a."k-footer__link" href="/wiki/contact" { "Contact us" } }
+                            li { a."k-footer__link" href="/wiki/privacy" { "Privacy" } }
                         }
                     }
                     div."k-footer__col" {
@@ -208,8 +218,30 @@ pub fn footer(tenant: Tenant) -> Markup {
                             span { (city) }
                         }
                     }
-                    div."k-footer__copyright" {
-                        "\u{00a9} 2026 " (tenant.copyright_holder())
+                    // Subtle badges — a homage to Wikipedia's footer buttons.
+                    div."k-footer__badges" {
+                        a."k-badge" href="/wiki/about" {
+                            span."k-badge__glyph" aria-hidden="true" {
+                                svg viewBox="0 0 24 24" width="16" height="16" {
+                                    path fill="currentColor" d="M4 5h7l2 2h7a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm2.5 6.5h11v-1.5h-11v1.5zm0 3h11V13h-11v1.5z" {}
+                                }
+                            }
+                            span."k-badge__text" {
+                                span."k-badge__lead" { "Powered by" }
+                                span."k-badge__name" { "MediaKit" }
+                            }
+                        }
+                        a."k-badge" href="/wiki/disclaimers" {
+                            span."k-badge__glyph" aria-hidden="true" {
+                                svg viewBox="0 0 24 24" width="16" height="16" {
+                                    path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 2a8 8 0 1 1 0 16 8 8 0 0 1 0-16zm-.9 3.2c.55-.9 2.25-.7 2.25.55 0 .8-.75 1.1-1.2 1.5-.5.45-.6.9-.6 1.55h-1.4c0-1 .15-1.5.75-2.05.45-.4.85-.65.85-1.1 0-.55-.85-.6-.9.1l-1.4-.1c.05-.35.2-.65.35-.9zM11.3 13h1.4v1.4h-1.4V13z" {}
+                                }
+                            }
+                            span."k-badge__text" {
+                                span."k-badge__lead" { "\u{00a9} 2026" }
+                                span."k-badge__name" { (tenant.copyright_holder()) }
+                            }
+                        }
                     }
                 }
             }
