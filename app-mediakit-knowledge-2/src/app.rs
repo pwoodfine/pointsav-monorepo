@@ -17,6 +17,7 @@ use axum::Router;
 use crate::assets::StaticAssets;
 use crate::config::Config;
 use crate::content::{self, ContentIndex, Lang, MountSet};
+use crate::ui::{self, Tenant};
 
 /// Shared, immutable-after-startup application state.
 #[derive(Clone)]
@@ -24,6 +25,7 @@ pub struct AppState {
     pub config: Arc<Config>,
     pub mounts: Arc<MountSet>,
     pub index: Arc<ContentIndex>,
+    pub tenant: Tenant,
 }
 
 impl AppState {
@@ -31,11 +33,13 @@ impl AppState {
     pub fn build(config: Config) -> Self {
         let mounts = MountSet::from_config(&config);
         let index = ContentIndex::build(&mounts);
+        let tenant = Tenant::from_instance(config.site.instance.as_deref());
         tracing::info!("indexed {} article(s)", index.article_count());
         Self {
             config: Arc::new(config),
             mounts: Arc::new(mounts),
             index: Arc::new(index),
+            tenant,
         }
     }
 }
@@ -55,8 +59,9 @@ async fn healthz() -> impl IntoResponse {
     (StatusCode::OK, "ok")
 }
 
-/// Raw article view — rendered body only, no chrome yet (chrome arrives in P2/P3).
-/// Proves the content pipeline: slug resolution → parse → render.
+/// Article view — the rendered body wrapped in the new chrome shell.
+/// The full 2-column article layout (tabs above h1, TOC sidebar) arrives in P3;
+/// P2 renders the body inside the continuous header/sitenotice/footer chrome.
 async fn wiki_raw(State(state): State<AppState>, Path(slug): Path<String>) -> Response {
     let slug = slug.trim_end_matches('/');
     let Some(doc) = state.index.resolve(slug, Lang::En) else {
@@ -73,14 +78,13 @@ async fn wiki_raw(State(state): State<AppState>, Path(slug): Path<String>) -> Re
         .frontmatter
         .title
         .unwrap_or_else(|| doc.title.clone());
-    // Minimal, unstyled document — real chrome is authored in P2/P3.
-    let page = format!(
-        "<!doctype html><html><head><meta charset=\"utf-8\"><title>{title}</title></head>\
-         <body><h1>{title}</h1>{body}</body></html>",
-        title = html_escape(&title),
-        body = rendered.html,
-    );
-    Html(page).into_response()
+    let tenant = state.tenant;
+    let body = maud::html! {
+        h1 { (title) }
+        (maud::PreEscaped(rendered.html))
+    };
+    let head = ui::doc_head(&title, tenant);
+    Html(ui::page(tenant, "en", head, body).into_string()).into_response()
 }
 
 /// Serve an embedded static asset by path.
@@ -96,11 +100,4 @@ async fn static_asset(Path(path): Path<String>) -> Response {
         }
         None => (StatusCode::NOT_FOUND, "asset not found").into_response(),
     }
-}
-
-/// Minimal HTML text escaping for interpolated titles.
-fn html_escape(s: &str) -> String {
-    s.replace('&', "&amp;")
-        .replace('<', "&lt;")
-        .replace('>', "&gt;")
 }
