@@ -1,0 +1,5 @@
+/* app-mediakit-knowledge-2 — placeholder stylesheet (P0).
+ * The real design system is authored in P2 (Opus design swarm):
+ * new token namespace, new class namespace, white header, brand-as-accent.
+ * This file exists only so the embedded-asset build has content. */
+:root { color-scheme: light; }
