@@ -118,11 +118,17 @@ async fn home(State(state): State<AppState>) -> Response {
 
     // How-to guides (content_type/category "how-to") — surfaced as their own
     // section, distinct from the topic areas. Show a sample + a browse-all link.
-    let guides: Vec<(String, String)> = state
+    let guides: Vec<(String, String, String)> = state
         .index
         .in_category("how-to")
         .into_iter()
-        .map(|d| (d.slug.clone(), d.title.clone()))
+        .map(|d| {
+            (
+                d.slug.clone(),
+                d.title.clone(),
+                d.short_description.clone().unwrap_or_default(),
+            )
+        })
         .collect();
 
     let body = ui::home_page(tenant, &lede, total, &cats, &guides);

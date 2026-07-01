@@ -26,6 +26,7 @@ pub struct DocRef {
     pub lang: Lang,
     pub title: String,
     pub category: Option<String>,
+    pub short_description: Option<String>,
     pub mount_index: usize,
 }
 
@@ -164,6 +165,12 @@ fn load_ref(root: &Path, path: &Path, mount_index: usize) -> Option<DocRef> {
         lang,
         title,
         category: doc.frontmatter.category.clone(),
+        short_description: doc
+            .frontmatter
+            .short_description
+            .clone()
+            .filter(|s| !s.trim().is_empty())
+            .or_else(|| first_body_summary(&doc.body_md)),
         mount_index,
     })
 }
@@ -181,6 +188,39 @@ fn path_slug(rel: &Path) -> String {
     let s = rel.to_string_lossy();
     let s = s.strip_suffix(".es.md").or_else(|| s.strip_suffix(".md")).unwrap_or(&s);
     s.rsplit('/').next().unwrap_or(s).to_string()
+}
+
+/// A one-line summary from the first real body paragraph, lightly de-marked and
+/// truncated at a word boundary. Used when a doc has no `short_description`.
+fn first_body_summary(body: &str) -> Option<String> {
+    let line = body.lines().find(|l| {
+        let t = l.trim();
+        !t.is_empty()
+            && !t.starts_with('#')
+            && !t.starts_with("---")
+            && !t.starts_with("<!--")
+            && !t.starts_with('|')
+            && !t.starts_with('>')
+    })?;
+    // Light markdown strip: emphasis, code ticks, and wikilink brackets.
+    let mut s = line.trim().replace("**", "").replace('`', "");
+    s = s.replace("[[", "").replace("]]", "");
+    Some(truncate_words(&s, 150))
+}
+
+/// Truncate to at most `max_chars`, cutting on a word boundary, adding an ellipsis.
+fn truncate_words(s: &str, max_chars: usize) -> String {
+    if s.chars().count() <= max_chars {
+        return s.to_string();
+    }
+    let end = s
+        .char_indices()
+        .nth(max_chars)
+        .map(|(i, _)| i)
+        .unwrap_or(s.len());
+    let cut = &s[..end];
+    let cut = cut.rfind(' ').map(|i| &cut[..i]).unwrap_or(cut);
+    format!("{}\u{2026}", cut.trim_end())
 }
 
 /// Turn a slug into a human title: "merkle-proofs" → "Merkle proofs".
