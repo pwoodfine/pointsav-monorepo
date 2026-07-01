@@ -9,12 +9,77 @@ use std::sync::OnceLock;
 use comrak::options::Plugins;
 use comrak::plugins::syntect::{SyntectAdapter, SyntectAdapterBuilder};
 use comrak::{markdown_to_html_with_plugins, Options};
+use syntect::highlighting::ThemeSet;
+use syntect::html::{css_for_theme_with_class_style, ClassStyle};
 
-/// Syntax highlighter, built once. Light GitHub-style theme (subtle colour,
-/// like a document editor) applied at render time — no client-side JS.
+/// Syntax highlighter, built once. Class-based output (no inline colours) so the
+/// palette can switch with the page theme via `syntax_css()`.
 fn highlighter() -> &'static SyntectAdapter {
     static ADAPTER: OnceLock<SyntectAdapter> = OnceLock::new();
-    ADAPTER.get_or_init(|| SyntectAdapterBuilder::new().theme("InspiredGitHub").build())
+    // No theme set → the adapter emits CSS classes (not inline colours),
+    // which `syntax_css()` themes for light and dark.
+    ADAPTER.get_or_init(|| SyntectAdapterBuilder::new().build())
+}
+
+/// Token-colour CSS for code blocks: a light theme by default and a dark theme
+/// scoped under `html[data-theme="dark"]`, so code follows the page like every
+/// modern docs site. Backgrounds are stripped — the panel background is a token
+/// (`--k-code-block-bg`), light or dark per mode. Generated once.
+pub fn syntax_css() -> &'static str {
+    static CSS: OnceLock<String> = OnceLock::new();
+    CSS.get_or_init(|| {
+        let ts = ThemeSet::load_defaults();
+        let light = ts
+            .themes
+            .get("InspiredGitHub")
+            .and_then(|t| css_for_theme_with_class_style(t, ClassStyle::Spaced).ok())
+            .unwrap_or_default();
+        let dark = ts
+            .themes
+            .get("base16-ocean.dark")
+            .and_then(|t| css_for_theme_with_class_style(t, ClassStyle::Spaced).ok())
+            .unwrap_or_default();
+        format!(
+            "/* light */\n{}\n/* dark */\n{}\n",
+            transform_theme_css(&light, None),
+            transform_theme_css(&dark, Some("html[data-theme=\"dark\"] ")),
+        )
+    })
+}
+
+/// Strip background rules and, optionally, prefix every selector with a scope so
+/// a theme only applies in that mode. Keeps foreground token colours only.
+fn transform_theme_css(css: &str, scope: Option<&str>) -> String {
+    // Drop the leading header comment syntect emits.
+    let css = match (css.find("/*"), css.find("*/")) {
+        (Some(0), Some(end)) => &css[end + 2..],
+        _ => css,
+    };
+    let no_bg: String = css
+        .lines()
+        .filter(|l| !l.trim_start().starts_with("background-color"))
+        .collect::<Vec<_>>()
+        .join("\n");
+    let Some(prefix) = scope else { return no_bg };
+    let mut out = String::new();
+    for rule in no_bg.split_inclusive('}') {
+        match rule.find('{') {
+            Some(b) if !rule[..b].trim().is_empty() => {
+                let (sel, body) = rule.split_at(b);
+                let scoped = sel
+                    .split(',')
+                    .map(|s| format!("{prefix}{}", s.trim()))
+                    .filter(|s| !s.trim().is_empty())
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                out.push_str(&scoped);
+                out.push(' ');
+                out.push_str(body);
+            }
+            _ => out.push_str(rule),
+        }
+    }
+    out
 }
 
 /// A rendered document body plus its heading outline.

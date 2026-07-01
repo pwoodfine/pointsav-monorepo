@@ -52,8 +52,19 @@ pub fn router(state: AppState) -> Router {
         .route("/health", get(healthz))
         .route("/wiki/{*slug}", get(wiki_raw))
         .route("/category/{name}", get(category_page))
+        .route("/static/syntax.css", get(syntax_css_handler))
         .route("/static/{*path}", get(static_asset))
         .with_state(state)
+}
+
+/// Generated syntax-highlight stylesheet (light + dark themes).
+async fn syntax_css_handler() -> Response {
+    Response::builder()
+        .status(StatusCode::OK)
+        .header(header::CONTENT_TYPE, "text/css; charset=utf-8")
+        .header(header::CACHE_CONTROL, "public, max-age=3600")
+        .body(Body::from(content::syntax_css()))
+        .unwrap()
 }
 
 /// Turn a category slug into a human label: "design-system" → "Design System".
