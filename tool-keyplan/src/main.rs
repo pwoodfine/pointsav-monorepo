@@ -19,6 +19,7 @@ use std::{collections::HashMap, env, fs, path::Path};
 // ─── interior DTCG structures ──────────────────────────────────────────────
 
 #[derive(Debug, Clone, Deserialize)]
+#[allow(dead_code)]
 struct DimensionsMm {
     w: f64,
     d: f64,
@@ -30,6 +31,7 @@ struct DimensionsMm {
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, Deserialize)]
+#[allow(dead_code)]
 struct ClearanceMm {
     front: f64,
     sides: f64,
@@ -38,6 +40,7 @@ struct ClearanceMm {
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, Deserialize)]
+#[allow(dead_code)]
 struct FurnitureValue {
     manufacturer: String,
     product_line: Option<String>,
@@ -74,6 +77,7 @@ struct KeyPlanMeta {
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct CirculationToml {
     standard: String,
     min_area_per_person_m2: f64,
@@ -84,6 +88,7 @@ struct CirculationToml {
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct FurniturePlacement {
     token: String,
     zone: String,
