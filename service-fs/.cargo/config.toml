@@ -1,2 +1,0 @@
-[build]
-# target = "x86_64-unknown-none"  # Envelope B (seL4 bare-metal) — Phase 3; disabled for Envelope A std build
