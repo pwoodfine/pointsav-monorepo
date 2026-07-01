@@ -523,7 +523,7 @@ button:disabled { cursor: default; }
   display: flex;
   flex-direction: column;               /* cities above the copyright line */
   align-items: flex-start;
-  gap: var(--k-space-1);
+  gap: var(--k-space-3);
 }
 .k-footer__copyright { margin: 0; color: var(--k-ink-muted); }
 .k-footer__cities {
