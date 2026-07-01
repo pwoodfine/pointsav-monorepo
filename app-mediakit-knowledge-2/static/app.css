@@ -119,67 +119,41 @@ button:disabled { cursor: default; }
 }
 
 /* ========================================================================== */
-/* Sitenotice strip — light gray, thin, ABOVE the header, scrolls away        */
+/* Utility strip — cross-property network nav (mirrors the marketing topnav)   */
 /* ========================================================================== */
-.k-sitenotice {
-  background: var(--k-sitenotice-bg);
+.k-utility {
+  background: var(--k-surface-sunken);
   border-bottom: 1px solid var(--k-border-subtle);
-  color: var(--k-ink-secondary);
+  color: var(--k-ink-muted);
   font-size: var(--k-text-xs);
 }
-.k-sitenotice__inner {
+.k-utility__inner {
   display: flex;
   align-items: center;
-  gap: var(--k-space-3);
+  gap: var(--k-space-4);
   min-height: var(--k-sitenotice-height);
   max-width: var(--k-content-max);
   margin-inline: auto;
   padding: var(--k-space-1) var(--k-gutter);
 }
-.k-sitenotice__entity {
-  color: var(--k-accent);
-  text-transform: uppercase;
-  letter-spacing: var(--k-tracking-caps);
-  font-weight: var(--k-weight-semibold);
-  white-space: nowrap;
-}
-.k-sitenotice__entity:hover  { color: var(--k-accent-hover); }
-.k-sitenotice__entity:active { color: var(--k-accent-active); }
-.k-sitenotice__entity:visited { color: var(--k-accent); }
-
-.k-sitenotice__sep {
-  color: var(--k-border);
-  user-select: none;
-}
-.k-sitenotice__seat {
+.k-utility__label {
   color: var(--k-ink-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.k-sitenotice__spacer { flex: 1 1 auto; }
-
-.k-sitenotice__sibling {
-  color: var(--k-link);
-  white-space: nowrap;
-}
-.k-sitenotice__sibling:hover { color: var(--k-link-hover); }
-
-.k-sitenotice__badge {
-  display: inline-flex;
+.k-utility__nav {
+  display: flex;
   align-items: center;
-  gap: var(--k-space-1);
-  padding: 1px var(--k-space-2);
-  font-size: var(--k-text-2xs);
-  font-weight: var(--k-weight-semibold);
-  text-transform: uppercase;
-  letter-spacing: var(--k-tracking-caps);
-  color: var(--k-badge-ink);
-  background: var(--k-badge-bg);           /* transparent — border accent only */
-  border: 1px solid var(--k-badge-border);
-  border-radius: var(--k-radius-pill);
+  gap: var(--k-space-4);
+  margin-left: auto;                 /* network links pushed right */
+}
+.k-utility__link {
+  color: var(--k-ink-secondary);
   white-space: nowrap;
 }
+.k-utility__link:hover  { color: var(--k-accent); }
+.k-utility__link:focus-visible { outline: var(--k-focus-outline); outline-offset: 2px; border-radius: var(--k-radius-xs); }
 
 /* ========================================================================== */
 /* Header — sticky, WHITE, flush with canvas, thin bottom rule                */
@@ -514,10 +488,11 @@ button:disabled { cursor: default; }
 .k-footer__link:visited { color: var(--k-link-visited); }
 .k-footer__link:focus-visible { outline: var(--k-focus-outline); outline-offset: 2px; border-radius: var(--k-radius-xs); }
 
-.k-footer__legal {
+.k-footer__base {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: space-between;
   gap: var(--k-space-2) var(--k-space-4);
   margin-top: var(--k-gutter-lg);
   padding-top: var(--k-space-4);
@@ -525,19 +500,22 @@ button:disabled { cursor: default; }
   color: var(--k-ink-muted);
   font-size: var(--k-text-xs);
 }
-.k-footer__legal-item { white-space: nowrap; }
-.k-footer__brand {
-  color: var(--k-accent);
-  font-weight: var(--k-weight-semibold);
-  text-transform: uppercase;
-  letter-spacing: var(--k-tracking-caps);
+.k-footer__cities {
+  display: flex;
+  align-items: center;
+  gap: var(--k-space-3);
+  font-weight: var(--k-weight-medium);
+  letter-spacing: var(--k-tracking-wide);
+  color: var(--k-ink-secondary);
 }
+.k-footer__cities-sep { color: var(--k-border); }
+.k-footer__copyright { color: var(--k-ink-muted); white-space: nowrap; }
 
 /* ========================================================================== */
 /* Responsive ≤768px                                                          */
 /* ========================================================================== */
 @media (max-width: 768px) {
-  .k-sitenotice { display: none; }          /* sitenotice hidden on mobile   */
+  .k-utility { display: none; }             /* network strip → drawer on mobile */
 
   .k-control--menu { display: inline-flex; } /* hamburger revealed           */
 
@@ -569,7 +547,7 @@ button:disabled { cursor: default; }
 /* ========================================================================== */
 @media print {
   .k-skip-link,
-  .k-sitenotice,
+  .k-utility,
   .k-header,
   .k-controls,
   .k-search,

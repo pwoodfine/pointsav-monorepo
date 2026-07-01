@@ -47,11 +47,34 @@ impl AppState {
 /// Build the router. The route map is the engine's public contract.
 pub fn router(state: AppState) -> Router {
     Router::new()
+        .route("/", get(home))
         .route("/healthz", get(healthz))
         .route("/health", get(healthz))
         .route("/wiki/{*slug}", get(wiki_raw))
         .route("/static/{*path}", get(static_asset))
         .with_state(state)
+}
+
+/// Minimal home page — renders the primary mount's `index.md` lede inside the
+/// chrome. The full editorial home (category grid, featured, recent) is P3.
+async fn home(State(state): State<AppState>) -> Response {
+    let tenant = state.tenant;
+    let body = match state.index.resolve("index", Lang::En) {
+        Some(doc) => match content::load(doc) {
+            Ok(parsed) => {
+                let rendered = content::render(&parsed.body_md);
+                let title = parsed
+                    .frontmatter
+                    .title
+                    .unwrap_or_else(|| tenant.home_label().to_string());
+                ui::article(&title, &rendered.html)
+            }
+            Err(_) => ui::article(tenant.home_label(), ""),
+        },
+        None => ui::article(tenant.home_label(), ""),
+    };
+    let head = ui::doc_head(tenant.home_label(), tenant);
+    Html(ui::page(tenant, "en", head, body).into_string()).into_response()
 }
 
 /// Liveness probe.
@@ -79,10 +102,7 @@ async fn wiki_raw(State(state): State<AppState>, Path(slug): Path<String>) -> Re
         .title
         .unwrap_or_else(|| doc.title.clone());
     let tenant = state.tenant;
-    let body = maud::html! {
-        h1 { (title) }
-        (maud::PreEscaped(rendered.html))
-    };
+    let body = ui::article(&title, &rendered.html);
     let head = ui::doc_head(&title, tenant);
     Html(ui::page(tenant, "en", head, body).into_string()).into_response()
 }

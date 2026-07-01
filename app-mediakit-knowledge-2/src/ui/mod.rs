@@ -5,5 +5,5 @@
 pub mod layout;
 pub mod tenant;
 
-pub use layout::{doc_head, footer, header, mobile_nav, page, sitenotice};
+pub use layout::{article, doc_head, footer, header, mobile_nav, page, utility_bar};
 pub use tenant::{SiblingWiki, Tenant};

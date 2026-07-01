@@ -21,6 +21,7 @@ pub fn doc_head(title: &str, tenant: Tenant) -> Markup {
         link rel="stylesheet" href="/static/fonts.css";
         link rel="stylesheet" href="/static/tokens.css";
         link rel="stylesheet" href="/static/app.css";
+        link rel="stylesheet" href="/static/content.css";
         // Pre-paint theme guard — sets data-theme before first paint (no flash).
         // Key 'k-theme' is shared with app.js.
         script {
@@ -58,20 +59,21 @@ fn logo_mark() -> Markup {
     }
 }
 
-/// Sitenotice strip above the header: entity · seat · [spacer] · sibling · badge.
-pub fn sitenotice(tenant: Tenant) -> Markup {
+/// Top utility strip — cross-property links, mirroring the marketing site's
+/// right-hand nav (Home · Monorepo · Design System · GitHub, per tenant).
+/// External links open in a new tab.
+pub fn utility_bar(tenant: Tenant) -> Markup {
     html! {
-        div."k-sitenotice" {
-            div."k-sitenotice__inner" {
-                a."k-sitenotice__entity" href=(tenant.home_url()) { (tenant.entity_name()) }
-                span."k-sitenotice__sep" aria-hidden="true" { "·" }
-                span."k-sitenotice__seat" { (tenant.seat()) }
-                span."k-sitenotice__spacer" {}
-                @if let Some(sib) = tenant.sibling_wiki() {
-                    a."k-sitenotice__sibling" href=(sib.url) { (sib.label) }
-                    span."k-sitenotice__sep" aria-hidden="true" { "·" }
+        div."k-utility" {
+            div."k-utility__inner" {
+                span."k-utility__label" { (tenant.entity_name()) }
+                nav."k-utility__nav" aria-label="PointSav network" {
+                    @for (label, url) in tenant.cross_property_links() {
+                        a."k-utility__link" href=(url) target="_blank" rel="noopener" {
+                            (label)
+                        }
+                    }
                 }
-                span."k-sitenotice__badge" { "Current of record" }
             }
         }
     }
@@ -152,10 +154,12 @@ pub fn mobile_nav(tenant: Tenant) -> Markup {
                         li { a."k-nav-link" href="/feed.atom" { "Atom feed" } }
                     }
                 }
-                @if let Some(sib) = tenant.sibling_wiki() {
-                    section."k-nav-section" {
-                        h2."k-nav-section__title" { "Related registries" }
-                        ul."k-nav-list" { li { a."k-nav-link" href=(sib.url) { (sib.label) } } }
+                section."k-nav-section" {
+                    h2."k-nav-section__title" { "PointSav network" }
+                    ul."k-nav-list" {
+                        @for (label, url) in tenant.cross_property_links() {
+                            li { a."k-nav-link" href=(url) target="_blank" rel="noopener" { (label) } }
+                        }
                     }
                 }
             }
@@ -163,53 +167,63 @@ pub fn mobile_nav(tenant: Tenant) -> Markup {
     }
 }
 
-/// Institutional footer: 3-column grid + legal strip.
+/// Footer — mirrors the marketing footer (cities line) with plain-language
+/// link columns. Disclaimer and Contact live here only.
 pub fn footer(tenant: Tenant) -> Markup {
     html! {
         footer."k-footer" role="contentinfo" {
             div."k-footer__inner" {
                 div."k-footer__grid" {
                     div."k-footer__col" {
-                        h2."k-footer__col-title" { "Navigate" }
+                        h2."k-footer__col-title" { "Browse" }
                         ul."k-footer__list" {
                             li { a."k-footer__link" href="/" { "Home" } }
-                            li { a."k-footer__link" href="/special/all-pages" { "Index of record" } }
+                            li { a."k-footer__link" href="/special/all-pages" { "All articles" } }
                             li { a."k-footer__link" href="/special/recent-changes" { "Recent changes" } }
-                            li { a."k-footer__link" href="/random" { "Random entry" } }
+                            li { a."k-footer__link" href="/special/categories" { "Categories" } }
                         }
                     }
                     div."k-footer__col" {
-                        h2."k-footer__col-title" { "Resources" }
+                        h2."k-footer__col-title" { "This site" }
                         ul."k-footer__list" {
-                            li { a."k-footer__link" href="/special/categories" { "Categories" } }
-                            li { a."k-footer__link" href="/feed.atom" { "Atom feed" } }
-                            li { a."k-footer__link" href="/sitemap.xml" { "Sitemap" } }
-                            @if let Some(sib) = tenant.sibling_wiki() {
-                                li { a."k-footer__link" href=(sib.url) { (sib.label) } }
+                            li { a."k-footer__link" href="/page/about" { "About" } }
+                            li { a."k-footer__link" href="/page/disclaimer" { "Disclaimer" } }
+                            li { a."k-footer__link" href="/page/contact" { "Contact us" } }
+                            li { a."k-footer__link" href="/page/privacy" { "Privacy" } }
+                        }
+                    }
+                    div."k-footer__col" {
+                        h2."k-footer__col-title" { "PointSav network" }
+                        ul."k-footer__list" {
+                            @for (label, url) in tenant.cross_property_links() {
+                                li { a."k-footer__link" href=(url) target="_blank" rel="noopener" { (label) } }
                             }
                         }
                     }
-                    div."k-footer__col" {
-                        h2."k-footer__col-title" { "About" }
-                        ul."k-footer__list" {
-                            li { a."k-footer__link" href="/page/about" { "About this registry" } }
-                            li { a."k-footer__link" href="/page/privacy" { "Privacy" } }
-                            li { a."k-footer__link" href="/page/terms" { "Terms of use" } }
-                            li { a."k-footer__link" href="/page/contact" { "Contact" } }
+                }
+                div."k-footer__base" {
+                    div."k-footer__cities" {
+                        @for (i, city) in tenant.cities().iter().enumerate() {
+                            @if i > 0 { span."k-footer__cities-sep" aria-hidden="true" { "|" } }
+                            span { (city) }
                         }
                     }
-                }
-                div."k-footer__legal" {
-                    span."k-footer__legal-item" {
-                        span."k-footer__brand" { (tenant.entity_name()) }
-                    }
-                    span."k-footer__legal-item" { "Registered seat: " (tenant.seat()) }
-                    span."k-footer__legal-item" { (tenant.trademark_line()) }
-                    span."k-footer__legal-item" {
-                        "\u{00a9} " (tenant.copyright_holder()) " All rights reserved."
+                    div."k-footer__copyright" {
+                        "\u{00a9} 2026 " (tenant.copyright_holder())
                     }
                 }
             }
+        }
+    }
+}
+
+/// Wrap a rendered article body in the reading shell: ruled title + prose
+/// column. `body_html` is trusted, pre-rendered HTML from the content pipeline.
+pub fn article(title: &str, body_html: &str) -> Markup {
+    html! {
+        article."k-article" {
+            h1."k-article__title" { (title) }
+            div."k-prose" { (PreEscaped(body_html)) }
         }
     }
 }
@@ -224,7 +238,7 @@ pub fn page(tenant: Tenant, lang: &str, head: Markup, body: Markup) -> Markup {
                 a."k-skip-link" href="#k-main" { "Skip to content" }
                 (mobile_nav(tenant))
                 div."k-page" {
-                    (sitenotice(tenant))
+                    (utility_bar(tenant))
                     (header(tenant, lang))
                     main."k-page__body" #"k-main" tabindex="-1" { (body) }
                     (footer(tenant))
