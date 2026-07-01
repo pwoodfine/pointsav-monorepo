@@ -24,6 +24,44 @@ pub const MAX_PROTECTION_DOMAINS: usize = 63;
 /// Microkit hard limit on channels per protection domain.
 pub const MAX_CHANNELS_PER_PD: usize = 63;
 
+/// Build configuration consumed by `moonshot-toolkit build`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct BuildConfig {
+    /// Microkit board identifier (e.g. `x86_64_generic`, `qemu_virt_aarch64`).
+    #[serde(default)]
+    pub board: String,
+    /// Microkit build configuration (`debug` or `release`).
+    #[serde(default = "default_config")]
+    pub config: String,
+    /// Path to the Microkit 2.2.0 SDK root.
+    #[serde(default = "default_sdk")]
+    pub sdk: String,
+    /// Directory for build outputs relative to the spec file. Default: `build`.
+    #[serde(default = "default_output_dir")]
+    pub output_dir: String,
+}
+
+fn default_config() -> String {
+    "debug".to_string()
+}
+fn default_sdk() -> String {
+    "/opt/microkit-sdk-2.2.0".to_string()
+}
+fn default_output_dir() -> String {
+    "build".to_string()
+}
+
+impl Default for BuildConfig {
+    fn default() -> Self {
+        Self {
+            board: String::new(),
+            config: default_config(),
+            sdk: default_sdk(),
+            output_dir: default_output_dir(),
+        }
+    }
+}
+
 /// Top-level system specification.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SystemSpec {
@@ -39,6 +77,9 @@ pub struct SystemSpec {
     /// Hardware IRQ → PD bindings.
     #[serde(default)]
     pub irq_delivery: Vec<IrqDelivery>,
+    /// Build configuration for `moonshot-toolkit build`.
+    #[serde(default)]
+    pub build: BuildConfig,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -245,6 +286,56 @@ impl SystemSpec {
 
         Ok(())
     }
+
+    /// Render a Microkit 2.2.0 XML system description from this spec.
+    /// The XML is passed to the `microkit` assembler tool as the
+    /// system-description argument. PD `<program_image>` paths use
+    /// `{pd_name}.elf` — the `build_exec` module writes ELFs by that name.
+    pub fn to_microkit_xml(&self) -> String {
+        let mut xml = String::from("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<system>\n");
+
+        for pd in &self.protection_domains {
+            xml.push_str(&format!(
+                "    <protection_domain name=\"{}\" priority=\"{}\" stack_size=\"0x{:x}\">\n",
+                pd.name, pd.priority, pd.stack_bytes
+            ));
+            xml.push_str(&format!(
+                "        <program_image path=\"{}.elf\" />\n",
+                pd.name
+            ));
+            xml.push_str("    </protection_domain>\n");
+        }
+
+        // Assign per-PD channel IDs in declaration order.
+        let mut pd_ch_id: std::collections::HashMap<&str, u8> = std::collections::HashMap::new();
+        for ch in &self.channels {
+            let id_a = {
+                let c = pd_ch_id.entry(ch.end_a.as_str()).or_insert(0);
+                let v = *c;
+                *c += 1;
+                v
+            };
+            let id_b = {
+                let c = pd_ch_id.entry(ch.end_b.as_str()).or_insert(0);
+                let v = *c;
+                *c += 1;
+                v
+            };
+            xml.push_str("    <channel>\n");
+            xml.push_str(&format!(
+                "        <end pd=\"{}\" id=\"{}\" />\n",
+                ch.end_a, id_a
+            ));
+            xml.push_str(&format!(
+                "        <end pd=\"{}\" id=\"{}\" />\n",
+                ch.end_b, id_b
+            ));
+            xml.push_str("    </channel>\n");
+        }
+
+        xml.push_str("</system>\n");
+        xml
+    }
 }
 
 #[cfg(test)]
@@ -449,5 +540,108 @@ kind = "ppc"
 "#;
         let spec = SystemSpec::from_toml_str(toml).unwrap();
         assert_eq!(spec.channels[0].kind, ChannelKind::Ppc);
+    }
+
+    #[test]
+    fn to_microkit_xml_single_pd() {
+        let spec = SystemSpec::from_toml_str(
+            r#"
+[build]
+board = "x86_64_generic"
+config = "debug"
+
+[[protection_domains]]
+name = "hello"
+binary = "pd/hello.c"
+priority = 100
+stack_bytes = 4096
+"#,
+        )
+        .unwrap();
+        let xml = spec.to_microkit_xml();
+        assert!(xml.contains("<system>"), "should have system element");
+        assert!(
+            xml.contains("<protection_domain name=\"hello\""),
+            "should have hello PD"
+        );
+        assert!(
+            xml.contains("<program_image path=\"hello.elf\""),
+            "should reference hello.elf"
+        );
+        assert!(xml.contains("priority=\"100\""), "should include priority");
+        assert!(
+            xml.contains("stack_size=\"0x1000\""),
+            "should include stack_size in hex"
+        );
+    }
+
+    #[test]
+    fn to_microkit_xml_channel_assigns_ids() {
+        let spec = SystemSpec::from_toml_str(
+            r#"
+[[protection_domains]]
+name = "client"
+binary = "client.c"
+
+[[protection_domains]]
+name = "server"
+binary = "server.c"
+
+[[channels]]
+name = "rpc"
+end_a = "client"
+end_b = "server"
+kind = "ppc"
+"#,
+        )
+        .unwrap();
+        let xml = spec.to_microkit_xml();
+        assert!(xml.contains("<channel>"), "should have channel element");
+        assert!(
+            xml.contains("pd=\"client\" id=\"0\""),
+            "client should get id 0"
+        );
+        assert!(
+            xml.contains("pd=\"server\" id=\"0\""),
+            "server should get id 0"
+        );
+    }
+
+    #[test]
+    fn build_config_parses_from_toml() {
+        let spec = SystemSpec::from_toml_str(
+            r#"
+[build]
+board = "qemu_virt_aarch64"
+config = "release"
+sdk = "/opt/microkit-custom"
+output_dir = "out"
+
+[[protection_domains]]
+name = "p"
+binary = "p.c"
+"#,
+        )
+        .unwrap();
+        assert_eq!(spec.build.board, "qemu_virt_aarch64");
+        assert_eq!(spec.build.config, "release");
+        assert_eq!(spec.build.sdk, "/opt/microkit-custom");
+        assert_eq!(spec.build.output_dir, "out");
+    }
+
+    #[test]
+    fn build_config_defaults_when_absent() {
+        let spec = SystemSpec::from_toml_str(
+            r#"
+[[protection_domains]]
+name = "p"
+binary = "p.c"
+"#,
+        )
+        .unwrap();
+        assert_eq!(spec.build.board, "");
+        assert_eq!(spec.build.config, "debug");
+        assert_eq!(spec.build.sdk, "/opt/microkit-sdk-2.2.0");
+        assert_eq!(spec.build.output_dir, "build");
     }
 }
