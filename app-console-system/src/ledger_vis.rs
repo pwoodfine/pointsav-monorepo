@@ -105,11 +105,11 @@ pub fn compute_verdict(cap: &Capability, ledger: &system_ledger::InMemoryLedger)
 
 pub fn cap_type_label(ct: &CapabilityType) -> &'static str {
     match ct {
-        CapabilityType::Endpoint     => "Endpoint",
-        CapabilityType::Memory       => "Memory  ",
-        CapabilityType::Irq          => "IRQ     ",
+        CapabilityType::Endpoint => "Endpoint",
+        CapabilityType::Memory => "Memory  ",
+        CapabilityType::Irq => "IRQ     ",
         CapabilityType::Notification => "Notify  ",
-        CapabilityType::CNode        => "CNode   ",
+        CapabilityType::CNode => "CNode   ",
     }
 }
 
@@ -117,10 +117,10 @@ pub fn rights_label(rights: &[Right]) -> String {
     rights
         .iter()
         .map(|r| match r {
-            Right::Read   => "read",
-            Right::Write  => "write",
+            Right::Read => "read",
+            Right::Write => "write",
             Right::Invoke => "invoke",
-            Right::Grant  => "grant",
+            Right::Grant => "grant",
             Right::Revoke => "revoke",
         })
         .collect::<Vec<_>>()
@@ -129,7 +129,7 @@ pub fn rights_label(rights: &[Right]) -> String {
 
 pub fn expiry_label(expiry_t: Option<u64>) -> String {
     match expiry_t {
-        None    => "none     ".to_string(),
+        None => "none     ".to_string(),
         Some(t) => {
             let now = now_secs();
             if now >= t {

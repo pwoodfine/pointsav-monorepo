@@ -203,10 +203,12 @@ fn inner_main() -> anyhow::Result<()> {
                                 ),
                             )
                             .await
-                            .unwrap_or_else(|_| mba_client::MbaResult {
-                                active: false,
-                                fingerprint: "(timeout)".into(),
-                                tofu_server_fingerprint: None,
+                            .unwrap_or_else(|_| {
+                                mba_client::MbaResult {
+                                    active: false,
+                                    fingerprint: "(timeout)".into(),
+                                    tofu_server_fingerprint: None,
+                                }
                             })
                         })
                     });

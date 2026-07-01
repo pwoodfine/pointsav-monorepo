@@ -17,14 +17,12 @@
 ///   [upstream]
 ///   content = "http://127.0.0.1:9092"
 ///   doorman = "http://127.0.0.1:9080"
-
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::Arc;
 
 use anyhow::Result;
 use axum::{
-    body::Body,
     extract::{Request, State},
     http::{StatusCode, Uri},
     response::{IntoResponse, Response},
@@ -124,20 +122,24 @@ fn fingerprint_from_pem(cert_pem: &str) -> String {
 }
 
 fn base64_decode(s: &str) -> Result<Vec<u8>, ()> {
-    use std::io::Read;
     // Use a minimal base64 decoder — avoids a new dep.
     let alphabet = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     let mut lookup = [255u8; 256];
     for (i, &c) in alphabet.iter().enumerate() {
         lookup[c as usize] = i as u8;
     }
-    let s: Vec<u8> = s.bytes().filter(|&b| b != b'=' && lookup[b as usize] != 255).collect();
+    let s: Vec<u8> = s
+        .bytes()
+        .filter(|&b| b != b'=' && lookup[b as usize] != 255)
+        .collect();
     let mut out = Vec::with_capacity(s.len() * 3 / 4);
     let mut buf = 0u32;
     let mut bits = 0u8;
     for b in s {
         let v = lookup[b as usize];
-        if v == 255 { continue; }
+        if v == 255 {
+            continue;
+        }
         buf = (buf << 6) | v as u32;
         bits += 6;
         if bits >= 8 {
@@ -153,11 +155,12 @@ fn base64_decode(s: &str) -> Result<Vec<u8>, ()> {
 // Proxy handler
 // ---------------------------------------------------------------------------
 
-async fn proxy(
-    State(cfg): State<Arc<IngressConfig>>,
-    req: Request,
-) -> Response {
-    let path = req.uri().path_and_query().map(|p| p.as_str()).unwrap_or("/");
+async fn proxy(State(cfg): State<Arc<IngressConfig>>, req: Request) -> Response {
+    let path = req
+        .uri()
+        .path_and_query()
+        .map(|p| p.as_str())
+        .unwrap_or("/");
 
     let upstream = if path.starts_with("/doorman") {
         &cfg.doorman_upstream
@@ -168,16 +171,13 @@ async fn proxy(
     };
 
     let target = format!("{}{}", upstream, path);
-    let target_uri: Uri = match target.parse() {
-        Ok(u) => u,
-        Err(e) => {
-            eprintln!("service-ingress: bad upstream URI {target}: {e}");
-            return StatusCode::BAD_GATEWAY.into_response();
-        }
-    };
+    if let Err(e) = target.parse::<Uri>() {
+        eprintln!("service-ingress: bad upstream URI {target}: {e}");
+        return StatusCode::BAD_GATEWAY.into_response();
+    }
 
     let client = reqwest::Client::new();
-    let method: reqwest::Method = req.method().clone().into();
+    let method = req.method().clone();
 
     let body_bytes = match axum::body::to_bytes(req.into_body(), 16 * 1024 * 1024).await {
         Ok(b) => b,
@@ -224,7 +224,9 @@ async fn main() -> Result<()> {
 
     let fingerprint = fingerprint_from_pem(&cert_pem);
     eprintln!("service-ingress: server cert fingerprint: {fingerprint}");
-    eprintln!("service-ingress: set totebox_known_host_key = \"{fingerprint}\" in os-console config.toml");
+    eprintln!(
+        "service-ingress: set totebox_known_host_key = \"{fingerprint}\" in os-console config.toml"
+    );
 
     let tls_config = RustlsConfig::from_pem(cert_pem.into_bytes(), key_pem.into_bytes()).await?;
 

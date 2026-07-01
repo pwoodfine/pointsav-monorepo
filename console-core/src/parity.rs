@@ -62,9 +62,13 @@ mod tests {
     fn clean_dual_input_spec_passes() {
         let mut reg = IntentRegistry::new();
         reg.register(
-            IntentSpec::new("content.accept", "Accept suggestion", IntentScope::Cartridge("content"))
-                .key("a")
-                .mouse(MouseAffordance::CLICK),
+            IntentSpec::new(
+                "content.accept",
+                "Accept suggestion",
+                IntentScope::Cartridge("content"),
+            )
+            .key("a")
+            .mouse(MouseAffordance::CLICK),
         );
         assert!(audit(&reg).is_empty());
     }
@@ -73,12 +77,12 @@ mod tests {
     fn bare_spec_fails_both_legs() {
         let mut reg = IntentRegistry::new();
         // no keys, no palette, no mouse, no waiver -> fails both
-        reg.register(
-            IntentSpec::new("bad.intent", "Bad", IntentScope::Global).no_palette(),
-        );
+        reg.register(IntentSpec::new("bad.intent", "Bad", IntentScope::Global).no_palette());
         let v = audit(&reg);
         assert_eq!(v.len(), 2);
-        assert!(v.iter().any(|x| x.fault == ParityFault::NotKeyboardReachable));
+        assert!(v
+            .iter()
+            .any(|x| x.fault == ParityFault::NotKeyboardReachable));
         assert!(v.iter().any(|x| x.fault == ParityFault::NotMouseReachable));
     }
 
@@ -96,9 +100,15 @@ mod tests {
     fn keyboard_only_waiver_excuses_missing_mouse() {
         let mut reg = IntentRegistry::new();
         reg.register(
-            IntentSpec::new("console.repeat_last", "Repeat last action", IntentScope::Global)
-                .key(".")
-                .waive(Waiver::KeyboardOnly("accelerator; underlying actions stay mouse-reachable")),
+            IntentSpec::new(
+                "console.repeat_last",
+                "Repeat last action",
+                IntentScope::Global,
+            )
+            .key(".")
+            .waive(Waiver::KeyboardOnly(
+                "accelerator; underlying actions stay mouse-reachable",
+            )),
         );
         assert!(audit(&reg).is_empty());
         assert_eq!(waiver_count(&reg), 1);
@@ -111,7 +121,9 @@ mod tests {
             IntentSpec::new("pane.resize.drag", "Drag split divider", IntentScope::Pane)
                 .no_palette()
                 .mouse(MouseAffordance::DRAG)
-                .waive(Waiver::MouseOnly("continuous drag; keyboard uses pane.resize")),
+                .waive(Waiver::MouseOnly(
+                    "continuous drag; keyboard uses pane.resize",
+                )),
         );
         assert!(audit(&reg).is_empty());
     }

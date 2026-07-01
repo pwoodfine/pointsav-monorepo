@@ -16,7 +16,11 @@ fn seed_registry_has_full_dual_input_parity() {
         "seed registry has parity violations: {:?}",
         violations
     );
-    assert!(reg.len() >= 25, "seed registry unexpectedly small: {}", reg.len());
+    assert!(
+        reg.len() >= 25,
+        "seed registry unexpectedly small: {}",
+        reg.len()
+    );
 }
 
 #[test]
@@ -24,7 +28,9 @@ fn the_gate_actually_catches_a_one_input_intent() {
     // Sanity: prove the gate is not vacuous. A bare spec (no keys, no palette,
     // no mouse, no waiver) must be reported.
     let mut reg = seed::console_seed();
-    reg.register(IntentSpec::new("regression.mouse_only", "oops", IntentScope::Global).no_palette());
+    reg.register(
+        IntentSpec::new("regression.mouse_only", "oops", IntentScope::Global).no_palette(),
+    );
     assert!(
         !audit(&reg).is_empty(),
         "gate failed to catch a single-input intent"
@@ -37,13 +43,28 @@ fn keymap_resolves_global_and_scoped_chords() {
     let km = Keymap::from_registry(&reg);
 
     // Global: F5 -> Search switch regardless of focus.
-    assert_eq!(km.resolve("f5", None).map(|i| i.0), Some("view.switch.search"));
+    assert_eq!(
+        km.resolve("f5", None).map(|i| i.0),
+        Some("view.switch.search")
+    );
     // Anchor F12 is global.
-    assert_eq!(km.resolve("f12", Some("content")).map(|i| i.0), Some("input.anchor.open"));
+    assert_eq!(
+        km.resolve("f12", Some("content")).map(|i| i.0),
+        Some("input.anchor.open")
+    );
     // "enter" is cartridge-scoped: resolves differently by focus.
-    assert_eq!(km.resolve("enter", Some("search")).map(|i| i.0), Some("search.run"));
-    assert_eq!(km.resolve("enter", Some("system")).map(|i| i.0), Some("system.approve"));
-    assert_eq!(km.resolve("enter", Some("input")).map(|i| i.0), Some("input.confirm"));
+    assert_eq!(
+        km.resolve("enter", Some("search")).map(|i| i.0),
+        Some("search.run")
+    );
+    assert_eq!(
+        km.resolve("enter", Some("system")).map(|i| i.0),
+        Some("system.approve")
+    );
+    assert_eq!(
+        km.resolve("enter", Some("input")).map(|i| i.0),
+        Some("input.confirm")
+    );
     // "enter" with no relevant focus does not match a cartridge-only binding.
     assert_eq!(km.resolve("enter", Some("content")), None);
 }
