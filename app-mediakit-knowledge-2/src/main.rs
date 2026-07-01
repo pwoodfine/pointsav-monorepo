@@ -54,7 +54,7 @@ async fn serve(toml_path: PathBuf) -> anyhow::Result<()> {
     let addr = config.socket_addr()?;
     let title = config.site.title.clone();
 
-    let state = AppState::new(config);
+    let state = AppState::build(config);
     let app = router(state);
 
     let listener = tokio::net::TcpListener::bind(addr).await?;

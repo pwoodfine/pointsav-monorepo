@@ -1,0 +1,206 @@
+//! Content walk + slug index.
+//!
+//! At startup the engine walks every mount, parses each Markdown file's
+//! frontmatter, and builds a slug → file index. Bilingual `.es.md` siblings
+//! share a slug and differ only by language. The index is the fast path for
+//! `/wiki/{slug}` resolution; the on-disk Markdown remains the source of truth.
+
+use std::collections::HashMap;
+use std::path::{Path, PathBuf};
+
+use super::frontmatter::{self, ParsedDoc};
+use super::mount::MountSet;
+
+/// Document language.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Lang {
+    En,
+    Es,
+}
+
+/// A resolved reference to one content file on disk.
+#[derive(Debug, Clone)]
+pub struct DocRef {
+    pub slug: String,
+    pub path: PathBuf,
+    pub lang: Lang,
+    pub title: String,
+    pub category: Option<String>,
+    pub mount_index: usize,
+}
+
+/// In-memory index of every content file, keyed by `(slug, lang)`.
+#[derive(Debug, Clone, Default)]
+pub struct ContentIndex {
+    by_key: HashMap<(String, Lang), DocRef>,
+}
+
+impl ContentIndex {
+    /// Walk all mounts and build the index.
+    pub fn build(mounts: &MountSet) -> Self {
+        let mut idx = ContentIndex::default();
+        for (mi, mount) in mounts.mounts.iter().enumerate() {
+            walk_dir(&mount.path, &mount.path, mi, &mut idx);
+        }
+        idx
+    }
+
+    /// Number of unique English documents (the article count).
+    pub fn article_count(&self) -> usize {
+        self.by_key.keys().filter(|(_, l)| *l == Lang::En).count()
+    }
+
+    /// Resolve a slug in a given language, falling back to English.
+    pub fn resolve(&self, slug: &str, lang: Lang) -> Option<&DocRef> {
+        self.by_key
+            .get(&(slug.to_string(), lang))
+            .or_else(|| self.by_key.get(&(slug.to_string(), Lang::En)))
+    }
+
+    /// All English documents, unordered.
+    pub fn documents(&self) -> impl Iterator<Item = &DocRef> {
+        self.by_key
+            .iter()
+            .filter(|((_, l), _)| *l == Lang::En)
+            .map(|(_, d)| d)
+    }
+
+    fn insert(&mut self, doc: DocRef) {
+        self.by_key.insert((doc.slug.clone(), doc.lang), doc);
+    }
+}
+
+fn walk_dir(root: &Path, dir: &Path, mount_index: usize, idx: &mut ContentIndex) {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return;
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        let name = entry.file_name();
+        let name = name.to_string_lossy();
+        if path.is_dir() {
+            // Skip hidden and repo-meta directories.
+            if name.starts_with('.') {
+                continue;
+            }
+            walk_dir(root, &path, mount_index, idx);
+        } else if is_content_file(&name) {
+            if let Some(doc) = load_ref(root, &path, mount_index) {
+                idx.insert(doc);
+            }
+        }
+    }
+}
+
+/// A content file is a `.md` that is not a repo-meta uppercase doc.
+fn is_content_file(name: &str) -> bool {
+    if !name.ends_with(".md") {
+        return false;
+    }
+    // Exclude repo governance files that are not wiki content.
+    const EXCLUDE: &[&str] = &[
+        "README.md",
+        "README.es.md",
+        "CLAUDE.md",
+        "AGENT.md",
+        "AGENTS.md",
+        "GEMINI.md",
+        "NEXT.md",
+        "CHANGELOG.md",
+        "TRADEMARK.md",
+        "LICENSE.md",
+        "CODE_OF_CONDUCT.md",
+        "CONTRIBUTING.md",
+    ];
+    !EXCLUDE.contains(&name)
+}
+
+fn load_ref(root: &Path, path: &Path, mount_index: usize) -> Option<DocRef> {
+    let text = std::fs::read_to_string(path).ok()?;
+    let doc = frontmatter::parse(&text);
+    let rel = path.strip_prefix(root).unwrap_or(path);
+    let lang = detect_lang(path);
+    let slug = doc
+        .frontmatter
+        .slug
+        .clone()
+        .unwrap_or_else(|| path_slug(rel));
+    let title = doc
+        .frontmatter
+        .title
+        .clone()
+        .unwrap_or_else(|| slug.clone());
+    Some(DocRef {
+        slug,
+        path: path.to_path_buf(),
+        lang,
+        title,
+        category: doc.frontmatter.category.clone(),
+        mount_index,
+    })
+}
+
+fn detect_lang(path: &Path) -> Lang {
+    match path.to_string_lossy().ends_with(".es.md") {
+        true => Lang::Es,
+        false => Lang::En,
+    }
+}
+
+/// Derive a slug from a relative path: drop the extension (and `.es`), take the
+/// final path component (file stem), e.g. `architecture/foo.md` → `foo`.
+fn path_slug(rel: &Path) -> String {
+    let s = rel.to_string_lossy();
+    let s = s.strip_suffix(".es.md").or_else(|| s.strip_suffix(".md")).unwrap_or(&s);
+    s.rsplit('/').next().unwrap_or(s).to_string()
+}
+
+/// Load and parse a document from disk.
+pub fn load(doc: &DocRef) -> std::io::Result<ParsedDoc> {
+    let text = std::fs::read_to_string(&doc.path)?;
+    Ok(frontmatter::parse(&text))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Write;
+
+    fn write(dir: &Path, rel: &str, body: &str) {
+        let p = dir.join(rel);
+        std::fs::create_dir_all(p.parent().unwrap()).unwrap();
+        let mut f = std::fs::File::create(p).unwrap();
+        f.write_all(body.as_bytes()).unwrap();
+    }
+
+    #[test]
+    fn builds_index_and_resolves_by_slug() {
+        let tmp = tempfile::tempdir().unwrap();
+        let root = tmp.path();
+        write(root, "architecture/zci.md", "---\ntitle: ZCI\nslug: zero-container-inference\ncategory: architecture\n---\nBody\n");
+        write(root, "architecture/zci.es.md", "---\ntitle: ZCI (es)\nslug: zero-container-inference\ncategory: architecture\n---\nCuerpo\n");
+        write(root, "README.md", "not content");
+
+        let mounts = MountSet {
+            mounts: vec![super::super::mount::Mount {
+                path: root.to_path_buf(),
+                role: "primary".into(),
+                blueprint_set: vec![],
+            }],
+        };
+        let idx = ContentIndex::build(&mounts);
+
+        assert_eq!(idx.article_count(), 1); // English only; README excluded
+        let en = idx.resolve("zero-container-inference", Lang::En).unwrap();
+        assert_eq!(en.title, "ZCI");
+        let es = idx.resolve("zero-container-inference", Lang::Es).unwrap();
+        assert_eq!(es.lang, Lang::Es);
+        assert!(idx.resolve("does-not-exist", Lang::En).is_none());
+    }
+
+    #[test]
+    fn path_slug_falls_back_when_no_frontmatter_slug() {
+        assert_eq!(path_slug(Path::new("architecture/foo.md")), "foo");
+        assert_eq!(path_slug(Path::new("bar.es.md")), "bar");
+    }
+}
