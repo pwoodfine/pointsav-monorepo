@@ -314,7 +314,7 @@ pub fn home_page(
     lede_html: &str,
     total: usize,
     cats: &[(String, String, usize)],
-    guides: &[(String, String)],
+    guides: &[(String, String, String)],
 ) -> Markup {
     let guides_shown = guides.len().min(8);
     html! {
@@ -351,15 +351,18 @@ pub fn home_page(
                         "Step-by-step operational runbooks — how to install, configure, and run the platform."
                     }
                     ul."k-guide-list" {
-                        @for (slug, title) in guides.iter().take(guides_shown) {
-                            li {
-                                a."k-guide-list__link" href={ "/wiki/" (slug) } {
+                        @for (slug, title, desc) in guides.iter().take(guides_shown) {
+                            li."k-guide-card" {
+                                a."k-guide-card__title" href={ "/wiki/" (slug) } {
                                     span."k-guide-list__icon" aria-hidden="true" {
                                         svg viewBox="0 0 16 16" width="14" height="14" {
                                             path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" d="M6 3.5 10.5 8 6 12.5" {}
                                         }
                                     }
                                     (title)
+                                }
+                                @if !desc.is_empty() {
+                                    p."k-guide-card__desc" { (desc) }
                                 }
                             }
                         }

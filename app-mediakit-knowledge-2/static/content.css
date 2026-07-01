@@ -305,19 +305,24 @@
 }
 .k-guide-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr));
-  gap: var(--k-space-2) var(--k-space-5);
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 24rem), 1fr));
+  gap: var(--k-space-5);
 }
-.k-guide-list__link {
+.k-guide-card__title {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: var(--k-space-2);
-  padding: var(--k-space-2) 0;
   font-family: var(--k-font-sans);
   font-size: var(--k-text-md);
-  border-bottom: 1px solid var(--k-border-subtle);
+  font-weight: var(--k-weight-medium);
 }
-.k-guide-list__icon { color: var(--k-accent); flex-shrink: 0; display: inline-flex; }
+.k-guide-list__icon { color: var(--k-accent); flex-shrink: 0; display: inline-flex; transform: translateY(0.1em); }
+.k-guide-card__desc {
+  margin: var(--k-space-1) 0 0 1.45em;   /* align under the title text, past the icon */
+  color: var(--k-ink-muted);
+  font-size: var(--k-text-sm);
+  line-height: var(--k-leading-snug);
+}
 
 /* Category listing page */
 .k-catpage__eyebrow {
