@@ -335,13 +335,26 @@
   margin-bottom: var(--k-space-1);
 }
 .k-cat-list {
-  columns: 2;
-  column-gap: var(--k-gutter-lg);
-  margin-top: var(--k-space-4);
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 30rem), 1fr));
+  gap: var(--k-space-5) var(--k-gutter-lg);
+  margin-top: var(--k-space-5);
 }
-.k-cat-list li { break-inside: avoid; margin-bottom: var(--k-space-2); }
-.k-cat-list__link { font-family: var(--k-prose-font); font-size: var(--k-prose-fs); }
-@media (max-width: 640px) { .k-cat-list { columns: 1; } }
+.k-cat-entry {
+  padding-bottom: var(--k-space-4);
+  border-bottom: 1px solid var(--k-border-subtle);
+}
+.k-cat-entry__title {
+  font-family: var(--k-font-sans);
+  font-size: var(--k-text-md);
+  font-weight: var(--k-weight-medium);
+}
+.k-cat-entry__desc {
+  margin: var(--k-space-2) 0 0;
+  color: var(--k-ink-muted);
+  font-size: var(--k-text-sm);
+  line-height: var(--k-leading-snug);
+}
 
 /* --- Section permalink anchors -------------------------------------------- */
 /* comrak emits an empty <a class="anchor" id="…"> at the start of each heading. */
