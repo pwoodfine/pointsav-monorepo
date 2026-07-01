@@ -297,6 +297,7 @@ pub fn footer(tenant: Tenant) -> Markup {
 
 /// Wrap a rendered article body in the reading shell: ruled title + prose
 /// column. `body_html` is trusted, pre-rendered HTML from the content pipeline.
+/// (The "Last updated" metadata line lands with the P3 article heading nav/tabs.)
 pub fn article(title: &str, body_html: &str) -> Markup {
     html! {
         article."k-article" {
