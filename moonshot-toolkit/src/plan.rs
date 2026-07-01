@@ -213,6 +213,7 @@ mod tests {
             channels: vec![],
             memory_regions: vec![],
             irq_delivery: vec![],
+            build: Default::default(),
         }
     }
 
@@ -237,6 +238,7 @@ mod tests {
             channels: vec![],
             memory_regions: vec![],
             irq_delivery: vec![],
+            build: Default::default(),
         }
     }
 
@@ -252,6 +254,7 @@ mod tests {
             channels: vec![],
             memory_regions: vec![],
             irq_delivery: vec![],
+            build: Default::default(),
         }
     }
 
@@ -262,6 +265,7 @@ mod tests {
             channels: vec![],
             memory_regions: vec![],
             irq_delivery: vec![],
+            build: Default::default(),
         };
         let r = BuildPlan::from_spec(&spec);
         assert_eq!(r, Err(PlanGenerationError::EmptySpec));
