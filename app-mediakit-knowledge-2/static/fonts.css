@@ -70,14 +70,5 @@
   unicode-range: U+0100-024F, U+1E00-1EFF, U+20A0-20AB, U+2C60-2C7F, U+A720-A7FF;
 }
 
-/* --- Playfair Display (display / wordmark) — variable weight ------------- */
-@font-face {
-  font-family: "Playfair Display"; font-style: normal; font-weight: 400 900; font-display: swap;
-  src: url("/static/fonts/PlayfairDisplay-Variable-latin.woff2") format("woff2");
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+2000-206F, U+2074, U+20AC, U+2122, U+2212, U+FEFF, U+FFFD;
-}
-@font-face {
-  font-family: "Playfair Display"; font-style: italic; font-weight: 400 900; font-display: swap;
-  src: url("/static/fonts/PlayfairDisplay-Variable-italic-latin.woff2") format("woff2");
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+2000-206F, U+2074, U+20AC, U+2122, U+2212, U+FEFF, U+FFFD;
-}
+/* Playfair Display removed — the design uses Source Serif 4 for headings and
+   Inter for body/wordmark; no display-serif slot is in use. */

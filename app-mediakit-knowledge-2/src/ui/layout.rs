@@ -10,14 +10,40 @@ use maud::{html, Markup, PreEscaped, DOCTYPE};
 
 use super::tenant::Tenant;
 
+/// "article" / "articles" for a count.
+fn count_word(n: usize) -> &'static str {
+    if n == 1 {
+        "article"
+    } else {
+        "articles"
+    }
+}
+
 /// `<head>` contents (not the `<head>` element itself — `page()` supplies that).
-pub fn doc_head(title: &str, tenant: Tenant) -> Markup {
+/// `description` may be empty (e.g. listing pages).
+pub fn doc_head(title: &str, description: &str, tenant: Tenant) -> Markup {
+    // Don't double-brand when the page title already is the site name (home).
+    let full_title = if title == tenant.home_label() {
+        title.to_string()
+    } else {
+        format!("{title} — {}", tenant.home_label())
+    };
     html! {
         meta charset="utf-8";
         meta name="viewport" content="width=device-width, initial-scale=1";
         meta name="color-scheme" content="light dark";
         meta name="theme-color" content=(tenant.accent());
-        title { (title) " — " (tenant.home_label()) }
+        title { (full_title) }
+        @if !description.is_empty() {
+            meta name="description" content=(description);
+        }
+        meta property="og:type" content="website";
+        meta property="og:site_name" content=(tenant.home_label());
+        meta property="og:title" content=(full_title);
+        @if !description.is_empty() {
+            meta property="og:description" content=(description);
+        }
+        link rel="icon" type="image/svg+xml" href="/static/favicon.svg";
         link rel="stylesheet" href="/static/fonts.css";
         link rel="stylesheet" href="/static/tokens.css";
         link rel="stylesheet" href="/static/app.css";
@@ -291,7 +317,7 @@ pub fn home_page(tenant: Tenant, lede_html: &str, total: usize, cats: &[(String,
                 div."k-prose k-home__lede" { (PreEscaped(lede_html)) }
             }
             div."k-home__stat" {
-                strong { (total) } " articles across " strong { (cats.len()) } " areas"
+                strong { (total) } " " (count_word(total)) " in the registry"
             }
             section."k-home__browse" aria-label="Browse by area" {
                 h2."k-home__browse-title" { "Browse by area" }
@@ -299,7 +325,7 @@ pub fn home_page(tenant: Tenant, lede_html: &str, total: usize, cats: &[(String,
                     @for (slug, label, count) in cats {
                         a."k-cat-card" href={ "/category/" (slug) } {
                             span."k-cat-card__name" { (label) }
-                            span."k-cat-card__count" { (count) " articles" }
+                            span."k-cat-card__count" { (count) " " (count_word(*count)) }
                         }
                     }
                 }
@@ -315,7 +341,7 @@ pub fn category_index(label: &str, docs: &[(String, String)]) -> Markup {
         div."k-catpage" {
             div."k-catpage__eyebrow" { "Category" }
             h1."k-article__title" { (label) }
-            div."k-home__stat" { strong { (docs.len()) } " articles" }
+            div."k-home__stat" { strong { (docs.len()) } " " (count_word(docs.len())) }
             ul."k-cat-list" {
                 @for (slug, title) in docs {
                     li { a."k-cat-list__link" href={ "/wiki/" (slug) } { (title) } }

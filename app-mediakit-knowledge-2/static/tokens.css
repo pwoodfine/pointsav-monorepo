@@ -173,7 +173,7 @@
   --k-code-block-ink:  #1f2328;
   --k-code-border:     var(--k-border-subtle);
   --k-code-inline-bg:  color-mix(in srgb, var(--k-surface-sunken) 70%, var(--k-surface));
-  --k-code-inline-ink: #b1002f;     /* subtle brick for inline literals        */
+  --k-code-inline-ink: var(--k-ink); /* ink, not a loud colour — code-dense prose */
   --k-code-radius:     var(--k-radius-md);
 
   /* Blockquote */
@@ -249,7 +249,7 @@
      palette switches to a dark theme via syntax.css). */
   --k-code-block-bg:   #2b303b;   /* base16-ocean.dark panel                   */
   --k-code-block-ink:  #c0c5ce;
-  --k-code-inline-ink: #ff9d8a;
+  --k-code-inline-ink: var(--k-ink);
   --k-code-border:     #3a4149;
   --k-table-head-bg:   #1b2027;
   --k-table-stripe:    #14181d;
