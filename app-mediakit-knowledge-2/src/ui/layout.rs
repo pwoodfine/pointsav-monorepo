@@ -254,7 +254,6 @@ pub fn footer(tenant: Tenant) -> Markup {
                 }
                 p."k-footer__copyline" {
                     "\u{00a9} 2026 " (tenant.copyright_holder())
-                    ". Content licensed under CC BY 4.0."
                 }
             }
         }
