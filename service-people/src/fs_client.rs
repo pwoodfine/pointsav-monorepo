@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0 OR MIT
 
-use serde::{Deserialize, Serialize};
 use crate::acs::{Anchor, Claim};
 use crate::person::Person;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone)]
 pub struct FsClient {
@@ -68,7 +68,9 @@ impl FsClient {
             .header("X-Foundry-Module-ID", &self.module_id)
             .send_json(&body)
             .map_err(|e| match e {
-                ureq::Error::StatusCode(status) => FsClientError::StatusError(status as u32, "server error".to_string()),
+                ureq::Error::StatusCode(status) => {
+                    FsClientError::StatusError(status as u32, "server error".to_string())
+                }
                 other => FsClientError::Transport(other.to_string()),
             })?;
 

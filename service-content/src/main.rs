@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
 
@@ -20,6 +21,13 @@ use std::io::{BufRead, Write};
 use std::path::Path;
 use std::sync::mpsc::{RecvTimeoutError, SyncSender};
 use std::sync::Arc;
+=======
+use notify::{Event, RecursiveMode, Result as NotifyResult, Watcher};
+use serde_json::Value;
+use std::fs;
+use std::path::Path;
+use std::sync::mpsc::channel;
+>>>>>>> d4c89a9c (fix(pre-promote): cargo fmt --all; service-people Default impl + is_err(); app-console-content COA->Coa + format!/map_or fixes; system-gateway-mba unused import; service-fs needless-borrow)
 use std::thread;
 use std::time::Duration;
 
@@ -120,6 +128,7 @@ fn main() -> NotifyResult<()> {
     let module_id =
         std::env::var("SERVICE_CONTENT_MODULE_ID").unwrap_or_else(|_| "woodfine".to_string());
 
+<<<<<<< HEAD
     // Ontology directory: service-content/ontology/ relative to the binary's parent,
     // or overridden via SERVICE_CONTENT_ONTOLOGY_DIR.
     let ontology_dir = std::env::var("SERVICE_CONTENT_ONTOLOGY_DIR").unwrap_or_else(|_| {
@@ -130,6 +139,14 @@ fn main() -> NotifyResult<()> {
             .map(|p| p.join("ontology").to_string_lossy().to_string())
             .unwrap_or_else(|| "ontology".to_string())
     });
+=======
+    if !Path::new(&corpus_dir).exists() {
+        fs::create_dir_all(&corpus_dir).unwrap();
+    }
+    if !Path::new(&crm_dir).exists() {
+        fs::create_dir_all(&crm_dir).unwrap();
+    }
+>>>>>>> d4c89a9c (fix(pre-promote): cargo fmt --all; service-people Default impl + is_err(); app-console-content COA->Coa + format!/map_or fixes; system-gateway-mba unused import; service-fs needless-borrow)
 
     let feedback_dir = std::env::var("SERVICE_CONTENT_FEEDBACK_DIR")
         .unwrap_or_else(|_| format!("{}/training-corpus/feedback", base_dir));
@@ -691,6 +708,7 @@ fn main() -> NotifyResult<()> {
                 for path in paths {
                     if let Some(extension) = path.extension() {
                         if extension == "json" {
+<<<<<<< HEAD
                             let Some(filename) = path
                                 .file_name()
                                 .and_then(|n| n.to_str())
@@ -752,6 +770,16 @@ fn main() -> NotifyResult<()> {
                                         // stays in deferred_ledgers; retried on next timeout
                                     }
                                 }
+=======
+                            let filename = path.file_name().unwrap().to_str().unwrap().to_string();
+                            if filename.starts_with("CORPUS_")
+                                && !processed_ledgers.contains(&filename)
+                            {
+                                println!("\n[WATCHER] New Corpus Detected: {}", filename);
+                                thread::sleep(Duration::from_millis(250));
+                                process_corpus(&path, &crm_dir);
+                                processed_ledgers.push(filename);
+>>>>>>> d4c89a9c (fix(pre-promote): cargo fmt --all; service-people Default impl + is_err(); app-console-content COA->Coa + format!/map_or fixes; system-gateway-mba unused import; service-fs needless-borrow)
                             }
                         }
                     }
@@ -1248,6 +1276,7 @@ fn call_tier_a_extract(
     }
 }
 
+<<<<<<< HEAD
 /// Detects CSV-flavoured structured-data corpus text (e.g. CRM people
 /// exports emitted as `CORPUS_csv-people-*.json`) rather than prose. GLiNER's
 /// NER model correctly returns empty for these — there's no natural-language
@@ -1258,6 +1287,17 @@ fn call_tier_a_extract(
 fn is_csv_structured_data(text: &str) -> bool {
     text.lines().filter(|l| l.contains("Entity Name:")).count() >= 2
 }
+=======
+fn process_corpus(filepath: &Path, crm_dir: &str) {
+    let content = match fs::read_to_string(filepath) {
+        Ok(c) => c,
+        Err(_) => return,
+    };
+    let payload: Value = match serde_json::from_str(&content) {
+        Ok(v) => v,
+        Err(_) => return,
+    };
+>>>>>>> d4c89a9c (fix(pre-promote): cargo fmt --all; service-people Default impl + is_err(); app-console-content COA->Coa + format!/map_or fixes; system-gateway-mba unused import; service-fs needless-borrow)
 
 /// Max chars per Tier A (OLMo 7B) chunk. Larger than GLINER_MAX_CHARS since
 /// OLMo's context window is far bigger than the GLiNER BERT encoder's ~512
@@ -1265,6 +1305,7 @@ fn is_csv_structured_data(text: &str) -> bool {
 /// inside a single chat-completion call.
 const TIER_A_MAX_CHARS: usize = 6000;
 
+<<<<<<< HEAD
 /// Chunked wrapper around `call_tier_a_extract` — EQ5: long documents (10KB+
 /// Bloomberg articles) lose second-half entities in a single unchunked call.
 /// Splits via the same sentence-boundary chunker used for GLiNER, merges and
@@ -1883,6 +1924,14 @@ fn check_doorman_backpressure(doorman_endpoint: &str, threshold: u64) -> bool {
         return false;
     }
     let url = format!("{}/readyz", doorman_endpoint);
+=======
+    if corpus_text.is_empty() {
+        return;
+    }
+
+    println!("  -> [WATCHER] Routing payload to SLM Core (Port 8082)...");
+
+>>>>>>> d4c89a9c (fix(pre-promote): cargo fmt --all; service-people Default impl + is_err(); app-console-content COA->Coa + format!/map_or fixes; system-gateway-mba unused import; service-fs needless-borrow)
     let client = reqwest::blocking::Client::new();
     let Ok(resp) = client.get(&url).timeout(Duration::from_secs(3)).send() else {
         return false;
@@ -1896,6 +1945,7 @@ fn check_doorman_backpressure(doorman_endpoint: &str, threshold: u64) -> bool {
         .unwrap_or(false)
 }
 
+<<<<<<< HEAD
 fn write_tier_progress(path: &Path, entry: serde_json::Value) {
     use std::io::Write;
     if let Ok(mut f) = fs::OpenOptions::new().create(true).append(true).open(path) {
@@ -2140,6 +2190,12 @@ fn process_corpus(
         .header("X-Foundry-Priority", "p1")
         .json(&body)
         .timeout(Duration::from_secs(300))
+=======
+    let res = client
+        .post(SLM_ENDPOINT)
+        .json(&map)
+        .timeout(Duration::from_secs(120))
+>>>>>>> d4c89a9c (fix(pre-promote): cargo fmt --all; service-people Default impl + is_err(); app-console-content COA->Coa + format!/map_or fixes; system-gateway-mba unused import; service-fs needless-borrow)
         .send();
 
     // Helper: flush Tier A entities to graph when Tier B is unavailable.
@@ -2172,6 +2228,7 @@ fn process_corpus(
 
     match res {
         Ok(response) => {
+<<<<<<< HEAD
             if !response.status().is_success() {
                 println!(
                     "  -> [SYS_HALT] Doorman rejected payload: {}",
@@ -2217,6 +2274,51 @@ fn process_corpus(
                         }
                         println!("  -> [TIER-B] Deferred ({}): retry in 30 s.", reason);
                         ExtractResult::DeferTransient
+=======
+            if response.status().is_success() {
+                if let Ok(semantic_entities) = response.json::<Vec<Value>>() {
+                    let mut enriched_crm = Vec::new();
+
+                    for ent in semantic_entities {
+                        let mut new_ent = serde_json::Map::new();
+                        new_ent.insert("entity_name".to_string(), ent["entity_name"].clone());
+                        new_ent.insert("classification".to_string(), ent["classification"].clone());
+                        new_ent.insert(
+                            "role_vector".to_string(),
+                            ent.get("role_vector")
+                                .cloned()
+                                .unwrap_or(serde_json::json!("UNVERIFIED")),
+                        );
+                        new_ent.insert("confidence".to_string(), serde_json::json!(0.95));
+                        new_ent.insert(
+                            "context_anchor".to_string(),
+                            serde_json::json!("SLM NEURAL INFERENCE"),
+                        );
+
+                        // Catch the new Location Vector
+                        let loc = ent
+                            .get("location_vector")
+                            .cloned()
+                            .unwrap_or(serde_json::json!("UNVERIFIED"));
+                        new_ent.insert("location_vector".to_string(), loc);
+
+                        // Catch the Contact Vector and push to Latent Vectors array
+                        let mut latent = Vec::new();
+                        let contact = ent
+                            .get("contact_vector")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("UNVERIFIED");
+                        if contact != "UNVERIFIED" && !contact.is_empty() {
+                            if contact.contains('@') {
+                                latent.push(format!("mailto:{}", contact));
+                            } else {
+                                latent.push(format!("tel:{}", contact));
+                            }
+                        }
+                        new_ent.insert("latent_vectors".to_string(), serde_json::json!(latent));
+
+                        enriched_crm.push(Value::Object(new_ent));
+>>>>>>> d4c89a9c (fix(pre-promote): cargo fmt --all; service-people Default impl + is_err(); app-console-content COA->Coa + format!/map_or fixes; system-gateway-mba unused import; service-fs needless-borrow)
                     }
                 };
             }
@@ -2226,6 +2328,7 @@ fn process_corpus(
                 return flush_tier_a(&tier_0_entities, "Tier B extraction_ok=false");
             }
 
+<<<<<<< HEAD
             // ── Tier B succeeded ─────────────────────────────────────────────
             let semantic_entities = extract_resp["entities"]
                 .as_array()
@@ -2258,10 +2361,19 @@ fn process_corpus(
                     } else {
                         graph_entities
                     }
+=======
+                    let out_file = format!("{}/SEMANTIC_{}.json", crm_dir, worm_id);
+                    fs::write(&out_file, semantic_ledger.to_string()).unwrap();
+                    println!(
+                        "  -> [WATCHER] Semantic Integration Complete: {} Nodes Secured.",
+                        enriched_crm.len()
+                    );
+>>>>>>> d4c89a9c (fix(pre-promote): cargo fmt --all; service-people Default impl + is_err(); app-console-content COA->Coa + format!/map_or fixes; system-gateway-mba unused import; service-fs needless-borrow)
                 } else {
                     graph_entities
                 }
             } else {
+<<<<<<< HEAD
                 graph_entities
             };
 
@@ -2366,6 +2478,13 @@ fn process_corpus(
             }
 
             ExtractResult::Success
+=======
+                println!(
+                    "  -> [SYS_HALT] SLM Core rejected payload: {}",
+                    response.status()
+                );
+            }
+>>>>>>> d4c89a9c (fix(pre-promote): cargo fmt --all; service-people Default impl + is_err(); app-console-content COA->Coa + format!/map_or fixes; system-gateway-mba unused import; service-fs needless-borrow)
         }
         Err(e) => {
             // Transport error — Tier B unreachable. Use Tier A to avoid losing the document.

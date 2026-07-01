@@ -56,12 +56,10 @@ async fn main() {
         )
         .init();
 
-    let module_id = std::env::var("EMAIL_MODULE_ID")
-        .expect("EMAIL_MODULE_ID is required");
-    let fs_url = std::env::var("EMAIL_FS_URL")
-        .expect("EMAIL_FS_URL is required");
-    let bind_addr = std::env::var("EMAIL_BIND_ADDR")
-        .unwrap_or_else(|_| "127.0.0.1:9200".to_string());
+    let module_id = std::env::var("EMAIL_MODULE_ID").expect("EMAIL_MODULE_ID is required");
+    let fs_url = std::env::var("EMAIL_FS_URL").expect("EMAIL_FS_URL is required");
+    let bind_addr =
+        std::env::var("EMAIL_BIND_ADDR").unwrap_or_else(|_| "127.0.0.1:9200".to_string());
 
     let fs_client = FsClient::new(&fs_url, &module_id);
     let fs_client_daemon = fs_client.clone();
@@ -126,18 +124,16 @@ async fn ews_poll_loop(creds: EwsCredentials, fs_client: FsClient) {
                 for id in &ids {
                     match client.get_mime(id).await {
                         Err(e) => tracing::error!("get_mime({id}): {e}"),
-                        Ok(mime_bytes) => {
-                            match fs_client.append_email(id, &mime_bytes) {
-                                Err(e) => tracing::error!("fs append({id}): {e}"),
-                                Ok(cursor) => {
-                                    tracing::debug!("appended {id} at cursor {cursor}");
-                                    if let Err(e) = client.mark_read(id).await {
-                                        tracing::error!("mark_read({id}): {e}");
-                                    }
-                                    ingested += 1;
+                        Ok(mime_bytes) => match fs_client.append_email(id, &mime_bytes) {
+                            Err(e) => tracing::error!("fs append({id}): {e}"),
+                            Ok(cursor) => {
+                                tracing::debug!("appended {id} at cursor {cursor}");
+                                if let Err(e) = client.mark_read(id).await {
+                                    tracing::error!("mark_read({id}): {e}");
                                 }
+                                ingested += 1;
                             }
-                        }
+                        },
                     }
                     tokio::time::sleep(Duration::from_millis(50)).await;
                 }
