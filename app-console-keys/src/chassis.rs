@@ -1299,41 +1299,6 @@ fn render_cap_overlay(frame: &mut Frame, area: Rect, verdicts: &[(String, String
     frame.render_widget(Paragraph::new(lines), inner);
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn rect_contains_edges() {
-        let r = Rect {
-            x: 2,
-            y: 3,
-            width: 4,
-            height: 2,
-        };
-        assert!(rect_contains(r, 2, 3));
-        assert!(rect_contains(r, 5, 4));
-        assert!(!rect_contains(r, 6, 3)); // x past right edge (exclusive)
-        assert!(!rect_contains(r, 2, 5)); // y past bottom edge
-        assert!(!rect_contains(r, 1, 3)); // left of x
-    }
-
-    #[test]
-    fn fkey_strip_column_mapping() {
-        let strip = Rect {
-            x: 0,
-            y: 0,
-            width: 80,
-            height: 1,
-        };
-        // " F1 " occupies cols 0..4; separator at col 4; " F2 " starts at col 5.
-        assert_eq!(fkey_at_column(strip, 0), Some(FKey::F1));
-        assert_eq!(fkey_at_column(strip, 3), Some(FKey::F1));
-        assert_eq!(fkey_at_column(strip, 4), None); // separator
-        assert_eq!(fkey_at_column(strip, 5), Some(FKey::F2));
-    }
-}
-
 /// Translate a crossterm key event into a canonical console-core chord string.
 fn key_to_chord(key: &KeyEvent) -> Option<String> {
     let base = match key.code {
@@ -1438,4 +1403,39 @@ fn render_palette(frame: &mut Frame, rect: Rect, p: &Palette) {
         ]));
     }
     frame.render_widget(Paragraph::new(lines), inner);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn rect_contains_edges() {
+        let r = Rect {
+            x: 2,
+            y: 3,
+            width: 4,
+            height: 2,
+        };
+        assert!(rect_contains(r, 2, 3));
+        assert!(rect_contains(r, 5, 4));
+        assert!(!rect_contains(r, 6, 3)); // x past right edge (exclusive)
+        assert!(!rect_contains(r, 2, 5)); // y past bottom edge
+        assert!(!rect_contains(r, 1, 3)); // left of x
+    }
+
+    #[test]
+    fn fkey_strip_column_mapping() {
+        let strip = Rect {
+            x: 0,
+            y: 0,
+            width: 80,
+            height: 1,
+        };
+        // " F1 " occupies cols 0..4; separator at col 4; " F2 " starts at col 5.
+        assert_eq!(fkey_at_column(strip, 0), Some(FKey::F1));
+        assert_eq!(fkey_at_column(strip, 3), Some(FKey::F1));
+        assert_eq!(fkey_at_column(strip, 4), None); // separator
+        assert_eq!(fkey_at_column(strip, 5), Some(FKey::F2));
+    }
 }
