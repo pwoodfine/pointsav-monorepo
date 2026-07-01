@@ -15,8 +15,14 @@ pub struct Frontmatter {
     pub slug: Option<String>,
     pub category: Option<String>,
     pub status: Option<String>,
-    #[serde(default, alias = "type")]
+    #[serde(default)]
     pub content_type: Option<String>,
+    // Separate from `content_type`: many files carry BOTH `type:` and
+    // `content_type:`. Aliasing them to one field makes serde treat that as a
+    // duplicate and fail the whole parse (dropping title/category). Keep `type`
+    // as its own field so both can coexist.
+    #[serde(default, rename = "type")]
+    pub kind: Option<String>,
     pub short_description: Option<String>,
     pub last_edited: Option<String>,
     pub editor: Option<String>,
@@ -106,8 +112,11 @@ mod tests {
     }
 
     #[test]
-    fn type_alias_maps_to_content_type() {
-        let doc = parse("---\ntype: topic\n---\nx");
-        assert_eq!(doc.frontmatter.content_type.as_deref(), Some("topic"));
+    fn type_and_content_type_coexist() {
+        // A file carrying BOTH keys must still parse (this used to fail).
+        let doc = parse("---\ntitle: T\ntype: topic\ncontent_type: guide\n---\nx");
+        assert_eq!(doc.frontmatter.title.as_deref(), Some("T"));
+        assert_eq!(doc.frontmatter.kind.as_deref(), Some("topic"));
+        assert_eq!(doc.frontmatter.content_type.as_deref(), Some("guide"));
     }
 }

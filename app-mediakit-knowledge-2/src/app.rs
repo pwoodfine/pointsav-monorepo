@@ -86,12 +86,18 @@ fn humanize(slug: &str) -> String {
 async fn home(State(state): State<AppState>) -> Response {
     let tenant = state.tenant;
 
-    // Lede from index.md, if present.
-    let lede = state
+    // Lede + description from index.md, if present.
+    let index_parsed = state
         .index
         .resolve("index", Lang::En)
-        .and_then(|doc| content::load(doc).ok())
-        .map(|parsed| content::render(&parsed.body_md).html)
+        .and_then(|doc| content::load(doc).ok());
+    let lede = index_parsed
+        .as_ref()
+        .map(|p| content::render(&p.body_md).html)
+        .unwrap_or_default();
+    let description = index_parsed
+        .as_ref()
+        .and_then(|p| p.frontmatter.short_description.clone())
         .unwrap_or_default();
 
     // Category cards: prefer the configured order, fall back to discovered.
@@ -111,7 +117,7 @@ async fn home(State(state): State<AppState>) -> Response {
     let total: usize = state.index.article_count();
 
     let body = ui::home_page(tenant, &lede, total, &cats);
-    let head = ui::doc_head(tenant.home_label(), tenant);
+    let head = ui::doc_head(tenant.home_label(), &description, tenant);
     Html(ui::page(tenant, "en", head, body).into_string()).into_response()
 }
 
@@ -128,8 +134,9 @@ async fn category_page(State(state): State<AppState>, Path(name): Path<String>) 
         return (StatusCode::NOT_FOUND, format!("no such category: {name}")).into_response();
     }
     let label = humanize(&name);
+    let description = format!("Articles in the {label} area.");
     let body = ui::category_index(&label, &docs);
-    let head = ui::doc_head(&label, tenant);
+    let head = ui::doc_head(&label, &description, tenant);
     Html(ui::page(tenant, "en", head, body).into_string()).into_response()
 }
 
@@ -156,10 +163,12 @@ async fn wiki_raw(State(state): State<AppState>, Path(slug): Path<String>) -> Re
     let title = parsed
         .frontmatter
         .title
+        .clone()
         .unwrap_or_else(|| doc.title.clone());
+    let description = parsed.frontmatter.short_description.clone().unwrap_or_default();
     let tenant = state.tenant;
     let body = ui::article(&title, &rendered.html);
-    let head = ui::doc_head(&title, tenant);
+    let head = ui::doc_head(&title, &description, tenant);
     Html(ui::page(tenant, "en", head, body).into_string()).into_response()
 }
 

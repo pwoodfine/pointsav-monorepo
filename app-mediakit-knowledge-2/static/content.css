@@ -297,9 +297,41 @@
 .k-cat-list__link { font-family: var(--k-prose-font); font-size: var(--k-prose-fs); }
 @media (max-width: 640px) { .k-cat-list { columns: 1; } }
 
+/* --- Section permalink anchors -------------------------------------------- */
+/* comrak emits an empty <a class="anchor" id="…"> at the start of each heading. */
+.k-prose h2, .k-prose h3, .k-prose h4 { position: relative; }
+.k-prose .anchor {
+  scroll-margin-top: calc(var(--k-header-height) + var(--k-space-5));
+  text-decoration: none;
+}
+.k-prose :is(h2, h3, h4) .anchor::before {
+  content: "#";
+  position: absolute;
+  left: -0.9em;
+  color: var(--k-border);
+  opacity: 0;
+  font-weight: var(--k-weight-regular);
+  transition: opacity var(--k-motion-fast) var(--k-ease);
+}
+.k-prose :is(h2, h3, h4):hover .anchor::before,
+.k-prose .anchor:focus-visible::before { opacity: 1; color: var(--k-accent); }
+
+/* --- External links get an outward mark ----------------------------------- */
+.k-prose a[href^="http://"]::after,
+.k-prose a[href^="https://"]::after {
+  content: "\2197";                    /* ↗ */
+  display: inline-block;
+  font-size: 0.78em;
+  margin-left: 0.1em;
+  color: var(--k-ink-muted);
+  vertical-align: text-top;
+  text-decoration: none;
+}
+
 /* --- Print ---------------------------------------------------------------- */
 @media print {
   .k-codeblock__copy { display: none !important; }
   .k-prose pre { border: 1px solid #999; }
   .k-prose { max-width: none; }
+  .k-prose .anchor::before { display: none; }
 }

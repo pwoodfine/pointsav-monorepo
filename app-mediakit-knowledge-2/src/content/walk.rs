@@ -152,7 +152,7 @@ fn load_ref(root: &Path, path: &Path, mount_index: usize) -> Option<DocRef> {
         .frontmatter
         .title
         .clone()
-        .unwrap_or_else(|| slug.clone());
+        .unwrap_or_else(|| humanize_slug(&slug));
     Some(DocRef {
         slug,
         path: path.to_path_buf(),
@@ -176,6 +176,18 @@ fn path_slug(rel: &Path) -> String {
     let s = rel.to_string_lossy();
     let s = s.strip_suffix(".es.md").or_else(|| s.strip_suffix(".md")).unwrap_or(&s);
     s.rsplit('/').next().unwrap_or(s).to_string()
+}
+
+/// Turn a slug into a human title: "merkle-proofs" → "Merkle proofs".
+/// Only the first word is capitalised (sentence case), like an article title.
+pub fn humanize_slug(slug: &str) -> String {
+    let last = slug.rsplit('/').next().unwrap_or(slug);
+    let spaced = last.replace(['-', '_'], " ");
+    let mut chars = spaced.chars();
+    match chars.next() {
+        Some(f) => f.to_uppercase().collect::<String>() + chars.as_str(),
+        None => spaced,
+    }
 }
 
 /// Load and parse a document from disk.
