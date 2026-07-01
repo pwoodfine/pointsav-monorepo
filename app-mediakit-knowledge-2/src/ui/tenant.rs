@@ -1,0 +1,129 @@
+//! Per-instance identity. The three wikis share one structure and differ only
+//! by brand accent (CSS, via `[data-instance]`) and these factual strings.
+//!
+//! Legal strings (entity, seat, trademark, copyright) are verbatim facts, not
+//! design — they must match the workspace record (TRADEMARK.md). The copyright
+//! holder is Woodfine Capital Projects Inc. for every instance.
+
+/// A sibling wiki surfaced in the sitenotice and footer.
+#[derive(Clone, Copy)]
+pub struct SiblingWiki {
+    pub label: &'static str,
+    pub url: &'static str,
+}
+
+/// One of the three served instances.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum Tenant {
+    Documentation, // documentation.pointsav.com  — PointSav,  accent #1a4480
+    Projects,      // projects.woodfinegroup.com   — Woodfine, accent #164679
+    Corporate,     // corporate.woodfinegroup.com  — Woodfine, accent #164679
+}
+
+impl Tenant {
+    /// Parse from the `[site].instance` config value; defaults to Documentation.
+    pub fn from_instance(s: Option<&str>) -> Self {
+        match s {
+            Some("projects") => Tenant::Projects,
+            Some("corporate") => Tenant::Corporate,
+            _ => Tenant::Documentation,
+        }
+    }
+
+    /// Value for the `data-instance` attribute on `<html>`.
+    pub fn instance_str(&self) -> &'static str {
+        match self {
+            Tenant::Documentation => "documentation",
+            Tenant::Projects => "projects",
+            Tenant::Corporate => "corporate",
+        }
+    }
+
+    /// Brand accent hex — CSS drives accent from `[data-instance]`; this is for
+    /// `<meta name="theme-color">` only.
+    pub fn accent(&self) -> &'static str {
+        match self {
+            Tenant::Documentation => "#1a4480",
+            Tenant::Projects | Tenant::Corporate => "#164679",
+        }
+    }
+
+    pub fn is_woodfine(&self) -> bool {
+        matches!(self, Tenant::Projects | Tenant::Corporate)
+    }
+
+    /// Maintaining entity of record (uppercased in the sitenotice by CSS).
+    pub fn entity_name(&self) -> &'static str {
+        match self {
+            Tenant::Documentation => "PointSav Digital Systems",
+            Tenant::Projects | Tenant::Corporate => "Woodfine Management Corp.",
+        }
+    }
+
+    /// Registered seat of the maintaining entity.
+    pub fn seat(&self) -> &'static str {
+        match self {
+            Tenant::Documentation => "Vancouver, British Columbia",
+            Tenant::Projects | Tenant::Corporate => "Toronto, Ontario",
+        }
+    }
+
+    /// Home URL of this instance's marketing site (logo link target).
+    pub fn home_url(&self) -> &'static str {
+        match self {
+            Tenant::Documentation => "https://documentation.pointsav.com/",
+            Tenant::Projects => "https://projects.woodfinegroup.com/",
+            Tenant::Corporate => "https://corporate.woodfinegroup.com/",
+        }
+    }
+
+    /// Accessible label / wordmark text.
+    pub fn home_label(&self) -> &'static str {
+        match self {
+            Tenant::Documentation => "PointSav Documentation",
+            Tenant::Projects => "Woodfine Projects",
+            Tenant::Corporate => "Woodfine Corporate",
+        }
+    }
+
+    /// Sibling wiki cross-link. Org boundary: PointSav documentation (vendor)
+    /// stands alone; the two Woodfine (customer) wikis cross-link to each other.
+    pub fn sibling_wiki(&self) -> Option<SiblingWiki> {
+        match self {
+            Tenant::Documentation => None,
+            Tenant::Projects => Some(SiblingWiki {
+                label: "Corporate record",
+                url: "https://corporate.woodfinegroup.com/",
+            }),
+            Tenant::Corporate => Some(SiblingWiki {
+                label: "Projects record",
+                url: "https://projects.woodfinegroup.com/",
+            }),
+        }
+    }
+
+    /// Verbatim trademark line (TRADEMARK.md). Woodfine instances name the
+    /// customer-side marks in addition to the vendor marks.
+    pub fn trademark_line(&self) -> &'static str {
+        match self {
+            Tenant::Documentation => {
+                "PointSav Digital Systems\u{2122}, Totebox Orchestration\u{2122}, and \
+                 Totebox Archive\u{2122} are trademarks of Woodfine Capital Projects Inc., \
+                 used in Canada, the United States, Latin America, and Europe. All other \
+                 trademarks are the property of their respective owners."
+            }
+            Tenant::Projects | Tenant::Corporate => {
+                "Woodfine Capital Projects\u{2122}, Woodfine Management Corp\u{2122}, \
+                 PointSav Digital Systems\u{2122}, Totebox Orchestration\u{2122}, and \
+                 Totebox Archive\u{2122} are trademarks of Woodfine Capital Projects Inc., \
+                 used in Canada, the United States, Latin America, and Europe. All other \
+                 trademarks are the property of their respective owners."
+            }
+        }
+    }
+
+    /// Copyright holder — the parent company, for every instance.
+    pub fn copyright_holder(&self) -> &'static str {
+        "Woodfine Capital Projects Inc."
+    }
+}
