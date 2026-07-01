@@ -555,11 +555,11 @@ phase "DG — DataGraph injection (5 Doorman probes)"
 DRAIN_WAS_PAUSED="$(systemctl show -p Environment local-doorman | grep -o 'SLM_APPRENTICESHIP_DRAIN_PAUSED=true' || true)"
 if [[ -z "${DRAIN_WAS_PAUSED}" ]]; then
     log "  Pausing apprenticeship drain for DataGraph probes (SLM_DRAIN_PAUSED env drop-in)..."
-    mkdir -p /etc/systemd/system/local-doorman.service.d/
+    sudo mkdir -p /etc/systemd/system/local-doorman.service.d/
     printf '[Service]\nEnvironment=SLM_APPRENTICESHIP_DRAIN_PAUSED=true\n' \
-        > /etc/systemd/system/local-doorman.service.d/zz-test-mode-drain-pause.conf
-    systemctl daemon-reload 2>/dev/null || true
-    systemctl restart local-doorman 2>/dev/null || true
+        | sudo tee /etc/systemd/system/local-doorman.service.d/zz-test-mode-drain-pause.conf >/dev/null
+    sudo systemctl daemon-reload 2>/dev/null || true
+    sudo systemctl restart local-doorman 2>/dev/null || true
     log "  Waiting 15s for Doorman to restart and drain to stop..."
     ks_sleep 15
 else
@@ -641,9 +641,9 @@ between_phases
 # Resume drain after DataGraph probes are complete.
 if [[ -z "${DRAIN_WAS_PAUSED}" ]]; then
     log "  Resuming apprenticeship drain (removing zz-test-mode-drain-pause.conf)..."
-    rm -f /etc/systemd/system/local-doorman.service.d/zz-test-mode-drain-pause.conf
-    systemctl daemon-reload 2>/dev/null || true
-    systemctl restart local-doorman 2>/dev/null || true
+    sudo rm -f /etc/systemd/system/local-doorman.service.d/zz-test-mode-drain-pause.conf
+    sudo systemctl daemon-reload 2>/dev/null || true
+    sudo systemctl restart local-doorman 2>/dev/null || true
 fi
 
 # ══════════════════════════════════════════════════════════════════════════════

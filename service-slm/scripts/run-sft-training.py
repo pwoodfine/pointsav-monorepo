@@ -268,12 +268,17 @@ def run_training(records: list[dict], base_model: str, output_dir: str,
     #    prepare_model_for_kbit_training casts lm_head to float32 (+1.5 GB peak).
     # Float16 full load: ~14 GB. L4 has 22 GB. LoRA+optimizer: ~200 MB.
     # Activations at bs=1/seq=512 with gradient_checkpointing: ~1 GB.
+    # device_map="auto" is for multi-GPU/offload; on a single L4 it makes accelerate
+    # dispatch some params to a "meta" placeholder device, which then crashes the
+    # backward pass under non-reentrant gradient checkpointing (RuntimeError:
+    # MmBackward0 returned an invalid gradient — expected device meta but got cuda:0).
+    # Load explicitly onto cuda:0 instead — there's only one GPU here.
     model = AutoModelForCausalLM.from_pretrained(
         base_model,
         torch_dtype=torch.float16,
-        device_map="auto",
         trust_remote_code=True,
     )
+    model = model.to("cuda")
     model.config.use_cache = False
     model.enable_input_require_grads()  # required for LoRA without kbit training
     tokenizer = AutoTokenizer.from_pretrained(base_model, trust_remote_code=True)
