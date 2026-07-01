@@ -142,16 +142,16 @@
   --k-z-skip-link:  300;
 
   /* --- Article body (prose, headings, tables, code) ------------------------ */
-  /* Reading column: serif prose for the document register; sans headings.     */
-  --k-prose-font:      var(--k-font-serif);
-  --k-prose-fs:        1.0625rem;   /* 17px — comfortable long-form reading    */
-  --k-prose-leading:   1.65;
+  /* Wikipedia pairing: SANS reading body + SERIF headings (see --k-title-font).*/
+  --k-prose-font:      var(--k-font-sans);
+  --k-prose-fs:        1rem;        /* 16px — Wikipedia sans reading size       */
+  --k-prose-leading:   1.6;
   --k-prose-measure:   44rem;       /* ~72ch line length                       */
   --k-prose-gap:       1.1em;       /* paragraph rhythm                        */
   --k-prose-ink:       var(--k-ink);
 
-  /* Article title + section headings (sans, Wikipedia-style ruled) */
-  --k-title-font:      var(--k-font-sans);
+  /* Article title + section headings — SERIF (Source Serif 4, Wikipedia stack) */
+  --k-title-font:      var(--k-font-serif);
   --k-title-fs:        2.125rem;    /* 34px h1                                 */
   --k-h2-fs:          1.5rem;       /* 24px section                            */
   --k-h3-fs:          1.2rem;       /* 19px sub-section                        */
