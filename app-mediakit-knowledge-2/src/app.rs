@@ -51,29 +51,74 @@ pub fn router(state: AppState) -> Router {
         .route("/healthz", get(healthz))
         .route("/health", get(healthz))
         .route("/wiki/{*slug}", get(wiki_raw))
+        .route("/category/{name}", get(category_page))
         .route("/static/{*path}", get(static_asset))
         .with_state(state)
 }
 
-/// Minimal home page — renders the primary mount's `index.md` lede inside the
-/// chrome. The full editorial home (category grid, featured, recent) is P3.
+/// Turn a category slug into a human label: "design-system" → "Design System".
+fn humanize(slug: &str) -> String {
+    slug.split(['-', '_'])
+        .filter(|w| !w.is_empty())
+        .map(|w| {
+            let mut c = w.chars();
+            match c.next() {
+                Some(f) => f.to_uppercase().collect::<String>() + c.as_str(),
+                None => String::new(),
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+/// Home page (Main Page) — index lede + a "Browse by area" category grid.
 async fn home(State(state): State<AppState>) -> Response {
     let tenant = state.tenant;
-    let body = match state.index.resolve("index", Lang::En) {
-        Some(doc) => match content::load(doc) {
-            Ok(parsed) => {
-                let rendered = content::render(&parsed.body_md);
-                let title = parsed
-                    .frontmatter
-                    .title
-                    .unwrap_or_else(|| tenant.home_label().to_string());
-                ui::article(&title, &rendered.html)
+
+    // Lede from index.md, if present.
+    let lede = state
+        .index
+        .resolve("index", Lang::En)
+        .and_then(|doc| content::load(doc).ok())
+        .map(|parsed| content::render(&parsed.body_md).html)
+        .unwrap_or_default();
+
+    // Category cards: prefer the configured order, fall back to discovered.
+    let counts = state.index.category_counts();
+    let mut cats: Vec<(String, String, usize)> = Vec::new();
+    if state.config.site.categories.is_empty() {
+        for (slug, n) in &counts {
+            cats.push((slug.clone(), humanize(slug), *n));
+        }
+    } else {
+        for slug in &state.config.site.categories {
+            if let Some(n) = counts.get(slug) {
+                cats.push((slug.clone(), humanize(slug), *n));
             }
-            Err(_) => ui::article(tenant.home_label(), ""),
-        },
-        None => ui::article(tenant.home_label(), ""),
-    };
+        }
+    }
+    let total: usize = state.index.article_count();
+
+    let body = ui::home_page(tenant, &lede, total, &cats);
     let head = ui::doc_head(tenant.home_label(), tenant);
+    Html(ui::page(tenant, "en", head, body).into_string()).into_response()
+}
+
+/// Category listing page — every article in one category.
+async fn category_page(State(state): State<AppState>, Path(name): Path<String>) -> Response {
+    let tenant = state.tenant;
+    let docs: Vec<(String, String)> = state
+        .index
+        .in_category(&name)
+        .into_iter()
+        .map(|d| (d.slug.clone(), d.title.clone()))
+        .collect();
+    if docs.is_empty() {
+        return (StatusCode::NOT_FOUND, format!("no such category: {name}")).into_response();
+    }
+    let label = humanize(&name);
+    let body = ui::category_index(&label, &docs);
+    let head = ui::doc_head(&label, tenant);
     Html(ui::page(tenant, "en", head, body).into_string()).into_response()
 }
 

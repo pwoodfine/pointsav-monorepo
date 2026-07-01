@@ -65,6 +65,29 @@ impl ContentIndex {
             .map(|(_, d)| d)
     }
 
+    /// Count of English documents in each category (categories with content only).
+    pub fn category_counts(&self) -> std::collections::BTreeMap<String, usize> {
+        let mut counts = std::collections::BTreeMap::new();
+        for doc in self.documents() {
+            if let Some(cat) = doc.category.as_deref() {
+                if !cat.is_empty() && cat != "root" {
+                    *counts.entry(cat.to_string()).or_insert(0) += 1;
+                }
+            }
+        }
+        counts
+    }
+
+    /// English documents in a category, sorted by title.
+    pub fn in_category(&self, category: &str) -> Vec<&DocRef> {
+        let mut docs: Vec<&DocRef> = self
+            .documents()
+            .filter(|d| d.category.as_deref() == Some(category))
+            .collect();
+        docs.sort_by(|a, b| a.title.to_lowercase().cmp(&b.title.to_lowercase()));
+        docs
+    }
+
     fn insert(&mut self, doc: DocRef) {
         self.by_key.insert((doc.slug.clone(), doc.lang), doc);
     }

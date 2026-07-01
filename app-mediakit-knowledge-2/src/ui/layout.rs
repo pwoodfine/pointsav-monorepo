@@ -260,6 +260,51 @@ pub fn article(title: &str, body_html: &str) -> Markup {
     }
 }
 
+/// Home page — the front page (Main Page): title, the index lede, an article
+/// count, and a "Browse by area" grid of category cards. `cats` is
+/// `(slug, label, count)` in display order.
+pub fn home_page(tenant: Tenant, lede_html: &str, total: usize, cats: &[(String, String, usize)]) -> Markup {
+    html! {
+        div."k-home" {
+            h1."k-article__title" { (tenant.home_label()) }
+            @if !lede_html.is_empty() {
+                div."k-prose k-home__lede" { (PreEscaped(lede_html)) }
+            }
+            div."k-home__stat" {
+                strong { (total) } " articles across " strong { (cats.len()) } " areas"
+            }
+            section."k-home__browse" aria-label="Browse by area" {
+                h2."k-home__browse-title" { "Browse by area" }
+                div."k-home__grid" {
+                    @for (slug, label, count) in cats {
+                        a."k-cat-card" href={ "/category/" (slug) } {
+                            span."k-cat-card__name" { (label) }
+                            span."k-cat-card__count" { (count) " articles" }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Category listing — a category's articles as a simple index.
+/// `docs` is `(slug, title)` sorted.
+pub fn category_index(label: &str, docs: &[(String, String)]) -> Markup {
+    html! {
+        div."k-catpage" {
+            div."k-catpage__eyebrow" { "Category" }
+            h1."k-article__title" { (label) }
+            div."k-home__stat" { strong { (docs.len()) } " articles" }
+            ul."k-cat-list" {
+                @for (slug, title) in docs {
+                    li { a."k-cat-list__link" href={ "/wiki/" (slug) } { (title) } }
+                }
+            }
+        }
+    }
+}
+
 /// The full document as one balanced tree.
 pub fn page(tenant: Tenant, lang: &str, head: Markup, body: Markup) -> Markup {
     html! {
