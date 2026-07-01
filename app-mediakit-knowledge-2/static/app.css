@@ -209,10 +209,10 @@ button:disabled { cursor: default; }
   line-height: 1;
 }
 .k-logo__brand {
-  font-family: var(--k-font-display);
+  font-family: var(--k-font-sans);      /* clean sans wordmark, not display serif */
   font-size: var(--k-text-lg);
-  font-weight: var(--k-weight-semibold);
-  letter-spacing: 0.06em;               /* marketing wordmark tracking */
+  font-weight: var(--k-weight-bold);
+  letter-spacing: -0.01em;
   color: var(--k-ink);
 }
 .k-logo__descriptor {
@@ -526,35 +526,51 @@ button:disabled { cursor: default; }
 }
 .k-footer__cities-sep { color: var(--k-border); }
 
-/* Subtle footer badges — homage to Wikipedia's "Powered by" buttons. */
-.k-footer__badges { display: flex; align-items: center; gap: var(--k-space-3); flex-wrap: wrap; }
+/* Subtle footer badges — homage to Wikipedia's "Powered by" + licence buttons. */
+.k-footer__badges { display: flex; align-items: stretch; gap: var(--k-space-3); flex-wrap: wrap; }
 .k-badge {
   display: inline-flex;
   align-items: center;
-  gap: var(--k-space-2);
-  padding: 0.3rem 0.55rem;
+  gap: 0.5rem;
+  padding: 0.35rem 0.6rem;
   border: 1px solid var(--k-border-light);
   border-radius: var(--k-radius-sm);
   background: var(--k-surface);
-  color: var(--k-ink-muted);
-  line-height: 1.1;
+  color: var(--k-ink-secondary);
+  line-height: 1.05;
   transition: border-color var(--k-motion-fast) var(--k-ease),
-              color var(--k-motion-fast) var(--k-ease);
+              color var(--k-motion-fast) var(--k-ease),
+              background var(--k-motion-fast) var(--k-ease);
 }
-.k-badge:hover { border-color: var(--k-border); color: var(--k-ink-secondary); text-decoration: none; }
+.k-badge:hover {
+  border-color: var(--k-accent);
+  color: var(--k-accent);
+  background: var(--k-surface-sunken);
+  text-decoration: none;
+}
 .k-badge:focus-visible { outline: var(--k-focus-outline); outline-offset: 2px; }
-.k-badge__glyph { display: inline-flex; color: var(--k-ink-muted); flex-shrink: 0; }
-.k-badge__text { display: inline-flex; flex-direction: column; }
+.k-badge__glyph { display: inline-flex; color: currentColor; flex-shrink: 0; }
+.k-badge__roundels { display: inline-flex; color: currentColor; flex-shrink: 0; }
+.k-badge__text { display: inline-flex; flex-direction: column; gap: 1px; }
 .k-badge__lead {
   font-size: 0.5625rem;
   text-transform: uppercase;
   letter-spacing: var(--k-tracking-caps);
   color: var(--k-ink-muted);
 }
+.k-badge:hover .k-badge__lead { color: inherit; }
 .k-badge__name {
   font-size: var(--k-text-xs);
-  font-weight: var(--k-weight-semibold);
-  color: var(--k-ink-secondary);
+  font-weight: var(--k-weight-bold);
+  color: inherit;
+}
+.k-badge--license .k-badge__name { letter-spacing: 0.01em; }
+
+.k-footer__copyline {
+  flex-basis: 100%;
+  margin: var(--k-space-3) 0 0;
+  font-size: var(--k-text-xs);
+  color: var(--k-ink-muted);
 }
 
 /* ========================================================================== */

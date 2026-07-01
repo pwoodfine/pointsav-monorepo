@@ -4,7 +4,18 @@
 //! and `[[slug|label]]` wikilinks resolve to internal `/wiki/{slug}` anchors.
 //! Section headings (h2/h3) are extracted for the table of contents.
 
-use comrak::{markdown_to_html, Options};
+use std::sync::OnceLock;
+
+use comrak::options::Plugins;
+use comrak::plugins::syntect::{SyntectAdapter, SyntectAdapterBuilder};
+use comrak::{markdown_to_html_with_plugins, Options};
+
+/// Syntax highlighter, built once. Light GitHub-style theme (subtle colour,
+/// like a document editor) applied at render time — no client-side JS.
+fn highlighter() -> &'static SyntectAdapter {
+    static ADAPTER: OnceLock<SyntectAdapter> = OnceLock::new();
+    ADAPTER.get_or_init(|| SyntectAdapterBuilder::new().theme("InspiredGitHub").build())
+}
 
 /// A rendered document body plus its heading outline.
 #[derive(Debug, Clone)]
@@ -35,7 +46,10 @@ pub fn render(body_md: &str) -> Rendered {
     opts.extension.header_ids = Some(String::new());
     opts.render.r#unsafe = true; // content is trusted (Git-authored, reviewed)
 
-    let html = markdown_to_html(&with_links, &opts);
+    let mut plugins = Plugins::default();
+    plugins.render.codefence_syntax_highlighter = Some(highlighter());
+
+    let html = markdown_to_html_with_plugins(&with_links, &opts, &plugins);
     let headings = extract_headings(&with_links);
     Rendered { html, headings }
 }
