@@ -47,6 +47,18 @@ pub(crate) fn normalize_entity_key(entity_name: &str) -> String {
     s.split_whitespace().collect::<Vec<_>>().join("_")
 }
 
+/// Convert an `Option<String>` into a `Value` for MERGE params. `Some(non_empty)` -> a real
+/// `Value::String`; `None`/empty -> a genuine Cypher NULL, so `COALESCE(...)` in the MERGE SET
+/// clause can tell "no incoming value" apart from "blank it out". Without this distinction, a
+/// GLiNER-primary re-mention (which never carries vector data) unconditionally overwrote a
+/// previously Tier-B-enriched entity's vectors with empty strings on every re-upsert.
+fn opt_to_value(v: &Option<String>) -> Value {
+    match v {
+        Some(s) if !s.is_empty() => Value::String(s.clone()),
+        _ => Value::Null(LogicalType::String),
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GraphEntity {
     pub entity_name: String,
@@ -214,17 +226,25 @@ impl GraphStore for LbugGraphStore {
         // Phase 1: MERGE each entity node.
         // Both stmts are scoped so their borrows on conn drop before Phase 2 prepares new stmts.
         let count: usize = {
+            // Vectors: COALESCE($new, e.existing) — a non-null incoming value wins (still
+            // allows correction/enrichment); an empty/None incoming value (e.g. a GLiNER
+            // Tier 0 re-mention, which never carries vector data) preserves whatever is
+            // already stored rather than blanking it.
+            // source_doc: COALESCE(e.existing, $new) — opposite direction, first-write-wins,
+            // matching its own doc-comment contract ("CORPUS worm_id that first introduced
+            // this entity") which the previous unconditional SET violated identically to the
+            // vector bug.
             let mut stmt = conn
                 .prepare(
                     "MERGE (e:Entity {id: $id}) \
                      SET e.entity_name = $entity_name, \
                          e.classification = $classification, \
-                         e.role_vector = $role_vector, \
-                         e.location_vector = $location_vector, \
-                         e.contact_vector = $contact_vector, \
+                         e.role_vector = COALESCE($role_vector, e.role_vector), \
+                         e.location_vector = COALESCE($location_vector, e.location_vector), \
+                         e.contact_vector = COALESCE($contact_vector, e.contact_vector), \
                          e.module_id = $module_id, \
                          e.confidence = $confidence, \
-                         e.source_doc = $source_doc",
+                         e.source_doc = COALESCE(e.source_doc, $source_doc)",
                 )
                 .map_err(|e| anyhow!("Failed to prepare upsert statement: {}", e))?;
 
@@ -255,24 +275,12 @@ impl GraphStore for LbugGraphStore {
                             "classification",
                             Value::String(entity.classification.clone()),
                         ),
-                        (
-                            "role_vector",
-                            Value::String(entity.role_vector.clone().unwrap_or_default()),
-                        ),
-                        (
-                            "location_vector",
-                            Value::String(entity.location_vector.clone().unwrap_or_default()),
-                        ),
-                        (
-                            "contact_vector",
-                            Value::String(entity.contact_vector.clone().unwrap_or_default()),
-                        ),
+                        ("role_vector", opt_to_value(&entity.role_vector)),
+                        ("location_vector", opt_to_value(&entity.location_vector)),
+                        ("contact_vector", opt_to_value(&entity.contact_vector)),
                         ("module_id", Value::String(entity.module_id.clone())),
                         ("confidence", Value::Double(entity.confidence)),
-                        (
-                            "source_doc",
-                            Value::String(entity.source_doc.clone().unwrap_or_default()),
-                        ),
+                        ("source_doc", opt_to_value(&entity.source_doc)),
                     ],
                 )
                 .map_err(|e| anyhow!("Failed to upsert entity '{}': {}", entity.entity_name, e))?;
@@ -1223,6 +1231,109 @@ mod tests {
         assert_eq!(
             created_first, created_second,
             "created_at must not be overwritten on re-upsert"
+        );
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn vector_fields_preserve_existing_on_empty_remention() {
+        let dir = std::env::temp_dir().join(format!("sc-vector-coalesce-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let store = LbugGraphStore::new(dir.to_str().unwrap()).expect("open temp lbug store");
+        store.init_schema().expect("init_schema");
+
+        let mut enriched = person("Jennifer Woodfine");
+        enriched.role_vector = Some("Managing Partner".into());
+        enriched.location_vector = Some("Toronto".into());
+        store
+            .upsert_entities("test", std::slice::from_ref(&enriched))
+            .expect("Tier B write");
+
+        // GLiNER-primary re-mention: same entity, no vectors — the exact shape that broke fill-rate.
+        let bare = person("Jennifer Woodfine");
+        store
+            .upsert_entities("test", std::slice::from_ref(&bare))
+            .expect("Tier 0 re-mention");
+
+        let entities = store.list_entities("test").expect("list_entities");
+        let hit = entities
+            .iter()
+            .find(|e| e.entity_name == "Jennifer Woodfine")
+            .expect("entity present");
+        assert_eq!(
+            hit.role_vector.as_deref(),
+            Some("Managing Partner"),
+            "GLiNER re-mention must not blank a previously-enriched role_vector"
+        );
+        assert_eq!(hit.location_vector.as_deref(), Some("Toronto"));
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn vector_fields_still_update_when_incoming_has_a_value() {
+        let dir = std::env::temp_dir().join(format!("sc-vector-update-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let store = LbugGraphStore::new(dir.to_str().unwrap()).expect("open temp lbug store");
+        store.init_schema().expect("init_schema");
+
+        let mut first = person("Peter Woodfine");
+        first.role_vector = Some("Analyst".into());
+        store
+            .upsert_entities("test", std::slice::from_ref(&first))
+            .expect("first write");
+
+        // A later write WITH a real value must still be able to correct the field —
+        // this isn't first-write-wins, unlike created_at/source_doc.
+        let mut corrected = person("Peter Woodfine");
+        corrected.role_vector = Some("Managing Director".into());
+        store
+            .upsert_entities("test", std::slice::from_ref(&corrected))
+            .expect("corrected write");
+
+        let entities = store.list_entities("test").expect("list_entities");
+        let hit = entities
+            .iter()
+            .find(|e| e.entity_name == "Peter Woodfine")
+            .expect("entity present");
+        assert_eq!(
+            hit.role_vector.as_deref(),
+            Some("Managing Director"),
+            "a non-empty incoming value must still update the field"
+        );
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn source_doc_first_write_wins() {
+        let dir = std::env::temp_dir().join(format!("sc-source-doc-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let store = LbugGraphStore::new(dir.to_str().unwrap()).expect("open temp lbug store");
+        store.init_schema().expect("init_schema");
+
+        let mut first = person("Bruce Flatt");
+        first.source_doc = Some("worm-doc-a".into());
+        store
+            .upsert_entities("test", std::slice::from_ref(&first))
+            .expect("first write");
+
+        let mut second = person("Bruce Flatt");
+        second.source_doc = Some("worm-doc-b".into());
+        store
+            .upsert_entities("test", std::slice::from_ref(&second))
+            .expect("second write");
+
+        let entities = store.list_entities("test").expect("list_entities");
+        let hit = entities
+            .iter()
+            .find(|e| e.entity_name == "Bruce Flatt")
+            .expect("entity present");
+        assert_eq!(
+            hit.source_doc.as_deref(),
+            Some("worm-doc-a"),
+            "source_doc must reflect the FIRST document that introduced the entity, not the latest"
         );
 
         let _ = std::fs::remove_dir_all(&dir);
