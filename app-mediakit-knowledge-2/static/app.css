@@ -204,11 +204,9 @@ button:disabled { cursor: default; }
 }
 .k-logo__lockup {
   display: inline-flex;
-  flex-direction: column;               /* stacked: wordmark over tagline (Wikipedia) */
-  align-items: flex-start;
-  justify-content: center;
-  gap: 0;
-  line-height: 1.05;
+  align-items: baseline;
+  gap: 0.4em;
+  line-height: 1;
 }
 .k-logo__brand {
   font-family: var(--k-font-sans);      /* clean sans wordmark, not display serif */
@@ -218,10 +216,9 @@ button:disabled { cursor: default; }
   color: var(--k-ink);
 }
 .k-logo__descriptor {
-  font-family: var(--k-font-serif);     /* italic serif tagline, à la "The Free Encyclopedia" */
-  font-size: var(--k-text-xs);
-  font-style: italic;
-  font-weight: var(--k-weight-regular);
+  font-family: var(--k-font-sans);
+  font-size: var(--k-text-sm);
+  font-weight: var(--k-weight-medium);
   letter-spacing: 0.01em;
   color: var(--k-ink-muted);
 }
@@ -506,19 +503,26 @@ button:disabled { cursor: default; }
 .k-footer__link:visited { color: var(--k-link-visited); }
 .k-footer__link:focus-visible { outline: var(--k-focus-outline); outline-offset: 2px; border-radius: var(--k-radius-xs); }
 
-/* Info line (cities + copyright/licence) — Wikipedia footer-info register. */
-.k-footer__info {
+/* Base row — copyright + cities (left) · badges (right). */
+.k-footer__base {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: var(--k-space-2) var(--k-space-4);
+  gap: var(--k-space-3) var(--k-space-5);
   margin-top: var(--k-gutter-lg);
   padding-top: var(--k-space-4);
   border-top: 1px solid var(--k-border-subtle);
   color: var(--k-ink-muted);
   font-size: var(--k-text-xs);
 }
+.k-footer__meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--k-space-2) var(--k-space-4);
+}
+.k-footer__copyright { margin: 0; color: var(--k-ink-muted); }
 .k-footer__cities {
   display: flex;
   align-items: center;
@@ -528,15 +532,13 @@ button:disabled { cursor: default; }
   color: var(--k-ink-secondary);
 }
 .k-footer__cities-sep { color: var(--k-border); }
-.k-footer__copyright { margin: 0; color: var(--k-ink-muted); }
 
-/* Subtle footer badges — homage to Wikipedia's footer buttons (bottom of footer). */
+/* Subtle footer badges — homage to Wikipedia's footer buttons (right of base row). */
 .k-footer__badges {
   display: flex;
   align-items: stretch;
   gap: var(--k-space-3);
   flex-wrap: wrap;
-  margin-top: var(--k-space-4);
 }
 .k-badge {
   display: inline-flex;

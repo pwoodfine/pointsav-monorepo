@@ -143,8 +143,8 @@ impl Tenant {
             // Listing a third "Home" here conflates the two.
             // Property links — these sit in the top strip AND the footer.
             Tenant::Documentation => vec![
-                ("Monorepo", "https://software.pointsav.com/"),
                 ("GitHub", "https://github.com/pointsav/pointsav-monorepo"),
+                ("Software", "https://software.pointsav.com/"),
                 ("Design System", "https://design.pointsav.com/"),
             ],
             Tenant::Projects => vec![
