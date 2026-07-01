@@ -105,11 +105,36 @@ def _load_domain_labels() -> dict[str, dict[str, str]]:
 DOMAIN_LABELS: dict[str, dict[str, str]] = _load_domain_labels()
 
 
-def _sync_predict(text: str, domain_id: str) -> list[dict[str, str]]:
-    """Blocking GLiNER call — runs in _pool thread, not the event loop."""
+def _labels_with_hints(
+    domain_id: str, entity_hints: dict[str, list[str]] | None
+) -> tuple[list[str], dict[str, str]]:
+    """Build the GLiNER label list for a domain, appending KoGNER-style concrete
+    entity-name examples to each label's description when hints are available.
+    Concrete examples in descriptions act as free quality improvements — GLiNER
+    reads them literally, no model change required.
+
+    Returns (labels, desc_to_key); desc_to_key maps the (possibly hint-augmented)
+    description string back to its canonical classification key, since GLiNER
+    returns the description text as the predicted "label".
+    """
     label_map = DOMAIN_LABELS.get(domain_id, DOMAIN_LABELS[DEFAULT_DOMAIN])
-    labels = list(label_map.values())
-    desc_to_key = {v: k for k, v in label_map.items()}
+    augmented: dict[str, str] = {}
+    for key, desc in label_map.items():
+        hints = (entity_hints or {}).get(key)
+        if hints:
+            augmented[key] = f"{desc} (examples: {', '.join(hints)})"
+        else:
+            augmented[key] = desc
+    labels = list(augmented.values())
+    desc_to_key = {v: k for k, v in augmented.items()}
+    return labels, desc_to_key
+
+
+def _sync_predict(
+    text: str, domain_id: str, entity_hints: dict[str, list[str]] | None = None
+) -> list[dict[str, str]]:
+    """Blocking GLiNER call — runs in _pool thread, not the event loop."""
+    labels, desc_to_key = _labels_with_hints(domain_id, entity_hints)
     raw = model.predict_entities(text, labels, threshold=0.5)
     return [
         {
@@ -120,11 +145,11 @@ def _sync_predict(text: str, domain_id: str) -> list[dict[str, str]]:
     ]
 
 
-def _sync_batch(texts: list[str], domain_id: str) -> list[dict[str, str]]:
+def _sync_batch(
+    texts: list[str], domain_id: str, entity_hints: dict[str, list[str]] | None = None
+) -> list[dict[str, str]]:
     """Blocking GLiNER batch inference — runs in _pool thread."""
-    label_map = DOMAIN_LABELS.get(domain_id, DOMAIN_LABELS[DEFAULT_DOMAIN])
-    labels = list(label_map.values())
-    desc_to_key = {v: k for k, v in label_map.items()}
+    labels, desc_to_key = _labels_with_hints(domain_id, entity_hints)
     raw_batched = model.inference(texts, labels, threshold=0.5)
     entities = []
     for chunk_entities in raw_batched:
@@ -147,13 +172,16 @@ async def batch_extract(request: Request) -> dict[str, list]:
     body: dict[str, Any] = await request.json()
     texts: list[str] = body.get("texts", [])
     domain_id: str = body.get("domain_id", DEFAULT_DOMAIN)
+    entity_hints: dict[str, list[str]] | None = body.get("entity_hints")
 
     non_empty = [t for t in texts if t.strip()]
     if not non_empty:
         return {"entities": []}
 
     loop = asyncio.get_running_loop()
-    entities = await loop.run_in_executor(_pool, _sync_batch, non_empty, domain_id)
+    entities = await loop.run_in_executor(
+        _pool, _sync_batch, non_empty, domain_id, entity_hints
+    )
     return {"entities": entities}
 
 
@@ -162,12 +190,15 @@ async def extract(request: Request) -> dict[str, list]:
     body: dict[str, Any] = await request.json()
     text: str = body.get("text", "")
     domain_id: str = body.get("domain_id", DEFAULT_DOMAIN)
+    entity_hints: dict[str, list[str]] | None = body.get("entity_hints")
 
     if not text.strip():
         return {"entities": []}
 
     loop = asyncio.get_running_loop()
-    entities = await loop.run_in_executor(_pool, _sync_predict, text, domain_id)
+    entities = await loop.run_in_executor(
+        _pool, _sync_predict, text, domain_id, entity_hints
+    )
     return {"entities": entities}
 
 

@@ -1,5 +1,6 @@
 mod config_http;
 mod entity_filter;
+mod entity_hints;
 mod er;
 mod graph;
 mod http;
@@ -198,6 +199,12 @@ fn main() -> NotifyResult<()> {
         }
         Err(e) => println!("[TAXONOMY] Load failed (non-fatal): {}", e),
     }
+
+    // KoGNER entity-hint injection: sample a few known entities per classification
+    // from the graph (now seeded with taxonomy) so GLiNER's label descriptions carry
+    // concrete examples. Free quality improvement, no model change. Must run after
+    // the taxonomy load above and before the drain loop begins.
+    entity_hints::init_entity_hints(&graph_store, &module_id);
 
     // ── HTTP server (dedicated thread + own tokio runtime) ───────────────────
     // Cannot use reqwest::blocking inside a #[tokio::main] context (nested
@@ -1295,6 +1302,7 @@ fn call_tier_0_gliner(corpus_text: &str, domain_id: Option<&str>) -> GlinerOutco
         let body = serde_json::json!({
             "text": chunk,
             "domain_id": domain,
+            "entity_hints": entity_hints::get_entity_hints(),
         });
         let resp = match client.post(&url).json(&body).send() {
             Ok(r) => r,
