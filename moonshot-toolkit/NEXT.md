@@ -1,6 +1,7 @@
 # NEXT.md — moonshot-toolkit
 
 > Last updated: 2026-05-29
+> Last updated: 2026-06-30
 > Read at session start. Update before session end.
 
 ---
@@ -20,6 +21,20 @@
 - Nothing in progress. Phase 1C.c complete (`d550217`): seL4 qemu-arm-virt
   AArch64 QEMU boot confirmed — "hello from seL4 rootserver" output observed.
   Phase 1C.d still blocked — see Blocked section below.
+- **Task #14 IMPLEMENTED** (commit `916e918b`, 2026-06-30) — `build` subcommand is real.
+- **BLOCKED: disk full** — `/srv/foundry/cargo-target/mathew/debug/` ENOSPC.
+  `cargo check` passed (exit 0). `cargo test` and first `build` run blocked until disk freed.
+  Command fix: `rm -rf /srv/foundry/cargo-target/mathew/debug/incremental/`
+- **First build run**: `moonshot-toolkit build os-infrastructure/system-spec.toml`
+  → should produce `os-infrastructure/build/loader.img` via Microkit 2.2.0.
+
+## Queue
+
+- `[ ]` First real build run: `moonshot-toolkit build os-infrastructure/system-spec.toml` [2026-06-30 totebox@claude-code]
+- `[ ]` Run `cargo test` to confirm all 4 new spec tests + updated plan test pass [2026-06-30 totebox@claude-code]
+- `[ ]` Ed25519-sign output images using identity/id_pointsav-administrator key
+- `[ ]` Remove `build-totebox.sh` legacy shell sketch once `moonshot-toolkit build` produces a bootable image
+- `[ ]` AArch64 path: add `qemu_virt_aarch64/debug` variant to os-infrastructure system-spec.toml once x86 path confirmed
 
 ## Queue
 
@@ -84,3 +99,7 @@
 - 2026-04-27 (Phase 1B): `src/spec.rs` (445 lines, 12 tests) + `src/plan.rs`
   (310 lines, 10 tests) + `src/main.rs` CLI rewrite (241 lines, 8 tests).
   30 tests total (`cargo test --all-targets`). v0.1.3.
+3. **Reproducible-build harness:** BuildPlan content-addressed `plan_hash`
+   already implemented in `src/plan.rs`. Ed25519-sign output images with
+   `identity/id_pointsav-administrator` key (same key used for software.pointsav.com
+   distribution).
