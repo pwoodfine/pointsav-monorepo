@@ -67,10 +67,10 @@ pub fn utility_bar(tenant: Tenant) -> Markup {
     html! {
         div."k-utility" {
             div."k-utility__inner" {
-                a."k-utility__home" href=(tenant.marketing_home()) {
-                    (tenant.entity_name())
-                }
-                nav."k-utility__nav" aria-label="PointSav network" {
+                // Right-aligned cross-property links only — no entity label here
+                // (the header wordmark carries the wiki's identity), so the two
+                // don't stack redundantly.
+                nav."k-utility__nav" aria-label="Network" {
                     @for (label, url) in tenant.cross_property_links() {
                         a."k-utility__link" href=(url) target="_blank" rel="noopener" {
                             (label)
@@ -204,23 +204,32 @@ pub fn footer(tenant: Tenant) -> Markup {
                         }
                     }
                     div."k-footer__col" {
-                        h2."k-footer__col-title" { "PointSav network" }
+                        h2."k-footer__col-title" { "Network" }
                         ul."k-footer__list" {
+                            li { a."k-footer__link" href=(tenant.marketing_home()) target="_blank" rel="noopener" { (tenant.entity_name()) } }
+                            @let (other_label, other_url) = tenant.other_org();
+                            li { a."k-footer__link" href=(other_url) target="_blank" rel="noopener" { (other_label) } }
                             @for (label, url) in tenant.cross_property_links() {
                                 li { a."k-footer__link" href=(url) target="_blank" rel="noopener" { (label) } }
                             }
                         }
                     }
                 }
-                div."k-footer__base" {
+                // Info line — cities + copyright/licence text (Wikipedia footer-info).
+                div."k-footer__info" {
                     div."k-footer__cities" {
                         @for (i, city) in tenant.cities().iter().enumerate() {
                             @if i > 0 { span."k-footer__cities-sep" aria-hidden="true" { "|" } }
                             span { (city) }
                         }
                     }
-                    // Subtle badges — homage to Wikipedia's footer buttons.
-                    div."k-footer__badges" {
+                    p."k-footer__copyright" {
+                        "\u{00a9} 2026 " (tenant.copyright_holder())
+                        " \u{00b7} Content available under CC BY 4.0."
+                    }
+                }
+                // Badges last — homage to Wikipedia's footer buttons (bottom of footer).
+                div."k-footer__badges" {
                         // Powered by MediaKit (the engine).
                         a."k-badge" href="/wiki/about" {
                             span."k-badge__glyph" aria-hidden="true" {
@@ -252,10 +261,6 @@ pub fn footer(tenant: Tenant) -> Markup {
                             }
                         }
                     }
-                }
-                p."k-footer__copyline" {
-                    "\u{00a9} 2026 " (tenant.copyright_holder())
-                }
             }
         }
     }

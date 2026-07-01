@@ -141,18 +141,33 @@ impl Tenant {
             // "Home" is intentionally omitted — the entity label links to the
             // corporate home, and the wiki logo links to this wiki's front page.
             // Listing a third "Home" here conflates the two.
+            // Property links — these sit in the top strip AND the footer.
             Tenant::Documentation => vec![
                 ("Monorepo", "https://software.pointsav.com/"),
+                ("GitHub", "https://github.com/pointsav/pointsav-monorepo"),
                 ("Design System", "https://design.pointsav.com/"),
             ],
             Tenant::Projects => vec![
                 ("Corporate", "https://corporate.woodfinegroup.com/"),
                 ("Newsroom", "https://newsroom.woodfinegroup.com/"),
+                ("GitHub", "https://github.com/woodfine/woodfine-fleet-deployment"),
             ],
             Tenant::Corporate => vec![
                 ("Projects", "https://projects.woodfinegroup.com/"),
                 ("Newsroom", "https://newsroom.woodfinegroup.com/"),
+                ("GitHub", "https://github.com/woodfine/woodfine-fleet-deployment"),
             ],
+        }
+    }
+
+    /// The cross-company org link surfaced in the footer network only
+    /// (`(label, url)`): PointSav ↔ Woodfine.
+    pub fn other_org(&self) -> (&'static str, &'static str) {
+        match self {
+            Tenant::Documentation => ("Woodfine Capital Projects", "https://home.woodfinegroup.com/"),
+            Tenant::Projects | Tenant::Corporate => {
+                ("PointSav Digital Systems", "https://home.pointsav.com/")
+            }
         }
     }
 
