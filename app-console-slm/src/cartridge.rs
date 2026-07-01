@@ -453,9 +453,13 @@ impl Cartridge for SlmCartridge {
 
     fn intents(&self) -> Vec<IntentSpec> {
         vec![
-            IntentSpec::new("slm.refresh", "Refresh dashboard", IntentScope::Cartridge("slm"))
-                .key("r")
-                .mouse(MouseAffordance::CLICK),
+            IntentSpec::new(
+                "slm.refresh",
+                "Refresh dashboard",
+                IntentScope::Cartridge("slm"),
+            )
+            .key("r")
+            .mouse(MouseAffordance::CLICK),
             IntentSpec::new(
                 "slm.toggle_help",
                 "Toggle help overlay",

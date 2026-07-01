@@ -85,8 +85,10 @@ pub fn pin_server_key(fingerprint: &str) {
             path.display()
         );
     } else {
-        eprintln!("os-console: MBA: WARNING — could not write server-hostkey sidecar; \
-            next connection will TOFU again. Set totebox_known_host_key in config to pin manually.");
+        eprintln!(
+            "os-console: MBA: WARNING — could not write server-hostkey sidecar; \
+            next connection will TOFU again. Set totebox_known_host_key in config to pin manually."
+        );
     }
 }
 

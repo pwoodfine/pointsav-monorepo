@@ -206,7 +206,9 @@ impl AppConsoleKeys {
 
     /// Scope id of the focused cartridge for keymap/palette filtering.
     fn focused_scope(&self) -> Option<&'static str> {
-        self.cartridges.get(&self.active).and_then(|c| c.intent_scope())
+        self.cartridges
+            .get(&self.active)
+            .and_then(|c| c.intent_scope())
     }
 
     fn is_global_or_pane(&self, id: IntentId) -> bool {
@@ -271,7 +273,8 @@ impl AppConsoleKeys {
         }
         // Cartridge-scoped intent: hand to the active cartridge.
         let args = IntentArgs::default();
-        let action = self.cartridges
+        let action = self
+            .cartridges
             .get_mut(&self.active)
             .map(|c| c.dispatch(id, &args))
             .unwrap_or(CartridgeAction::None);
@@ -407,7 +410,8 @@ impl AppConsoleKeys {
 
     fn forward_mouse_to_cartridge(&mut self, m: &MouseEvent) -> ChassisAction {
         let ev = Event::Mouse(*m);
-        let action = self.cartridges
+        let action = self
+            .cartridges
             .get_mut(&self.active)
             .map(|c| c.handle_event(&ev))
             .unwrap_or(CartridgeAction::None);
@@ -483,7 +487,9 @@ impl AppConsoleKeys {
                             let first = menu.rect.y.saturating_add(1);
                             let idx = m.row.checked_sub(first).map(|d| d as usize);
                             match idx {
-                                Some(i) if i < menu.entries.len() => Outcome::Run(menu.entries[i].0),
+                                Some(i) if i < menu.entries.len() => {
+                                    Outcome::Run(menu.entries[i].0)
+                                }
                                 _ => Outcome::Stay,
                             }
                         }
@@ -698,7 +704,8 @@ impl AppConsoleKeys {
                 return ChassisAction::None;
             }
             if let Some(chord) = key_to_chord(key) {
-                if self.keymap.resolve(&chord, self.focused_scope()) == Some(IntentId("console.palette"))
+                if self.keymap.resolve(&chord, self.focused_scope())
+                    == Some(IntentId("console.palette"))
                 {
                     self.open_palette();
                     return ChassisAction::None;
@@ -714,7 +721,8 @@ impl AppConsoleKeys {
             }
         }
 
-        let action = self.cartridges
+        let action = self
+            .cartridges
             .get_mut(&self.active)
             .map(|c| c.handle_event(event))
             .unwrap_or(CartridgeAction::None);
@@ -1116,7 +1124,12 @@ impl AppConsoleKeys {
         }
         self.build_intents();
         let mut stdout = io::stdout();
-        execute!(stdout, EnterAlternateScreen, EnableMouseCapture, cursor::Hide)?;
+        execute!(
+            stdout,
+            EnterAlternateScreen,
+            EnableMouseCapture,
+            cursor::Hide
+        )?;
 
         let backend = CrosstermBackend::new(stdout);
         let mut terminal = Terminal::new(backend)?;
@@ -1250,7 +1263,11 @@ fn render_cap_overlay(frame: &mut Frame, area: Rect, verdicts: &[(String, String
 
     let block = Block::default()
         .borders(Borders::ALL)
-        .border_style(Style::default().fg(Color::Magenta).add_modifier(Modifier::BOLD))
+        .border_style(
+            Style::default()
+                .fg(Color::Magenta)
+                .add_modifier(Modifier::BOLD),
+        )
         .title(" ◈ Capability Verdicts    [? / Esc: close] ");
     let inner = block.inner(rect);
     frame.render_widget(block, rect);
@@ -1374,7 +1391,11 @@ fn render_palette(frame: &mut Frame, rect: Rect, p: &Palette) {
     frame.render_widget(Clear, rect);
     let block = Block::default()
         .borders(Borders::ALL)
-        .border_style(Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD))
+        .border_style(
+            Style::default()
+                .fg(Color::Cyan)
+                .add_modifier(Modifier::BOLD),
+        )
         .title(" Command palette  (type to filter · ↑↓ · Enter · Esc) ");
     let inner = block.inner(rect);
     frame.render_widget(block, rect);

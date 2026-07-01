@@ -560,7 +560,9 @@ impl Cartridge for InputCartridge {
             InputState::Entry => Cmd::Entry,
             InputState::Confirm { path } => Cmd::Confirm(path.as_str()),
             InputState::Submitting { spinner, .. } => Cmd::Submitting(*spinner),
-            InputState::Done { path, result } => Cmd::Done(path.as_str(), result, ledger_h, ledger_r),
+            InputState::Done { path, result } => {
+                Cmd::Done(path.as_str(), result, ledger_h, ledger_r)
+            }
             InputState::AuditLog { records, scroll } => Cmd::Audit(records.as_slice(), *scroll),
             InputState::Error { message } => Cmd::Error(message.as_str()),
         };

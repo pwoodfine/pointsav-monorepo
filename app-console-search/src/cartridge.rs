@@ -1,13 +1,18 @@
 use std::sync::mpsc;
 use std::thread;
 
-use app_console_keys::{Cartridge, CartridgeAction, FKey, IntentArgs, IntentId, IntentScope, IntentSpec, MouseAffordance};
+use app_console_keys::{
+    Cartridge, CartridgeAction, FKey, IntentArgs, IntentId, IntentScope, IntentSpec,
+    MouseAffordance,
+};
 use crossterm::event::{Event, KeyCode, KeyModifiers};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, List, ListItem, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState},
+    widgets::{
+        Block, Borders, List, ListItem, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState,
+    },
     Frame,
 };
 use serde::Deserialize;
@@ -50,7 +55,9 @@ fn fetch_search(
 }
 
 enum SearchState {
-    Idle { query: String },
+    Idle {
+        query: String,
+    },
     Searching {
         query: String,
         rx: mpsc::Receiver<anyhow::Result<Vec<SearchResult>>>,
@@ -93,9 +100,9 @@ impl SearchCartridge {
 
     fn submit_search(&mut self) {
         let query = match &self.state {
-            SearchState::Idle { query } | SearchState::Results { query, .. } | SearchState::Error { query, .. } => {
-                query.clone()
-            }
+            SearchState::Idle { query }
+            | SearchState::Results { query, .. }
+            | SearchState::Error { query, .. } => query.clone(),
             SearchState::Searching { query, .. } => query.clone(),
         };
         if query.trim().is_empty() {
@@ -138,7 +145,10 @@ impl SearchCartridge {
             .split(inner);
 
         let before = &query[..cursor.min(query.len())];
-        let cursor_char = query[cursor.min(query.len())..].chars().next().unwrap_or(' ');
+        let cursor_char = query[cursor.min(query.len())..]
+            .chars()
+            .next()
+            .unwrap_or(' ');
         let after = if cursor < query.len() {
             &query[cursor + cursor_char.len_utf8()..]
         } else {
@@ -147,7 +157,10 @@ impl SearchCartridge {
         let query_line = Line::from(vec![
             Span::styled("  ⌕ ", Style::default().fg(Color::Cyan)),
             Span::raw(before.to_string()),
-            Span::styled(cursor_char.to_string(), Style::default().fg(Color::Black).bg(Color::Cyan)),
+            Span::styled(
+                cursor_char.to_string(),
+                Style::default().fg(Color::Black).bg(Color::Cyan),
+            ),
             Span::raw(after.to_string()),
         ]);
         frame.render_widget(
@@ -175,7 +188,11 @@ impl SearchCartridge {
         let inner = outer.inner(area);
         frame.render_widget(outer, area);
 
-        let mid = Rect { y: inner.y + inner.height / 2, height: 2, ..inner };
+        let mid = Rect {
+            y: inner.y + inner.height / 2,
+            height: 2,
+            ..inner
+        };
         frame.render_widget(
             Paragraph::new(format!(
                 "  {} Searching for \"{}\"…",
@@ -226,13 +243,14 @@ impl SearchCartridge {
                     ("› ", Color::White)
                 };
                 let style = if is_sel {
-                    Style::default().fg(Color::Black).bg(Color::Cyan).add_modifier(Modifier::BOLD)
+                    Style::default()
+                        .fg(Color::Black)
+                        .bg(Color::Cyan)
+                        .add_modifier(Modifier::BOLD)
                 } else {
                     Style::default().fg(title_color)
                 };
-                let mut spans = vec![
-                    Span::styled(format!("  {}{}", icon, r.title), style),
-                ];
+                let mut spans = vec![Span::styled(format!("  {}{}", icon, r.title), style)];
                 if r.redacted {
                     let reason = r.refuse_reason.as_deref().unwrap_or("capability required");
                     spans.push(Span::styled(
@@ -312,27 +330,28 @@ impl Cartridge for SearchCartridge {
 
     fn render(&mut self, frame: &mut Frame, area: Rect) {
         // Poll for search results
-        let new_state: Option<SearchState> = if let SearchState::Searching { rx, query, .. } = &mut self.state {
-            match rx.try_recv() {
-                Ok(Ok(results)) => Some(SearchState::Results {
-                    query: query.clone(),
-                    results,
-                    selected: 0,
-                    scroll: 0,
-                }),
-                Ok(Err(e)) => Some(SearchState::Error {
-                    query: query.clone(),
-                    message: e.to_string(),
-                }),
-                Err(mpsc::TryRecvError::Disconnected) => Some(SearchState::Error {
-                    query: query.clone(),
-                    message: "Search thread disconnected".into(),
-                }),
-                Err(mpsc::TryRecvError::Empty) => None,
-            }
-        } else {
-            None
-        };
+        let new_state: Option<SearchState> =
+            if let SearchState::Searching { rx, query, .. } = &mut self.state {
+                match rx.try_recv() {
+                    Ok(Ok(results)) => Some(SearchState::Results {
+                        query: query.clone(),
+                        results,
+                        selected: 0,
+                        scroll: 0,
+                    }),
+                    Ok(Err(e)) => Some(SearchState::Error {
+                        query: query.clone(),
+                        message: e.to_string(),
+                    }),
+                    Err(mpsc::TryRecvError::Disconnected) => Some(SearchState::Error {
+                        query: query.clone(),
+                        message: "Search thread disconnected".into(),
+                    }),
+                    Err(mpsc::TryRecvError::Empty) => None,
+                }
+            } else {
+                None
+            };
         if let Some(ns) = new_state {
             self.state = ns;
         }
@@ -351,17 +370,24 @@ impl Cartridge for SearchCartridge {
         let cursor = self.query_cursor;
         let cmd = match &self.state {
             SearchState::Idle { query } => Cmd::Idle(query.as_str(), cursor),
-            SearchState::Searching { query, spinner, .. } => Cmd::Searching(query.as_str(), *spinner),
-            SearchState::Results { query, results, selected, scroll } => {
-                Cmd::Results(query.as_str(), results.as_slice(), *selected, *scroll)
+            SearchState::Searching { query, spinner, .. } => {
+                Cmd::Searching(query.as_str(), *spinner)
             }
+            SearchState::Results {
+                query,
+                results,
+                selected,
+                scroll,
+            } => Cmd::Results(query.as_str(), results.as_slice(), *selected, *scroll),
             SearchState::Error { query, message } => Cmd::Error(query.as_str(), message.as_str()),
         };
 
         match cmd {
             Cmd::Idle(q, cur) => Self::render_idle(frame, area, q, cur),
             Cmd::Searching(q, sp) => Self::render_searching(frame, area, q, sp),
-            Cmd::Results(q, results, sel, sc) => Self::render_results(frame, area, q, results, sel, sc),
+            Cmd::Results(q, results, sel, sc) => {
+                Self::render_results(frame, area, q, results, sel, sc)
+            }
             Cmd::Error(q, msg) => Self::render_error(frame, area, q, msg),
         }
     }
@@ -372,61 +398,73 @@ impl Cartridge for SearchCartridge {
         };
 
         match &self.state {
-            SearchState::Idle { .. } | SearchState::Error { .. } => {
-                match key.code {
-                    KeyCode::Enter => {
-                        self.submit_search();
-                        return CartridgeAction::Consumed;
-                    }
-                    KeyCode::Esc => {
-                        self.state = SearchState::Idle { query: String::new() };
-                        self.query_cursor = 0;
-                        return CartridgeAction::Consumed;
-                    }
-                    KeyCode::Char(c) if !key.modifiers.contains(KeyModifiers::CONTROL) => {
-                        let q = self.current_query().to_string();
-                        let cursor = self.query_cursor;
-                        let mut new_q = q;
-                        new_q.insert(cursor, c);
-                        let new_cursor = cursor + c.len_utf8();
-                        self.query_cursor = new_cursor;
-                        match &mut self.state {
-                            SearchState::Idle { query } => *query = new_q,
-                            SearchState::Error { .. } => {
-                                self.state = SearchState::Idle { query: new_q };
-                            }
-                            _ => {}
-                        }
-                        return CartridgeAction::Consumed;
-                    }
-                    KeyCode::Backspace if self.query_cursor > 0 => {
-                        let q = self.current_query().to_string();
-                        let cursor = self.query_cursor;
-                        let ch_len = q[..cursor].chars().last().map(|c| c.len_utf8()).unwrap_or(1);
-                        let new_cursor = cursor - ch_len;
-                        let mut new_q = q;
-                        new_q.remove(new_cursor);
-                        self.query_cursor = new_cursor;
-                        if let SearchState::Idle { query } = &mut self.state {
-                            *query = new_q;
-                        }
-                        return CartridgeAction::Consumed;
-                    }
-                    KeyCode::Left if self.query_cursor > 0 => {
-                        let q = self.current_query().to_string();
-                        let ch_len = q[..self.query_cursor].chars().last().map(|c| c.len_utf8()).unwrap_or(1);
-                        self.query_cursor -= ch_len;
-                        return CartridgeAction::Consumed;
-                    }
-                    KeyCode::Right if self.query_cursor < self.current_query().len() => {
-                        let q = self.current_query().to_string();
-                        let ch_len = q[self.query_cursor..].chars().next().map(|c| c.len_utf8()).unwrap_or(1);
-                        self.query_cursor += ch_len;
-                        return CartridgeAction::Consumed;
-                    }
-                    _ => {}
+            SearchState::Idle { .. } | SearchState::Error { .. } => match key.code {
+                KeyCode::Enter => {
+                    self.submit_search();
+                    return CartridgeAction::Consumed;
                 }
-            }
+                KeyCode::Esc => {
+                    self.state = SearchState::Idle {
+                        query: String::new(),
+                    };
+                    self.query_cursor = 0;
+                    return CartridgeAction::Consumed;
+                }
+                KeyCode::Char(c) if !key.modifiers.contains(KeyModifiers::CONTROL) => {
+                    let q = self.current_query().to_string();
+                    let cursor = self.query_cursor;
+                    let mut new_q = q;
+                    new_q.insert(cursor, c);
+                    let new_cursor = cursor + c.len_utf8();
+                    self.query_cursor = new_cursor;
+                    match &mut self.state {
+                        SearchState::Idle { query } => *query = new_q,
+                        SearchState::Error { .. } => {
+                            self.state = SearchState::Idle { query: new_q };
+                        }
+                        _ => {}
+                    }
+                    return CartridgeAction::Consumed;
+                }
+                KeyCode::Backspace if self.query_cursor > 0 => {
+                    let q = self.current_query().to_string();
+                    let cursor = self.query_cursor;
+                    let ch_len = q[..cursor]
+                        .chars()
+                        .last()
+                        .map(|c| c.len_utf8())
+                        .unwrap_or(1);
+                    let new_cursor = cursor - ch_len;
+                    let mut new_q = q;
+                    new_q.remove(new_cursor);
+                    self.query_cursor = new_cursor;
+                    if let SearchState::Idle { query } = &mut self.state {
+                        *query = new_q;
+                    }
+                    return CartridgeAction::Consumed;
+                }
+                KeyCode::Left if self.query_cursor > 0 => {
+                    let q = self.current_query().to_string();
+                    let ch_len = q[..self.query_cursor]
+                        .chars()
+                        .last()
+                        .map(|c| c.len_utf8())
+                        .unwrap_or(1);
+                    self.query_cursor -= ch_len;
+                    return CartridgeAction::Consumed;
+                }
+                KeyCode::Right if self.query_cursor < self.current_query().len() => {
+                    let q = self.current_query().to_string();
+                    let ch_len = q[self.query_cursor..]
+                        .chars()
+                        .next()
+                        .map(|c| c.len_utf8())
+                        .unwrap_or(1);
+                    self.query_cursor += ch_len;
+                    return CartridgeAction::Consumed;
+                }
+                _ => {}
+            },
             SearchState::Results { .. } => {
                 match key.code {
                     KeyCode::Esc => {
@@ -436,7 +474,10 @@ impl Cartridge for SearchCartridge {
                         return CartridgeAction::Consumed;
                     }
                     KeyCode::Char('j') | KeyCode::Down => {
-                        if let SearchState::Results { results, selected, .. } = &mut self.state {
+                        if let SearchState::Results {
+                            results, selected, ..
+                        } = &mut self.state
+                        {
                             *selected = (*selected + 1).min(results.len().saturating_sub(1));
                         }
                         return CartridgeAction::Consumed;
@@ -449,7 +490,10 @@ impl Cartridge for SearchCartridge {
                     }
                     // Send selected result to Proofreader (F4).
                     KeyCode::Char('s') | KeyCode::Char('S') => {
-                        if let SearchState::Results { results, selected, .. } = &self.state {
+                        if let SearchState::Results {
+                            results, selected, ..
+                        } = &self.state
+                        {
                             if let Some(r) = results.get(*selected).filter(|r| !r.redacted) {
                                 return CartridgeAction::SendToContent(r.title.clone());
                             }
@@ -476,21 +520,22 @@ impl Cartridge for SearchCartridge {
     }
 
     fn intents(&self) -> Vec<IntentSpec> {
-        vec![
-            IntentSpec::new(
-                "search.send_to_content",
-                "Send result to Content",
-                IntentScope::Cartridge("search"),
-            )
-            .key("s")
-            .mouse(MouseAffordance::CLICK),
-        ]
+        vec![IntentSpec::new(
+            "search.send_to_content",
+            "Send result to Content",
+            IntentScope::Cartridge("search"),
+        )
+        .key("s")
+        .mouse(MouseAffordance::CLICK)]
     }
 
     fn dispatch(&mut self, id: IntentId, _args: &IntentArgs) -> CartridgeAction {
         match id.0 {
             "search.send_to_content" => {
-                if let SearchState::Results { selected, results, .. } = &self.state {
+                if let SearchState::Results {
+                    selected, results, ..
+                } = &self.state
+                {
                     if let Some(r) = results.get(*selected) {
                         return CartridgeAction::SendToContent(r.title.clone());
                     }
