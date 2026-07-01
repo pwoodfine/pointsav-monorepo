@@ -84,6 +84,7 @@ async fn main() {
         index,
         edit_token,
         env,
+        bundle_mounts: Arc::new(cfg.bundle_mounts),
     };
 
     let app = routes::build_router(state).layer(CompressionLayer::new());

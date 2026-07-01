@@ -1,3 +1,7 @@
+// DESIGN-BUNDLE renderer — ratified 2026-06-20 (namespace component.document.legal.*).
+// Renders a single vault-internal bundle-typed element (frontmatter + body).
+// For directory-mounted bundles (e.g. the editorial style-guide bundle), see
+// routes::bundle, which lists and zips an entire external mount.
 use crate::render::render_markdown;
 use std::collections::HashMap;
 
