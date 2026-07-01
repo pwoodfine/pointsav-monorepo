@@ -609,8 +609,9 @@ const BATCH_MAX_ITEMS: usize = 10;
 /// Routing strategy:
 ///   1. Try Tier B (Yo-Yo "trainer", OLMo 3 32B-Think + JsonSchema grammar) — highest quality.
 ///   2. If Tier B circuit is open or unavailable, fall back to Tier A (local OLMo 3 7B Instruct).
-///      Tier A uses no grammar constraint (unreliable on CPU at 7B scale); relies on pre-fill
-///      assistant message (`[{"`) in the extraction system prompt to anchor JSON array format.
+///      Tier A also applies a JsonSchema grammar constraint (fixed 2026-06-28, commit
+///      da56ebf2 — OLMo 3 7B handles JsonSchema reliably; the pre-fill-only anchoring
+///      this comment used to describe was replaced by grammar sampling).
 ///      Tier A result is lower quality than Tier B but far better than empty `[]` during outages.
 ///
 /// Response is always HTTP 200:

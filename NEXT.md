@@ -136,6 +136,20 @@ No automated overnight runs — pick one task at a time from below.
 - [ ] **Rust clippy commits superseded — do NOT promote** — cluster commits `8d0036f5`/`dfdd6fd7`/`58911091` (system-security), `913ef5bf`/`d6476e09`/`0ea26e61` (service-fs), `bb2d818b`/`d2974e58`/`fe17d688`/`d57b10c9` (service-content), `b1028659`/`006b6e20` (app-console-content), `6f8e6724` (app-privategit-marketplace) are superseded by canonical's axum-based rewrites of those crates. These commits must never be cherry-picked to canonical — they will conflict with the rewritten versions. [2026-06-23 totebox@claude-code]
 
 ## Blocked — Command Session (route via outbox)
+- [x] ~~**Design: entity_types.csv schema**~~ — `service-content/ontology/entity_types.csv`, columns: `label, description_projects, description_corporate, description_documentation, coa_link`. [2026-06-30 totebox@claude-code]
+- [x] ~~**Implement: GLiNER loads entity types from CSV at startup**~~ — `_load_domain_labels()` replaces hardcoded DOMAIN_LABELS dict; falls back to it (`_FALLBACK_DOMAIN_LABELS`) if the CSV is missing/malformed. [2026-06-30 totebox@claude-code]
+- [x] ~~**Implement: entity_filter.rs ALLOWED_CLASSIFICATIONS reads from ontology**~~ — `init_ontology_classifications()` + `is_allowed_classification()`; all 4 call sites migrated (DPO validator, ingest gate, /v1/graph/cleanup, raw_entities_to_graph); falls back to compile-time const. Commit 8731c7af, 79/79 tests. [2026-06-30 totebox@claude-code]
+- [ ] **DEPLOY ONLY — not a code gap**: live `local-content.service` still points `SERVICE_CONTENT_ONTOLOGY_DIR` at the orphaned `project-intelligence` clone (pre-2026-06-20-merge), so none of the above is visible in production until that env var + a binary rebuild ships. Flagged to Command — outbox msg-id `command-20260630-stage-6-backlog-consolidated-121-commits`. [2026-06-30 totebox@claude-code]
+
+---
+
+## Hot — next session (2026-06-28 EQ session deferred items)
+
+- [ ] **Stage 6 (GLiNER + RESCUE + CHECKPOINT)**: promote commit `720e20d8` → `self-service-promote.sh` — NOTE 2026-06-30: this archive's pairings.yaml `self_service` grant is `build-deploy`, not `build-deploy-stage6lite`; `self-service-promote.sh` hard-fails here. All Stage 6 must go through Command. Outbox msg-id `project-totebox-20260628-stage6-gliner-tier0` (consolidated into `command-20260630-stage-6-backlog-consolidated-121-commits`). [2026-06-28 totebox@claude-code]
+- [x] ~~**EQ5 — article chunking**~~ — `chunk_for_gliner()` (sentence-boundary, 150-char overlap) already covered the GLiNER path; 2026-06-30 extended the same chunker to the Tier A OLMo synchronous fallback (`call_tier_a_extract_chunked`, 6000-char window) which was still sending whole documents in one call. Commit 8731c7af. [2026-06-30 totebox@claude-code]
+- [x] ~~**Grammar on Doorman path**~~ — verified 2026-06-30: already fixed same commit as EQ5 (`da56ebf2`/`c873d174`, 2026-06-28). `slm-doorman-server/src/http.rs` `extract()` handler applies `GrammarConstraint::JsonSchema` on BOTH the Tier B request (line ~686) and the Tier A fallback request (line ~740). Only remaining issue was a stale doc comment directly above the function claiming "Tier A uses no grammar constraint" — contradicted the code 6 lines below it. Fixed comment 2026-06-30. TIER-0 RESCUE remains as defense-in-depth, not the sole mitigation. [2026-06-30 totebox@claude-code]
+- [ ] **CHECKPOINT fix verification**: CRE checkpoint test file (`CORPUS_CRE_checkpoint_*.json`) queued in drain. After drain processes it, verify entity count increases AND entity is queryable via HTTP. Confirms lbug 0.16 cross-thread fix. [2026-06-28 totebox@claude-code]
+- [x] ~~**CSV structured-data files**~~ — `is_csv_structured_data()` detects 2+ `Entity Name:` marker lines, skips the wasted GLiNER round-trip, routes straight to Tier A. Commit 8731c7af. [2026-06-30 totebox@claude-code]
 
 - [ ] **M-17 root fix — CLAUDE.md + manifest identity** — project-gis CLAUDE.md header says
       "project-intelligence"; manifest shows project-proforma. Foreign sessions overwrite NEXT.md /
