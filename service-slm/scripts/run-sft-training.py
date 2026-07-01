@@ -70,9 +70,12 @@ def canonical_base_model() -> str:
     return default
 
 
-# LoRA hyperparameters — same as run-dpo-training.py for A/B comparability
+# LoRA hyperparameters — target_modules/dropout shared with run-dpo-training.py for
+# A/B comparability; r/alpha differ (SFT uses smaller r for L4 24GB headroom) but keep
+# the same alpha/r=0.5 ratio per BRIEF-flow-quality-audit.md R1 (Databricks OLMo-3
+# guidance: alpha/r=0.5, not the 2.0 ratio this previously had).
 LORA_R = 16
-LORA_ALPHA = 32
+LORA_ALPHA = 8
 LORA_DROPOUT = 0.05
 LORA_TARGET_MODULES = ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
 MAX_LENGTH = 512    # float16 + LoRA; 512 safely fits L4 24GB; raise to 1024 after first pass

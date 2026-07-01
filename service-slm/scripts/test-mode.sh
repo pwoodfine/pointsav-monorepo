@@ -702,7 +702,7 @@ if (( DRYRUN_OK == 1 )); then
     else
         TRAIN_CAP="${REMAINING}"
         (( TRAIN_CAP > 1500 )) && TRAIN_CAP=1500   # never spend >25 min on the train itself
-        log "  Running capped SFT on VM (--max-runtime-seconds=${TRAIN_CAP}, r=32/a=64, LR 2e-4)..."
+        log "  Running capped SFT on VM (--max-runtime-seconds=${TRAIN_CAP}, r=16/a=8, LR 2e-4)..."
 
         # Stage corpus + trainer to the VM.
         remote_ssh "mkdir -p ${REMOTE_DIR}/adapter" || true
