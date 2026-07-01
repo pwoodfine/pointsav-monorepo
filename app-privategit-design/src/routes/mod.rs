@@ -1,5 +1,6 @@
 pub mod ai;
 pub mod browse;
+pub mod bundle;
 pub mod edit;
 pub mod search;
 pub mod sse;
@@ -21,6 +22,9 @@ pub fn build_router(state: AppState) -> Router {
         .route("/elements/:slug/download", get(browse::bundle_download))
         .route("/elements/:slug/:tab", get(browse::element_tab))
         .route("/tokens/search", get(search::token_search))
+        .route("/bundles/:name", get(bundle::list))
+        .route("/bundles/:name/download", get(bundle::download))
+        .route("/bundles/:name/:filename", get(bundle::file))
         .route("/sidebar/sse", get(sse::sidebar_sse))
         .route("/vault/elements/:slug/:tab/raw", get(edit::get_raw))
         .route("/vault/elements/:slug/:tab", put(edit::put_save))

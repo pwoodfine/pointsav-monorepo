@@ -443,7 +443,7 @@ dependencies = [
 
 [[package]]
 name = "app-privategit-design"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "axum 0.7.9",
  "futures-util",
@@ -455,6 +455,7 @@ dependencies = [
  "serde",
  "tokio",
  "tower-http 0.5.2",
+ "zip 2.4.2",
 ]
 
 [[package]]
@@ -5152,6 +5153,20 @@ dependencies = [
  "ctutils",
  "hybrid-array",
  "num-traits",
+]
+
+[[package]]
+name = "moonshot-bim-engine"
+version = "0.1.0"
+dependencies = [
+ "wasm-bindgen",
+]
+
+[[package]]
+name = "moonshot-docengine"
+version = "0.1.0"
+dependencies = [
+ "wasm-bindgen",
 ]
 
 [[package]]

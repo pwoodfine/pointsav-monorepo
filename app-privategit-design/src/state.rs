@@ -14,4 +14,5 @@ pub struct AppState {
     pub index: Arc<RwLock<InvertedIndex>>,
     pub edit_token: Arc<String>,
     pub env: Arc<Environment<'static>>,
+    pub bundle_mounts: Arc<HashMap<String, PathBuf>>,
 }
