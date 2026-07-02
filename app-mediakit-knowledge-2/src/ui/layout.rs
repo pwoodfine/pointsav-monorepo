@@ -453,8 +453,10 @@ pub fn search_results(query: &str, results: &[(String, String, String)]) -> Mark
             div."k-catpage__eyebrow" { "Search" }
             h1."k-article__title" { "Search" }
             form."k-searchpage__form" role="search" action="/search" method="get" {
-                input."k-search__input" type="search" name="q" value=(query)
-                    placeholder="Search this registry" autocomplete="off" spellcheck="false";
+                label."k-visually-hidden" for="k-searchpage-input" { "Search this registry" }
+                input."k-search__input" id="k-searchpage-input" type="search" name="q" value=(query)
+                    placeholder="Search this registry" autocomplete="off" spellcheck="false"
+                    autofocus[q.is_empty()];
                 button."k-searchpage__submit" type="submit" { "Search" }
             }
             @if q.is_empty() {
