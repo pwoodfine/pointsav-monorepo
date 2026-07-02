@@ -199,11 +199,27 @@
      stronger grey contrast) — this section is primary content on the
      original sites (the product taxonomy), not decorative filler, and a
      120px clustered treatment read as an afterthought (operator + FABLE
-     audit feedback, 2026-07-02). */
+     audit feedback, 2026-07-02).
+
+     Two-tier size, split at the same 60rem (960px) breakpoint the masthead
+     nav already uses — verified via Playwright at real viewport widths
+     (2026-07-02), not guessed:
+       - Below 960px: flat 288px. Exact ceiling before clipping at the
+         narrowest real phone (320px = 288px icon + 16px gutter x2, gutter
+         floors at 1rem there). One-per-row is expected on mobile, so no vw
+         scaling is needed — 288px is safe from 320px up through 900px with
+         growing margin (44px+ spare by 375px).
+       - 960px and up: clamp(200px, 20vw, 320px). 200px is the exact
+         single-row floor at 960px for Woodfine's 4-icon row (4 icons + 3
+         gaps + 2 gutters = the full 960px budget) — a single clamp() with a
+         288px floor caused an ugly uneven 3-and-1 flex wrap in the
+         960-1440px band (flexbox doesn't balance wrapped rows), which is
+         why this is two separate tiers rather than one formula. Verified
+         zero wrapping from 960px through 2560px. */
   --m-icon-strip-bg:      var(--m-surface-section);
   --m-icon-strip-pad-y:   var(--m-space-12);
   --m-icon-strip-gap:     var(--m-space-8);
-  --m-icon-strip-size:    clamp(180px, 20vw, 300px);
+  --m-icon-strip-size:    288px;
 
   /* ---------------------------------------------------------- data tables
      Wiki-parity styling for markdown-rendered tables in legal/notice prose
@@ -356,5 +372,15 @@
     --m-dur-fast: 0ms;
     --m-dur-base: 0ms;
     --m-dur-slow: 0ms;
+  }
+}
+
+/* ================================================================ icon-strip desktop tier
+ * Same 60rem breakpoint as the masthead nav. See the --m-icon-strip-size
+ * comment above for the full verification detail.
+ */
+@media (min-width: 60rem) {
+  :root {
+    --m-icon-strip-size: clamp(200px, 20vw, 320px);
   }
 }
