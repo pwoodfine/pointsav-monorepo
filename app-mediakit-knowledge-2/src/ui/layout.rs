@@ -10,6 +10,7 @@ use maud::{html, Markup, PreEscaped, DOCTYPE};
 
 use super::tenant::Tenant;
 use crate::content::render::Heading;
+use crate::history::Revision;
 
 /// "article" / "articles" for a count.
 fn count_word(n: usize) -> &'static str {
@@ -321,37 +322,81 @@ fn format_date(iso: &str) -> String {
     iso.to_string()
 }
 
-/// The article action-tab bar (Wikipedia Vector 2022 pattern), sitting above the
-/// `<h1>`. "Article" is the live view; Notes/History are declared but not yet
-/// wired (they arrive with P5/P4) so they render as disabled tabs, not dead
-/// links. The "Last updated" line rides on the right of the bar.
-fn article_tabs(updated: Option<&str>) -> Markup {
+/// The article action-tab bar (Wikipedia Vector 2022 pattern). `active` is
+/// "article" or "history"; the current one is a non-link span, the others link.
+/// Notes stays a disabled placeholder until P5.
+fn tab_bar(slug: &str, active: &str) -> Markup {
     html! {
-        div."k-article-nav" {
-            nav."k-tabs" aria-label="Views" {
+        nav."k-tabs" aria-label="Views" {
+            @if active == "article" {
                 span."k-tab k-tab--active" aria-current="page" { "Article" }
-                span."k-tab k-tab--soon" aria-disabled="true" title="Coming soon" { "Notes" }
-                span."k-tab k-tab--soon" aria-disabled="true" title="Coming soon" { "History" }
+            } @else {
+                a."k-tab" href={ "/wiki/" (slug) } { "Article" }
             }
-            @if let Some(d) = updated.filter(|s| !s.trim().is_empty()) {
-                p."k-article__meta" {
-                    "Last updated "
-                    time."k-article__date" datetime=(d) { (format_date(d)) }
+            span."k-tab k-tab--soon" aria-disabled="true" title="Coming soon" { "Notes" }
+            @if active == "history" {
+                span."k-tab k-tab--active" aria-current="page" { "History" }
+            } @else {
+                a."k-tab" href={ "/history/" (slug) } { "History" }
+            }
+        }
+    }
+}
+
+/// Wrap a rendered article body in the reading shell: action tabs (+ "Last
+/// updated"), ruled title, prose column. `body_html` is trusted, pre-rendered.
+pub fn article(title: &str, slug: &str, updated: Option<&str>, body_html: &str) -> Markup {
+    html! {
+        article."k-article" {
+            div."k-article-nav" {
+                (tab_bar(slug, "article"))
+                @if let Some(d) = updated.filter(|s| !s.trim().is_empty()) {
+                    p."k-article__meta" {
+                        "Last updated "
+                        time."k-article__date" datetime=(d) { (format_date(d)) }
+                    }
+                }
+            }
+            h1."k-article__title" { (title) }
+            div."k-prose" { (PreEscaped(body_html)) }
+        }
+    }
+}
+
+/// Article revision history — the git log of the article's file (the History tab).
+pub fn history_page(title: &str, slug: &str, revs: &[Revision]) -> Markup {
+    html! {
+        article."k-article" {
+            div."k-article-nav" { (tab_bar(slug, "history")) }
+            h1."k-article__title" { (title) }
+            div."k-home__stat" { strong { (revs.len()) } " " (count_word_rev(revs.len())) }
+            @if revs.is_empty() {
+                p."k-searchpage__hint" {
+                    "No revision history found for this article — it may not yet be committed to the content repository."
+                }
+            } @else {
+                ul."k-history" {
+                    @for r in revs {
+                        li."k-history__item" {
+                            time."k-history__date" datetime=(r.date_iso) { (format_date(&r.date_iso)) }
+                            span."k-history__msg" { (r.message) }
+                            span."k-history__meta" {
+                                (r.author) " \u{00b7} " code."k-history__sha" { (r.short_sha) }
+                            }
+                        }
+                    }
                 }
             }
         }
     }
 }
 
-/// Wrap a rendered article body in the reading shell: action tabs, ruled title,
-/// prose column. `body_html` is trusted, pre-rendered HTML from the pipeline.
-pub fn article(title: &str, updated: Option<&str>, body_html: &str) -> Markup {
-    html! {
-        article."k-article" {
-            (article_tabs(updated))
-            h1."k-article__title" { (title) }
-            div."k-prose" { (PreEscaped(body_html)) }
-        }
+/// "revision" / "revisions" for a count.
+fn count_word_rev(n: usize) -> &'static str {
+    if n == 1 {
+        "revision"
+    } else {
+        "revisions"
     }
 }
 
