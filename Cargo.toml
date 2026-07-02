@@ -56,6 +56,8 @@ members = [
     "app-mediakit-marketing",
     # Cross-archive DataGraph federation gateway (Phase 1 scaffold; port 9181)
     "app-orchestration-graph",
+    # Marketing platform rewrite (parallel crate; swaps in at plan P8)
+    "app-mediakit-marketing-2",
     # Design system browser (port 9094)
     "app-privategit-design",
     # Sovereign replacement stubs (wired into app-privategit-design)
@@ -87,6 +89,11 @@ strip = "symbols"
 # app-mediakit-marketing is a runtime HTTP server — speed-optimised, like the
 # knowledge engine, not the bare-metal size-optimised workspace default.
 [profile.release.package.app-mediakit-marketing]
+opt-level = 3
+strip = "symbols"
+
+# app-mediakit-marketing-2 (rewrite) — same rationale as the crate it replaces.
+[profile.release.package.app-mediakit-marketing-2]
 opt-level = 3
 strip = "symbols"
 
