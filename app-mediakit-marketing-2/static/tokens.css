@@ -193,11 +193,17 @@
   --m-button-card-radius:     var(--m-radius-control);
   --m-button-card-pad:        var(--m-space-3) var(--m-space-4);
 
-  /* Icon strip — restores the "Development Classes" / capability graphics */
-  --m-icon-strip-bg:      var(--m-grey-100);
-  --m-icon-strip-pad-y:   var(--m-space-8);
+  /* Icon strip — restores the "Development Classes" / capability graphics.
+     Sized and distributed to match production's actual visual weight
+     (confirmed via computed styles: 220-240px icons, full-bleed band,
+     stronger grey contrast) — this section is primary content on the
+     original sites (the product taxonomy), not decorative filler, and a
+     120px clustered treatment read as an afterthought (operator + FABLE
+     audit feedback, 2026-07-02). */
+  --m-icon-strip-bg:      var(--m-surface-section);
+  --m-icon-strip-pad-y:   var(--m-space-12);
   --m-icon-strip-gap:     var(--m-space-8);
-  --m-icon-strip-size:    120px;
+  --m-icon-strip-size:    clamp(140px, 16vw, 220px);
 
   /* ---------------------------------------------------------- masthead + nav */
   --m-masthead-bg:        var(--m-surface-chrome);

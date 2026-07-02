@@ -376,7 +376,11 @@ html:not(.js) .m-drawer-scrim {
   padding: var(--m-icon-strip-pad-y) var(--m-gutter);
   display: flex;
   flex-wrap: wrap;
-  justify-content: center;
+  /* Full-bleed distribution (not centered/clustered) — matches the
+     production band's poster-like weight; the icon set is the product
+     taxonomy, not a decorative afterthought. */
+  justify-content: space-evenly;
+  align-items: center;
   gap: var(--m-icon-strip-gap);
 }
 .m-icon-strip__item img {
@@ -491,7 +495,22 @@ html:not(.js) .m-drawer-scrim {
   line-height: var(--m-slot-body-lh);
   color: var(--m-slot-body-ink);
   max-width: var(--m-slot-max-measure);
-  margin: 0;
+}
+/* slot-body renders markdown (paragraphs, numbered lists, bold) — the
+   legal prose that used to be a separate always-visible page section. */
+.m-footer__slot-body p,
+.m-footer__slot-body ol {
+  margin: 0 0 var(--m-space-3);
+}
+.m-footer__slot-body p:last-child,
+.m-footer__slot-body ol:last-child {
+  margin-bottom: 0;
+}
+.m-footer__slot-body ol {
+  padding-left: 1.25em;
+}
+.m-footer__slot-body strong {
+  color: var(--m-ink-on-footer);
 }
 
 .m-footer__base {
