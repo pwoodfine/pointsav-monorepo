@@ -1,4 +1,5 @@
 use crate::config::Config;
+use crate::content::{self, CategoryMeta, PageContent};
 use crate::schema::dtcg;
 use serde_json::Value;
 use std::{collections::HashMap, path::Path, sync::Arc};
@@ -11,6 +12,9 @@ pub struct AppState {
     pub token_count: usize,
     pub components_count: usize,
     pub research_count: usize,
+    pub categories: Arc<Vec<CategoryMeta>>,
+    pub about_page: Arc<PageContent>,
+    pub home_page: Arc<PageContent>,
     pub events_tx: broadcast::Sender<String>,
 }
 
@@ -20,6 +24,14 @@ impl AppState {
         let token_count = count_entities(&tokens);
         let components_count = count_ifc_files(&config.library_dir.join("key-plans"));
         let research_count = count_md_files(&config.vault_dir.join("research"));
+
+        let site_content_dir = config.library_dir.join("site-content");
+        let categories = content::load_categories(&site_content_dir);
+        let about_page = content::load_page(&site_content_dir, "about")
+            .ok_or("site-content/pages/about.md not found")?;
+        let home_page = content::load_page(&site_content_dir, "home")
+            .ok_or("site-content/pages/home.md not found")?;
+
         let (events_tx, _) = broadcast::channel::<String>(64);
         Ok(Self {
             config: Arc::new(config.clone()),
@@ -27,6 +39,9 @@ impl AppState {
             token_count,
             components_count,
             research_count,
+            categories: Arc::new(categories),
+            about_page: Arc::new(about_page),
+            home_page: Arc::new(home_page),
             events_tx,
         })
     }
@@ -67,7 +82,10 @@ pub fn spawn_file_watcher(state: AppState, config: &Config) {
     use notify::{RecursiveMode, Watcher};
 
     let watcher_tx = state.events_tx.clone();
-    let watch_dir = config.design_system_dir.join("tokens").join("bim");
+    let watch_dirs = vec![
+        config.design_system_dir.join("tokens").join("bim"),
+        config.library_dir.join("site-content"),
+    ];
 
     tokio::spawn(async move {
         let (inner_tx, mut inner_rx) = tokio::sync::mpsc::channel::<String>(8);
@@ -89,9 +107,10 @@ pub fn spawn_file_watcher(state: AppState, config: &Config) {
                     return;
                 }
             };
-        if let Err(e) = watcher.watch(&watch_dir, RecursiveMode::Recursive) {
-            eprintln!("warn: file watcher watch failed: {e}");
-            return;
+        for dir in &watch_dirs {
+            if let Err(e) = watcher.watch(dir, RecursiveMode::Recursive) {
+                eprintln!("warn: file watcher watch failed for {dir:?}: {e}");
+            }
         }
         while let Some(path_str) = inner_rx.recv().await {
             let msg = format!(

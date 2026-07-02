@@ -1,8 +1,8 @@
-use crate::{schema::dtcg::SIDEBAR_ORDER, state::AppState};
+use crate::state::AppState;
 
 pub fn page_shell(title: &str, active_path: &str, content: &str, state: &AppState) -> String {
     let sidebar = super::sidebar::render_sidebar(active_path, state);
-    let tc = SIDEBAR_ORDER.len();
+    let tc = state.categories.len();
     let full_title = if title.is_empty() {
         "BIM Object Library — Woodfine".to_string()
     } else {
