@@ -59,7 +59,7 @@ pub fn doc_head(title: &str, description: &str, tenant: Tenant) -> Markup {
 }
 
 /// A search block. Header and drawer copies use different input ids.
-fn search_block(input_id: &str) -> Markup {
+fn search_block(input_id: &str, query: &str) -> Markup {
     html! {
         div."k-search" {
             form."k-search__form" role="search" action="/search" method="get" {
@@ -67,7 +67,7 @@ fn search_block(input_id: &str) -> Markup {
                     path d="M12.9 14.32a8 8 0 1 1 1.41-1.41l5.35 5.33-1.42 1.42-5.33-5.34zM8 14A6 6 0 1 0 8 2a6 6 0 0 0 0 12z" {}
                 }
                 label."k-visually-hidden" for=(input_id) { "Search this registry" }
-                input."k-search__input" id=(input_id) type="search" name="q"
+                input."k-search__input" id=(input_id) type="search" name="q" value=(query)
                     placeholder="Search" autocomplete="off" spellcheck="false";
                 button."k-search__button" type="submit" { "Search" }
             }
@@ -112,7 +112,7 @@ pub fn utility_bar(tenant: Tenant) -> Markup {
 }
 
 /// Sticky white header: logo · search · controls.
-pub fn header(tenant: Tenant, lang: &str) -> Markup {
+pub fn header(tenant: Tenant, lang: &str, query: &str) -> Markup {
     html! {
         header."k-header" role="banner" {
             div."k-header__inner" {
@@ -125,7 +125,7 @@ pub fn header(tenant: Tenant, lang: &str) -> Markup {
                         }
                     }
                 }
-                div."k-header__center" { (search_block("k-search-input")) }
+                div."k-header__center" { (search_block("k-search-input", query)) }
                 div."k-header__end" {
                     nav."k-controls" aria-label="Site controls" {
                         a."k-control k-control--lang" href="/es/" aria-label="Change language" {
@@ -158,7 +158,7 @@ pub fn header(tenant: Tenant, lang: &str) -> Markup {
 }
 
 /// Off-canvas mobile nav drawer + overlay (ships hidden; app.js manages state).
-pub fn mobile_nav(tenant: Tenant) -> Markup {
+pub fn mobile_nav(tenant: Tenant, query: &str) -> Markup {
     html! {
         div."k-overlay" #"k-overlay" hidden {}
         div."k-nav-drawer" #"k-nav-drawer" role="dialog" aria-modal="true"
@@ -172,7 +172,7 @@ pub fn mobile_nav(tenant: Tenant) -> Markup {
                 }
             }
             div."k-nav-drawer__body" {
-                div."k-nav-drawer__search" { (search_block("k-search-input-mobile")) }
+                div."k-nav-drawer__search" { (search_block("k-search-input-mobile", query)) }
                 section."k-nav-section" {
                     h2."k-nav-section__title" { "Navigate" }
                     ul."k-nav-list" {
@@ -452,15 +452,9 @@ pub fn search_results(query: &str, results: &[(String, String, String)]) -> Mark
         div."k-catpage" {
             div."k-catpage__eyebrow" { "Search" }
             h1."k-article__title" { "Search" }
-            form."k-searchpage__form" role="search" action="/search" method="get" {
-                label."k-visually-hidden" for="k-searchpage-input" { "Search this registry" }
-                input."k-search__input" id="k-searchpage-input" type="search" name="q" value=(query)
-                    placeholder="Search this registry" autocomplete="off" spellcheck="false"
-                    autofocus[q.is_empty()];
-                button."k-searchpage__submit" type="submit" { "Search" }
-            }
+            // The header search bar carries the query — no second on-page box.
             @if q.is_empty() {
-                p."k-searchpage__hint" { "Enter a term to search article titles and text." }
+                p."k-searchpage__hint" { "Use the search bar above to search article titles and text." }
             } @else {
                 div."k-home__stat" {
                     strong { (results.len()) } " " (count_word(results.len()))
@@ -536,6 +530,7 @@ pub fn page(
     body: Markup,
     cats: &[(String, String)],
     toc: &[Heading],
+    query: &str,
 ) -> Markup {
     html! {
         (DOCTYPE)
@@ -543,10 +538,10 @@ pub fn page(
             head { (head) }
             body {
                 a."k-skip-link" href="#k-main" { "Skip to content" }
-                (mobile_nav(tenant))
+                (mobile_nav(tenant, query))
                 div."k-page" {
                     (utility_bar(tenant))
-                    (header(tenant, lang))
+                    (header(tenant, lang, query))
                     div."k-shell" {
                         (sidebar(tenant, cats, toc))
                         main."k-page__body" #"k-main" tabindex="-1" { (body) }
