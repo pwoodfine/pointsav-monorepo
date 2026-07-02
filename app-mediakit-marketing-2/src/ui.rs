@@ -61,6 +61,16 @@ pub struct Tenant {
     /// content (not just styling) between the two brands.
     pub trademark_line: &'static str,
     pub disclosure_slots: Vec<DisclosureSlot>,
+
+    // --- SEO (P4) ---
+    /// Canonical base URL for this tenant (no trailing slash).
+    pub canonical_base: &'static str,
+    /// Open Graph `og:site_name`.
+    pub og_site_name: &'static str,
+    /// schema.org `@type` for the root LD+JSON block.
+    pub ld_json_type: &'static str,
+    /// Site-level description used in LD+JSON when a page has none.
+    pub ld_json_description: &'static str,
 }
 
 impl Tenant {
@@ -94,6 +104,11 @@ impl Tenant {
                     Instrument 45-106. This page does not constitute an offer to sell or a \
                     solicitation of an offer to buy any security.",
             }],
+            canonical_base: "https://home.woodfinegroup.com",
+            og_site_name: "Woodfine Capital Projects",
+            ld_json_type: "Organization",
+            ld_json_description: "A real property developer with more than 35 years\u{2019} \
+                experience in the procurement, development, and management of real property.",
         }
     }
 
@@ -123,6 +138,11 @@ impl Tenant {
                 body: "Product descriptions on this page describe intended capabilities. Actual \
                     feature availability may vary by release and partner agreement.",
             }],
+            canonical_base: "https://home.pointsav.com",
+            og_site_name: "PointSav Digital Systems",
+            ld_json_type: "SoftwareApplication",
+            ld_json_description: "A fully transferable data management platform for the \
+                procurement, development, and management of real properties.",
         }
     }
 
@@ -309,8 +329,33 @@ fn render_section(section: &Section, seen_h1: &mut bool) -> Markup {
 
 /// Render a complete HTML document: skip-link + masthead + sections + footer
 /// + drawer. No client-side bundler/template DOM-swap — fully server-rendered.
-pub fn page_shell(tenant: &Tenant, page: &Page, module_id: &str) -> Markup {
+///
+/// `en_path`/`es_path` are the two language variants of the current page
+/// (e.g. `/page/contact` / `/es/page/contact`) — used for the canonical link
+/// and `hreflang` alternates. `google_verify` comes from
+/// `SERVICE_MARKETING_GOOGLE_VERIFY` at startup, per-instance.
+pub fn page_shell(
+    tenant: &Tenant,
+    page: &Page,
+    module_id: &str,
+    en_path: &str,
+    es_path: &str,
+    google_verify: Option<&str>,
+) -> Markup {
     let page_title = format!("{} \u{2014} {}", page.title, tenant.site_title);
+    let self_path = if page.lang == "es" { es_path } else { en_path };
+    let canonical_url = format!("{}{}", tenant.canonical_base, self_path);
+    let en_url = format!("{}{}", tenant.canonical_base, en_path);
+    let es_url = format!("{}{}", tenant.canonical_base, es_path);
+    let ld_description = if page.description.is_empty() {
+        tenant.ld_json_description
+    } else {
+        page.description.as_str()
+    };
+    let ld_json = format!(
+        r#"{{"@context":"https://schema.org","@type":"{}","name":"{}","url":"{}","description":"{}"}}"#,
+        tenant.ld_json_type, tenant.og_site_name, tenant.canonical_base, ld_description,
+    );
     let mut seen_h1 = false;
     html! {
         (DOCTYPE)
@@ -320,6 +365,23 @@ pub fn page_shell(tenant: &Tenant, page: &Page, module_id: &str) -> Markup {
                 meta name="viewport" content="width=device-width, initial-scale=1";
                 title { (page_title) }
                 meta name="description" content=(page.description);
+                link rel="canonical" href=(canonical_url);
+                link rel="alternate" hreflang="en" href=(en_url);
+                link rel="alternate" hreflang="es" href=(es_url);
+                link rel="alternate" hreflang="x-default" href=(en_url);
+                meta name="robots" content="index, follow";
+                meta property="og:type" content="website";
+                meta property="og:site_name" content=(tenant.og_site_name);
+                meta property="og:title" content=(page_title);
+                meta property="og:description" content=(page.description);
+                meta property="og:url" content=(canonical_url);
+                meta name="twitter:card" content="summary";
+                meta name="twitter:title" content=(page_title);
+                meta name="twitter:description" content=(page.description);
+                script type="application/ld+json" { (PreEscaped(&ld_json)) }
+                @if let Some(token) = google_verify {
+                    meta name="google-site-verification" content=(token);
+                }
                 link rel="stylesheet" href="/static/tokens.css";
                 link rel="stylesheet" href="/static/fonts.css";
                 link rel="stylesheet" href="/static/app.css";
@@ -384,7 +446,7 @@ sections:
         )
         .unwrap();
         let page = load_page(dir.path(), "home", None).unwrap();
-        let html = page_shell(&Tenant::woodfine(), &page, "woodfine").into_string();
+        let html = page_shell(&Tenant::woodfine(), &page, "woodfine", "/", "/es", None).into_string();
         assert_eq!(html.matches("<h1").count(), 1);
         assert!(html.contains("<h2"));
     }
@@ -400,7 +462,7 @@ sections:
         )
         .unwrap();
         let page = load_page(dir.path(), "home", None).unwrap();
-        let html = page_shell(&Tenant::woodfine(), &page, "woodfine").into_string();
+        let html = page_shell(&Tenant::woodfine(), &page, "woodfine", "/", "/es", None).into_string();
         assert!(!html.contains("__bundler"));
         assert!(html.contains("<!DOCTYPE html>"));
         assert!(html.contains(r#"lang="en""#));
