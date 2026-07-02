@@ -11,6 +11,17 @@ sections:
       en o cerca de Centros Comerciales de Poder en mercados seleccionados de
       América del Norte y Europa.
 
+  - type: icon-strip
+    icons:
+      - src: /static/graphics/woodfine/class-1.svg
+        alt: Professional Centres
+      - src: /static/graphics/woodfine/class-2.svg
+        alt: Tech Industrial
+      - src: /static/graphics/woodfine/class-3.svg
+        alt: Retail Select
+      - src: /static/graphics/woodfine/class-4.svg
+        alt: Suburban Office
+
   - type: card-grid
     columns: 4
     cards:
@@ -67,6 +78,7 @@ sections:
 
   - type: card-grid
     columns: 3
+    style: buttons
     cards:
       - title: Manifiesto
         href: https://github.com/woodfine/woodfine-fleet-deployment
