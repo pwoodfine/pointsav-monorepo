@@ -45,6 +45,16 @@ pub fn doc_head(title: &str, description: &str, tenant: Tenant) -> Markup {
         @if !description.is_empty() {
             meta property="og:description" content=(description);
         }
+        // schema.org structured data — identifies the site + its publisher to
+        // search engines and AI agents (SYS-ADR-07-safe: static, no user data).
+        script type="application/ld+json" {
+            (PreEscaped(format!(
+                r#"{{"@context":"https://schema.org","@type":"WebSite","name":"{}","url":"{}","publisher":{{"@type":"Organization","name":"{}"}}}}"#,
+                tenant.home_label(),
+                tenant.home_url().trim_end_matches('/'),
+                tenant.issuer()
+            )))
+        }
         link rel="icon" type="image/svg+xml" href="/static/favicon.svg";
         link rel="stylesheet" href="/static/fonts.css";
         link rel="stylesheet" href="/static/tokens.css";
@@ -347,6 +357,7 @@ pub fn article(
     updated: Option<&str>,
     sha: Option<&str>,
     asof: Option<&str>,
+    alt_lang: Option<(&str, &str)>,
     body_html: &str,
 ) -> Markup {
     html! {
@@ -364,6 +375,9 @@ pub fn article(
                         }
                         @if let Some(s) = sha {
                             " \u{00b7} " code."k-article__sha" { (s) }
+                        }
+                        @if let Some((url, label)) = alt_lang {
+                            " \u{00b7} " a."k-article__lang" href=(url) { (label) }
                         }
                     }
                 }

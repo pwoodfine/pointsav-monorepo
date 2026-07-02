@@ -86,6 +86,7 @@ pub fn router(state: AppState) -> Router {
         .route("/healthz", get(healthz))
         .route("/health", get(healthz))
         .route("/wiki/{*slug}", get(wiki_raw))
+        .route("/es/wiki/{*slug}", get(wiki_es))
         .route("/category/{name}", get(category_page))
         .route("/search", get(search_page))
         .route("/history/{*slug}", get(history_page))
@@ -459,11 +460,33 @@ async fn wiki_raw(
     Path(slug): Path<String>,
     Query(params): Query<HistoryQuery>,
 ) -> Response {
+    serve_article(state, slug, params, Lang::En).await
+}
+
+/// Spanish article route (`/es/wiki/{slug}`) — same handler, `Lang::Es`.
+async fn wiki_es(
+    State(state): State<AppState>,
+    Path(slug): Path<String>,
+    Query(params): Query<HistoryQuery>,
+) -> Response {
+    serve_article(state, slug, params, Lang::Es).await
+}
+
+/// Render an article in `lang` (falls back to English content when no `.es`
+/// counterpart exists), with alias/redirect resolution and the as-of view.
+async fn serve_article(
+    state: AppState,
+    slug: String,
+    params: HistoryQuery,
+    lang: Lang,
+) -> Response {
     let slug = slug.trim_end_matches('/');
-    let Some(doc) = state.index.resolve(slug, Lang::En) else {
+    let prefix = if lang == Lang::Es { "/es" } else { "" };
+    let lang_code = if lang == Lang::Es { "es" } else { "en" };
+    let Some(doc) = state.index.resolve(slug, lang) else {
         // Not a current slug — try an alias (301 to canonical), then redirects.yaml.
         if let Some(canonical) = state.index.resolve_alias(slug) {
-            return moved_301(&format!("/wiki/{canonical}"));
+            return moved_301(&format!("{prefix}/wiki/{canonical}"));
         }
         if let Some(to) = state.redirects.get(&format!("/{slug}")) {
             return moved_301(to);
@@ -487,12 +510,12 @@ async fn wiki_raw(
             .clone()
             .unwrap_or_else(|| doc.title.clone());
         let short = rev.chars().take(8).collect::<String>();
-        let body = ui::article(&title, &doc.slug, None, Some(&short), Some(&date), &rendered.html);
+        let body = ui::article(&title, &doc.slug, None, Some(&short), Some(&date), None, &rendered.html);
         let head = ui::doc_head(&format!("{title} (as of {date})"), "", tenant);
         return Html(
             ui::page(
                 tenant,
-                "en",
+                lang_code,
                 head,
                 body,
                 &nav_cats(&state),
@@ -522,16 +545,31 @@ async fn wiki_raw(
     // Provenance: the short hash of the file's most recent commit.
     let prov = crate::history::file_history(repo_root, rel, 1);
     let sha = prov.first().map(|r| r.short_sha.as_str());
+    // Language toggle — only when a genuine counterpart exists.
+    let alt_lang: Option<(String, &str)> = if lang == Lang::Es {
+        Some((format!("/wiki/{}", doc.slug), "English"))
+    } else if state
+        .index
+        .resolve(slug, Lang::Es)
+        .map(|d| d.lang == Lang::Es)
+        .unwrap_or(false)
+    {
+        Some((format!("/es/wiki/{}", doc.slug), "Espa\u{00f1}ol"))
+    } else {
+        None
+    };
+    let alt_ref = alt_lang.as_ref().map(|(u, l)| (u.as_str(), *l));
     let body = ui::article(
         &title,
         &doc.slug,
         parsed.frontmatter.last_edited.as_deref(),
         sha,
         None,
+        alt_ref,
         &rendered.html,
     );
     let head = ui::doc_head(&title, &description, tenant);
-    Html(ui::page(tenant, "en", head, body, &nav_cats(&state), &rendered.headings, "", state.important_info.as_deref()).into_string())
+    Html(ui::page(tenant, lang_code, head, body, &nav_cats(&state), &rendered.headings, "", state.important_info.as_deref()).into_string())
         .into_response()
 }
 
