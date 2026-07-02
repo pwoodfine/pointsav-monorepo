@@ -55,12 +55,31 @@ impl NavLink {
     }
 }
 
-/// A single on-page jurisdiction disclosure slot (footer tier 2). Per SEC
-/// Marketing Rule "clear and prominent" guidance: on-page, not just linked.
+/// A single on-page jurisdiction disclosure slot, rendered inside the
+/// footer's collapsed-by-default "Important information" accordion. Per SEC
+/// Marketing Rule "clear and prominent" guidance: on-page, not hidden behind
+/// a separate link — but collapsed (not a second always-visible copy) once
+/// operator feedback found it duplicating the page's own legal prose.
 #[derive(Debug, Clone)]
 pub struct DisclosureSlot {
     pub label: &'static str,
+    pub label_es: &'static str,
+    /// Markdown source (rendered via [`crate::content::render_markdown`]) —
+    /// this carries the full legal text that previously lived as a separate
+    /// `type: prose` content section on the home page. A real, existing
+    /// human translation (not machine-generated) — ported verbatim from
+    /// that Spanish prose section, not newly drafted here.
     pub body: &'static str,
+    pub body_es: &'static str,
+}
+
+impl DisclosureSlot {
+    fn label_for(&self, lang: &str) -> &'static str {
+        t(lang, self.label, self.label_es)
+    }
+    fn body_for(&self, lang: &str) -> &'static str {
+        t(lang, self.body, self.body_es)
+    }
 }
 
 /// Per-tenant chrome configuration. Chrome *shape* is identical across
@@ -104,6 +123,9 @@ impl Tenant {
             nav_links: vec![
                 NavLink::external("Corporate", "Corporativo", "https://corporate.woodfinegroup.com/"),
                 NavLink::external("Projects", "Proyectos", "https://projects.woodfinegroup.com/"),
+                // Restored 2026-07-02 — present on the retired production
+                // site's masthead nav, dropped when this chrome was rebuilt.
+                NavLink::external("Newsroom", "Sala de prensa", "https://woodfinegroup.com/"),
                 NavLink::internal("Contact us", "Contáctenos", "/page/contact"),
                 NavLink::internal("Disclaimer", "Aviso legal", "/page/disclaimer"),
             ],
@@ -119,12 +141,73 @@ impl Tenant {
                 Archive\u{2122} are trademarks of Woodfine Capital Projects Inc., used in Canada, \
                 the United States, Latin America, and Europe. All other trademarks are the \
                 property of their respective owners.",
+            // Full legal text — moved here 2026-07-02 from a separate,
+            // always-visible `type: prose` home-page section (operator
+            // feedback: it read as a duplicate of this same accordion).
+            // Markdown-rendered; see `DisclosureSlot::body`.
             disclosure_slots: vec![DisclosureSlot {
                 label: "Securities disclosure",
-                body: "Securities of Woodfine-sponsored direct-hold solutions are offered only to \
-                    qualified investors pursuant to applicable prospectus exemptions under National \
-                    Instrument 45-106. This page does not constitute an offer to sell or a \
-                    solicitation of an offer to buy any security.",
+                label_es: "Divulgación de valores",
+                body: "**Securities offering.** Securities of Woodfine-sponsored direct-hold \
+                    solutions are offered only to qualified investors pursuant to applicable \
+                    prospectus exemptions under National Instrument 45-106 — Prospectus \
+                    Exemptions. The information on this page is provided for general \
+                    informational purposes only and does not constitute an offer to sell or a \
+                    solicitation of an offer to buy any security. Prospective investors should \
+                    review the applicable offering memorandum and consult their own professional \
+                    advisors before investing.\n\n\
+                    1. Information on this page describes the firm and its activities at a high \
+                    level and is qualified in its entirety by the applicable offering memorandum \
+                    and universal governing bylaws.\n\
+                    2. Investment in real-property direct-hold solutions involves significant \
+                    risk, including possible loss of capital. Past performance is not indicative \
+                    of future results. References to structural features such as advisory fees, \
+                    transferability, and net asset value methodology describe the contractual \
+                    terms of the direct-hold solutions and are not representations as to \
+                    investment outcomes or returns.\n\n\
+                    **Forward-looking statements.** Statements that are not historical facts may \
+                    constitute forward-looking information within the meaning of applicable \
+                    Canadian securities laws. Such statements are subject to known and unknown \
+                    risks, uncertainties and assumptions, and actual results may differ \
+                    materially. Woodfine undertakes no obligation to update such statements \
+                    except as required by law.\n\n\
+                    **Registration.** Woodfine Capital Projects and its affiliates conduct \
+                    registrable activities, where required, under the relevant categories \
+                    prescribed by the British Columbia Securities Commission and other Canadian \
+                    securities regulators. Specific registration details are available on \
+                    request.",
+                // Real human translation, ported verbatim from the retired
+                // page.es.yaml prose section — not machine-translated here.
+                body_es: "**Oferta de valores.** Los valores de las soluciones de tenencia directa \
+                    patrocinadas por Woodfine se ofrecen únicamente a inversores calificados de \
+                    conformidad con las exenciones de prospecto aplicables bajo el Instrumento \
+                    Nacional 45-106 — Exenciones de Prospecto. La información en esta página se \
+                    proporciona únicamente con fines informativos generales y no constituye una \
+                    oferta de venta ni una solicitud de oferta de compra de ningún valor. Los \
+                    inversores potenciales deben revisar el memorando de oferta aplicable y \
+                    consultar con sus propios asesores profesionales antes de invertir.\n\n\
+                    1. La información en esta página describe la empresa y sus actividades a alto \
+                    nivel y está calificada en su totalidad por el memorando de oferta aplicable y \
+                    los estatutos universales que rigen la sociedad.\n\
+                    2. La inversión en soluciones de tenencia directa de inmuebles implica riesgos \
+                    significativos, incluida la posible pérdida de capital. El rendimiento pasado \
+                    no es indicativo de resultados futuros. Las referencias a características \
+                    estructurales como las comisiones de asesoría, la transferibilidad y la \
+                    metodología del valor liquidativo describen los términos contractuales de las \
+                    soluciones de tenencia directa y no constituyen representaciones sobre \
+                    resultados o rendimientos de la inversión.\n\n\
+                    **Declaraciones prospectivas.** Las declaraciones que no son hechos históricos \
+                    pueden constituir información prospectiva en el sentido de las leyes \
+                    canadienses aplicables en materia de valores. Tales declaraciones están \
+                    sujetas a riesgos, incertidumbres y supuestos conocidos y desconocidos, y los \
+                    resultados reales pueden diferir materialmente. Woodfine no asume ninguna \
+                    obligación de actualizar dichas declaraciones excepto cuando lo exija la \
+                    ley.\n\n\
+                    **Registro.** Woodfine Capital Projects y sus filiales realizan actividades \
+                    registrables, donde sea requerido, bajo las categorías relevantes prescritas \
+                    por la Comisión de Valores de la Columbia Británica y otros reguladores \
+                    canadienses de valores. Los detalles específicos de registro están \
+                    disponibles a petición.",
             }],
             canonical_base: "https://home.woodfinegroup.com",
             og_site_name: "Woodfine Capital Projects",
@@ -142,25 +225,69 @@ impl Tenant {
             // Content/product links before utility links — see the Woodfine
             // comment above; same convention both tenants.
             nav_links: vec![
+                NavLink::external("Documentation", "Documentación", "https://documentation.pointsav.com/"),
                 NavLink::external("Software", "Software", "https://software.pointsav.com/"),
                 NavLink::external("Design System", "Sistema de diseño", "https://design.pointsav.com/"),
-                NavLink::external("Documentation", "Documentación", "https://documentation.pointsav.com/"),
+                // Restored 2026-07-02 — present on the retired production
+                // site's masthead nav, dropped when this chrome was rebuilt.
+                NavLink::external("Newsroom", "Sala de prensa", "https://pointsav.com/"),
+                NavLink::internal("Contact us", "Contáctenos", "/page/contact"),
                 NavLink::internal("Disclaimer", "Aviso legal", "/page/disclaimer"),
             ],
             footer_nav: vec![
+                NavLink::internal("Contact us", "Contáctenos", "/page/contact"),
                 NavLink::internal("Disclaimer", "Aviso legal", "/page/disclaimer"),
                 NavLink::internal("Privacy", "Privacidad", "/page/privacy"),
             ],
-            cities: vec!["Vancouver", "New York"],
+            // Berlin is PointSav-specific — confirmed against live production
+            // (Woodfine's footer has no Berlin entry, PointSav's does).
+            cities: vec!["Vancouver", "New York", "Berlin"],
             copyright_holder: "Woodfine Capital Projects Inc.",
             trademark_line: "PointSav Digital Systems\u{2122}, Totebox Orchestration\u{2122}, and \
                 Totebox Archive\u{2122} are trademarks of Woodfine Capital Projects Inc., used in \
                 Canada, the United States, Latin America, and Europe. All other trademarks are the \
                 property of their respective owners.",
+            // Full legal text — moved here 2026-07-02 from a separate,
+            // always-visible `type: prose` home-page section (same reason
+            // as Woodfine's, see comment above).
             disclosure_slots: vec![DisclosureSlot {
                 label: "Product disclosure",
-                body: "Product descriptions on this page describe intended capabilities. Actual \
-                    feature availability may vary by release and partner agreement.",
+                label_es: "Divulgación del producto",
+                body: "**Intellectual property.** The PointSav name, marks, wordmark, product \
+                    names (including ToteBox, GIS Engine, Keys Console, Command Centre, \
+                    Workplace OS, and Business Applications), software, source code, \
+                    documentation, design system, and all related materials are proprietary to \
+                    Woodfine Capital Projects Inc. and its subsidiaries, unless otherwise \
+                    identified as open source.\n\n\
+                    **Open source components.** Portions of the platform are made available \
+                    under permissive open-source licenses identified in the accompanying \
+                    repository. Use of those components is governed by their respective license \
+                    terms.\n\n\
+                    **No warranty; informational use.** Information on this page is provided for \
+                    general informational purposes only and does not constitute a \
+                    representation, warranty, or commitment with respect to product \
+                    functionality, availability, pricing, or roadmap. Product descriptions \
+                    describe intended capabilities; actual feature availability may vary by \
+                    release and partner agreement.",
+                // Real human translation, ported verbatim from the retired
+                // page.es.yaml prose section — not machine-translated here.
+                body_es: "**Propiedad intelectual.** El nombre PointSav, las marcas, el \
+                    logotipo, los nombres de producto (incluidos ToteBox, Motor GIS, Keys \
+                    Console, Command Centre, Workplace OS y Aplicaciones de Negocio), el \
+                    software, el código fuente, la documentación, el sistema de diseño y todos \
+                    los materiales relacionados son propiedad de Woodfine Capital Projects Inc. \
+                    y sus subsidiarias, salvo que se identifiquen expresamente como código \
+                    abierto.\n\n\
+                    **Componentes de código abierto.** Partes de la plataforma están \
+                    disponibles bajo licencias de código abierto permisivas identificadas en el \
+                    repositorio correspondiente. El uso de dichos componentes se rige por sus \
+                    respectivos términos de licencia.\n\n\
+                    **Sin garantía; uso informativo.** La información en esta página se \
+                    proporciona únicamente con fines informativos generales y no constituye una \
+                    representación, garantía ni compromiso en relación con la funcionalidad del \
+                    producto, su disponibilidad, precio o hoja de ruta. Las descripciones de \
+                    productos describen capacidades previstas; la disponibilidad real de \
+                    funciones puede variar según la versión y el acuerdo con el socio.",
             }],
             canonical_base: "https://home.pointsav.com",
             og_site_name: "PointSav Digital Systems",
@@ -257,11 +384,8 @@ fn footer(tenant: &Tenant, lang: &str) -> Markup {
                     summary.m-footer__disclosure-summary { (t(lang, "Important information", "Información importante")) }
                     @for slot in &tenant.disclosure_slots {
                         div.m-footer__slot {
-                            // Disclosure slot text is legal/regulatory content — English-only
-                            // pending professional translation via project-editorial (not
-                            // drafted here; see NEXT.md). Not localized by `t()`.
-                            p.m-footer__slot-label { (slot.label) }
-                            p.m-footer__slot-body { (slot.body) }
+                            p.m-footer__slot-label { (slot.label_for(lang)) }
+                            div.m-footer__slot-body { (PreEscaped(crate::content::render_markdown(slot.body_for(lang)))) }
                         }
                     }
                 }
@@ -275,7 +399,9 @@ fn footer(tenant: &Tenant, lang: &str) -> Markup {
                         }
                     }
                     p.m-footer__copyright {
-                        "\u{00a9} 2026 " (tenant.copyright_holder) " " (t(lang, "All rights reserved.", "Todos los derechos reservados."))
+                        // Year range confirmed against live production (both
+                        // tenants render "2011–2026", not just the current year).
+                        "\u{00a9} 2011\u{2013}2026 " (tenant.copyright_holder) " " (t(lang, "All rights reserved.", "Todos los derechos reservados."))
                     }
                     // Trademark line: same pending-professional-translation note as the
                     // disclosure slots above — verbatim legal text, not machine-localized.
