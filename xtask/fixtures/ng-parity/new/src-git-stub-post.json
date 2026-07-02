@@ -1,0 +1,23 @@
+{
+  "body": {
+    "json": {
+      "arriving": "v0.0.2",
+      "error": "smart-HTTP Git not yet enabled",
+      "see": "https://github.com/pointsav/pointsav-monorepo"
+    },
+    "kind": "json"
+  },
+  "fixture": "src-git-stub-post",
+  "headers": {
+    "connection": "close",
+    "content-length": "116",
+    "content-type": "application/json"
+  },
+  "normalize": "raw",
+  "request": {
+    "method": "POST",
+    "path": "/git/git-upload-pack",
+    "port": 19212
+  },
+  "status": 503
+}

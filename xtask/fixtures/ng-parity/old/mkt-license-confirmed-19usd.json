@@ -1,0 +1,24 @@
+{
+  "body": {
+    "json": {
+      "confirmed_at": "<masked>",
+      "customer_ref": "0xparitycaffee",
+      "license_key": "69cb887e-ca2c5b5b-07ff26d3-8fc7b684",
+      "product_id": "unknown-19000000",
+      "status": "confirmed"
+    },
+    "kind": "json"
+  },
+  "fixture": "mkt-license-confirmed-19usd",
+  "headers": {
+    "connection": "close",
+    "content-type": "application/json"
+  },
+  "normalize": "mask-json",
+  "request": {
+    "method": "GET",
+    "path": "/v1/license/0xtestconfirmed19usd",
+    "port": 19213
+  },
+  "status": 200
+}
