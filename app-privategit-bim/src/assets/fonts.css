@@ -1,10 +1,38 @@
-/* fonts.css — IBM Plex font stack
-   In production: serve from /static/fonts/ (vendored in Phase 3)
-   Development fallback: system-ui */
+/* fonts.css — Woodfine typography spine (Geist Sans/Mono + Source Serif 4)
+   Vendored from app-orchestration-bim's static/fonts/ (recovered 2026-07-02;
+   was never committed to git — see BRIEF-app-privategit-bim.md). */
+
+@font-face {
+  font-family: 'Geist';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('/static/fonts/geist-sans.woff2') format('woff2-variations'),
+       url('/static/fonts/geist-sans.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Geist Mono';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('/static/fonts/geist-mono.woff2') format('woff2-variations'),
+       url('/static/fonts/geist-mono.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Source Serif 4';
+  font-style: normal;
+  font-weight: 200 900;
+  font-display: swap;
+  src: url('/static/fonts/source-serif-4.woff2') format('woff2-variations'),
+       url('/static/fonts/source-serif-4.woff2') format('woff2');
+}
 
 :root {
-  --bim-font-sans: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
-  --bim-font-mono: 'IBM Plex Mono', 'Courier New', monospace;
+  --bim-font-display: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+  --bim-font-sans: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --bim-font-mono: 'Geist Mono', 'SF Mono', SFMono-Regular, ui-monospace, Menlo, Consolas, monospace;
 }
 
 body {
@@ -13,4 +41,8 @@ body {
 
 code, pre, .bim-codemirror-host {
   font-family: var(--bim-font-mono);
+}
+
+h1, h2 {
+  font-family: var(--bim-font-display);
 }

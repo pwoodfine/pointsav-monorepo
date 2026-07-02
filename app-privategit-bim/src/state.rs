@@ -10,7 +10,6 @@ pub struct AppState {
     pub tokens: Arc<HashMap<String, Value>>,
     pub token_count: usize,
     pub components_count: usize,
-    #[allow(dead_code)]
     pub research_count: usize,
     pub events_tx: broadcast::Sender<String>,
 }

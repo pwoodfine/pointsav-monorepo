@@ -8,6 +8,7 @@ use super::shell::esc;
 
 pub fn render_home(state: &AppState) -> String {
     let cards = render_category_cards(state);
+    let category_count = SIDEBAR_ORDER.len();
     format!(
         r#"<div class="bim-hero">
   <p class="bim-hero__eyebrow">Woodfine BIM Object Library</p>
@@ -17,7 +18,13 @@ pub fn render_home(state: &AppState) -> String {
   library already encodes its regulatory requirements and performance constraints, a
   non-compliant model cannot be assembled. Compliance is a property of the starting
   material, not a filter applied at the end.</p>
+  <div class="bim-chip-row">
+    <span class="bim-chip">CATEGORIES <strong>{category_count}</strong></span>
+    <span class="bim-chip">STANDARD <strong>IFC 4.3 &middot; ISO 16739-1:2024</strong></span>
+    <span class="bim-chip bim-chip--muted">FORMAT <strong>DTCG</strong></span>
+  </div>
 </div>
+<hr class="bim-rule">
 <article class="bim-article">
   <section>
     <h2>The problem with building specifications</h2>
@@ -30,6 +37,7 @@ pub fn render_home(state: &AppState) -> String {
     by data inconsistencies. At project handover, the BIM model that cost hundreds of thousands
     of dollars to produce is commonly delivered to the owner as a static PDF extract.</p>
   </section>
+  <hr class="bim-rule">
   <section>
     <h2>BIM Objects as the answer</h2>
     <p>A BIM Object is a machine-readable specification unit stored in W3C DTCG format JSON.
@@ -38,8 +46,10 @@ pub fn render_home(state: &AppState) -> String {
     with the element through every tool in the AEC stack.</p>
     <p>When an architect places a wall, the BIM Object for that wall already knows its required
     fire rating, its thermal transmittance range, and which jurisdictional code clause governs
-    it. No post-hoc checking. No separate specification document.</p>
+    it. No post-hoc checking. No separate specification document. The compliance constraint
+    is encoded in the starting material.</p>
   </section>
+  <hr class="bim-rule">
   <section>
     <h2>Browse the catalog</h2>
     <p>Organized by IFC 4.3 entity class. <a href="/tokens">Browse all categories</a> or
@@ -51,6 +61,7 @@ pub fn render_home(state: &AppState) -> String {
   <div class="bim-category-grid">{cards}</div>
 </div>"#,
         cards = cards,
+        category_count = category_count,
     )
 }
 
@@ -82,13 +93,18 @@ pub fn render_token_page(category: &str, state: &AppState) -> String {
     let intro = meta.map(|m| m.intro).unwrap_or("");
     let ifc_anchor = meta.map(|m| m.ifc_anchor).unwrap_or("");
     let elements = meta.map(|m| m.elements).unwrap_or("");
+    let uniclass = meta.map(|m| m.uniclass).unwrap_or("—");
+    let ifc_hierarchy = meta.map(|m| m.ifc_hierarchy).unwrap_or("—");
+    let property_sets = meta.map(|m| m.property_sets).unwrap_or(&[]);
 
+    let mut entity_count = 0usize;
     let mut rows = String::new();
     for (_cat_key, cat_val) in bim {
         if let Some(entities) = cat_val.as_object() {
             let mut slugs: Vec<&String> = entities.keys().collect();
             slugs.sort();
             for slug in slugs {
+                entity_count += 1;
                 let entity = &entities[slug];
                 let description = entity
                     .get("$description")
@@ -113,32 +129,97 @@ pub fn render_token_page(category: &str, state: &AppState) -> String {
         }
     }
 
+    let mut pset_rows = String::new();
+    for (pset, prop, ty) in property_sets {
+        pset_rows.push_str(&format!(
+            r#"<tr><td><code>{pset}</code></td><td><code>{prop}</code></td><td><code>{ty}</code></td></tr>"#,
+            pset = esc(pset),
+            prop = esc(prop),
+            ty = esc(ty),
+        ));
+    }
+    let pset_block = if pset_rows.is_empty() {
+        r#"<p class="bim-empty">No property sets registered for this category yet.</p>"#
+            .to_string()
+    } else {
+        format!(
+            r#"<table class="bim-table-wrap bim-token-table">
+  <thead><tr><th>Property set</th><th>Property</th><th>Type</th></tr></thead>
+  <tbody>{pset_rows}</tbody>
+</table>"#
+        )
+    };
+
+    let dtcg_json = serde_json::to_string_pretty(file_val).unwrap_or_default();
+
     format!(
         r#"<div class="bim-category-page">
   <div class="bim-breadcrumbs">
-    <a href="/tokens" data-path="/tokens" class="bim-nav-link">Catalog</a> / <span>{category}</span>
+    <a href="/" data-path="/" class="bim-nav-link">Home</a> / <a href="/tokens" data-path="/tokens" class="bim-nav-link">BIM Objects</a>
   </div>
+  <p class="bim-category-page__anchor"><code>{ifc_anchor}</code></p>
   <h1>{display_name}</h1>
-  <p class="bim-intro">{intro}</p>
-  <p class="bim-ifc-anchor"><strong>IFC anchor:</strong> <code>{ifc_anchor}</code></p>
-  <p class="bim-elements">{elements}</p>
-  <table class="bim-token-table">
-    <thead>
-      <tr>
-        <th>Token slug</th>
-        <th>IFC class</th>
-        <th>Description</th>
-      </tr>
-    </thead>
-    <tbody>{rows}</tbody>
-  </table>
+  <div class="bim-chip-row">
+    <span class="bim-chip">IFC <code>{ifc_anchor}</code></span>
+    <span class="bim-chip bim-chip--accent">UNICLASS <strong>{uniclass}</strong></span>
+    <span class="bim-chip bim-chip--muted">REGULATORY OVERLAYS <strong>0 registered</strong></span>
+  </div>
+
+  <details class="bim-spec-card" open>
+    <summary>Specification</summary>
+    <div class="bim-spec-card__body">
+      <p class="bim-intro">{intro}</p>
+      <p class="bim-elements"><code>{elements}</code></p>
+      <table class="bim-detail-table">
+        <tr><th>IFC entity</th><td><code>{ifc_anchor}</code></td></tr>
+        <tr><th>Uniclass 2015</th><td>{uniclass}</td></tr>
+        <tr><th>bSDD URI</th><td class="bim-fg-muted">pending</td></tr>
+        <tr><th>IFC hierarchy</th><td class="bim-ifc-hierarchy"><code>{ifc_hierarchy}</code></td></tr>
+      </table>
+      <h2>Applicable property sets</h2>
+      {pset_block}
+    </div>
+  </details>
+
+  <details class="bim-spec-card" open>
+    <summary>BIM Objects ({entity_count})</summary>
+    <div class="bim-spec-card__body">
+      <table class="bim-token-table">
+        <thead>
+          <tr>
+            <th>Token slug</th>
+            <th>IFC class</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>{rows}</tbody>
+      </table>
+    </div>
+  </details>
+
+  <details class="bim-accordion">
+    <summary>Regulation</summary>
+    <div class="bim-spec-card__body"><p class="bim-empty">No regulatory overlays registered for this category yet.</p></div>
+  </details>
+  <details class="bim-accordion">
+    <summary>Climate Zone</summary>
+    <div class="bim-spec-card__body"><p class="bim-empty">Climate zone constraints not yet modeled for this category.</p></div>
+  </details>
+  <details class="bim-accordion">
+    <summary>Token Format</summary>
+    <div class="bim-spec-card__body"><pre><code>{dtcg_json}</code></pre></div>
+  </details>
 </div>"#,
-        category = esc(category),
         display_name = esc(meta.map(|m| m.display_name).unwrap_or(category)),
         intro = esc(intro),
         ifc_anchor = esc(ifc_anchor),
         elements = esc(elements),
+        uniclass = esc(uniclass),
+        ifc_hierarchy = esc(ifc_hierarchy),
+        pset_block = pset_block,
+        entity_count = entity_count,
         rows = rows,
+        dtcg_json = esc(&dtcg_json),
     )
 }
 
