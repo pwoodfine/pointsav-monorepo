@@ -186,7 +186,8 @@ fn main() -> NotifyResult<()> {
             match graph_store.upsert_entities("__taxonomy__", &entities) {
                 Ok(n) => println!(
                     "[TAXONOMY] Loaded: {} archetypes, {} coa-profiles, {} domains, \
-                     {} glossary-terms, {} themes, {} topics, {} guides → {} entities upserted",
+                     {} glossary-terms, {} themes, {} topics, {} guides, {} entity-classes \
+                     → {} entities upserted",
                     bundle.archetypes.len(),
                     bundle.coa.len(),
                     bundle.domains.len(),
@@ -194,6 +195,7 @@ fn main() -> NotifyResult<()> {
                     bundle.themes.len(),
                     bundle.topics.len(),
                     bundle.guides.len(),
+                    bundle.entity_classes.len(),
                     n
                 ),
                 Err(e) => println!("[TAXONOMY] Graph write failed: {}", e),
