@@ -644,7 +644,8 @@ button:disabled { cursor: default; }
 }
 .k-badge:focus-visible { outline: var(--k-focus-outline); outline-offset: 2px; }
 .k-badge__glyph { display: inline-flex; color: currentColor; flex-shrink: 0; }
-.k-badge__roundels { display: inline-flex; color: currentColor; flex-shrink: 0; }
+.k-badge__cc { display: inline-flex; align-items: center; gap: 2px; flex-shrink: 0; }
+.k-cc-icon { display: block; width: 18px; height: 18px; }
 .k-badge__text { display: inline-flex; flex-direction: column; gap: 1px; }
 .k-badge__lead {
   font-size: 0.5625rem;
