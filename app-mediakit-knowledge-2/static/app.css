@@ -115,7 +115,7 @@ button:disabled { cursor: default; }
   flex: 1 0 auto;
   display: grid;
   grid-template-columns: var(--k-sidebar-width, 15rem) minmax(0, 1fr);
-  gap: var(--k-gutter-lg);
+  gap: var(--k-gutter);
   width: 100%;
   padding-inline: var(--k-gutter);
   align-items: start;
@@ -136,15 +136,20 @@ button:disabled { cursor: default; }
 }
 .k-sidenav__home {
   display: block;
-  font-weight: var(--k-weight-medium);
+  font-weight: var(--k-weight-semibold);
   color: var(--k-ink);
-  padding-block: var(--k-space-1);
+  padding: var(--k-space-1) 0 var(--k-space-1) 2px;   /* 2px aligns with link text */
 }
 .k-sidenav__group { margin-top: var(--k-space-5); }
+/* Section labels: differentiated from links by size + case + tracking (not just
+   weight — the Inter weight files are unreliable), Vector 2022-style muted caps. */
 .k-sidenav__heading {
   margin: 0 0 var(--k-space-2);
-  font-size: var(--k-text-sm);
-  font-weight: var(--k-weight-medium);
+  padding-left: 2px;
+  font-size: var(--k-text-2xs);
+  font-weight: var(--k-weight-semibold);
+  letter-spacing: var(--k-tracking-caps);
+  text-transform: uppercase;
   color: var(--k-ink-muted);
 }
 .k-sidenav__list { list-style: none; margin: 0; padding: 0; }
