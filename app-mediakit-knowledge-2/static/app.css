@@ -596,6 +596,15 @@ button:disabled { cursor: default; }
   gap: var(--k-space-3);
 }
 .k-footer__copyright { margin: 0; color: var(--k-ink-muted); }
+.k-footer__trademark {
+  margin: var(--k-space-4) 0 0;
+  padding-top: var(--k-space-3);
+  border-top: 1px solid var(--k-border-subtle);
+  color: var(--k-ink-muted);
+  font-size: var(--k-text-2xs);
+  line-height: var(--k-leading-snug);
+  max-width: 70ch;
+}
 .k-footer__cities {
   display: flex;
   align-items: center;

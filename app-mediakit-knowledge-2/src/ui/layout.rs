@@ -291,6 +291,12 @@ pub fn footer(tenant: Tenant) -> Markup {
                         }
                     }
                 }
+                // Trademark notice — verbatim from canonical TRADEMARK.md. The marks
+                // are reserved independently of the CC BY 4.0 content licence, so no
+                // blanket "all rights reserved" (content is openly licensed).
+                p."k-footer__trademark" {
+                    "Woodfine Capital Projects\u{2122}, MCorp\u{2122}, PointSav Digital Systems\u{2122}, Totebox Orchestration\u{2122}, Totebox Archive\u{2122}, and Capability Geometry\u{2122} are trademarks of Woodfine Capital Projects Inc., used in Canada, the United States, Latin America, and Europe. All other trademarks are the property of their respective owners."
+                }
             }
         }
     }
