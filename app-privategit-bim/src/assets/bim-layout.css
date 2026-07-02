@@ -575,3 +575,13 @@ html, body {
   font-size: 0.75rem;
   color: #8d8d8d;
 }
+.bim-footer__base p {
+  margin: 0 0 0.5rem;
+}
+.bim-footer__base p:last-child {
+  margin-bottom: 0;
+}
+.bim-footer__trademark {
+  color: #6B7280;
+  line-height: 1.5;
+}
