@@ -28,6 +28,7 @@ pub struct DocRef {
     pub category: Option<String>,
     pub short_description: Option<String>,
     pub last_edited: Option<String>,
+    pub aliases: Vec<String>,
     pub mount_index: usize,
 }
 
@@ -35,6 +36,7 @@ pub struct DocRef {
 #[derive(Debug, Clone, Default)]
 pub struct ContentIndex {
     by_key: HashMap<(String, Lang), DocRef>,
+    by_alias: HashMap<String, String>, // alias → canonical slug (English)
 }
 
 impl ContentIndex {
@@ -99,7 +101,19 @@ impl ContentIndex {
         docs
     }
 
+    /// Resolve an alias to its canonical slug (for `aliases:`-based redirects).
+    pub fn resolve_alias(&self, alias: &str) -> Option<&str> {
+        self.by_alias.get(alias).map(String::as_str)
+    }
+
     fn insert(&mut self, doc: DocRef) {
+        if doc.lang == Lang::En {
+            for a in &doc.aliases {
+                self.by_alias
+                    .entry(a.clone())
+                    .or_insert_with(|| doc.slug.clone());
+            }
+        }
         self.by_key.insert((doc.slug.clone(), doc.lang), doc);
     }
 }
@@ -186,6 +200,7 @@ fn load_ref(root: &Path, path: &Path, mount_index: usize) -> Option<DocRef> {
             .filter(|s| !s.trim().is_empty())
             .or_else(|| first_body_summary(&doc.body_md)),
         last_edited: doc.frontmatter.last_edited.clone(),
+        aliases: doc.frontmatter.aliases.clone(),
         mount_index,
     })
 }

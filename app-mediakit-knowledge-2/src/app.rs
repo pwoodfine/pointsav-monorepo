@@ -16,9 +16,12 @@ use axum::Router;
 
 use crate::assets::StaticAssets;
 use crate::config::Config;
+use std::collections::HashMap;
+
 use crate::content::{self, ContentIndex, Lang, MountSet};
 use crate::discovery;
 use crate::search::SearchIndex;
+use crate::sitedata;
 use crate::ui::{self, Tenant};
 
 /// Shared, immutable-after-startup application state.
@@ -31,6 +34,11 @@ pub struct AppState {
     /// Rendered HTML of `important-information.md` from the content repo (counsel-
     /// owned via Git), for the Important Information band. `None` → tenant default.
     pub important_info: Arc<Option<String>>,
+    /// Canonical category nav from the content repo's `categories.yaml` (id, name,
+    /// order); empty → fall back to `knowledge.toml` categories + slug discovery.
+    pub categories: Arc<Vec<sitedata::Category>>,
+    /// `from → to` 301 redirects from the content repo's `redirects.yaml`.
+    pub redirects: Arc<HashMap<String, String>>,
     pub tenant: Tenant,
 }
 
@@ -48,12 +56,24 @@ impl AppState {
                 .ok()
                 .map(|text| content::render(&content::parse(&text).body_md).html)
         });
+        // Per-wiki category nav + redirects from the content repo root.
+        let root = mounts.mounts.first().map(|m| m.path.clone());
+        let categories = root
+            .as_ref()
+            .map(|r| sitedata::load_categories(r))
+            .unwrap_or_default();
+        let redirects = root
+            .as_ref()
+            .map(|r| sitedata::load_redirects(r))
+            .unwrap_or_default();
         Self {
             config: Arc::new(config),
             mounts: Arc::new(mounts),
             index: Arc::new(index),
             search: Arc::new(search),
             important_info: Arc::new(important_info),
+            categories: Arc::new(categories),
+            redirects: Arc::new(redirects),
             tenant,
         }
     }
@@ -109,6 +129,24 @@ fn humanize(slug: &str) -> String {
 /// order when set, else discovered categories. Mirrors the home-grid ordering.
 fn nav_cats(state: &AppState) -> Vec<(String, String)> {
     let counts = state.index.category_counts();
+    // Prefer the canonical categories.yaml (id → route, name → display, order),
+    // showing only categories that currently have content.
+    if !state.categories.is_empty() {
+        return state
+            .categories
+            .iter()
+            .filter(|c| counts.contains_key(&c.id))
+            .map(|c| {
+                let name = if c.name.is_empty() {
+                    humanize(&c.id)
+                } else {
+                    c.name.clone()
+                };
+                (c.id.clone(), name)
+            })
+            .collect();
+    }
+    // Fallback: knowledge.toml categories, else discovered.
     let mut cats: Vec<(String, String)> = Vec::new();
     if state.config.site.categories.is_empty() {
         for (slug, _) in &counts {
@@ -122,6 +160,27 @@ fn nav_cats(state: &AppState) -> Vec<(String, String)> {
         }
     }
     cats
+}
+
+/// Display label for a category id — the categories.yaml `name` when present.
+fn category_label(state: &AppState, id: &str) -> String {
+    state
+        .categories
+        .iter()
+        .find(|c| c.id == id)
+        .map(|c| c.name.clone())
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| humanize(id))
+}
+
+/// A 301 Moved Permanently (aliases + redirects.yaml) — the spec code for
+/// content moves; axum's `Redirect::permanent` is 308, so build it directly.
+fn moved_301(location: &str) -> Response {
+    (
+        StatusCode::MOVED_PERMANENTLY,
+        [(header::LOCATION, location.to_string())],
+    )
+        .into_response()
 }
 
 /// A chrome-wrapped 404 — a reviewer never sees a bare error string.
@@ -166,20 +225,15 @@ async fn home(State(state): State<AppState>) -> Response {
         .and_then(|p| p.frontmatter.short_description.clone())
         .unwrap_or_default();
 
-    // Category cards: prefer the configured order, fall back to discovered.
+    // Category cards — categories.yaml order/names (via nav_cats), with counts.
     let counts = state.index.category_counts();
-    let mut cats: Vec<(String, String, usize)> = Vec::new();
-    if state.config.site.categories.is_empty() {
-        for (slug, n) in &counts {
-            cats.push((slug.clone(), humanize(slug), *n));
-        }
-    } else {
-        for slug in &state.config.site.categories {
-            if let Some(n) = counts.get(slug) {
-                cats.push((slug.clone(), humanize(slug), *n));
-            }
-        }
-    }
+    let cats: Vec<(String, String, usize)> = nav_cats(&state)
+        .into_iter()
+        .map(|(id, name)| {
+            let n = counts.get(&id).copied().unwrap_or(0);
+            (id, name, n)
+        })
+        .collect();
     let total: usize = state.index.article_count();
 
     // How-to guides (content_type/category "how-to") — surfaced as their own
@@ -221,7 +275,7 @@ async fn category_page(State(state): State<AppState>, Path(name): Path<String>) 
     if docs.is_empty() {
         return not_found(&state, &format!("No such area: \u{201c}{name}\u{201d}."));
     }
-    let label = humanize(&name);
+    let label = category_label(&state, &name);
     let description = format!("Articles in the {label} area.");
     let body = ui::category_index(&label, &docs);
     let head = ui::doc_head(&label, &description, tenant);
@@ -407,6 +461,13 @@ async fn wiki_raw(
 ) -> Response {
     let slug = slug.trim_end_matches('/');
     let Some(doc) = state.index.resolve(slug, Lang::En) else {
+        // Not a current slug — try an alias (301 to canonical), then redirects.yaml.
+        if let Some(canonical) = state.index.resolve_alias(slug) {
+            return moved_301(&format!("/wiki/{canonical}"));
+        }
+        if let Some(to) = state.redirects.get(&format!("/{slug}")) {
+            return moved_301(to);
+        }
         return not_found(&state, &format!("No record found for \u{201c}{slug}\u{201d}."));
     };
     let tenant = state.tenant;
