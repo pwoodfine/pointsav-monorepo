@@ -179,6 +179,32 @@ cds-side-nav-menu-item a.bim-nav-link {
   color: var(--bim-fg-muted, #6f6f6f);
 }
 
+/* AEC semantic status chip variants — for regulation/compliance display */
+.bim-chip--safe {
+  background: var(--bim-safe-bg, #ECFDF3);
+  border-color: var(--bim-safe, #54924E);
+  color: var(--bim-safe, #54924E);
+}
+.bim-chip--safe strong { color: var(--bim-safe, #54924E); }
+.bim-chip--warning {
+  background: var(--bim-warning-bg, #FFF8ED);
+  border-color: var(--bim-warning, #B54708);
+  color: var(--bim-warning, #B54708);
+}
+.bim-chip--warning strong { color: var(--bim-warning, #B54708); }
+.bim-chip--mep {
+  background: var(--bim-mep-bg, #ECFEFF);
+  border-color: var(--bim-mep, #0E7490);
+  color: var(--bim-mep, #0E7490);
+}
+.bim-chip--mep strong { color: var(--bim-mep, #0E7490); }
+.bim-chip--error {
+  background: var(--bim-error-bg, #FEF3F2);
+  border-color: var(--bim-error, #B42318);
+  color: var(--bim-error, #B42318);
+}
+.bim-chip--error strong { color: var(--bim-error, #B42318); }
+
 .bim-rule {
   border: none;
   border-top: 1px solid var(--bim-border, #e0e0e0);

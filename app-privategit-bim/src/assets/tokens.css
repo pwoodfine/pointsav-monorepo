@@ -26,4 +26,15 @@
 
   --bim-radius-sm: 2px;
   --bim-radius-md: 2px;
+
+  /* AEC semantic status colors — from woodfine-media-assets/css/theme-woodfine.css,
+     brand-governed (Woodfine Color Matrix). For regulation/compliance status display. */
+  --bim-safe:      #54924E;  /* IDS pass */
+  --bim-safe-bg:   #ECFDF3;
+  --bim-warning:   #B54708;  /* regulation warning */
+  --bim-warning-bg: #FFF8ED;
+  --bim-mep:       #0E7490;  /* MEP / systems */
+  --bim-mep-bg:    #ECFEFF;
+  --bim-error:     #B42318;  /* clash / IDS fail */
+  --bim-error-bg:  #FEF3F2;
 }
