@@ -272,9 +272,11 @@ pub fn footer(tenant: Tenant) -> Markup {
                                 span."k-badge__name" { "MediaKit" }
                             }
                         }
-                        // CC BY 4.0 — the content licence (Wikipedia-style badge).
-                        a."k-badge k-badge--license" href="https://creativecommons.org/licenses/by/4.0/"
-                          target="_blank" rel="noopener license" aria-label="Content licensed CC BY 4.0" {
+                        // Content licence — per tenant (CC BY for the open docs
+                        // library; CC BY-ND for the verbatim disclosure records).
+                        a."k-badge k-badge--license" href=(tenant.license_url())
+                          target="_blank" rel="noopener license"
+                          aria-label={ "Content licensed " (tenant.license_name()) } {
                             span."k-badge__roundels" aria-hidden="true" {
                                 svg viewBox="0 0 48 24" width="42" height="21" {
                                     circle cx="12" cy="12" r="10.4" fill="none" stroke="currentColor" stroke-width="1.6" {}
@@ -287,7 +289,7 @@ pub fn footer(tenant: Tenant) -> Markup {
                             }
                             span."k-badge__text" {
                                 span."k-badge__lead" { "Licensed" }
-                                span."k-badge__name" { "CC BY 4.0" }
+                                span."k-badge__name" { (tenant.license_name()) }
                             }
                         }
                     }
@@ -364,12 +366,15 @@ pub fn article(title: &str, slug: &str, updated: Option<&str>, body_html: &str) 
 }
 
 /// Article revision history — the git log of the article's file (the History tab).
-pub fn history_page(title: &str, slug: &str, revs: &[Revision]) -> Markup {
+pub fn history_page(title: &str, slug: &str, issuer: &str, revs: &[Revision]) -> Markup {
     html! {
         article."k-article" {
             div."k-article-nav" { (tab_bar(slug, "history")) }
             h1."k-article__title" { (title) }
             div."k-home__stat" { strong { (revs.len()) } " " (count_word_rev(revs.len())) }
+            p."k-history__note" {
+                "Maintained by " (issuer) ". Each revision is content-addressed by its commit hash."
+            }
             @if revs.is_empty() {
                 p."k-searchpage__hint" {
                     "No revision history found for this article — it may not yet be committed to the content repository."
@@ -381,7 +386,7 @@ pub fn history_page(title: &str, slug: &str, revs: &[Revision]) -> Markup {
                             time."k-history__date" datetime=(r.date_iso) { (format_date(&r.date_iso)) }
                             a."k-history__msg" href={ "/history/" (slug) "?rev=" (r.sha) } { (r.message) }
                             span."k-history__meta" {
-                                (r.author) " \u{00b7} " code."k-history__sha" { (r.short_sha) }
+                                code."k-history__sha" { (r.short_sha) }
                             }
                         }
                     }
@@ -410,7 +415,7 @@ fn diff_line_class(origin: char) -> &'static str {
 }
 
 /// A single revision's diff for one article (reached from the History tab).
-pub fn diff_page(title: &str, slug: &str, diff: &FileDiff) -> Markup {
+pub fn diff_page(title: &str, slug: &str, issuer: &str, diff: &FileDiff) -> Markup {
     html! {
         article."k-article" {
             div."k-article-nav" { (tab_bar(slug, "history")) }
@@ -419,7 +424,7 @@ pub fn diff_page(title: &str, slug: &str, diff: &FileDiff) -> Markup {
                 a."k-diff__back" href={ "/history/" (slug) } { "\u{2190} All revisions" }
                 p."k-diff__meta" {
                     code."k-history__sha" { (diff.short_sha) }
-                    " \u{00b7} " (diff.author)
+                    " \u{00b7} " (issuer)
                     " \u{00b7} " time datetime=(diff.date_iso) { (format_date(&diff.date_iso)) }
                 }
                 p."k-diff__msg" { (diff.message) }

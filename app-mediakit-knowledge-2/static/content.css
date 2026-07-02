@@ -379,6 +379,12 @@
 }
 
 /* --- Revision history (History tab) --------------------------------------- */
+.k-history__note {
+  margin: var(--k-space-2) 0 var(--k-space-4);
+  font-family: var(--k-font-sans);
+  font-size: var(--k-text-sm);
+  color: var(--k-ink-muted);
+}
 .k-history { list-style: none; margin: var(--k-space-5) 0 0; padding: 0; }
 .k-history__item {
   display: grid;
