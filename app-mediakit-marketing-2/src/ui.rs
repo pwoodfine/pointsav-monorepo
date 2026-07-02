@@ -579,10 +579,16 @@ fn card_grid(columns: u8, cards: &[crate::content::Card], style: Option<&str>) -
 fn icon_strip(icons: &[crate::content::IconTile]) -> Markup {
     html! {
         section.m-icon-strip {
-            div.m-icon-strip__inner {
+            // `--m-icon-count` drives the desktop full-row column count in
+            // app.css. Only ever 1 column (mobile) or icons.len() columns
+            // (desktop) — no in-between column count is used, because a
+            // middle count only avoids an orphaned row when it evenly
+            // divides the item count, and that's not true in general (3
+            // icons has no clean 2-column split). See app.css for detail.
+            div.m-icon-strip__inner style={ "--m-icon-count: " (icons.len()) } {
                 @for icon in icons {
                     div.m-icon-strip__item {
-                        img src=(icon.src) alt=(icon.alt) loading="lazy" width="260" height="260";
+                        img src=(icon.src) alt=(icon.alt) loading="lazy" width="200" height="200";
                     }
                 }
             }

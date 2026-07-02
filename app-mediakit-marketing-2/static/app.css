@@ -411,19 +411,36 @@ html:not(.js) .m-drawer-scrim {
   max-width: none;
   margin-inline: auto;
   padding: var(--m-icon-strip-pad-y) var(--m-gutter);
-  display: flex;
-  flex-wrap: wrap;
-  /* Full-bleed distribution (not centered/clustered) — matches the
-     production band's poster-like weight; the icon set is the product
-     taxonomy, not a decorative afterthought. */
-  justify-content: space-evenly;
-  align-items: center;
+  /* Grid, not flex. FABLE visual review (2026-07-02) found that BOTH
+     flex-wrap AND `repeat(auto-fit, minmax(...))` grid produce an orphaned
+     single-item row whenever the fitted column count doesn't evenly divide
+     the item count (verified: Woodfine's 4 icons 3-and-1 split at 700px
+     under plain auto-fit; PointSav's 3 icons have no even middle split at
+     all — 3 is not divisible by 2). The only column counts that can never
+     orphan are 1 (mobile, one column) and the full item count (desktop,
+     one row) — so those are the only two states used, via --m-icon-count
+     (set inline per-render in ui.rs from icons.len()). No breakpoint size
+     jump either: --m-icon-strip-size is a single monotonic clamp(). */
+  display: grid;
+  --m-icon-strip-cols: 1;
+  grid-template-columns: repeat(var(--m-icon-strip-cols), 1fr);
   gap: var(--m-icon-strip-gap);
+}
+@media (min-width: 700px) {
+  .m-icon-strip__inner {
+    --m-icon-strip-cols: var(--m-icon-count);
+  }
+}
+.m-icon-strip__item {
+  display: flex;
+  justify-content: center;
 }
 .m-icon-strip__item img {
   display: block;
-  width: var(--m-icon-strip-size);
-  height: var(--m-icon-strip-size);
+  width: 100%;
+  max-width: var(--m-icon-strip-size);
+  height: auto;
+  aspect-ratio: 1;
 }
 
 /* ==========================================================================
