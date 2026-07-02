@@ -38,6 +38,35 @@ pub struct Frontmatter {
     pub tags: Vec<String>,
     #[serde(default)]
     pub cites: Vec<String>,
+    /// A reference list (`id`, `text`, `url`) rendered as footnotes; the body's
+    /// `[^id]` markers link to them (see `render::render_doc`).
+    #[serde(default)]
+    pub references: Vec<Reference>,
+}
+
+/// One entry of a `references:` list.
+#[derive(Debug, Clone, Deserialize)]
+pub struct Reference {
+    #[serde(default, deserialize_with = "scalar_to_string")]
+    pub id: String,
+    #[serde(default)]
+    pub text: String,
+    #[serde(default)]
+    pub url: Option<String>,
+}
+
+/// Accept a YAML scalar id as either a string or an integer.
+fn scalar_to_string<'de, D: serde::Deserializer<'de>>(d: D) -> Result<String, D::Error> {
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum Scalar {
+        S(String),
+        I(i64),
+    }
+    Ok(match Scalar::deserialize(d)? {
+        Scalar::S(s) => s,
+        Scalar::I(i) => i.to_string(),
+    })
 }
 
 /// A parsed content file: its frontmatter and the Markdown body after it.
