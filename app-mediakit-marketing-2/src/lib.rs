@@ -17,4 +17,6 @@ pub mod assets;
 pub mod config;
 pub mod content;
 pub mod error;
+pub mod mcp;
+pub mod pending;
 pub mod ui;
