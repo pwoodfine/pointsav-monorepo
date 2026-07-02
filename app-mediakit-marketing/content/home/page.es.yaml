@@ -76,12 +76,14 @@ sections:
           inteligencia de localización y sistemas operativos integrados a lo
           largo del ciclo de vida de la solución de tenencia directa.
 
+  # Unrouted (no /es for home, operator call 2026-07-02) but kept in sync
+  # with page.yaml for when/if re-enabled — see that file for rationale.
   - type: card-grid
     columns: 3
     style: buttons
     cards:
-      - title: Manifiesto
-        href: https://github.com/woodfine/woodfine-fleet-deployment
+      - title: Proyectos
+        href: https://projects.woodfinegroup.com/
       - title: Biblioteca BIM
         href: https://bim.woodfinegroup.com/
       - title: Inteligencia de Localización
