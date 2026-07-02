@@ -10,7 +10,7 @@
 //! Structure follows the app-mediakit-knowledge-2 `src/ui/layout.rs` pattern:
 //! free `-> Markup` functions driven by the [`SoftwareSurface`] enum.
 
-use maud::{html, Markup, PreEscaped};
+use maud::{html, Markup, PreEscaped, DOCTYPE};
 
 use super::surface::SoftwareSurface;
 use super::tokens;
@@ -224,6 +224,36 @@ pub fn footer(surface: SoftwareSurface) -> Markup {
                     }
                     p."sw-footer__trademark" { (surface.trademark_line()) }
                 }
+            }
+        }
+    }
+}
+
+// ── Full-document render: dynamic body content + Sovereign chrome ───────────────
+
+/// Render a complete HTML document with the Sovereign Editorial chrome around
+/// caller-supplied `content` [`Markup`].
+///
+/// This is the dynamic counterpart to [`wrap_static_html`]: instead of splicing chrome
+/// into a prerendered static file, it builds the whole page — the same masthead, scoped
+/// chrome stylesheet, and near-black footer — around content generated at request time
+/// (e.g. the dynamic product catalog in `ui::catalog`). The `/software` route uses this
+/// so its cards can never drift from `products.yaml`. `/licensing` keeps using
+/// [`wrap_static_html`] because it is a static legal document, not catalog data.
+pub fn render_page(surface: SoftwareSurface, title: &str, content: Markup) -> Markup {
+    html! {
+        (DOCTYPE)
+        html lang="en" {
+            head {
+                meta charset="utf-8";
+                meta name="viewport" content="width=device-width, initial-scale=1";
+                title { (title) }
+                (chrome_style())
+            }
+            body {
+                (masthead(surface))
+                main { (content) }
+                (footer(surface))
             }
         }
     }

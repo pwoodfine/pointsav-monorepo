@@ -7,9 +7,11 @@
 //! Design-system provenance for every token is recorded in `tokens.rs`; the
 //! per-surface identity (nav links, verbatim trademark line) lives in `surface.rs`.
 
+pub mod catalog;
 pub mod layout;
 pub mod surface;
 pub mod tokens;
 
-pub use layout::wrap_static_html;
+pub use catalog::catalog_markup;
+pub use layout::{render_page, wrap_static_html};
 pub use surface::SoftwareSurface;
