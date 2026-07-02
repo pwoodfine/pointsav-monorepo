@@ -293,7 +293,7 @@ async fn draft_generate(
     let user_message = if user_message.len() > 8000 {
         format!(
             "{}\n\n[truncated — {entity_count} entities total]",
-            &user_message[..7900]
+            truncate_at_char_boundary(&user_message, 7900)
         )
     } else {
         user_message
@@ -700,6 +700,21 @@ async fn graph_enrich(
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
+/// Truncate a string to at most `max_bytes` bytes, snapped down to the nearest UTF-8 char
+/// boundary. A raw byte-index slice (`&s[..max_bytes]`) panics if `max_bytes` lands
+/// mid-character — guaranteed eventually given multi-byte content (accented names, em-dashes,
+/// the bilingual mandate) landing near the truncation point.
+fn truncate_at_char_boundary(s: &str, max_bytes: usize) -> &str {
+    if s.len() <= max_bytes {
+        return s;
+    }
+    let mut end = max_bytes;
+    while end > 0 && !s.is_char_boundary(end) {
+        end -= 1;
+    }
+    &s[..end]
+}
+
 fn format_entity_block(entities: &[GraphEntity]) -> String {
     if entities.is_empty() {
         return "(no entities found in graph)".to_string();
@@ -962,5 +977,39 @@ pub async fn run_server(
     println!("[HTTP] Graph API listening on {}", bind_addr);
     if let Err(e) = axum::serve(listener, app).await {
         eprintln!("[HTTP] Server error: {}", e);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn truncate_at_char_boundary_never_splits_a_multibyte_char() {
+        // Build a string where a 3-byte UTF-8 character (e.g. an accented/CJK-range
+        // character) straddles the old fixed byte offset — this is exactly the shape
+        // that panicked the previous `&user_message[..7900]` fixed-offset slice.
+        let prefix = "x".repeat(7899); // 7899 ASCII bytes, so the multi-byte char starts at 7899
+        let s = format!("{prefix}日本語のテキスト以降"); // multi-byte chars starting right at the old cut point
+        // Old code: &s[..7900] would panic here (byte 7900 lands mid-character).
+        let truncated = truncate_at_char_boundary(&s, 7900);
+        assert!(s.is_char_boundary(0)); // sanity
+        assert!(truncated.len() <= 7900);
+        // Must not panic, and must be valid UTF-8 (guaranteed by the type system once we
+        // successfully construct a &str, but assert the boundary landed at or before 7899
+        // since byte 7899 is the last ASCII byte and the multi-byte run starts there).
+        assert_eq!(truncated, &prefix[..7899]);
+    }
+
+    #[test]
+    fn truncate_at_char_boundary_no_op_when_under_limit() {
+        let s = "short string";
+        assert_eq!(truncate_at_char_boundary(s, 8000), s);
+    }
+
+    #[test]
+    fn truncate_at_char_boundary_exact_ascii_boundary() {
+        let s = "a".repeat(100);
+        assert_eq!(truncate_at_char_boundary(&s, 50).len(), 50);
     }
 }
