@@ -438,6 +438,45 @@ pub fn category_index(label: &str, docs: &[(String, String, String)]) -> Markup 
     }
 }
 
+/// Search results page — a query box plus result cards (same card style as the
+/// category listing). `results` is `(slug, title, description)`, ranked.
+pub fn search_results(query: &str, results: &[(String, String, String)]) -> Markup {
+    let q = query.trim();
+    html! {
+        div."k-catpage" {
+            div."k-catpage__eyebrow" { "Search" }
+            h1."k-article__title" { "Search" }
+            form."k-searchpage__form" role="search" action="/search" method="get" {
+                input."k-search__input" type="search" name="q" value=(query)
+                    placeholder="Search this registry" autocomplete="off" spellcheck="false";
+                button."k-searchpage__submit" type="submit" { "Search" }
+            }
+            @if q.is_empty() {
+                p."k-searchpage__hint" { "Enter a term to search article titles and text." }
+            } @else {
+                div."k-home__stat" {
+                    strong { (results.len()) } " " (count_word(results.len()))
+                    " for \u{201c}" (q) "\u{201d}"
+                }
+                @if results.is_empty() {
+                    p."k-searchpage__hint" { "No articles matched. Try different or fewer terms." }
+                } @else {
+                    ul."k-cat-list" {
+                        @for (slug, title, desc) in results {
+                            li."k-cat-entry" {
+                                a."k-cat-entry__title" href={ "/wiki/" (slug) } { (title) }
+                                @if !desc.is_empty() {
+                                    p."k-cat-entry__desc" { (desc) }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 /// The left navigation column (Wikipedia Vector 2022 pattern): Main page,
 /// Browse-by-area, Guides. Sticky on desktop; hidden below the tablet breakpoint
 /// where the off-canvas drawer covers navigation. `cats` is `(slug, label)`.
