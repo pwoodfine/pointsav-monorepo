@@ -80,31 +80,6 @@ pub fn atom_feed(base_url: &str, title: &str, docs: &[&DocRef]) -> String {
     s
 }
 
-/// JSON Feed 1.1 of the most-recently-edited articles.
-pub fn json_feed(base_url: &str, title: &str, docs: &[&DocRef]) -> String {
-    let items: Vec<serde_json::Value> = docs
-        .iter()
-        .map(|d| {
-            let url = format!("{base_url}/wiki/{}", d.slug);
-            serde_json::json!({
-                "id": url,
-                "url": url,
-                "title": d.title,
-                "summary": d.short_description.clone().unwrap_or_default(),
-                "date_modified": rfc3339(&d.last_edited),
-            })
-        })
-        .collect();
-    let feed = serde_json::json!({
-        "version": "https://jsonfeed.org/version/1.1",
-        "title": title,
-        "home_page_url": format!("{base_url}/"),
-        "feed_url": format!("{base_url}/feed.json"),
-        "items": items,
-    });
-    serde_json::to_string_pretty(&feed).unwrap_or_default()
-}
-
 /// `llms.txt` — a Markdown index for AI agents (proposed llmstxt.org convention).
 pub fn llms_txt(base_url: &str, title: &str, docs: &[&DocRef]) -> String {
     let mut s = format!(
