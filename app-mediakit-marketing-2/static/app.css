@@ -1,2 +1,50 @@
-/* app-mediakit-marketing-2 — chrome stylesheet placeholder.
-   Real design system lands in P2 (FABLE swarm recon + judge synthesis). */
+/* app-mediakit-marketing-2 — chrome stylesheet.
+ * Tokens: tokens.css (--m-* namespace). Fonts: fonts.css.
+ * Component/layout rules (masthead, hero, card grid, footer, drawer) land
+ * in P3 — this file wires the global reset + base element styles that the
+ * design tokens (P2) already commit us to.
+ */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  /* Structural fix for the audited sub-page horizontal-scroll bug: no
+     fixed-pixel widths survive this rewrite, and nothing may force the
+     viewport wider than its own box. */
+  overflow-x: clip;
+}
+
+body {
+  margin: 0;
+  background: var(--m-surface-page);
+  color: var(--m-ink);
+  font-family: var(--m-font-sans);
+  font-size: var(--m-text-base);
+  line-height: var(--m-lh-body);
+  overflow-x: clip;
+}
+
+::selection {
+  background: var(--m-selection-bg);
+  color: var(--m-selection-ink);
+}
+
+a {
+  color: var(--m-link);
+}
+a:hover {
+  color: var(--m-link-hover);
+}
+
+:focus-visible {
+  outline: var(--m-focus-ring-w) solid var(--m-focus-ring);
+  outline-offset: var(--m-focus-ring-offset);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
