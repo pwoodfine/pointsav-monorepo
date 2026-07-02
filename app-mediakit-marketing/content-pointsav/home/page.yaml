@@ -10,6 +10,15 @@ sections:
       property operators. Runs on hardware you control. No per-seat fees.
       No vendor lock-in.
 
+  - type: icon-strip
+    icons:
+      - src: /static/graphics/pointsav/class-1.svg
+        alt: Business Administration
+      - src: /static/graphics/pointsav/class-2.svg
+        alt: Record Keeping
+      - src: /static/graphics/pointsav/class-3.svg
+        alt: Building Connectivity
+
   - type: card-grid
     columns: 4
     cards:
@@ -49,7 +58,7 @@ sections:
           MQTT, IFC, OAuth — with documented schemas. Integrations replace,
           rather than wrap, legacy point-solutions, and partners retain full
           ownership of their data and configuration.
-      - title: Digital Twin
+      - title: Open Documentation
         body: >-
           Specifications, design system, API references, and source code
           repositories are maintained in a single repository accessible to
@@ -65,6 +74,7 @@ sections:
 
   - type: card-grid
     columns: 3
+    style: buttons
     cards:
       - title: Source
         href: https://github.com/pointsav
@@ -79,18 +89,13 @@ sections:
       names (including ToteBox, GIS Engine, Keys Console, Command Centre,
       Workplace OS, and Business Applications), software, source code,
       documentation, design system, and all related materials are proprietary
-      to PointSav, Inc. and its parent, Woodfine Capital Projects Inc., unless
-      otherwise identified as open source.
+      to Woodfine Capital Projects Inc. and its subsidiaries, unless otherwise
+      identified as open source.
 
       **Open source components.** Portions of the platform are made available
       under permissive open-source licenses identified in the accompanying
       repository. Use of those components is governed by their respective
       license terms.
-
-      **Trademarks.** POINTSAV, the PointSav diamond mark, and the product
-      names referenced on this page are trademarks or registered trademarks of
-      PointSav, Inc. in Canada, the United States, the European Union, and
-      other jurisdictions.
 
       **No warranty; informational use.** Information on this page is provided
       for general informational purposes only and does not constitute a
@@ -99,7 +104,5 @@ sections:
       describe intended capabilities; actual feature availability may vary by
       release and partner agreement.
 
-      © 2011–2026 Woodfine Capital Projects Inc. All rights reserved.
-      Woodfine Capital Projects, Woodfine Management Corp., PointSav Digital
-      Systems, Totebox Orchestration, and Totebox Archive are trademarks owned
-      by Woodfine Capital Projects Inc.
+      PointSav Digital Systems, Totebox Orchestration, and Totebox Archive are
+      trademarks owned by Woodfine Capital Projects Inc.

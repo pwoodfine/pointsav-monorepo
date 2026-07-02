@@ -10,6 +10,15 @@ sections:
       inmobiliarios independientes. Se ejecuta en hardware de su propiedad. Sin
       tarifas por usuario. Sin dependencia del proveedor.
 
+  - type: icon-strip
+    icons:
+      - src: /static/graphics/pointsav/class-1.svg
+        alt: Business Administration
+      - src: /static/graphics/pointsav/class-2.svg
+        alt: Record Keeping
+      - src: /static/graphics/pointsav/class-3.svg
+        alt: Building Connectivity
+
   - type: card-grid
     columns: 4
     cards:
@@ -54,7 +63,7 @@ sections:
           integraciones reemplazan, en lugar de envolver, las soluciones
           puntuales heredadas, y los socios conservan la plena propiedad de sus
           datos y configuración.
-      - title: Gemelo Digital
+      - title: Documentación Abierta
         body: >-
           Las especificaciones, el sistema de diseño, las referencias de API y
           los repositorios de código fuente se mantienen en un único repositorio
@@ -72,6 +81,7 @@ sections:
 
   - type: card-grid
     columns: 3
+    style: buttons
     cards:
       - title: Código Fuente
         href: https://github.com/pointsav
@@ -86,19 +96,14 @@ sections:
       los nombres de producto (incluidos ToteBox, Motor GIS, Keys Console,
       Command Centre, Workplace OS y Aplicaciones de Negocio), el software, el
       código fuente, la documentación, el sistema de diseño y todos los
-      materiales relacionados son propiedad de PointSav, Inc. y su empresa
-      matriz, Woodfine Capital Projects Inc., salvo que se identifiquen
-      expresamente como código abierto.
+      materiales relacionados son propiedad de Woodfine Capital Projects Inc.
+      y sus subsidiarias, salvo que se identifiquen expresamente como código
+      abierto.
 
       **Componentes de código abierto.** Partes de la plataforma están
       disponibles bajo licencias de código abierto permisivas identificadas en
       el repositorio correspondiente. El uso de dichos componentes se rige por
       sus respectivos términos de licencia.
-
-      **Marcas comerciales.** POINTSAV, el símbolo diamond de PointSav y los
-      nombres de producto referenciados en esta página son marcas comerciales o
-      marcas registradas de PointSav, Inc. en Canadá, los Estados Unidos, la
-      Unión Europea y otras jurisdicciones.
 
       **Sin garantía; uso informativo.** La información en esta página se
       proporciona únicamente con fines informativos generales y no constituye
@@ -108,7 +113,5 @@ sections:
       disponibilidad real de funciones puede variar según la versión y el
       acuerdo con el socio.
 
-      © 2011–2026 Woodfine Capital Projects Inc. Todos los derechos reservados.
-      Woodfine Capital Projects, Woodfine Management Corp., PointSav Digital
-      Systems, Totebox Orchestration y Totebox Archive son marcas comerciales
-      propiedad de Woodfine Capital Projects Inc.
+      PointSav Digital Systems, Totebox Orchestration y Totebox Archive son
+      marcas comerciales propiedad de Woodfine Capital Projects Inc.
