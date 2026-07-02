@@ -65,12 +65,15 @@ pub fn page_shell(title: &str, active_path: &str, content: &str, state: &AppStat
         <p class="bim-footer__heading">Platform</p>
         <ul class="bim-footer__list">
           <li>Open-source &middot; Apache-2.0</li>
-          <li>Powered by <strong>PointSav Digital Systems</strong></li>
+          <li>Powered by <strong>PointSav Digital Systems&trade;</strong></li>
           <li><a href="https://pointsav.com">pointsav.com</a></li>
         </ul>
       </div>
     </div>
-    <div class="bim-footer__base">&copy; 2026 Woodfine Capital Projects Inc. &middot; {public_url}</div>
+    <div class="bim-footer__base">
+      <p>Copyright &copy; 2026 Woodfine Capital Projects Inc. See LICENSE for terms. &middot; {public_url}</p>
+      <p class="bim-footer__trademark">Woodfine Capital Projects&trade;, Woodfine Management Corp&trade;, PointSav Digital Systems&trade;, Totebox Orchestration&trade;, Totebox Archive&trade;, and Capability Geometry&trade; are trademarks of Woodfine Capital Projects Inc., used in Canada, the United States, Latin America, and Europe. Capability Geometry&trade; is an unregistered trademark of Woodfine Capital Projects Inc. All other trademarks are the property of their respective owners.</p>
+    </div>
   </footer>
 </body>
 </html>"#,
