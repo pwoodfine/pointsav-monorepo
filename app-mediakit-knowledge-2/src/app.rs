@@ -8,7 +8,7 @@
 use std::sync::Arc;
 
 use axum::body::Body;
-use axum::extract::{Path, State};
+use axum::extract::{Path, Query, State};
 use axum::http::{header, StatusCode};
 use axum::response::{Html, IntoResponse, Response};
 use axum::routing::get;
@@ -17,6 +17,7 @@ use axum::Router;
 use crate::assets::StaticAssets;
 use crate::config::Config;
 use crate::content::{self, ContentIndex, Lang, MountSet};
+use crate::search::SearchIndex;
 use crate::ui::{self, Tenant};
 
 /// Shared, immutable-after-startup application state.
@@ -25,6 +26,7 @@ pub struct AppState {
     pub config: Arc<Config>,
     pub mounts: Arc<MountSet>,
     pub index: Arc<ContentIndex>,
+    pub search: Arc<SearchIndex>,
     pub tenant: Tenant,
 }
 
@@ -35,10 +37,12 @@ impl AppState {
         let index = ContentIndex::build(&mounts);
         let tenant = Tenant::from_instance(config.site.instance.as_deref());
         tracing::info!("indexed {} article(s)", index.article_count());
+        let search = SearchIndex::build(&index).expect("build search index");
         Self {
             config: Arc::new(config),
             mounts: Arc::new(mounts),
             index: Arc::new(index),
+            search: Arc::new(search),
             tenant,
         }
     }
@@ -52,6 +56,7 @@ pub fn router(state: AppState) -> Router {
         .route("/health", get(healthz))
         .route("/wiki/{*slug}", get(wiki_raw))
         .route("/category/{name}", get(category_page))
+        .route("/search", get(search_page))
         .route("/static/syntax.css", get(syntax_css_handler))
         .route("/static/{*path}", get(static_asset))
         .with_state(state)
@@ -178,6 +183,40 @@ async fn category_page(State(state): State<AppState>, Path(name): Path<String>) 
     let description = format!("Articles in the {label} area.");
     let body = ui::category_index(&label, &docs);
     let head = ui::doc_head(&label, &description, tenant);
+    Html(ui::page(tenant, "en", head, body, &nav_cats(&state), &[]).into_string()).into_response()
+}
+
+#[derive(serde::Deserialize)]
+struct SearchQuery {
+    q: Option<String>,
+}
+
+/// Full-text search results. The query hits title + body (tantivy); each result
+/// carries the same title + description shown on category/guide cards.
+async fn search_page(State(state): State<AppState>, Query(params): Query<SearchQuery>) -> Response {
+    let tenant = state.tenant;
+    let q = params.q.unwrap_or_default();
+    let results: Vec<(String, String, String)> = state
+        .search
+        .query(&q, 30)
+        .into_iter()
+        .filter_map(|slug| {
+            state.index.resolve(&slug, Lang::En).map(|d| {
+                (
+                    d.slug.clone(),
+                    d.title.clone(),
+                    d.short_description.clone().unwrap_or_default(),
+                )
+            })
+        })
+        .collect();
+    let body = ui::search_results(&q, &results);
+    let desc = if q.trim().is_empty() {
+        String::new()
+    } else {
+        format!("Search results for \u{201c}{}\u{201d}", q.trim())
+    };
+    let head = ui::doc_head("Search", &desc, tenant);
     Html(ui::page(tenant, "en", head, body, &nav_cats(&state), &[]).into_string()).into_response()
 }
 
