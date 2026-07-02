@@ -28,6 +28,9 @@ pub struct AppState {
     pub mounts: Arc<MountSet>,
     pub index: Arc<ContentIndex>,
     pub search: Arc<SearchIndex>,
+    /// Rendered HTML of `important-information.md` from the content repo (counsel-
+    /// owned via Git), for the Important Information band. `None` → tenant default.
+    pub important_info: Arc<Option<String>>,
     pub tenant: Tenant,
 }
 
@@ -39,11 +42,18 @@ impl AppState {
         let tenant = Tenant::from_instance(config.site.instance.as_deref());
         tracing::info!("indexed {} article(s)", index.article_count());
         let search = SearchIndex::build(&index).expect("build search index");
+        // Load the counsel-owned Important Information text from the content repo.
+        let important_info = mounts.mounts.first().and_then(|m| {
+            std::fs::read_to_string(m.path.join("important-information.md"))
+                .ok()
+                .map(|text| content::render(&content::parse(&text).body_md).html)
+        });
         Self {
             config: Arc::new(config),
             mounts: Arc::new(mounts),
             index: Arc::new(index),
             search: Arc::new(search),
+            important_info: Arc::new(important_info),
             tenant,
         }
     }
@@ -166,7 +176,7 @@ async fn home(State(state): State<AppState>) -> Response {
     let nav: Vec<(String, String)> = cats.iter().map(|(s, l, _)| (s.clone(), l.clone())).collect();
     let body = ui::home_page(tenant, &lede, total, &cats, &guides);
     let head = ui::doc_head(tenant.home_label(), &description, tenant);
-    Html(ui::page(tenant, "en", head, body, &nav, &[], "").into_string()).into_response()
+    Html(ui::page(tenant, "en", head, body, &nav, &[], "", state.important_info.as_deref()).into_string()).into_response()
 }
 
 /// Category listing page — every article in one category.
@@ -191,7 +201,7 @@ async fn category_page(State(state): State<AppState>, Path(name): Path<String>) 
     let description = format!("Articles in the {label} area.");
     let body = ui::category_index(&label, &docs);
     let head = ui::doc_head(&label, &description, tenant);
-    Html(ui::page(tenant, "en", head, body, &nav_cats(&state), &[], "").into_string()).into_response()
+    Html(ui::page(tenant, "en", head, body, &nav_cats(&state), &[], "", state.important_info.as_deref()).into_string()).into_response()
 }
 
 #[derive(serde::Deserialize)]
@@ -225,7 +235,7 @@ async fn search_page(State(state): State<AppState>, Query(params): Query<SearchQ
         format!("Search results for \u{201c}{}\u{201d}", q.trim())
     };
     let head = ui::doc_head("Search", &desc, tenant);
-    Html(ui::page(tenant, "en", head, body, &nav_cats(&state), &[], &q).into_string()).into_response()
+    Html(ui::page(tenant, "en", head, body, &nav_cats(&state), &[], &q, state.important_info.as_deref()).into_string()).into_response()
 }
 
 #[derive(serde::Deserialize)]
@@ -259,7 +269,7 @@ async fn history_page(
             &format!("Changes to {} in revision {}", doc.title, diff.short_sha),
             tenant,
         );
-        return Html(ui::page(tenant, "en", head, body, &nav_cats(&state), &[], "").into_string())
+        return Html(ui::page(tenant, "en", head, body, &nav_cats(&state), &[], "", state.important_info.as_deref()).into_string())
             .into_response();
     }
 
@@ -270,7 +280,7 @@ async fn history_page(
         &format!("Revision history of {}", doc.title),
         tenant,
     );
-    Html(ui::page(tenant, "en", head, body, &nav_cats(&state), &[], "").into_string()).into_response()
+    Html(ui::page(tenant, "en", head, body, &nav_cats(&state), &[], "", state.important_info.as_deref()).into_string()).into_response()
 }
 
 /// "Index of record" — every article A–Z (the auditor's completeness check).
@@ -294,7 +304,7 @@ async fn special_all_pages(State(state): State<AppState>) -> Response {
         "A–Z index of every record in the registry.",
         tenant,
     );
-    Html(ui::page(tenant, "en", head, body, &nav_cats(&state), &[], "").into_string()).into_response()
+    Html(ui::page(tenant, "en", head, body, &nav_cats(&state), &[], "", state.important_info.as_deref()).into_string()).into_response()
 }
 
 /// "Recent changes" — records most recently updated (the site-wide delta view).
@@ -315,7 +325,7 @@ async fn special_recent(State(state): State<AppState>) -> Response {
         .collect();
     let body = ui::special_list("Recent changes", "Recent changes", &items);
     let head = ui::doc_head("Recent changes", "Records most recently updated.", tenant);
-    Html(ui::page(tenant, "en", head, body, &nav_cats(&state), &[], "").into_string()).into_response()
+    Html(ui::page(tenant, "en", head, body, &nav_cats(&state), &[], "", state.important_info.as_deref()).into_string()).into_response()
 }
 
 // --- Discovery surfaces (robots / sitemap / feeds / llms.txt) ---------------
@@ -389,7 +399,7 @@ async fn wiki_raw(State(state): State<AppState>, Path(slug): Path<String>) -> Re
         &rendered.html,
     );
     let head = ui::doc_head(&title, &description, tenant);
-    Html(ui::page(tenant, "en", head, body, &nav_cats(&state), &rendered.headings, "").into_string())
+    Html(ui::page(tenant, "en", head, body, &nav_cats(&state), &rendered.headings, "", state.important_info.as_deref()).into_string())
         .into_response()
 }
 

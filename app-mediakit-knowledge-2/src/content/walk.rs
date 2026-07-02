@@ -136,6 +136,10 @@ fn is_content_file(name: &str) -> bool {
     if name == "_index.md" || name == "_index.es.md" {
         return false;
     }
+    // Chrome content, not an article: rendered into the Important Information band.
+    if name == "important-information.md" || name == "important-information.es.md" {
+        return false;
+    }
     // Exclude repo governance files that are not wiki content.
     const EXCLUDE: &[&str] = &[
         "README.md",

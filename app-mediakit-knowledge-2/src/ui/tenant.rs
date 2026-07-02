@@ -93,6 +93,11 @@ impl Tenant {
         matches!(self, Tenant::Projects | Tenant::Corporate)
     }
 
+    /// Persistent one-line disclaimer for the footer base row (always visible).
+    pub fn disclaimer_line(&self) -> &'static str {
+        "Provided for information only — not an offer, solicitation, or advice. See Important Information."
+    }
+
     /// Registered seat of the maintaining entity.
     pub fn seat(&self) -> &'static str {
         match self {

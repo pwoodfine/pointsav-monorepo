@@ -605,6 +605,59 @@ button:disabled { cursor: default; }
   line-height: var(--k-leading-snug);
   max-width: 70ch;
 }
+.k-footer__disclaimer {
+  margin: var(--k-space-3) 0 0;
+  color: var(--k-ink-muted);
+  font-size: var(--k-text-xs);
+  max-width: 72ch;
+}
+
+/* --- Important Information band (above the footer) ------------------------- */
+.k-compliance {
+  border-top: 1px solid var(--k-border-subtle);
+  background: var(--k-surface-sunken);
+}
+.k-compliance__details {
+  width: 100%;
+  padding: var(--k-space-3) var(--k-gutter);
+}
+.k-compliance__summary {
+  display: flex;
+  align-items: center;
+  gap: var(--k-space-2);
+  cursor: pointer;
+  list-style: none;
+  font-family: var(--k-font-sans);
+  font-size: var(--k-text-sm);
+  font-weight: var(--k-weight-semibold);
+  letter-spacing: var(--k-tracking-caps);
+  text-transform: uppercase;
+  color: var(--k-ink-secondary);
+}
+.k-compliance__summary::-webkit-details-marker { display: none; }
+.k-compliance__summary::before {
+  content: "";
+  width: 0.45em;
+  height: 0.45em;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform var(--k-motion-fast) var(--k-ease);
+}
+.k-compliance__details[open] .k-compliance__summary::before { transform: rotate(45deg); }
+.k-compliance__body {
+  margin-top: var(--k-space-3);
+  max-width: var(--k-prose-measure);
+  font-size: var(--k-text-sm);
+  color: var(--k-ink-muted);
+}
+.k-compliance__body p { margin: 0 0 var(--k-space-2); }
+
+@media print {
+  /* The record copy carries the full disclaimer, expanded. */
+  .k-compliance__body { display: block !important; }
+  .k-compliance__summary::before { display: none; }
+}
 .k-footer__cities {
   display: flex;
   align-items: center;

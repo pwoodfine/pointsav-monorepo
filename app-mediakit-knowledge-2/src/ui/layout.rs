@@ -283,6 +283,8 @@ pub fn footer(tenant: Tenant) -> Markup {
                         }
                     }
                 }
+                // Persistent one-line disclaimer (always visible; the band expands it).
+                p."k-footer__disclaimer" { (tenant.disclaimer_line()) }
                 // Trademark notice — verbatim from canonical TRADEMARK.md. The marks
                 // are reserved independently of the CC BY 4.0 content licence, so no
                 // blanket "all rights reserved" (content is openly licensed).
@@ -618,7 +620,39 @@ fn sidebar(tenant: Tenant, cats: &[(String, String)], toc: &[Heading]) -> Markup
     }
 }
 
-/// The full document as one balanced tree. `cats` drives the sidebar nav.
+/// The "Important Information" band above the footer (native `<details>`, no JS).
+/// Content is the counsel-owned `important-information.md` when present, else a
+/// safe tenant default; forced open in print so the record copy carries it.
+fn compliance_band(tenant: Tenant, important_info: Option<&str>) -> Markup {
+    html! {
+        section."k-compliance" aria-label="Important information" {
+            details."k-compliance__details" {
+                summary."k-compliance__summary" { "Important Information" }
+                div."k-compliance__body k-prose" {
+                    @if let Some(html) = important_info {
+                        (PreEscaped(html))
+                    } @else {
+                        p {
+                            "This site presents records maintained by " (tenant.issuer())
+                            ". The information is provided for general information only and does not "
+                            "constitute an offer to sell, a solicitation of an offer to buy, or "
+                            "investment, legal, tax, or accounting advice. Statements regarding "
+                            "planned, intended, or targeted future activities are forward-looking and "
+                            "subject to change without notice; they are not undertaken to be updated "
+                            "except as required by law."
+                        }
+                    }
+                    p."k-compliance__more" {
+                        a href="/wiki/disclaimers" { "Read the full disclaimer \u{2192}" }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// The full document as one balanced tree. `cats` drives the sidebar nav;
+/// `disclaimer` is the Important Information band content (None → tenant default).
 pub fn page(
     tenant: Tenant,
     lang: &str,
@@ -627,6 +661,7 @@ pub fn page(
     cats: &[(String, String)],
     toc: &[Heading],
     query: &str,
+    disclaimer: Option<&str>,
 ) -> Markup {
     html! {
         (DOCTYPE)
@@ -642,6 +677,7 @@ pub fn page(
                         (sidebar(tenant, cats, toc))
                         main."k-page__body" #"k-main" tabindex="-1" { (body) }
                     }
+                    (compliance_band(tenant, disclaimer))
                     (footer(tenant))
                 }
                 script src="/static/app.js" defer {}
