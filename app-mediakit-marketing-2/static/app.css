@@ -664,6 +664,24 @@ html:not(.js) .m-drawer-scrim {
   color: var(--m-ink-on-footer);
 }
 
+/* Force the "Important information" accordion open when printing (project-
+   knowledge relay, 2026-07-02) -- an auditor/printer gets the full
+   disclosure expanded on the paper copy even if it was collapsed on
+   screen. NOTE: a pure-CSS `display` override on the non-summary children
+   does NOT actually work for this -- tested directly (Chromium): the
+   children report `display: block` and a real intrinsic height, but the
+   parent <details> box does not grow to include them while the `open`
+   boolean attribute is absent, because the collapse behavior lives in an
+   internal UA rendering path CSS `display` on the children doesn't reach.
+   The `[open]` attribute has to actually be set, which app.js does via
+   beforeprint/afterprint -- this rule only hides the (now-meaningless)
+   toggle arrow while printing. */
+@media print {
+  .m-footer__disclosure-summary::after {
+    content: "";
+  }
+}
+
 .m-footer__base {
   max-width: var(--m-container-max);
   margin-inline: auto;
@@ -683,6 +701,18 @@ html:not(.js) .m-drawer-scrim {
   font-size: var(--m-footer-legal-size);
   color: var(--m-footer-ink-muted);
   margin: 0 0 var(--m-space-1);
+}
+/* Persistent one-line disclaimer (project-knowledge relay, 2026-07-02,
+   "Apollo Academy" pattern) — always visible whether the accordion above
+   is open or collapsed, so a screenshot/print is never bare of any
+   disclosure at all. Same muted legal-text styling as copyright/trademark
+   either side of it. */
+.m-footer__notice {
+  font-size: var(--m-footer-legal-size);
+  color: var(--m-footer-ink-muted);
+  max-width: var(--m-prose-max);
+  margin: 0 0 var(--m-space-1);
+  font-style: italic;
 }
 .m-footer__trademark {
   font-size: var(--m-footer-legal-size);

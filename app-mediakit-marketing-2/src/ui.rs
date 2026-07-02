@@ -503,6 +503,23 @@ fn footer(tenant: &Tenant, lang: &str) -> Markup {
                         // (flagged 2026-07-02, reconciled in favor of TRADEMARK.md).
                         "\u{00a9} 2026 " (tenant.copyright_holder) " " (t(lang, "All rights reserved.", "Todos los derechos reservados."))
                     }
+                    // Persistent one-line disclaimer — always visible regardless of
+                    // whether the "Important information" accordion above is open or
+                    // collapsed, so a screenshot or print of the page is never bare
+                    // of any disclosure at all. Same wording register the sibling
+                    // knowledge wikis already ship (project-knowledge relay,
+                    // 2026-07-02, "Apollo Academy" pattern) — one legal voice across
+                    // the site family. Only rendered if there's an accordion above to
+                    // point to.
+                    @if !tenant.disclosure_slots.is_empty() {
+                        p.m-footer__notice {
+                            (t(
+                                lang,
+                                "Provided for information only — not an offer, solicitation, or advice. See Important information above.",
+                                "Proporcionado únicamente con fines informativos — no constituye una oferta, solicitud ni asesoramiento. Consulte Información importante arriba.",
+                            ))
+                        }
+                    }
                     // Trademark line: same pending-professional-translation note as the
                     // disclosure slots above — verbatim legal text, not machine-localized.
                     p.m-footer__trademark { (tenant.trademark_line) }

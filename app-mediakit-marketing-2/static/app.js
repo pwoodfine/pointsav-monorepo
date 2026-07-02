@@ -51,4 +51,32 @@
       closeDrawer();
     }
   });
+
+  // Force the footer "Important information" <details> open for printing
+  // (project-knowledge relay, 2026-07-02) -- an auditor/printer gets the
+  // full disclosure expanded on the paper copy even if it was collapsed on
+  // screen. A pure-CSS attempt at this does not work (tested: the parent
+  // <details> box does not grow to include its children's content while
+  // the `open` boolean attribute is absent -- see app.css comment), so the
+  // attribute itself has to be toggled. Progressive enhancement: with JS
+  // off, the accordion just prints in whatever state it's already in
+  // (still fully present in the HTML, per the accordion's own no-JS-read
+  // design) -- print output degrades to "as shown," not "missing."
+  var printDisclosures = document.querySelectorAll(".m-footer__disclosure");
+  var reopenAfterPrint = [];
+  window.addEventListener("beforeprint", function () {
+    reopenAfterPrint = [];
+    printDisclosures.forEach(function (el) {
+      if (!el.open) {
+        el.open = true;
+        reopenAfterPrint.push(el);
+      }
+    });
+  });
+  window.addEventListener("afterprint", function () {
+    reopenAfterPrint.forEach(function (el) {
+      el.open = false;
+    });
+    reopenAfterPrint = [];
+  });
 })();
