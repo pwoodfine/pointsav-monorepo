@@ -78,7 +78,7 @@ LORA_R = 16
 LORA_ALPHA = 8
 LORA_DROPOUT = 0.05
 LORA_TARGET_MODULES = ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
-MAX_LENGTH = 512    # float16 + LoRA; 512 safely fits L4 24GB; raise to 1024 after first pass
+MAX_LENGTH = 2048   # matches export-sft.py's own _MAX_SEGMENT_CHARS=8000 (~2000 tokens) assumption
 BATCH_SIZE = 1      # OOM at bs=2 on L4 with OLMo-3-7B-Instruct 4-bit; effective=GRAD_ACCUM*1
 GRAD_ACCUM = 8      # effective batch size = 8
 # SFT-LoRA wants a hotter LR than full fine-tune or DPO. 2e-5 is a full-FT default and
@@ -311,8 +311,60 @@ def run_training(records: list[dict], base_model: str, output_dir: str,
         bias="none",
     )
 
+    # Fail-closed truncation pre-check: if the majority of formatted texts exceed the
+    # sequence cap, training learns on silently-truncated targets. Mirrors the identical
+    # check in run-dpo-training.py. Override with SLM_ALLOW_TRUNCATION=1 when intentionally
+    # training a length-capped pass.
+    _text_est_tokens = sorted(len(r["text"]) // 4 for r in records)
+    if _text_est_tokens:
+        _p50 = _text_est_tokens[len(_text_est_tokens) // 2]
+        _over = sum(1 for t in _text_est_tokens if t > MAX_LENGTH)
+        _pct_over = _over / len(_text_est_tokens)
+        print(f"[train] truncation check: max_length={MAX_LENGTH}, text est-tokens "
+              f"p50={_p50}, over-cap={_over}/{len(_text_est_tokens)} ({_pct_over:.0%})")
+        if _p50 > MAX_LENGTH or _pct_over > 0.5:
+            _allow = os.environ.get("SLM_ALLOW_TRUNCATION", "").lower() in ("1", "true")
+            print(
+                f"[ERROR] {_pct_over:.0%} of records exceed max_length={MAX_LENGTH} "
+                f"(p50 est-tokens={_p50}). Training would learn on truncated targets.\n"
+                f"        Fix: raise MAX_LENGTH, curate the corpus to fit, or set\n"
+                f"        SLM_ALLOW_TRUNCATION=1 to override. Aborting.",
+                file=sys.stderr,
+            )
+            if not _allow:
+                sys.exit(1)
+            print("[WARN] SLM_ALLOW_TRUNCATION set — proceeding despite truncation", file=sys.stderr)
+
     dataset = Dataset.from_list([{"text": r["text"]} for r in records])
-    split = dataset.train_test_split(test_size=0.1, seed=42)
+
+    # Cap the eval split to ~64 rows instead of a flat 10% — a full held-out eval on every
+    # eval_strategy="epoch" firing should stay fast. --sft-input records carry no _task_type
+    # metadata (that only exists on the production load_sft_pairs/load_engineering_pairs
+    # path), so this is a deterministic-seed uniform subsample here; true stratification by
+    # _task_type applies only when that field is present.
+    _eval_n = min(64, max(1, len(dataset) // 10))
+    if records and "_task_type" in records[0]:
+        # Round-robin pick from _task_type buckets up to _eval_n total.
+        _buckets: dict[str, list[int]] = {}
+        for i, r in enumerate(records):
+            _buckets.setdefault(r.get("_task_type", ""), []).append(i)
+        _eval_indices: list[int] = []
+        _bucket_iters = {k: iter(v) for k, v in _buckets.items()}
+        while len(_eval_indices) < _eval_n and _bucket_iters:
+            for k in list(_bucket_iters.keys()):
+                try:
+                    _eval_indices.append(next(_bucket_iters[k]))
+                except StopIteration:
+                    del _bucket_iters[k]
+                if len(_eval_indices) >= _eval_n:
+                    break
+        _eval_set = set(_eval_indices)
+        split = {
+            "train": dataset.select([i for i in range(len(dataset)) if i not in _eval_set]),
+            "test": dataset.select(sorted(_eval_set)),
+        }
+    else:
+        split = dataset.train_test_split(test_size=_eval_n, seed=42)
 
     class RuntimeCapCallback(TrainerCallback):
         def __init__(self, max_secs: int, out_dir: str):
@@ -343,14 +395,19 @@ def run_training(records: list[dict], base_model: str, output_dir: str,
         # max_seq_length moved out of SFTConfig in TRL 1.x — set on tokenizer instead.
         dataset_text_field="text",
         logging_steps=5,
-        save_steps=5,
+        save_steps=25,
         save_total_limit=2,
-        eval_strategy="steps",
-        eval_steps=5,
+        # eval_strategy="epoch" (not "steps"/eval_steps=5): a full held-out eval every 5
+        # optimizer steps dominated the training window under RuntimeCapCallback's forced
+        # stop — Run 14-17 completed only ~21 of ~743 expected steps/epoch as a result.
+        # With NUM_EPOCHS=1 this fires exactly once, at the natural end of training; a
+        # capped smoke run that gets stopped early does zero evals, which is correct — the
+        # smoke run's job is "did training run," deploy-gate.sh verifies quality.
+        eval_strategy="epoch",
         report_to="none",
         bf16=torch.cuda.is_available(),
         remove_unused_columns=False,
-        packing=False,
+        packing=True,
     )
 
     trainer = SFTTrainer(
