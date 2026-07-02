@@ -9,6 +9,7 @@
 use maud::{html, Markup, PreEscaped, DOCTYPE};
 
 use super::tenant::Tenant;
+use crate::content::render::Heading;
 
 /// "article" / "articles" for a count.
 fn count_word(n: usize) -> &'static str {
@@ -440,7 +441,7 @@ pub fn category_index(label: &str, docs: &[(String, String, String)]) -> Markup 
 /// The left navigation column (Wikipedia Vector 2022 pattern): Main page,
 /// Browse-by-area, Guides. Sticky on desktop; hidden below the tablet breakpoint
 /// where the off-canvas drawer covers navigation. `cats` is `(slug, label)`.
-fn sidebar(tenant: Tenant, cats: &[(String, String)]) -> Markup {
+fn sidebar(tenant: Tenant, cats: &[(String, String)], toc: &[Heading]) -> Markup {
     let _ = tenant;
     html! {
         aside."k-sidebar" aria-label="Site navigation" {
@@ -462,6 +463,19 @@ fn sidebar(tenant: Tenant, cats: &[(String, String)]) -> Markup {
                         li { a."k-sidenav__link" href="/category/how-to" { "How-to guides" } }
                     }
                 }
+                // Article table of contents (present only on pages with headings).
+                @if !toc.is_empty() {
+                    nav."k-sidenav__group k-toc" aria-label="Contents" {
+                        h2."k-sidenav__heading" { "Contents" }
+                        ul."k-toc__list" {
+                            @for h in toc {
+                                li."k-toc__item"."k-toc__item--sub"[h.level == 3] {
+                                    a."k-toc__link" href={ "#" (h.id) } { (h.text) }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -474,6 +488,7 @@ pub fn page(
     head: Markup,
     body: Markup,
     cats: &[(String, String)],
+    toc: &[Heading],
 ) -> Markup {
     html! {
         (DOCTYPE)
@@ -486,7 +501,7 @@ pub fn page(
                     (utility_bar(tenant))
                     (header(tenant, lang))
                     div."k-shell" {
-                        (sidebar(tenant, cats))
+                        (sidebar(tenant, cats, toc))
                         main."k-page__body" #"k-main" tabindex="-1" { (body) }
                     }
                     (footer(tenant))
