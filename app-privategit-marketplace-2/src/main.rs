@@ -131,6 +131,41 @@ fn receipt_path(receipts_dir: &std::path::Path, tx_hash: &str) -> PathBuf {
         .join(format!("{tx_hash}.json"))
 }
 
+/// Marker path for [`flag_if_first_live_transaction`] — deliberately at the
+/// receipts-dir root, not inside a year/month subdirectory, so it survives
+/// month rollover and is trivially findable.
+fn first_live_transaction_marker_path(receipts_dir: &std::path::Path) -> PathBuf {
+    receipts_dir.join(".first-live-transaction-marker.json")
+}
+
+/// Checkpoint 3b (real on-chain confirmation) could not run before this crate
+/// went live — operator decision 2026-07-02, given real-transaction testing
+/// isn't feasible for some time and the site needs to launch. In place of a
+/// pre-launch gate, this flags the FIRST real (subprocess-confirmed, not
+/// receipt-cache-replayed) transaction distinctly, so the operator can review
+/// that one transaction closely after the fact rather than blind. Purely
+/// observational — never affects the response, never blocks or slows the
+/// request, and does nothing after the first transaction (every subsequent
+/// one is silent).
+fn flag_if_first_live_transaction(receipts_dir: &std::path::Path, receipt: &LicenseReceipt) {
+    let marker = first_live_transaction_marker_path(receipts_dir);
+    if marker.exists() {
+        return;
+    }
+    if let Ok(raw) = serde_json::to_string_pretty(receipt) {
+        let _ = fs::write(&marker, raw);
+    }
+    tracing::warn!(
+        tx_hash = %receipt.tx_hash,
+        product_id = %receipt.product_id,
+        license_key = %receipt.license_key,
+        confirmed_at = %receipt.confirmed_at,
+        "FIRST-LIVE-TRANSACTION: the first real on-chain payment has been confirmed through \
+         this crate. Checkpoint 3b was deferred at launch (2026-07-02) -- review this specific \
+         transaction and receipt now to close it out."
+    );
+}
+
 /// Convert a dollars-denominated USDC amount (as reported by `tool-wallet check`'s
 /// `amount_usdc` float) into integer micro-USDC base units (6 decimals).
 /// Correct for whole-dollar amounts ($1.00 → 1_000_000), but **lossy for many
@@ -511,6 +546,8 @@ async fn v1_license(
             if let Ok(raw) = serde_json::to_string_pretty(&receipt) {
                 let _ = fs::write(&rpath, raw);
             }
+
+            flag_if_first_live_transaction(&state.receipts_dir, &receipt);
 
             confirmed_response(&license_key, &product_id, &confirmed_at, &customer_ref)
         }
@@ -998,6 +1035,56 @@ licenses:
             serde_json::from_str(&fs::read_to_string(&rpath).unwrap()).unwrap();
         assert_eq!(written.product_id, "apache");
         assert_eq!(written.price_usdc, 1_000_000); // micro-USDC, not dollars
+
+        let _ = fs::remove_dir_all(&scratch);
+    }
+
+    // Checkpoint 3b deferral (operator decision 2026-07-02): the first real transaction
+    // through this crate must be flagged distinctly for after-the-fact manual review.
+    #[tokio::test]
+    async fn first_real_confirmation_writes_marker_second_does_not() {
+        let scratch = scratch_dir("firstlive");
+        let double = write_tool_wallet_double(&scratch);
+        let state = test_state(&scratch, double.to_string_lossy().into_owned());
+
+        let marker = first_live_transaction_marker_path(&state.receipts_dir);
+        assert!(!marker.exists(), "no marker before any transaction");
+
+        // First confirmed transaction -> marker written.
+        let (status, _) = v1_license(
+            State(state.clone()),
+            Path("0xconfirmedpayment01".to_string()),
+        )
+        .await;
+        assert_eq!(status, StatusCode::OK);
+        assert!(
+            marker.exists(),
+            "marker must exist after the first confirmation"
+        );
+        let recorded: LicenseReceipt =
+            serde_json::from_str(&fs::read_to_string(&marker).unwrap()).unwrap();
+        assert_eq!(recorded.tx_hash, "0xconfirmedpayment01");
+        let first_marker_mtime = fs::metadata(&marker).unwrap().modified().unwrap();
+
+        // A second, DIFFERENT confirmed transaction must NOT overwrite the marker --
+        // it stays pointing at the first one.
+        let (status2, _) = v1_license(
+            State(state.clone()),
+            Path("0xconfirmedpayment19".to_string()),
+        )
+        .await;
+        assert_eq!(status2, StatusCode::OK);
+        let still_recorded: LicenseReceipt =
+            serde_json::from_str(&fs::read_to_string(&marker).unwrap()).unwrap();
+        assert_eq!(
+            still_recorded.tx_hash, "0xconfirmedpayment01",
+            "marker must still point at the FIRST transaction, not be overwritten by the second"
+        );
+        assert_eq!(
+            fs::metadata(&marker).unwrap().modified().unwrap(),
+            first_marker_mtime,
+            "marker file must not be rewritten on the second transaction"
+        );
 
         let _ = fs::remove_dir_all(&scratch);
     }
