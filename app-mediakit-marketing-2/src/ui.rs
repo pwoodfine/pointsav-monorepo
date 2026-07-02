@@ -443,13 +443,40 @@ fn is_external(href: &str) -> bool {
     href.starts_with("http://") || href.starts_with("https://")
 }
 
+fn is_github(href: &str) -> bool {
+    href.contains("github.com")
+}
+
+/// Minimal GitHub mark (the widely-used open-source "octocat" glyph) —
+/// decorative only, `aria-hidden` since the button label already says
+/// "Manifest"/"Source". Added 2026-07-02 so GitHub-bound buttons are
+/// recognizable at a glance instead of reading identically to every other
+/// button-row link.
+fn github_icon() -> Markup {
+    html! {
+        svg.m-card__github-icon viewBox="0 0 16 16" aria-hidden="true" {
+            path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 \
+                0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 \
+                1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 \
+                0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 \
+                1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 \
+                3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 \
+                8.013 0 0016 8c0-4.42-3.58-8-8-8z";
+        }
+    }
+}
+
 /// Renders a link consistently with the masthead/drawer convention: external
 /// links get `target=_blank rel=noopener` plus an "(opens in new tab)"
-/// aria-label suffix; internal links are plain.
+/// aria-label suffix; internal links are plain. GitHub-bound links also get
+/// the octocat mark ahead of the label.
 fn card_link(href: &str, label: &str) -> Markup {
     html! {
         @if is_external(href) {
             a href=(href) target="_blank" rel="noopener" aria-label={ (label) " (opens in new tab)" } {
+                @if is_github(href) {
+                    (github_icon())
+                }
                 (label)
                 span.m-card__link-glyph aria-hidden="true" { "\u{2197}" }
             }
@@ -476,6 +503,18 @@ fn card_grid(columns: u8, cards: &[crate::content::Card], style: Option<&str>) -
                     (false, false) => "m-card",
                 };
                 div class=(card_class) {
+                    @if linked && !is_buttons {
+                        // Cross-site handoff kicker — see .m-card--linked in
+                        // app.css for why this card is styled to stand out
+                        // rather than blend in with the seven around it.
+                        p.m-card__kicker {
+                            svg.m-card__kicker-icon viewBox="0 0 24 24" aria-hidden="true" {
+                                path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"
+                                    d="M9 3H4a1 1 0 00-1 1v16a1 1 0 001 1h16a1 1 0 001-1v-5M14 3h7v7M21 3l-9 9";
+                            }
+                            "Also part of the family"
+                        }
+                    }
                     h2.m-card__title {
                         @if let Some(href) = &card.href {
                             (card_link(href, &card.title))

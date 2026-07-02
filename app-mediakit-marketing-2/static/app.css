@@ -305,24 +305,44 @@ html:not(.js) .m-drawer-scrim {
   margin: 0;
 }
 
-/* Linked informational card (e.g. the cross-site "Digital Systems" card) —
-   same card shape, tinted background + a visible ↗ glyph so it doesn't read
-   identically to the seven non-clickable cards next to it. */
+/* Cross-site handoff card (e.g. Woodfine's "Digital Systems" card pointing
+   at home.pointsav.com, or PointSav's "Real Property Infrastructure" card
+   pointing at home.woodfinegroup.com) — deliberately NOT styled like the
+   other cards in the grid, always-on filled navy + white text + a sibling
+   icon + kicker label, so it reads as "you are about to leave this site"
+   rather than as one more card among the seven around it (operator
+   feedback 2026-07-02: prior tinted-background/hover-only treatment "did
+   something different" too subtly). */
 .m-card--linked {
-  background: var(--m-card-linked-bg);
+  background: var(--m-navy-700);
   border: var(--m-card-linked-border);
   border-top: var(--m-card-rule);
-  transition: background var(--m-dur-base) var(--m-ease-standard);
+}
+.m-card--linked .m-card__kicker {
+  display: flex;
+  align-items: center;
+  gap: var(--m-space-2);
+  font-family: var(--m-font-sans);
+  font-weight: var(--m-weight-bold);
+  font-size: var(--m-text-2xs, 0.6875rem);
+  text-transform: uppercase;
+  letter-spacing: var(--m-label-tracking);
+  color: var(--m-slate-300);
+  margin: 0 0 var(--m-space-2);
+}
+.m-card--linked .m-card__kicker-icon {
+  display: block;
+  width: 1.1em;
+  height: 1.1em;
+  flex: none;
+}
+.m-card--linked .m-card__title,
+.m-card--linked .m-card__body {
+  color: var(--m-white);
 }
 .m-card--linked:hover,
 .m-card--linked:focus-within {
-  background: var(--m-navy-700);
-}
-.m-card--linked:hover .m-card__title,
-.m-card--linked:focus-within .m-card__title,
-.m-card--linked:hover .m-card__body,
-.m-card--linked:focus-within .m-card__body {
-  color: var(--m-white);
+  background: var(--m-navy-900, #0d2c4d);
 }
 .m-card__link-glyph {
   display: inline-block;
@@ -358,9 +378,19 @@ html:not(.js) .m-drawer-scrim {
 }
 .m-card--button .m-card__title a {
   color: var(--m-button-card-ink);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
 }
 .m-card--button .m-card__link-glyph {
   color: var(--m-button-card-ink);
+}
+.m-card__github-icon {
+  display: block;
+  width: 1.1em;
+  height: 1.1em;
+  flex: none;
+  fill: currentColor;
 }
 
 /* ==========================================================================
