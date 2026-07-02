@@ -480,7 +480,7 @@ async fn wiki_raw(
             return not_found(&state, &format!("No such revision: {rev}."));
         };
         let parsed = content::parse(&text);
-        let rendered = content::render(&parsed.body_md);
+        let rendered = content::render_doc(&parsed);
         let title = parsed
             .frontmatter
             .title
@@ -512,7 +512,7 @@ async fn wiki_raw(
             return (StatusCode::INTERNAL_SERVER_ERROR, format!("read error: {e}")).into_response()
         }
     };
-    let rendered = content::render(&parsed.body_md);
+    let rendered = content::render_doc(&parsed);
     let title = parsed
         .frontmatter
         .title

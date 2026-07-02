@@ -133,6 +133,26 @@
 
 /* Emphasis */
 .k-prose strong { font-weight: var(--k-weight-bold); color: var(--k-ink); }
+
+/* --- References (footnotes synthesized from `references:` frontmatter) ------ */
+.k-prose .footnotes {
+  margin-top: var(--k-space-7);
+  padding-top: var(--k-space-4);
+  border-top: 1px solid var(--k-heading-rule);
+  font-size: var(--k-text-sm);
+  color: var(--k-ink-secondary);
+}
+.k-prose .footnotes::before {
+  content: "References";
+  display: block;
+  font-family: var(--k-title-font);
+  font-size: var(--k-text-lg);
+  font-weight: var(--k-weight-bold);
+  color: var(--k-ink);
+  margin-bottom: var(--k-space-3);
+}
+.k-prose .footnotes ol { margin: 0; padding-left: var(--k-space-5); }
+.k-prose .footnotes li { margin-bottom: var(--k-space-2); }
 .k-prose em { font-style: italic; }
 
 /* Lists */

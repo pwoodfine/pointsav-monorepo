@@ -119,6 +119,25 @@ pub fn render(body_md: &str) -> Rendered {
     Rendered { html, headings }
 }
 
+/// Render a full document. When the frontmatter carries a `references:` list, it
+/// appends synthesized footnote definitions (`[^id]: text <url>`) so the body's
+/// `[^id]` markers resolve into a rendered reference list instead of dead text.
+pub fn render_doc(doc: &super::frontmatter::ParsedDoc) -> Rendered {
+    if doc.frontmatter.references.is_empty() {
+        return render(&doc.body_md);
+    }
+    let mut body = doc.body_md.clone();
+    body.push_str("\n\n");
+    for r in &doc.frontmatter.references {
+        body.push_str(&format!("[^{}]: {}", r.id, r.text));
+        if let Some(u) = r.url.as_deref().filter(|u| !u.is_empty()) {
+            body.push_str(&format!(" <{u}>"));
+        }
+        body.push('\n');
+    }
+    render(&body)
+}
+
 /// Replace `[[slug]]` / `[[slug|label]]` with Markdown links to `/wiki/slug`.
 /// A leading `#` in the target (e.g. `[[#section]]`) is treated as a same-page
 /// anchor. Escaped `\[[` is left untouched.
