@@ -1,0 +1,28 @@
+{
+  "body": {
+    "json": {
+      "artifacts": [
+        "x86_64-linux"
+      ],
+      "product": "os-test-open",
+      "sha256": {
+        "x86_64-linux": "stub"
+      },
+      "version": "1.2.0"
+    },
+    "kind": "json"
+  },
+  "fixture": "src-manifest",
+  "headers": {
+    "connection": "close",
+    "content-type": "application/json",
+    "transfer-encoding": "chunked"
+  },
+  "normalize": "raw",
+  "request": {
+    "method": "GET",
+    "path": "/releases/os-test-open/1.2.0/MANIFEST",
+    "port": 19211
+  },
+  "status": 200
+}

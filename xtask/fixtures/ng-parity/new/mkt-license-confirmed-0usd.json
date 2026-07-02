@@ -1,0 +1,24 @@
+{
+  "body": {
+    "json": {
+      "confirmed_at": "<masked>",
+      "customer_ref": "0xparitycaffee",
+      "license_key": "1f564641-4327f36f-a7db4a36-50ae8260",
+      "product_id": "soft-orchestration-command",
+      "status": "confirmed"
+    },
+    "kind": "json"
+  },
+  "fixture": "mkt-license-confirmed-0usd",
+  "headers": {
+    "connection": "close",
+    "content-type": "application/json"
+  },
+  "normalize": "mask-json",
+  "request": {
+    "method": "GET",
+    "path": "/v1/license/0xtestconfirmed0usd",
+    "port": 19214
+  },
+  "status": 200
+}

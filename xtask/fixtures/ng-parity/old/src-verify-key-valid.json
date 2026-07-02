@@ -1,0 +1,28 @@
+{
+  "body": {
+    "json": {
+      "channel_expiry": "2099-12-31",
+      "entitlements": [
+        "download",
+        "source"
+      ],
+      "product": "os-test-licensed",
+      "valid": true,
+      "version_floor": "0.1.0"
+    },
+    "kind": "json"
+  },
+  "fixture": "src-verify-key-valid",
+  "headers": {
+    "connection": "close",
+    "content-length": "134",
+    "content-type": "application/json"
+  },
+  "normalize": "raw",
+  "request": {
+    "method": "POST",
+    "path": "/verify-key",
+    "port": 19211
+  },
+  "status": 200
+}

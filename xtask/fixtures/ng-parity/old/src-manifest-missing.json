@@ -1,0 +1,22 @@
+{
+  "body": {
+    "json": {
+      "error": "not found",
+      "path": "/tmp/ng-parity-fixtures/releases/os-test-open/9.9.9/MANIFEST.json"
+    },
+    "kind": "json"
+  },
+  "fixture": "src-manifest-missing",
+  "headers": {
+    "connection": "close",
+    "content-length": "96",
+    "content-type": "application/json"
+  },
+  "normalize": "raw",
+  "request": {
+    "method": "GET",
+    "path": "/releases/os-test-open/9.9.9/MANIFEST",
+    "port": 19211
+  },
+  "status": 404
+}

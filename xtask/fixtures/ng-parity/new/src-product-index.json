@@ -1,0 +1,25 @@
+{
+  "body": {
+    "json": {
+      "product": "os-test-open",
+      "versions": [
+        "1.10.0",
+        "1.2.0"
+      ]
+    },
+    "kind": "json"
+  },
+  "fixture": "src-product-index",
+  "headers": {
+    "connection": "close",
+    "content-length": "56",
+    "content-type": "application/json"
+  },
+  "normalize": "raw",
+  "request": {
+    "method": "GET",
+    "path": "/releases/os-test-open/",
+    "port": 19212
+  },
+  "status": 200
+}
