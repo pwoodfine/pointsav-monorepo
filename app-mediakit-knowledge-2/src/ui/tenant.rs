@@ -60,6 +60,34 @@ impl Tenant {
         }
     }
 
+    /// Reporting-issuer entity for the record — used as the History/Diff author
+    /// (no natural person is rendered; the EDGAR/SEDAR signatory/preparer split
+    /// keeps editor identity internal to signed git commits). PointSav is treated
+    /// as its own public company; the Woodfine tenants attribute to the parent
+    /// reporting issuer.
+    pub fn issuer(&self) -> &'static str {
+        match self {
+            Tenant::Documentation => "PointSav Digital Systems",
+            Tenant::Projects | Tenant::Corporate => "Woodfine Capital Projects Inc.",
+        }
+    }
+
+    /// Content licence name for the footer badge (per-tenant).
+    pub fn license_name(&self) -> &'static str {
+        match self {
+            Tenant::Documentation => "CC BY 4.0", // open engineering library
+            Tenant::Projects | Tenant::Corporate => "CC BY-ND 4.0", // verbatim disclosure record
+        }
+    }
+
+    /// Content licence deed URL for the footer badge (per-tenant).
+    pub fn license_url(&self) -> &'static str {
+        match self {
+            Tenant::Documentation => "https://creativecommons.org/licenses/by/4.0/",
+            Tenant::Projects | Tenant::Corporate => "https://creativecommons.org/licenses/by-nd/4.0/",
+        }
+    }
+
     /// Registered seat of the maintaining entity.
     pub fn seat(&self) -> &'static str {
         match self {

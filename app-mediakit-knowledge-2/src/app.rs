@@ -252,7 +252,7 @@ async fn history_page(
         let Some(diff) = crate::history::file_diff(repo_root, rel, rev) else {
             return (StatusCode::NOT_FOUND, format!("no such revision: {rev}")).into_response();
         };
-        let body = ui::diff_page(&doc.title, &doc.slug, &diff);
+        let body = ui::diff_page(&doc.title, &doc.slug, tenant.issuer(), &diff);
         let head = ui::doc_head(
             &format!("{} — {}", doc.title, diff.short_sha),
             &format!("Changes to {} in revision {}", doc.title, diff.short_sha),
@@ -263,7 +263,7 @@ async fn history_page(
     }
 
     let revs = crate::history::file_history(repo_root, rel, 50);
-    let body = ui::history_page(&doc.title, &doc.slug, &revs);
+    let body = ui::history_page(&doc.title, &doc.slug, tenant.issuer(), &revs);
     let head = ui::doc_head(
         &format!("History: {}", doc.title),
         &format!("Revision history of {}", doc.title),
