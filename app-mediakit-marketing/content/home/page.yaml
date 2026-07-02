@@ -80,41 +80,8 @@ sections:
       - title: Location Intelligence
         href: https://gis.woodfinegroup.com/
 
-  - type: prose
-    body: |
-      **Securities offering.** Securities of Woodfine-sponsored direct-hold
-      solutions are offered only to qualified investors pursuant to applicable
-      prospectus exemptions under National Instrument 45-106 — Prospectus
-      Exemptions. The information on this page is provided for general
-      informational purposes only and does not constitute an offer to sell or a
-      solicitation of an offer to buy any security. Prospective investors should
-      review the applicable offering memorandum and consult their own
-      professional advisors before investing.
-
-      1. Information on this page describes the firm and its activities at a high
-      level and is qualified in its entirety by the applicable offering
-      memorandum and universal governing bylaws.
-
-      2. Investment in real-property direct-hold solutions involves significant
-      risk, including possible loss of capital. Past performance is not
-      indicative of future results. References to structural features such as
-      advisory fees, transferability, and net asset value methodology describe
-      the contractual terms of the direct-hold solutions and are not
-      representations as to investment outcomes or returns.
-
-      **Forward-looking statements.** Statements that are not historical facts
-      may constitute forward-looking information within the meaning of applicable
-      Canadian securities laws. Such statements are subject to known and unknown
-      risks, uncertainties and assumptions, and actual results may differ
-      materially. Woodfine undertakes no obligation to update such statements
-      except as required by law.
-
-      **Registration.** Woodfine Capital Projects and its affiliates conduct
-      registrable activities, where required, under the relevant categories
-      prescribed by the British Columbia Securities Commission and other Canadian
-      securities regulators. Specific registration details are available on
-      request.
-
-      Woodfine Capital Projects, Woodfine Management Corp, PointSav Digital
-      Systems, Totebox Orchestration, and Totebox Archive are trademarks owned by
-      Woodfine Capital Projects Inc.
+  # Full legal text (securities offering, forward-looking statements,
+  # registration) moved 2026-07-02 into the footer's "Important information"
+  # accordion (Tenant::woodfine().disclosure_slots in ui.rs) -- it was
+  # duplicating that same accordion when it also lived here as a separate,
+  # always-visible prose section.
