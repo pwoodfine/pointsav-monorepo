@@ -328,3 +328,106 @@ fn insert_after_body_open(s: &str, insert: &str) -> String {
     }
     format!("{insert}{s}")
 }
+
+// ── Tests ─────────────────────────────────────────────────────────────────────
+//
+// Pure string/markup functions — no server, no filesystem, no network.
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const SURFACE: SoftwareSurface = SoftwareSurface::Marketplace;
+
+    #[test]
+    fn render_page_wraps_content_in_full_chrome() {
+        let page =
+            render_page(SURFACE, "Test Title", html! { p { "probe content" } }).into_string();
+
+        assert!(page.starts_with("<!DOCTYPE html>"));
+        assert!(page.contains("<title>Test Title</title>"));
+        assert!(page.contains("probe content"));
+
+        // Masthead markers.
+        assert!(page.contains("sw-masthead"));
+        assert!(page.contains("PointSav"));
+        for l in SURFACE.nav_links() {
+            assert!(page.contains(l.href), "missing nav link {}", l.href);
+        }
+
+        // Footer markers: verbatim trademark line, copyright holder, cities.
+        assert!(page.contains(SURFACE.trademark_line()));
+        assert!(page.contains(SURFACE.copyright_holder()));
+        for c in SURFACE.cities() {
+            assert!(page.contains(c), "missing footer city {c}");
+        }
+
+        // Document order: masthead element, then content, then footer element.
+        // (Search for the tags, not the class names — the scoped CSS in <head>
+        // legitimately contains `.sw-masthead` / `.sw-footer` selector text.)
+        let m = page.find("<header").unwrap();
+        let c = page.find("probe content").unwrap();
+        let f = page.find("<footer").unwrap();
+        assert!(m < c && c < f, "chrome must bracket the content");
+    }
+
+    #[test]
+    fn wrap_static_html_strips_light_chrome_and_mounts_sovereign() {
+        let raw = r#"<!doctype html>
+<html><head><title>Licensing</title></head>
+<body class="page">
+<header class="topnav">OLD NAV</header>
+<main>Legal body text.</main>
+<footer>OLD FOOTER</footer>
+</body></html>"#;
+
+        let out = wrap_static_html(raw, SURFACE);
+
+        // Original content preserved; old light chrome removed.
+        assert!(out.contains("Legal body text."));
+        assert!(!out.contains("OLD NAV"));
+        assert!(!out.contains("OLD FOOTER"));
+
+        // Sovereign chrome present, including the verbatim trademark line.
+        assert!(out.contains("sw-masthead"));
+        assert!(out.contains(SURFACE.trademark_line()));
+
+        // Scoped chrome stylesheet injected before </head>.
+        let style = out.find("--sw-topnav-bg").unwrap();
+        assert!(style < out.find("</head>").unwrap());
+
+        // Masthead mounted after the <body …> open tag; footer before </body>.
+        let body_open = out.find("<body class=\"page\">").unwrap();
+        let masthead = out.find("<header class=\"sw-masthead\"").unwrap();
+        assert!(masthead > body_open);
+        let footer = out.find("<footer class=\"sw-footer\"").unwrap();
+        assert!(footer < out.find("</body>").unwrap());
+        assert!(masthead < footer);
+    }
+
+    #[test]
+    fn wrap_static_html_missing_anchors_serves_page_unchanged() {
+        // Defensive path: no </head> or </body> -> bytes served verbatim.
+        let fragment = "<p>fragment without head or body</p>";
+        assert_eq!(wrap_static_html(fragment, SURFACE), fragment);
+
+        let head_only = "<html><head></head><p>no body close</p>";
+        assert_eq!(wrap_static_html(head_only, SURFACE), head_only);
+    }
+
+    #[test]
+    fn splice_helpers_edge_cases() {
+        // remove_between: inclusive removal of the first span.
+        assert_eq!(remove_between("a<x>b</x>c", "<x>", "</x>"), "ac");
+        // Missing delimiters -> unchanged.
+        assert_eq!(remove_between("no delims", "<x>", "</x>"), "no delims");
+        assert_eq!(remove_between("a<x>b", "<x>", "</x>"), "a<x>b");
+
+        // insert_after_body_open: after the open tag, attribute-tolerant.
+        assert_eq!(
+            insert_after_body_open("<body class=\"p\">rest", "INS"),
+            "<body class=\"p\">\nINSrest"
+        );
+        // Fallback: no <body> tag -> prepended.
+        assert_eq!(insert_after_body_open("rest", "INS"), "INSrest");
+    }
+}

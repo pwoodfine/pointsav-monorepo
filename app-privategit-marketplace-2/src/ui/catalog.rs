@@ -254,3 +254,120 @@ pub fn catalog_markup(catalog: &crate::Catalog, source_base_url: &str) -> Markup
         (clipboard_script())
     }
 }
+
+// ── Tests ─────────────────────────────────────────────────────────────────────
+//
+// Pure rendering functions — no server, no filesystem, no network.
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{Catalog, Installer, License};
+
+    const BASE: &str = "https://example.invalid/releases";
+
+    fn fixture() -> Catalog {
+        Catalog {
+            installers: vec![Installer {
+                id: "os-mediakit".into(),
+                name: "MediaKit OS".into(),
+                description: "Sovereign media workstation image.".into(),
+                edition: "1.2.0".into(),
+                platform: "linux-x86_64".into(),
+                size_mb: 812,
+                path: "os-mediakit/1.2.0/installer.run".into(),
+            }],
+            licenses: vec![
+                License {
+                    id: "beta-module".into(),
+                    name: "Beta Module".into(),
+                    description: "Platform module, free during BETA.".into(),
+                    module_tag: "mod-beta".into(),
+                    price_usdc: 0,
+                },
+                License {
+                    id: "fsl".into(),
+                    name: "FSL".into(),
+                    description: "Source-readable, non-compete.".into(),
+                    module_tag: String::new(),
+                    price_usdc: 19_000_000, // $19.00 in micro-USDC
+                },
+            ],
+        }
+    }
+
+    #[test]
+    fn install_command_shape_and_trailing_slash_handling() {
+        assert_eq!(
+            install_command(BASE, "os-mediakit"),
+            "curl -fsSL https://example.invalid/releases/os-mediakit/install.sh | bash"
+        );
+        // A trailing slash on the configured base must not produce a double slash.
+        assert_eq!(
+            install_command("https://example.invalid/releases/", "x"),
+            "curl -fsSL https://example.invalid/releases/x/install.sh | bash"
+        );
+    }
+
+    #[test]
+    fn known_products_appear_in_rendered_markup() {
+        let html = catalog_markup(&fixture(), BASE).into_string();
+        // Known ids and names from the fixture drive the cards (no drift possible).
+        assert!(html.contains("os-mediakit"));
+        assert!(html.contains("MediaKit OS"));
+        assert!(html.contains("beta-module"));
+        assert!(html.contains("Beta Module"));
+        assert!(html.contains("FSL"));
+        // Each populated group renders its section (maud escapes the ampersand).
+        assert!(html.contains("Operating systems &amp; installers"));
+        assert!(html.contains("Platform modules"));
+        assert!(html.contains("License tiers"));
+        // Installer badge row shows the fields that ARE in the catalog.
+        assert!(html.contains("v1.2.0"));
+        assert!(html.contains("linux-x86_64"));
+        assert!(html.contains("812 MB"));
+    }
+
+    #[test]
+    fn paid_license_renders_pricing_cta_and_no_install_command() {
+        let html = catalog_markup(&fixture(), BASE).into_string();
+        // Non-zero price_usdc -> price display + Polygon USDC CTA.
+        assert!(html.contains("$19.00"));
+        assert!(html.contains("Pay with Polygon USDC"));
+        assert!(html.contains("href=\"/v1/wallet/address\""));
+        // And NO curl-pipe-sh install command for the paid tier.
+        assert!(
+            !html.contains("releases/fsl/install.sh"),
+            "paid license tier must NOT render an install command"
+        );
+    }
+
+    #[test]
+    fn free_products_render_curl_install_commands() {
+        let html = catalog_markup(&fixture(), BASE).into_string();
+        // Installers are always free — real curl-pipe-sh command with the right id.
+        assert!(html
+            .contains("curl -fsSL https://example.invalid/releases/os-mediakit/install.sh | bash"));
+        // price_usdc == 0 -> BETA/free license, same install pattern.
+        assert!(html
+            .contains("curl -fsSL https://example.invalid/releases/beta-module/install.sh | bash"));
+        assert!(html.contains("BETA · free"));
+        // The copy affordance carries the exact command.
+        assert!(html.contains("data-sw-clip"));
+    }
+
+    #[test]
+    fn empty_catalog_renders_shell_without_sections() {
+        let empty = Catalog {
+            installers: vec![],
+            licenses: vec![],
+        };
+        let html = catalog_markup(&empty, BASE).into_string();
+        // Page shell still renders…
+        assert!(html.contains("sw-cat-intro"));
+        // …but no product section (check ids: the scoped CSS legitimately
+        // contains the `sw-cat-section` selector text, so match the anchors).
+        assert!(!html.contains("id=\"installers\""));
+        assert!(!html.contains("id=\"downloads\""));
+        assert!(!html.contains("id=\"licensing\""));
+    }
+}
