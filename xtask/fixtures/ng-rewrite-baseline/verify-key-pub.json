@@ -1,0 +1,18 @@
+{
+  "body": {
+    "kind": "text",
+    "text": "6271cd8dbdf8853f90bb5a6f3b446221adb28c1e1ed66b51ce2bb62927369e44"
+  },
+  "fixture": "verify-key-pub",
+  "headers": {
+    "connection": "close",
+    "content-length": "64",
+    "content-type": "text/plain; charset=utf-8"
+  },
+  "request": {
+    "method": "GET",
+    "path": "/verify-key.pub",
+    "port": 9201
+  },
+  "status": 200
+}

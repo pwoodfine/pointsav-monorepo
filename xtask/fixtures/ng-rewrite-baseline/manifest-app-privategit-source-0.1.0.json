@@ -1,0 +1,25 @@
+{
+  "body": {
+    "json": {
+      "built_at": "2026-06-17",
+      "platform": "x86_64-unknown-linux-gnu",
+      "product": "app-privategit-source",
+      "sha256": "36ecb701e05c5901b600455cc9cd05fb1accb744fba511adfa11a365d416c0c8",
+      "size_bytes": 1493792,
+      "version": "0.1.0"
+    },
+    "kind": "json"
+  },
+  "fixture": "manifest-app-privategit-source-0.1.0",
+  "headers": {
+    "connection": "close",
+    "content-type": "application/json",
+    "transfer-encoding": "chunked"
+  },
+  "request": {
+    "method": "GET",
+    "path": "/releases/app-privategit-source/0.1.0/MANIFEST",
+    "port": 9201
+  },
+  "status": 200
+}
