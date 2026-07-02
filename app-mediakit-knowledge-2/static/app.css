@@ -162,6 +162,24 @@ button:disabled { cursor: default; }
 }
 .k-sidenav__link:hover { color: var(--k-accent); border-left-color: var(--k-accent); }
 
+/* Article table of contents (in the sticky sidebar, Vector 2022 style). */
+.k-toc__list { list-style: none; margin: 0; padding: 0; }
+.k-toc__link {
+  display: block;
+  padding: var(--k-space-1) 0 var(--k-space-1) var(--k-space-2);
+  margin-left: calc(-1 * var(--k-space-2));
+  color: var(--k-ink-secondary);
+  border-left: 2px solid transparent;
+  font-size: var(--k-text-sm);
+  line-height: var(--k-leading-snug);
+}
+.k-toc__link:hover { color: var(--k-accent); border-left-color: var(--k-accent); }
+.k-toc__item--sub .k-toc__link {
+  padding-left: var(--k-space-5);
+  font-size: var(--k-text-xs);
+  color: var(--k-ink-muted);
+}
+
 /* Below the drawer breakpoint the off-canvas nav takes over; collapse to one
    column. Kept in step with the hamburger (≤768px) so there is never a width
    band with neither a sidebar nor a menu button. */
