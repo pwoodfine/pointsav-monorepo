@@ -48,3 +48,411 @@ a:hover {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ==========================================================================
+   Skip link
+   ========================================================================== */
+
+.m-skiplink {
+  position: absolute;
+  top: -100%;
+  left: var(--m-space-4);
+  z-index: var(--m-z-skiplink);
+  background: var(--m-skiplink-bg);
+  color: var(--m-skiplink-ink);
+  padding: var(--m-space-2) var(--m-space-4);
+  border-radius: var(--m-radius-control);
+  text-decoration: none;
+  font-weight: var(--m-weight-semibold);
+}
+.m-skiplink:focus {
+  top: var(--m-space-2);
+}
+
+/* ==========================================================================
+   Masthead — dark navy background (locked Sovereign Editorial direction)
+   ========================================================================== */
+
+.m-masthead {
+  position: sticky;
+  top: 0;
+  z-index: var(--m-z-masthead);
+  display: flex;
+  align-items: center;
+  gap: var(--m-space-6);
+  min-height: var(--m-masthead-h);
+  padding-inline: var(--m-gutter);
+  background: var(--m-masthead-bg);
+  color: var(--m-masthead-ink);
+  border-bottom: var(--m-masthead-border-b);
+}
+
+.m-masthead__wordmark {
+  font-family: var(--m-font-serif);
+  font-weight: var(--m-weight-bold);
+  font-size: var(--m-text-lg);
+  color: var(--m-masthead-ink);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.m-masthead__nav {
+  display: none; /* shown from --bp-nav up; hamburger covers mobile */
+  margin-left: auto;
+  gap: var(--m-space-6);
+  font-size: var(--m-nav-size);
+  letter-spacing: var(--m-nav-tracking);
+}
+.m-masthead__nav a {
+  color: var(--m-masthead-ink-muted);
+  text-decoration: none;
+  padding-block: var(--m-space-2);
+}
+.m-masthead__nav a:hover,
+.m-masthead__nav a:focus-visible {
+  color: var(--m-masthead-ink);
+}
+
+.m-masthead__burger {
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+  width: 44px;
+  height: 44px;
+  margin-left: auto;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+.m-masthead__burger-bar {
+  display: block;
+  width: 22px;
+  height: 2px;
+  background: var(--m-masthead-ink);
+}
+
+@media (min-width: 60rem) {
+  .m-masthead__nav {
+    display: flex;
+    margin-left: auto;
+  }
+  .m-masthead__burger {
+    display: none;
+    margin-left: 0;
+  }
+}
+
+/* ==========================================================================
+   Mobile drawer — mirrors the wiki's proven pre-rendered slide-in pattern
+   ========================================================================== */
+
+.m-drawer-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: var(--m-z-scrim);
+  background: var(--m-surface-scrim);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--m-drawer-dur) var(--m-drawer-ease);
+}
+
+.m-drawer {
+  position: fixed;
+  inset-block: 0;
+  left: 0;
+  z-index: var(--m-z-drawer);
+  width: min(var(--m-drawer-w), 84vw);
+  background: var(--m-drawer-bg);
+  box-shadow: var(--m-shadow-drawer);
+  transform: translateX(-100%);
+  transition: transform var(--m-drawer-dur) var(--m-drawer-ease);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+/* JS toggles [hidden] off and adds this class; kept both so the drawer
+   degrades to "absent" rather than "visible but broken" without JS. */
+html:not(.js) .m-drawer,
+html:not(.js) .m-drawer-scrim {
+  display: none;
+}
+
+.m-drawer[data-open] {
+  transform: translateX(0);
+}
+.m-drawer-scrim[data-open] {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.m-drawer__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: var(--m-drawer-header-bg);
+  padding: var(--m-space-4) var(--m-space-6);
+  background: var(--m-drawer-header-bg);
+  color: var(--m-drawer-header-ink);
+  font-weight: var(--m-weight-semibold);
+}
+.m-drawer__close {
+  background: none;
+  border: none;
+  color: var(--m-drawer-header-ink);
+  font-size: var(--m-text-xl);
+  line-height: 1;
+  cursor: pointer;
+  width: 44px;
+  height: 44px;
+}
+
+.m-drawer__nav {
+  display: flex;
+  flex-direction: column;
+  padding: var(--m-space-4) var(--m-space-6);
+  gap: var(--m-space-1);
+}
+.m-drawer__nav a {
+  padding: var(--m-space-3) 0;
+  color: var(--m-ink);
+  text-decoration: none;
+  font-size: var(--m-text-md);
+  border-bottom: 1px solid var(--m-border);
+}
+
+@media (min-width: 60rem) {
+  .m-drawer,
+  .m-drawer-scrim {
+    display: none !important;
+  }
+}
+
+/* ==========================================================================
+   Hero band — brand-swapped background; real asset photography (when
+   present) carries visual weight, --m-hero-scrim keeps text legible over it.
+   ========================================================================== */
+
+.m-hero {
+  background: var(--m-hero-band-bg);
+  color: var(--m-hero-band-ink);
+  border-bottom: 1px solid var(--m-hero-band-rule);
+}
+.m-hero__inner {
+  max-width: var(--m-container-max);
+  margin-inline: auto;
+  padding: var(--m-space-band) var(--m-gutter);
+}
+.m-hero__headline {
+  font-family: var(--m-font-serif);
+  font-weight: var(--m-weight-bold);
+  font-size: var(--m-text-display);
+  line-height: var(--m-lh-display);
+  margin: 0 0 var(--m-space-4);
+  max-width: 24ch;
+}
+.m-hero__subhead {
+  font-family: var(--m-hero-lede-font);
+  font-size: var(--m-hero-lede-size);
+  line-height: var(--m-hero-lede-lh);
+  color: var(--m-hero-band-ink-muted);
+  max-width: var(--m-prose-max);
+  margin: 0;
+}
+
+/* ==========================================================================
+   Card grid — the keep-list signature: flat, navy top-rule, no shadow.
+   Fluid column count fixes the audited fixed-width mobile overflow bug —
+   no breakpoint ever forces a column narrower than 220px.
+   ========================================================================== */
+
+.m-card-grid {
+  max-width: var(--m-container-max);
+  margin-inline: auto;
+  padding: var(--m-space-band) var(--m-gutter);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--m-card-gap);
+}
+
+.m-card {
+  background: var(--m-card-bg);
+  border: var(--m-card-border);
+  border-top: var(--m-card-rule);
+  border-radius: var(--m-card-radius);
+  padding: var(--m-card-pad);
+}
+.m-card__title {
+  font-family: var(--m-font-sans);
+  font-weight: var(--m-weight-bold);
+  font-size: var(--m-text-lg);
+  text-transform: uppercase;
+  letter-spacing: var(--m-label-tracking);
+  color: var(--m-navy-700);
+  margin: 0 0 var(--m-space-2);
+}
+.m-card__title a {
+  color: inherit;
+  text-decoration: none;
+}
+.m-card__body {
+  color: var(--m-ink-secondary);
+  font-size: var(--m-text-sm);
+  line-height: var(--m-lh-body);
+  margin: 0;
+}
+
+/* ==========================================================================
+   Prose sections
+   ========================================================================== */
+
+.m-prose {
+  max-width: var(--m-prose-max);
+  margin-inline: auto;
+  padding: var(--m-space-band) var(--m-gutter);
+}
+.m-prose h2 {
+  font-family: var(--m-font-serif);
+  font-size: var(--m-text-xl);
+}
+
+/* ==========================================================================
+   Footer — three-tier: nav columns → on-page disclosure slots → badge/
+   trademark/copyright base row. Near-black (locked Sovereign Editorial dir).
+   ========================================================================== */
+
+.m-footer {
+  background: var(--m-footer-bg);
+  color: var(--m-footer-ink);
+  padding: var(--m-footer-pad-y) var(--m-gutter);
+}
+
+.m-footer__columns {
+  max-width: var(--m-container-max);
+  margin-inline: auto;
+  display: flex;
+  gap: var(--m-footer-col-gap);
+  padding-bottom: var(--m-space-8);
+}
+.m-footer__col-title {
+  font-size: var(--m-footer-heading-size);
+  text-transform: var(--m-label-transform);
+  letter-spacing: var(--m-label-tracking);
+  color: var(--m-footer-ink-muted);
+  margin: 0 0 var(--m-space-2);
+}
+.m-footer__nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--m-space-2);
+}
+.m-footer__nav a {
+  color: var(--m-footer-link);
+  text-decoration: none;
+  font-size: var(--m-text-sm);
+}
+.m-footer__nav a:hover,
+.m-footer__nav a:focus-visible {
+  color: var(--m-footer-link-hover);
+}
+
+.m-footer__disclosure {
+  max-width: var(--m-container-max);
+  margin-inline: auto;
+  border-top: var(--m-slot-rule-top);
+  padding-block: var(--m-space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--m-slot-gap);
+}
+.m-footer__slot-label {
+  font-family: var(--m-slot-label-family);
+  font-size: var(--m-slot-label-size);
+  letter-spacing: var(--m-slot-label-tracking);
+  text-transform: var(--m-slot-label-transform);
+  color: var(--m-slot-label-ink);
+  margin: 0 0 var(--m-space-1);
+}
+.m-footer__slot-body {
+  font-size: var(--m-slot-body-size);
+  line-height: var(--m-slot-body-lh);
+  color: var(--m-slot-body-ink);
+  max-width: var(--m-slot-max-measure);
+  margin: 0;
+}
+
+.m-footer__base {
+  max-width: var(--m-container-max);
+  margin-inline: auto;
+  border-top: var(--m-footer-rule);
+  padding-top: var(--m-space-6);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--m-space-6);
+}
+.m-footer__cities {
+  font-size: var(--m-text-sm);
+  margin-bottom: var(--m-space-2);
+}
+.m-footer__copyright {
+  font-size: var(--m-footer-legal-size);
+  color: var(--m-footer-ink-muted);
+  margin: 0 0 var(--m-space-1);
+}
+.m-footer__trademark {
+  font-size: var(--m-footer-legal-size);
+  color: var(--m-footer-ink-muted);
+  max-width: var(--m-prose-max);
+  margin: 0;
+}
+
+.m-footer__badges {
+  display: flex;
+  gap: var(--m-badge-row-gap);
+}
+
+/* ==========================================================================
+   "Powered by MediaKit" badge — a certification mark, not a themed
+   component. Byte-identical to the wiki's real badge (white pill) so the
+   mark is recognizable across the whole site family regardless of the
+   footer's own background color.
+   ========================================================================== */
+
+.m-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--m-badge-gap);
+  background: var(--m-badge-bg);
+  border: var(--m-badge-border);
+  border-radius: var(--m-badge-radius);
+  padding: var(--m-badge-pad);
+  text-decoration: none;
+  color: var(--m-badge-name-ink);
+}
+.m-badge__glyph {
+  color: var(--m-badge-name-ink);
+  display: inline-flex;
+  width: var(--m-badge-glyph-size);
+  height: var(--m-badge-glyph-size);
+}
+.m-badge__text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+.m-badge__label {
+  font-size: var(--m-badge-label-size);
+  letter-spacing: var(--m-badge-label-tracking);
+  text-transform: uppercase;
+  color: var(--m-badge-label-ink);
+}
+.m-badge__name {
+  font-size: var(--m-badge-name-size);
+  font-weight: var(--m-badge-name-weight);
+  color: var(--m-badge-name-ink);
+}
