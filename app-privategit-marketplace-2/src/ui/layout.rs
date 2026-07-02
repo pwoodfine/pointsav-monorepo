@@ -91,6 +91,11 @@ fn chrome_style() -> Markup {
 .sw-footer__slot-body p:last-child{{margin-bottom:0;}}
 .sw-footer__slot-body a{{color:var(--sw-accent);}}
 .sw-footer__slot-body strong{{color:#fff;}}
+.sw-footer__persistent-disclaimer{{margin-top:12px;font-size:11px;line-height:1.5;color:var(--sw-footer-fg);}}
+.sw-footer__persistent-disclaimer a{{color:var(--sw-accent);}}
+@media print{{
+.sw-footer__disclosure:not([open]) .sw-footer__slot{{display:block!important;}}
+}}
 .sw-footer__cities{{margin-top:20px;padding-top:20px;border-top:1px solid var(--sw-footer-divider);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#fff;}}
 .sw-footer__meta{{margin-top:10px;font-size:12px;}}
 .sw-footer__meta a{{color:var(--sw-footer-fg);text-decoration:none;}}
@@ -237,6 +242,17 @@ pub fn footer(surface: SoftwareSurface) -> Markup {
                         p."sw-footer__slot-label" { (surface.disclosure_label()) }
                         div."sw-footer__slot-body" { (super::disclosure_body()) }
                     }
+                }
+                // Persistent one-line disclaimer, always visible even with the
+                // accordion above collapsed (the "Apollo Academy" pattern —
+                // flagged by project-knowledge, msg-id
+                // command-20260702-important-information-footer-structure-w):
+                // a collapsed disclosure should never leave the footer reading
+                // as if no disclaimer exists at all, e.g. in a cropped screenshot.
+                p."sw-footer__persistent-disclaimer" {
+                    "Software licenses only — not an offer of securities or investment. "
+                    "USDC payments on Polygon are irreversible. "
+                    a href="/page/disclaimer" { "Full disclaimer" } "."
                 }
                 div."sw-footer__cities" {
                     @for (i, c) in surface.cities().iter().enumerate() {
@@ -394,6 +410,20 @@ mod tests {
             assert!(page.contains(c), "missing footer city {c}");
         }
 
+        // All six canonical TRADEMARK.md marks present (regression guard, 2026-07-02):
+        // project-knowledge flagged this crate's trademark line as using a superseded
+        // 3-mark PointSav-only subset that omitted half the canonical marks.
+        for mark in [
+            "Woodfine Capital Projects\u{2122}",
+            "MCorp\u{2122}",
+            "PointSav Digital Systems\u{2122}",
+            "Totebox Orchestration\u{2122}",
+            "Totebox Archive\u{2122}",
+            "Capability Geometry\u{2122}",
+        ] {
+            assert!(page.contains(mark), "missing canonical mark {mark}");
+        }
+
         // Footer disclosure accordion (operator instruction 2026-07-02, matching the
         // wiki/home sites' "Important information" pattern): present, with the site's
         // one disclosure slot. `<details>` without an `open` attribute renders
@@ -401,6 +431,12 @@ mod tests {
         assert!(page.contains("sw-footer__disclosure"));
         assert!(page.contains("Important information"));
         assert!(page.contains(SURFACE.disclosure_label()));
+
+        // Persistent one-line disclaimer, always visible regardless of accordion state
+        // (project-knowledge's "Apollo Academy" pattern, 2026-07-02) -- a collapsed
+        // accordion must never leave the footer looking bare of any disclaimer at all.
+        assert!(page.contains("sw-footer__persistent-disclaimer"));
+        assert!(page.contains("USDC payments on Polygon are irreversible"));
 
         // Document order: masthead element, then content, then footer element.
         // (Search for the tags, not the class names — the scoped CSS in <head>

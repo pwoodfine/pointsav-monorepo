@@ -64,14 +64,23 @@ impl SoftwareSurface {
         }
     }
 
-    /// Verbatim trademark line — TRADEMARK.md v1.1 (2026-05-16), PointSav-brand
-    /// variant. Copied verbatim from app-mediakit-knowledge `chrome/sovereign.rs`
-    /// (the Documentation arm). Do not paraphrase — this is legal text.
+    /// Verbatim trademark line — full canonical `TRADEMARK.md` mark list (all six
+    /// marks), not the shorter PointSav-brand-only subset this crate used until
+    /// 2026-07-02. **Correction:** flagged by project-knowledge (relayed via
+    /// Command, msg-id `command-20260702-important-information-footer-structure-w`)
+    /// — the shorter subset omits `Woodfine Capital Projects™`, `MCorp™`, and
+    /// `Capability Geometry™`, all of which are canonical marks per the current
+    /// `TRADEMARK.md`. The `app-mediakit-marketing-2` sibling made the identical
+    /// correction the same day ("an earlier per-brand shorter-subset design for
+    /// PointSav was superseded") — this crate follows suit. Do not paraphrase or
+    /// shorten again without checking `TRADEMARK.md` first; it has changed once
+    /// already this program.
     pub fn trademark_line(self) -> &'static str {
-        "PointSav Digital Systems\u{2122}, Totebox Orchestration\u{2122}, and \
-         Totebox Archive\u{2122} are trademarks of Woodfine Capital Projects Inc., \
-         used in Canada, the United States, Latin America, and Europe. \
-         All other trademarks are the property of their respective owners."
+        "Woodfine Capital Projects\u{2122}, MCorp\u{2122}, PointSav Digital Systems\u{2122}, \
+         Totebox Orchestration\u{2122}, Totebox Archive\u{2122}, and Capability Geometry\u{2122} \
+         are trademarks of Woodfine Capital Projects Inc., used in Canada, the United States, \
+         Latin America, and Europe. All other trademarks are the property of their respective \
+         owners."
     }
 
     /// Copyright holder — the parent company, for every surface.
