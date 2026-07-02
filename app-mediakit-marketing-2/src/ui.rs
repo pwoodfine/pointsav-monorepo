@@ -139,11 +139,11 @@ impl Tenant {
                 // Restored 2026-07-02 — present on the retired production
                 // site's masthead nav, dropped when this chrome was rebuilt.
                 NavLink::external("Newsroom", "Sala de prensa", "https://woodfinegroup.com/"),
-                NavLink::internal("Contact us", "Contáctenos", "/page/contact"),
+                NavLink::internal("Contact Us", "Contáctenos", "/page/contact"),
                 NavLink::internal("Disclaimer", "Aviso legal", "/page/disclaimer"),
             ],
             footer_nav: vec![
-                NavLink::internal("Contact us", "Contáctenos", "/page/contact"),
+                NavLink::internal("Contact Us", "Contáctenos", "/page/contact"),
                 NavLink::internal("Disclaimer", "Aviso legal", "/page/disclaimer"),
                 NavLink::internal("Privacy", "Privacidad", "/page/privacy"),
             ],
@@ -263,11 +263,11 @@ impl Tenant {
                 // Restored 2026-07-02 — present on the retired production
                 // site's masthead nav, dropped when this chrome was rebuilt.
                 NavLink::external("Newsroom", "Sala de prensa", "https://pointsav.com/"),
-                NavLink::internal("Contact us", "Contáctenos", "/page/contact"),
+                NavLink::internal("Contact Us", "Contáctenos", "/page/contact"),
                 NavLink::internal("Disclaimer", "Aviso legal", "/page/disclaimer"),
             ],
             footer_nav: vec![
-                NavLink::internal("Contact us", "Contáctenos", "/page/contact"),
+                NavLink::internal("Contact Us", "Contáctenos", "/page/contact"),
                 NavLink::internal("Disclaimer", "Aviso legal", "/page/disclaimer"),
                 NavLink::internal("Privacy", "Privacidad", "/page/privacy"),
             ],
@@ -929,7 +929,7 @@ sections:
         let html = render_nav(&Tenant::woodfine().nav_links, "m-masthead__nav", "Primary", "es")
             .into_string();
         assert!(html.contains("Contáctenos"));
-        assert!(!html.contains("Contact us"));
+        assert!(!html.contains("Contact Us"));
     }
 
     #[test]
