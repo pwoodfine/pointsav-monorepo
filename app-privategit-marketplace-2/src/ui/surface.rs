@@ -83,4 +83,18 @@ impl SoftwareSurface {
     pub fn cities(self) -> &'static [&'static str] {
         &["Vancouver", "New York", "Berlin"]
     }
+
+    /// Securities-disclosure citation line — required by
+    /// `factory-release-engineering/policies/DISCLAIMER.md` (NI 51-102 /
+    /// OSC SN 51-721 continuous-disclosure posture; see workspace
+    /// CLAUDE.md "BCSC disclosure posture"). Present on every OLD-crate
+    /// footer (`app-privategit-marketplace/static/{software,licensing}.html`)
+    /// but dropped when P2 built the Sovereign chrome — that P2 build only
+    /// carried forward `trademark_line()` and missed this. Restored verbatim
+    /// (Checkpoint 3a parity finding, 2026-07-02) — do not paraphrase or
+    /// omit; this is a regulatory citation, not decorative text.
+    pub fn disclaimer_citation(self) -> &'static str {
+        "Website Disclaimer v1.0 — Woodfine Capital Projects Inc. — Effective 2026-05-07 — \
+         Source: factory-release-engineering/policies/DISCLAIMER.md"
+    }
 }
