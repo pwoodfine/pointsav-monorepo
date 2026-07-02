@@ -177,11 +177,17 @@
   --m-card-gap:       var(--m-space-4);   /* wiki-exact 1rem */
   --m-card-radius:    var(--m-radius-0);
 
-  /* Linked informational cards (e.g. the cross-site "Digital Systems" /
-     "Real Property Infrastructure" cards) — same shape as a plain card,
-     distinguished by an accent-tinted background + a visible ↗ glyph, so a
-     clickable card doesn't look identical to the seven next to it. */
-  --m-card-linked-bg:     var(--m-navy-100);
+  /* Cross-site handoff cards (e.g. "Digital Systems" / "Real Property
+     Infrastructure") — always-on filled navy, not a tint (see .m-card--linked
+     in app.css for the full rationale). Its own token, not a raw
+     var(--m-navy-700) reference in app.css, so it can be tenant-overridden
+     (FABLE polish audit 2026-07-02: PointSav's full-saturation #234ed8 read
+     objectively louder than Woodfine's #164679 at equal fill size — measured
+     6.66:1 vs 9.61:1 white-text contrast on the same card treatment — fixed
+     by basing PointSav's fill on the next canonical step down, primary-70
+     #173ab1/--m-navy-800, restoring near-parity at 9.22:1 while leaving
+     small text/links/CTAs on primary-60 as before). */
+  --m-card-linked-bg:     var(--m-navy-700);
   --m-card-linked-border: 1px solid var(--m-navy-100);
 
   /* Button-style card row (pure-navigation grids: Manifest / BIM Library /
@@ -383,6 +389,13 @@
   --m-navy-700: #234ed8;  /* color.primary-60 — canonical PointSav brand color */
   --m-navy-600: #3f6cf2;  /* color.primary-50 */
   --m-navy-100: #eef3ff;  /* color.primary-10 */
+
+  /* Large solid-fill surfaces (the cross-site handoff card) use one step
+     darker than the base accent — FABLE polish audit 2026-07-02: full
+     primary-60 as a big block measured louder than Woodfine's navy at the
+     same treatment (6.66:1 vs 9.61:1); primary-70 restores near-parity
+     (9.22:1, WCAG AAA) while links/CTAs/text stay on primary-60. */
+  --m-card-linked-bg: var(--m-navy-800);
 
   --m-hero-band-bg:        var(--m-slate-300);
   --m-hero-band-ink:       var(--m-ink-900);
