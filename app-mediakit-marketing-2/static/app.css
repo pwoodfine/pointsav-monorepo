@@ -297,6 +297,14 @@ html:not(.js) .m-drawer-scrim {
   letter-spacing: var(--m-label-tracking);
   color: var(--m-navy-700);
   margin: 0 0 var(--m-space-2);
+  /* Operator-reported bug (2026-07-02): "the title bleeds into the side of
+     the box." No overflow-wrap/word-break/hyphens was ever set anywhere on
+     this rule, so a long unspaced compound word (e.g. "Partner-Governed")
+     at the grid's 220px column floor had no fallback and could overflow
+     the card's padding. `lang` is already set on <html>, so hyphens:auto
+     hyphenates correctly per-page-language. */
+  overflow-wrap: break-word;
+  hyphens: auto;
 }
 .m-card__title a {
   color: inherit;
