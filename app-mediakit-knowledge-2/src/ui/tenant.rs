@@ -56,7 +56,8 @@ impl Tenant {
     pub fn entity_name(&self) -> &'static str {
         match self {
             Tenant::Documentation => "PointSav Digital Systems",
-            Tenant::Projects | Tenant::Corporate => "Woodfine Management Corp.",
+            // The home.woodfinegroup.com link carries the parent brand.
+            Tenant::Projects | Tenant::Corporate => "Woodfine Capital Projects",
         }
     }
 
@@ -65,6 +66,12 @@ impl Tenant {
     /// keeps editor identity internal to signed git commits). PointSav is treated
     /// as its own public company; the Woodfine tenants attribute to the parent
     /// reporting issuer.
+    /// Only the documentation instance serves GUIDEs (how-to runbooks); projects
+    /// and corporate are TOPIC-only, so their guide affordances are suppressed.
+    pub fn serves_guides(&self) -> bool {
+        matches!(self, Tenant::Documentation)
+    }
+
     pub fn issuer(&self) -> &'static str {
         match self {
             Tenant::Documentation => "PointSav Digital Systems",
