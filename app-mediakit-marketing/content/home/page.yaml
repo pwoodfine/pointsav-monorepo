@@ -10,6 +10,17 @@ sections:
       of environmentally certified properties in or near Power Centres in
       selected North American and European markets.
 
+  - type: icon-strip
+    icons:
+      - src: /static/graphics/woodfine/class-1.svg
+        alt: Professional Centres
+      - src: /static/graphics/woodfine/class-2.svg
+        alt: Tech Industrial
+      - src: /static/graphics/woodfine/class-3.svg
+        alt: Retail Select
+      - src: /static/graphics/woodfine/class-4.svg
+        alt: Suburban Office
+
   - type: card-grid
     columns: 4
     cards:
@@ -60,6 +71,7 @@ sections:
 
   - type: card-grid
     columns: 3
+    style: buttons
     cards:
       - title: Manifest
         href: https://github.com/woodfine/woodfine-fleet-deployment
