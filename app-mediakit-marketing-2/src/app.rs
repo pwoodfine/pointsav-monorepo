@@ -41,11 +41,14 @@ pub fn build_state(cfg: &Config) -> Result<AppState, MarketingError> {
 }
 
 pub fn router(state: AppState, enable_mcp: bool) -> Router {
+    // No /es route for the home page — operator call 2026-07-02 (English
+    // only on the home pages for now). `page.es.yaml` files for `home` stay
+    // on disk, just unrouted, so this is reversible. Other pages
+    // (/page/{slug}) keep their /es/page/{slug} variant where content exists.
     let mut router = Router::new()
         .route("/healthz", get(healthz))
         .route("/static/{*path}", get(crate::assets::serve))
         .route("/", get(home))
-        .route("/es", get(home_es))
         .route("/page/{slug}", get(page))
         .route("/es/page/{slug}", get(page_es))
         .route("/robots.txt", get(robots_txt))
@@ -68,10 +71,6 @@ async fn healthz() -> &'static str {
 
 async fn home(State(state): State<AppState>) -> Result<Markup, MarketingError> {
     render_slug(&state, "home", None)
-}
-
-async fn home_es(State(state): State<AppState>) -> Result<Markup, MarketingError> {
-    render_slug(&state, "home", Some("es"))
 }
 
 async fn page(
@@ -97,16 +96,18 @@ fn render_slug(state: &AppStateInner, slug: &str, lang: Option<&str>) -> Result<
         &page,
         &state.module_id,
         &en_path,
-        &es_path,
+        es_path.as_deref(),
         state.google_verify.as_deref(),
     ))
 }
 
-fn slug_paths(slug: &str) -> (String, String) {
+/// `home` has no `/es` route (operator call 2026-07-02) — every other slug
+/// keeps its `/es/page/{slug}` variant.
+fn slug_paths(slug: &str) -> (String, Option<String>) {
     if slug == "home" {
-        ("/".to_string(), "/es".to_string())
+        ("/".to_string(), None)
     } else {
-        (format!("/page/{slug}"), format!("/es/page/{slug}"))
+        (format!("/page/{slug}"), Some(format!("/es/page/{slug}")))
     }
 }
 
