@@ -194,32 +194,24 @@
   --m-button-card-pad:        var(--m-space-3) var(--m-space-4);
 
   /* Icon strip — restores the "Development Classes" / capability graphics.
-     Sized and distributed to match production's actual visual weight
-     (confirmed via computed styles: 220-240px icons, full-bleed band,
-     stronger grey contrast) — this section is primary content on the
-     original sites (the product taxonomy), not decorative filler, and a
-     120px clustered treatment read as an afterthought (operator + FABLE
-     audit feedback, 2026-07-02).
+     This section is primary content on the original sites (the product
+     taxonomy), not decorative filler.
 
-     Two-tier size, split at the same 60rem (960px) breakpoint the masthead
-     nav already uses — verified via Playwright at real viewport widths
-     (2026-07-02), not guessed:
-       - Below 960px: flat 288px. Exact ceiling before clipping at the
-         narrowest real phone (320px = 288px icon + 16px gutter x2, gutter
-         floors at 1rem there). One-per-row is expected on mobile, so no vw
-         scaling is needed — 288px is safe from 320px up through 900px with
-         growing margin (44px+ spare by 375px).
-       - 960px and up: clamp(200px, 20vw, 320px). 200px is the exact
-         single-row floor at 960px for Woodfine's 4-icon row (4 icons + 3
-         gaps + 2 gutters = the full 960px budget) — a single clamp() with a
-         288px floor caused an ugly uneven 3-and-1 flex wrap in the
-         960-1440px band (flexbox doesn't balance wrapped rows), which is
-         why this is two separate tiers rather than one formula. Verified
-         zero wrapping from 960px through 2560px. */
+     A two-tier (mobile-flat / desktop-clamp) version of this was tried and
+     reverted 2026-07-02 — FABLE visual review found it produced a jarring
+     58%-of-section-height collapse right at the tier boundary (288px
+     flex-wrapped icons -> 200px single-row icons across a 20px viewport
+     range) and STILL didn't fix the uneven wrap it was meant to solve
+     (PointSav's 3 icons still orphan-wrapped 2+1 in the 768-959px band).
+     Root cause was using flexbox for column layout at all — flex-wrap
+     can't balance rows. Fixed properly in app.css by switching
+     `.m-icon-strip__inner` to CSS grid (`repeat(auto-fit, minmax(...))`),
+     which balances columns by construction — so a single monotonic
+     `clamp()` here is sufficient again, no breakpoint-driven size jump. */
   --m-icon-strip-bg:      var(--m-surface-section);
   --m-icon-strip-pad-y:   var(--m-space-12);
   --m-icon-strip-gap:     var(--m-space-8);
-  --m-icon-strip-size:    288px;
+  --m-icon-strip-size:    clamp(140px, 16vw, 280px);
 
   /* ---------------------------------------------------------- data tables
      Wiki-parity styling for markdown-rendered tables in legal/notice prose
@@ -375,12 +367,3 @@
   }
 }
 
-/* ================================================================ icon-strip desktop tier
- * Same 60rem breakpoint as the masthead nav. See the --m-icon-strip-size
- * comment above for the full verification detail.
- */
-@media (min-width: 60rem) {
-  :root {
-    --m-icon-strip-size: clamp(200px, 20vw, 320px);
-  }
-}
