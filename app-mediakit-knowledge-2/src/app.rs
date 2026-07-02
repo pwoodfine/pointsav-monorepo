@@ -124,6 +124,30 @@ fn nav_cats(state: &AppState) -> Vec<(String, String)> {
     cats
 }
 
+/// A chrome-wrapped 404 — a reviewer never sees a bare error string.
+fn not_found(state: &AppState, message: &str) -> Response {
+    let tenant = state.tenant;
+    let body = ui::simple_message("Not found", message);
+    let head = ui::doc_head("Not found", "", tenant);
+    (
+        StatusCode::NOT_FOUND,
+        Html(
+            ui::page(
+                tenant,
+                "en",
+                head,
+                body,
+                &nav_cats(state),
+                &[],
+                "",
+                state.important_info.as_deref(),
+            )
+            .into_string(),
+        ),
+    )
+        .into_response()
+}
+
 /// Home page (Main Page) — index lede + a "Browse by area" category grid.
 async fn home(State(state): State<AppState>) -> Response {
     let tenant = state.tenant;
@@ -195,7 +219,7 @@ async fn category_page(State(state): State<AppState>, Path(name): Path<String>) 
         })
         .collect();
     if docs.is_empty() {
-        return (StatusCode::NOT_FOUND, format!("no such category: {name}")).into_response();
+        return not_found(&state, &format!("No such area: \u{201c}{name}\u{201d}."));
     }
     let label = humanize(&name);
     let description = format!("Articles in the {label} area.");
@@ -229,12 +253,15 @@ async fn search_page(State(state): State<AppState>, Query(params): Query<SearchQ
         })
         .collect();
     let body = ui::search_results(&q, &results);
-    let desc = if q.trim().is_empty() {
-        String::new()
+    let (title, desc) = if q.trim().is_empty() {
+        ("Search".to_string(), String::new())
     } else {
-        format!("Search results for \u{201c}{}\u{201d}", q.trim())
+        (
+            format!("{} — Search", q.trim()),
+            format!("Search results for \u{201c}{}\u{201d}", q.trim()),
+        )
     };
-    let head = ui::doc_head("Search", &desc, tenant);
+    let head = ui::doc_head(&title, &desc, tenant);
     Html(ui::page(tenant, "en", head, body, &nav_cats(&state), &[], &q, state.important_info.as_deref()).into_string()).into_response()
 }
 
@@ -253,7 +280,7 @@ async fn history_page(
     let tenant = state.tenant;
     let slug = slug.trim_end_matches('/');
     let Some(doc) = state.index.resolve(slug, Lang::En) else {
-        return (StatusCode::NOT_FOUND, format!("no article: {slug}")).into_response();
+        return not_found(&state, &format!("No record found for \u{201c}{slug}\u{201d}."));
     };
     let repo_root = &state.mounts.mounts[doc.mount_index].path;
     let rel = doc.path.strip_prefix(repo_root).unwrap_or(&doc.path);
@@ -261,11 +288,11 @@ async fn history_page(
     // `?rev=<sha>` → the diff view for that revision.
     if let Some(rev) = params.rev.as_deref().filter(|s| !s.is_empty()) {
         let Some(diff) = crate::history::file_diff(repo_root, rel, rev) else {
-            return (StatusCode::NOT_FOUND, format!("no such revision: {rev}")).into_response();
+            return not_found(&state, &format!("No such revision: {rev}."));
         };
         let body = ui::diff_page(&doc.title, &doc.slug, tenant.issuer(), &diff);
         let head = ui::doc_head(
-            &format!("{} — {}", doc.title, diff.short_sha),
+            &format!("{} — Diff {}", doc.title, diff.short_sha),
             &format!("Changes to {} in revision {}", doc.title, diff.short_sha),
             tenant,
         );
@@ -276,7 +303,7 @@ async fn history_page(
     let revs = crate::history::file_history(repo_root, rel, 50);
     let body = ui::history_page(&doc.title, &doc.slug, tenant.issuer(), &revs);
     let head = ui::doc_head(
-        &format!("History: {}", doc.title),
+        &format!("{} — History", doc.title),
         &format!("Revision history of {}", doc.title),
         tenant,
     );
@@ -380,7 +407,7 @@ async fn wiki_raw(
 ) -> Response {
     let slug = slug.trim_end_matches('/');
     let Some(doc) = state.index.resolve(slug, Lang::En) else {
-        return (StatusCode::NOT_FOUND, format!("no article: {slug}")).into_response();
+        return not_found(&state, &format!("No record found for \u{201c}{slug}\u{201d}."));
     };
     let tenant = state.tenant;
     let repo_root = &state.mounts.mounts[doc.mount_index].path;
@@ -389,7 +416,7 @@ async fn wiki_raw(
     // Point-in-time "as-of" view — render the file as it stood at ?rev=<sha>.
     if let Some(rev) = params.rev.as_deref().filter(|s| !s.is_empty()) {
         let Some((text, date)) = crate::history::file_at_rev(repo_root, rel, rev) else {
-            return (StatusCode::NOT_FOUND, format!("no such revision: {rev}")).into_response();
+            return not_found(&state, &format!("No such revision: {rev}."));
         };
         let parsed = content::parse(&text);
         let rendered = content::render(&parsed.body_md);
