@@ -132,10 +132,40 @@ fn receipt_path(receipts_dir: &std::path::Path, tx_hash: &str) -> PathBuf {
 }
 
 /// Convert a dollars-denominated USDC amount (as reported by `tool-wallet check`'s
-/// `amount_usdc` float) into integer micro-USDC base units (6 decimals). This
-/// dollars→micro-units conversion is CORRECT and unchanged: $1.00 → 1_000_000.
+/// `amount_usdc` float) into integer micro-USDC base units (6 decimals).
+/// Correct for whole-dollar amounts ($1.00 → 1_000_000), but **lossy for many
+/// cent-level values** due to the `f64` round-trip (Checkpoint 2 review finding —
+/// see `price_units_from_check_json`, which prefers an exact integer and uses
+/// this only as a defensive fallback). Do not call this directly on a
+/// `tool-wallet check` response; go through `price_units_from_check_json`.
 fn price_units_from_amount(amount_usdc: f64) -> u64 {
     (amount_usdc * 1_000_000.0) as u64
+}
+
+/// Extract the confirmed payment amount, in exact micro-USDC base units, from a
+/// `tool-wallet check` confirmation JSON.
+///
+/// # Checkpoint 2 review finding
+///
+/// Prefers `amount_units` — the exact source integer `tool-wallet` already emits
+/// (`tool-wallet/src/main.rs:568`) — over `price_units_from_amount(amount_usdc)`,
+/// which round-trips through a lossy `f64` and is off-by-one for roughly 2% of
+/// whole-cent prices (e.g. a genuine $2.01 arrives as 2,009,999, one micro-unit
+/// short, and would silently fail to match — the same failure class this phase's
+/// P4 pricing-unit fix exists to eliminate, just latent rather than fixed). The
+/// float path is kept only as a defensive fallback for a `tool-wallet` response
+/// that, contrary to its current and expected behavior, omits `amount_units`.
+fn price_units_from_check_json(check_json: &Value) -> u64 {
+    check_json
+        .get("amount_units")
+        .and_then(|v| v.as_u64())
+        .unwrap_or_else(|| {
+            let amount_usdc = check_json
+                .get("amount_usdc")
+                .and_then(|v| v.as_f64())
+                .unwrap_or(0.0);
+            price_units_from_amount(amount_usdc)
+        })
 }
 
 /// Resolve the catalog `product_id` whose price equals an on-chain payment of
@@ -155,8 +185,14 @@ fn price_units_from_amount(amount_usdc: f64) -> u64 {
 /// the catalog side by 1_000_000 double-counts the unit conversion, so a genuine
 /// $1.00 payment (`price_units == 1_000_000`) was compared against
 /// `1_000_000 * 1_000_000` and could never match a real payment except by
-/// coincidence. It has never been exercised because every live catalog price is
-/// currently `0` (BETA/free), and `0 == 0` regardless of the bug.
+/// coincidence.
+///
+/// **Correction (Checkpoint 2 review):** `apache` and `fsl` are live, non-zero
+/// priced entries — NOT every catalog price is `0`. The actual safety argument
+/// is: the OLD formula never matched a real payment (any historical paid tx would
+/// have fallen through to `unknown-<price_units>`), so switching to the correct
+/// comparison cannot invalidate any previously-issued license key — receipts are
+/// read from disk verbatim and replay identically regardless of this fix.
 ///
 /// THE FIX: compare `l.price_usdc == price_units` directly — both operands are
 /// already micro-USDC units, so no multiplication belongs on the catalog side.
@@ -419,10 +455,6 @@ async fn v1_license(
         &state.polygon_wallet_address,
     ) {
         WalletCheck::Confirmed(check_json) => {
-            let amount_usdc = check_json
-                .get("amount_usdc")
-                .and_then(|v| v.as_f64())
-                .unwrap_or(0.0);
             let customer_ref = check_json
                 .get("from")
                 .and_then(|v| v.as_str())
@@ -433,7 +465,7 @@ async fn v1_license(
                 .and_then(|v| v.as_u64())
                 .unwrap_or(0);
 
-            let price_units = price_units_from_amount(amount_usdc);
+            let price_units = price_units_from_check_json(&check_json);
             let product_id = load_catalog(&state.catalog_path)
                 .ok()
                 .and_then(|c| match_license_product_id(&c, price_units))
@@ -764,6 +796,52 @@ esac
         );
 
         let _ = fs::remove_dir_all(&scratch);
+    }
+
+    /// Checkpoint 2 review finding: the float round-trip in
+    /// `price_units_from_amount` is lossy for many whole-cent prices. $2.01 is a
+    /// concrete failure case — verify it, then verify `price_units_from_check_json`
+    /// avoids it by preferring the exact `amount_units` integer.
+    #[test]
+    fn amount_units_precision_fix() {
+        // The lossy float path: tool-wallet's own display conversion
+        // (amount_units as f64 / 1_000_000.0) fed back through
+        // price_units_from_amount does NOT reliably round-trip.
+        let amount_units: u64 = 2_010_000; // a genuine $2.01 payment
+        let amount_usdc = amount_units as f64 / 1_000_000.0;
+        let float_roundtrip = price_units_from_amount(amount_usdc);
+        assert_ne!(
+            float_roundtrip, amount_units,
+            "float round-trip must reproduce the known $2.01 precision loss \
+             (if this now passes, tool-wallet's amount_usdc formatting or Rust's \
+             float behavior changed — re-verify the exact-integer path is still \
+             the one actually used in production before relaxing this test)"
+        );
+
+        // The fixed path: given tool-wallet's real response shape (both fields
+        // present, as it always emits), the exact integer wins.
+        let check_json = json!({
+            "confirmed": true,
+            "amount_usdc": amount_usdc,
+            "amount_units": amount_units,
+            "from": "0xbuyer",
+            "block": 1
+        });
+        assert_eq!(
+            price_units_from_check_json(&check_json),
+            amount_units,
+            "must use the exact amount_units field, not the lossy float"
+        );
+
+        // Defensive fallback: if amount_units is ever absent, the float path is
+        // still exercised (documented limitation, not silently broken).
+        let check_json_no_units = json!({
+            "confirmed": true,
+            "amount_usdc": 1.00,
+            "from": "0xbuyer",
+            "block": 1
+        });
+        assert_eq!(price_units_from_check_json(&check_json_no_units), 1_000_000);
     }
 
     // ── Handler: receipt-cache path ───────────────────────────────────────────
