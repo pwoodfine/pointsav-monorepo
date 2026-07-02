@@ -157,7 +157,10 @@ button:disabled { cursor: default; }
 }
 .k-sidenav__link:hover { color: var(--k-accent); border-left-color: var(--k-accent); }
 
-@media (max-width: 1024px) {
+/* Below the drawer breakpoint the off-canvas nav takes over; collapse to one
+   column. Kept in step with the hamburger (≤768px) so there is never a width
+   band with neither a sidebar nor a menu button. */
+@media (max-width: 768px) {
   .k-shell { grid-template-columns: 1fr; }
   .k-sidebar { display: none; }
 }
