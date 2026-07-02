@@ -12,27 +12,46 @@ use maud::{html, Markup, PreEscaped, DOCTYPE};
 
 use crate::content::{Page, Section};
 
+/// Pick a UI string by page language. Chrome-level "furniture" strings only
+/// (nav labels, button labels, boilerplate) — never legal/disclosure text,
+/// which is routed to project-editorial for professional translation rather
+/// than drafted here (see `Tenant::trademark_line`/`disclosure_slots`).
+fn t<'a>(lang: &str, en: &'a str, es: &'a str) -> &'a str {
+    if lang == "es" {
+        es
+    } else {
+        en
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct NavLink {
     pub label: &'static str,
+    pub label_es: &'static str,
     pub href: &'static str,
     pub external: bool,
 }
 
 impl NavLink {
-    pub const fn internal(label: &'static str, href: &'static str) -> Self {
+    pub const fn internal(label: &'static str, label_es: &'static str, href: &'static str) -> Self {
         Self {
             label,
+            label_es,
             href,
             external: false,
         }
     }
-    pub const fn external(label: &'static str, href: &'static str) -> Self {
+    pub const fn external(label: &'static str, label_es: &'static str, href: &'static str) -> Self {
         Self {
             label,
+            label_es,
             href,
             external: true,
         }
+    }
+
+    fn label_for(&self, lang: &str) -> &'static str {
+        t(lang, self.label, self.label_es)
     }
 }
 
@@ -80,15 +99,15 @@ impl Tenant {
             site_title: "Woodfine Capital Projects",
             wordmark_label: "Woodfine Capital Projects",
             nav_links: vec![
-                NavLink::internal("Contact us", "/page/contact"),
-                NavLink::internal("Disclaimer", "/page/disclaimer"),
-                NavLink::external("Corporate", "https://corporate.woodfinegroup.com/"),
-                NavLink::external("Projects", "https://projects.woodfinegroup.com/"),
+                NavLink::internal("Contact us", "Contáctenos", "/page/contact"),
+                NavLink::internal("Disclaimer", "Aviso legal", "/page/disclaimer"),
+                NavLink::external("Corporate", "Corporativo", "https://corporate.woodfinegroup.com/"),
+                NavLink::external("Projects", "Proyectos", "https://projects.woodfinegroup.com/"),
             ],
             footer_nav: vec![
-                NavLink::internal("Contact us", "/page/contact"),
-                NavLink::internal("Disclaimer", "/page/disclaimer"),
-                NavLink::internal("Privacy", "/page/privacy"),
+                NavLink::internal("Contact us", "Contáctenos", "/page/contact"),
+                NavLink::internal("Disclaimer", "Aviso legal", "/page/disclaimer"),
+                NavLink::internal("Privacy", "Privacidad", "/page/privacy"),
             ],
             cities: vec!["Vancouver", "New York"],
             copyright_holder: "Woodfine Capital Projects Inc.",
@@ -118,14 +137,14 @@ impl Tenant {
             site_title: "PointSav Digital Systems",
             wordmark_label: "PointSav Digital Systems",
             nav_links: vec![
-                NavLink::internal("Disclaimer", "/page/disclaimer"),
-                NavLink::external("Software", "https://software.pointsav.com/"),
-                NavLink::external("Design System", "https://design.pointsav.com/"),
-                NavLink::external("Documentation", "https://documentation.pointsav.com/"),
+                NavLink::internal("Disclaimer", "Aviso legal", "/page/disclaimer"),
+                NavLink::external("Software", "Software", "https://software.pointsav.com/"),
+                NavLink::external("Design System", "Sistema de diseño", "https://design.pointsav.com/"),
+                NavLink::external("Documentation", "Documentación", "https://documentation.pointsav.com/"),
             ],
             footer_nav: vec![
-                NavLink::internal("Disclaimer", "/page/disclaimer"),
-                NavLink::internal("Privacy", "/page/privacy"),
+                NavLink::internal("Disclaimer", "Aviso legal", "/page/disclaimer"),
+                NavLink::internal("Privacy", "Privacidad", "/page/privacy"),
             ],
             cities: vec!["Vancouver", "New York"],
             copyright_holder: "Woodfine Capital Projects Inc.",
@@ -154,31 +173,34 @@ impl Tenant {
     }
 }
 
-fn render_nav(links: &[NavLink], class: &str, aria_label: &str) -> Markup {
+fn render_nav(links: &[NavLink], class: &str, aria_label: &str, lang: &str) -> Markup {
+    let new_tab_suffix = t(lang, " (opens in new tab)", " (se abre en una pestaña nueva)");
     html! {
         nav class=(class) aria-label=(aria_label) {
             @for link in links {
                 @if link.external {
                     a href=(link.href) target="_blank" rel="noopener"
-                        aria-label={ (link.label) " (opens in new tab)" } { (link.label) }
+                        aria-label={ (link.label_for(lang)) (new_tab_suffix) } { (link.label_for(lang)) }
                 } @else {
-                    a href=(link.href) { (link.label) }
+                    a href=(link.href) { (link.label_for(lang)) }
                 }
             }
         }
     }
 }
 
-fn masthead(tenant: &Tenant) -> Markup {
+fn masthead(tenant: &Tenant, lang: &str) -> Markup {
+    let nav_landmark = t(lang, "Primary", "Principal");
+    let open_menu = t(lang, "Open menu", "Abrir menú");
     html! {
         header.m-masthead {
             a.m-masthead__wordmark href="/" aria-label=(tenant.wordmark_label) {
                 (tenant.site_title)
             }
-            (render_nav(&tenant.nav_links, "m-masthead__nav", "Primary"))
+            (render_nav(&tenant.nav_links, "m-masthead__nav", nav_landmark, lang))
             button.m-masthead__burger
                 type="button"
-                aria-label="Open menu"
+                aria-label=(open_menu)
                 aria-expanded="false"
                 aria-controls="m-drawer"
                 data-m-drawer-toggle {
@@ -190,34 +212,42 @@ fn masthead(tenant: &Tenant) -> Markup {
     }
 }
 
-fn drawer(tenant: &Tenant) -> Markup {
+fn drawer(tenant: &Tenant, lang: &str) -> Markup {
+    let dialog_label = t(lang, "Site navigation", "Navegación del sitio");
+    let close_menu = t(lang, "Close menu", "Cerrar menú");
+    let nav_landmark = t(lang, "Mobile", "Móvil");
     html! {
         div.m-drawer-scrim data-m-drawer-scrim {}
-        div #m-drawer .m-drawer role="dialog" aria-modal="true" aria-label="Site navigation" hidden {
+        div #m-drawer .m-drawer role="dialog" aria-modal="true" aria-label=(dialog_label) hidden {
             div.m-drawer__header {
                 span { (tenant.site_title) }
-                button.m-drawer__close type="button" aria-label="Close menu" data-m-drawer-toggle {
+                button.m-drawer__close type="button" aria-label=(close_menu) data-m-drawer-toggle {
                     "\u{00d7}"
                 }
             }
-            (render_nav(&tenant.nav_links, "m-drawer__nav", "Mobile"))
+            (render_nav(&tenant.nav_links, "m-drawer__nav", nav_landmark, lang))
         }
     }
 }
 
-fn footer(tenant: &Tenant) -> Markup {
+fn footer(tenant: &Tenant, lang: &str) -> Markup {
+    let site_col_title = t(lang, "Site", "Sitio");
+    let footer_landmark = t(lang, "Footer", "Pie de página");
     html! {
         footer.m-footer {
             div.m-footer__columns {
                 div.m-footer__col {
-                    p.m-footer__col-title { "Site" }
-                    (render_nav(&tenant.footer_nav, "m-footer__nav", "Footer"))
+                    p.m-footer__col-title { (site_col_title) }
+                    (render_nav(&tenant.footer_nav, "m-footer__nav", footer_landmark, lang))
                 }
             }
             @if !tenant.disclosure_slots.is_empty() {
                 div.m-footer__disclosure {
                     @for slot in &tenant.disclosure_slots {
                         div.m-footer__slot {
+                            // Disclosure slot text is legal/regulatory content — English-only
+                            // pending professional translation via project-editorial (not
+                            // drafted here; see NEXT.md). Not localized by `t()`.
                             p.m-footer__slot-label { (slot.label) }
                             p.m-footer__slot-body { (slot.body) }
                         }
@@ -233,8 +263,10 @@ fn footer(tenant: &Tenant) -> Markup {
                         }
                     }
                     p.m-footer__copyright {
-                        "\u{00a9} 2026 " (tenant.copyright_holder) " All rights reserved."
+                        "\u{00a9} 2026 " (tenant.copyright_holder) " " (t(lang, "All rights reserved.", "Todos los derechos reservados."))
                     }
+                    // Trademark line: same pending-professional-translation note as the
+                    // disclosure slots above — verbatim legal text, not machine-localized.
                     p.m-footer__trademark { (tenant.trademark_line) }
                 }
                 div.m-footer__badges {
@@ -246,7 +278,7 @@ fn footer(tenant: &Tenant) -> Markup {
                             }
                         }
                         span.m-badge__text {
-                            span.m-badge__label { "Powered by" }
+                            span.m-badge__label { (t(lang, "Powered by", "Desarrollado con")) }
                             span.m-badge__name { "MediaKit" }
                         }
                     }
@@ -387,15 +419,15 @@ pub fn page_shell(
                 link rel="stylesheet" href="/static/app.css";
             }
             body {
-                a.m-skiplink href="#m-main" { "Skip to content" }
-                (masthead(tenant))
+                a.m-skiplink href="#m-main" { (t(&page.lang, "Skip to content", "Saltar al contenido")) }
+                (masthead(tenant, &page.lang))
                 main #m-main {
                     @for section in &page.sections {
                         (render_section(section, &mut seen_h1))
                     }
                 }
-                (footer(tenant))
-                (drawer(tenant))
+                (footer(tenant, &page.lang))
+                (drawer(tenant, &page.lang))
                 script src="/static/app.js" {}
             }
         }
@@ -473,26 +505,33 @@ sections:
     fn masthead_has_no_search_bar() {
         // Per DESIGN-SYSTEM.md: marketing has no search corpus, so unlike
         // the wiki masthead there is deliberately no search input here.
-        let html = masthead(&Tenant::woodfine()).into_string();
+        let html = masthead(&Tenant::woodfine(), "en").into_string();
         assert!(!html.contains(r#"type="search""#));
         assert!(!html.contains("role=\"search\""));
     }
 
     #[test]
     fn footer_badge_links_to_about() {
-        let html = footer(&Tenant::woodfine()).into_string();
+        let html = footer(&Tenant::woodfine(), "en").into_string();
         assert!(html.contains("Powered by"));
         assert!(html.contains("MediaKit"));
         assert!(html.contains(r#"href="/page/about""#));
     }
 
     #[test]
+    fn footer_badge_label_localizes_to_spanish() {
+        let html = footer(&Tenant::woodfine(), "es").into_string();
+        assert!(html.contains("Desarrollado con"));
+        assert!(html.contains("MediaKit"));
+    }
+
+    #[test]
     fn nav_landmarks_have_distinct_aria_labels() {
         // axe-core landmark-unique: every <nav> needs a distinct accessible
         // name when more than one is present on a page.
-        let masthead_nav = render_nav(&[], "m-masthead__nav", "Primary").into_string();
-        let footer_nav = render_nav(&[], "m-footer__nav", "Footer").into_string();
-        let drawer_nav = render_nav(&[], "m-drawer__nav", "Mobile").into_string();
+        let masthead_nav = render_nav(&[], "m-masthead__nav", "Primary", "en").into_string();
+        let footer_nav = render_nav(&[], "m-footer__nav", "Footer", "en").into_string();
+        let drawer_nav = render_nav(&[], "m-drawer__nav", "Mobile", "en").into_string();
         assert!(masthead_nav.contains(r#"aria-label="Primary""#));
         assert!(footer_nav.contains(r#"aria-label="Footer""#));
         assert!(drawer_nav.contains(r#"aria-label="Mobile""#));
@@ -502,10 +541,18 @@ sections:
     fn drawer_root_is_not_a_nav_element() {
         // axe-core aria-allowed-role: role="dialog" is not permitted on a
         // <nav> (a navigation landmark can't also be a dialog widget).
-        let html = drawer(&Tenant::woodfine()).into_string();
+        let html = drawer(&Tenant::woodfine(), "en").into_string();
         assert!(html.contains(r#"role="dialog""#));
         assert!(!html.contains(r#"<nav id="m-drawer""#));
         assert!(!html.contains(r#"<nav #m-drawer"#));
+    }
+
+    #[test]
+    fn nav_link_labels_localize_to_spanish() {
+        let html = render_nav(&Tenant::woodfine().nav_links, "m-masthead__nav", "Primary", "es")
+            .into_string();
+        assert!(html.contains("Contáctenos"));
+        assert!(!html.contains("Contact us"));
     }
 
     #[test]
