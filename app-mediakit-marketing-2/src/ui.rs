@@ -570,7 +570,7 @@ fn icon_strip(icons: &[crate::content::IconTile]) -> Markup {
             div.m-icon-strip__inner {
                 @for icon in icons {
                     div.m-icon-strip__item {
-                        img src=(icon.src) alt=(icon.alt) loading="lazy" width="120" height="120";
+                        img src=(icon.src) alt=(icon.alt) loading="lazy" width="260" height="260";
                     }
                 }
             }
