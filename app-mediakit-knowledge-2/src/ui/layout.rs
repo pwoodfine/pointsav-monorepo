@@ -572,6 +572,17 @@ pub fn special_list(heading: &str, eyebrow: &str, items: &[(String, String, Stri
     }
 }
 
+/// A minimal chrome-wrapped message page (used for 404 — never a bare error).
+pub fn simple_message(heading: &str, text: &str) -> Markup {
+    html! {
+        div."k-catpage" {
+            h1."k-article__title" { (heading) }
+            p."k-searchpage__hint" { (text) }
+            p { a href="/" { "\u{2190} Back to the main page" } }
+        }
+    }
+}
+
 /// Search results page — a query box plus result cards (same card style as the
 /// category listing). `results` is `(slug, title, description)`, ranked.
 pub fn search_results(query: &str, results: &[(String, String, String)]) -> Markup {
