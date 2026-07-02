@@ -84,17 +84,23 @@ impl SoftwareSurface {
         &["Vancouver", "New York", "Berlin"]
     }
 
-    /// Securities-disclosure citation line — required by
-    /// `factory-release-engineering/policies/DISCLAIMER.md` (NI 51-102 /
-    /// OSC SN 51-721 continuous-disclosure posture; see workspace
-    /// CLAUDE.md "BCSC disclosure posture"). Present on every OLD-crate
-    /// footer (`app-privategit-marketplace/static/{software,licensing}.html`)
-    /// but dropped when P2 built the Sovereign chrome — that P2 build only
-    /// carried forward `trademark_line()` and missed this. Restored verbatim
-    /// (Checkpoint 3a parity finding, 2026-07-02) — do not paraphrase or
-    /// omit; this is a regulatory citation, not decorative text.
-    pub fn disclaimer_citation(self) -> &'static str {
-        "Website Disclaimer v1.0 — Woodfine Capital Projects Inc. — Effective 2026-05-07 — \
-         Source: factory-release-engineering/policies/DISCLAIMER.md"
+    /// Label for the single "Important information" disclosure slot in the
+    /// footer accordion (see `layout::footer`). Matches the
+    /// `app-mediakit-marketing-2` `DisclosureSlot` pattern (operator-directed
+    /// 2026-07-02, "use the current footer setup like on the wiki/home
+    /// sites") — a native `<details>` accordion, collapsed by default,
+    /// on-page rather than hidden behind a link ("clear and prominent"),
+    /// containing the one disclosure specific to what this site actually
+    /// does: sell software licenses paid for in on-chain USDC.
+    ///
+    /// Supersedes the Checkpoint-3a `disclaimer_citation()` fix (2026-07-02)
+    /// — that fix restored a citation line pointing at
+    /// `factory-release-engineering/policies/DISCLAIMER.md`, an LP
+    /// investment-offering document not applicable to a software
+    /// marketplace. This site now has its own self-contained disclaimer
+    /// page (`/page/disclaimer`, see `ui::disclaimer`) instead of citing
+    /// someone else's.
+    pub fn disclosure_label(self) -> &'static str {
+        "Payment and licensing disclosure"
     }
 }

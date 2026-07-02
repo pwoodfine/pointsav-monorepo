@@ -8,10 +8,12 @@
 //! per-surface identity (nav links, verbatim trademark line) lives in `surface.rs`.
 
 pub mod catalog;
+pub mod disclaimer;
 pub mod layout;
 pub mod surface;
 pub mod tokens;
 
 pub use catalog::catalog_markup;
+pub use disclaimer::{disclaimer_markup, disclosure_body};
 pub use layout::{render_page, wrap_static_html};
 pub use surface::SoftwareSurface;
