@@ -726,6 +726,70 @@ esac
         })
     }
 
+    /// Richer products.yaml fixture for the P1–P3 tests: one installer plus a free
+    /// (BETA) license and two paid tiers — the full shape production serves.
+    fn write_full_catalog(dir: &std::path::Path) -> PathBuf {
+        let path = dir.join("products.yaml");
+        fs::write(
+            &path,
+            r#"installers:
+  - id: os-mediakit
+    name: MediaKit OS
+    description: Sovereign media workstation image.
+    edition: "1.2.0"
+    platform: linux-x86_64
+    size_mb: 812
+    path: os-mediakit/1.2.0/installer.run
+licenses:
+  - id: beta-module
+    name: Beta Module
+    description: Platform module, free during BETA.
+    module_tag: mod-beta
+    price_usdc: 0
+  - id: apache
+    name: Apache 2.0
+    module_tag: ""
+    price_usdc: 1000000
+    description: Source-readable, fully open.
+  - id: fsl
+    name: FSL
+    module_tag: ""
+    price_usdc: 19000000
+    description: Source-readable, non-compete.
+"#,
+        )
+        .unwrap();
+        path
+    }
+
+    /// State whose catalog path is caller-supplied (P1–P3 tests; never shells out,
+    /// so `tool_wallet_bin` is the PATH default and irrelevant).
+    fn test_state_at(scratch: &std::path::Path, catalog_path: PathBuf) -> Arc<AppState> {
+        Arc::new(AppState {
+            catalog_path,
+            bind_addr: "127.0.0.1:0".into(),
+            static_dir: scratch.to_path_buf(),
+            polygon_wallet_address: "0xTESTWALLET".into(),
+            receipts_dir: scratch.join("receipts"),
+            claims_dir: scratch.join("claims"),
+            source_base_url: "https://example.invalid/releases".into(),
+            polygon_rpc_url: "https://rpc.invalid".into(),
+            tool_wallet_bin: "tool-wallet".into(),
+        })
+    }
+
+    fn test_state_full(scratch: &std::path::Path) -> Arc<AppState> {
+        let catalog_path = write_full_catalog(scratch);
+        test_state_at(scratch, catalog_path)
+    }
+
+    /// Collect a handler `Response` body into a String (handlers are called
+    /// directly — no TCP port is ever bound).
+    async fn body_text(body: axum::body::Body) -> String {
+        let bytes = axum::body::to_bytes(body, usize::MAX).await.unwrap();
+        String::from_utf8(bytes.to_vec()).unwrap()
+    }
+
     // ── Pure functions ────────────────────────────────────────────────────────
 
     #[test]
@@ -997,5 +1061,256 @@ esac
             .join("0123456789abcdef.json");
         assert!(claim_file.exists());
         let _ = fs::remove_dir_all(&scratch);
+    }
+
+    // ── P1: catalog loading ───────────────────────────────────────────────────
+
+    #[test]
+    fn load_catalog_parses_realistic_fixture() {
+        let scratch = scratch_dir("loadcat");
+        let catalog = load_catalog(&write_full_catalog(&scratch)).unwrap();
+
+        assert_eq!(catalog.installers.len(), 1);
+        let i = &catalog.installers[0];
+        assert_eq!(i.id, "os-mediakit");
+        assert_eq!(i.name, "MediaKit OS");
+        assert_eq!(i.edition, "1.2.0");
+        assert_eq!(i.platform, "linux-x86_64");
+        assert_eq!(i.size_mb, 812);
+        assert_eq!(i.path, "os-mediakit/1.2.0/installer.run");
+
+        assert_eq!(catalog.licenses.len(), 3);
+        assert_eq!(catalog.licenses[0].id, "beta-module");
+        assert_eq!(catalog.licenses[0].price_usdc, 0); // BETA/free tier
+        assert_eq!(catalog.licenses[0].module_tag, "mod-beta");
+        assert_eq!(catalog.licenses[2].id, "fsl");
+        assert_eq!(catalog.licenses[2].price_usdc, 19_000_000); // micro-USDC
+
+        let _ = fs::remove_dir_all(&scratch);
+    }
+
+    #[test]
+    fn load_catalog_missing_file_is_err() {
+        let missing = PathBuf::from("/nonexistent/mkt2-test/products.yaml");
+        assert!(load_catalog(&missing).is_err());
+    }
+
+    #[test]
+    fn load_catalog_malformed_or_incomplete_yaml_is_err() {
+        let scratch = scratch_dir("badcat");
+        let path = scratch.join("products.yaml");
+
+        // Syntactically invalid YAML (unterminated flow sequence).
+        fs::write(&path, "installers: [this is: not, valid yaml").unwrap();
+        assert!(load_catalog(&path).is_err());
+
+        // Well-formed YAML missing a required field (`licenses`) must also fail.
+        fs::write(&path, "installers: []\n").unwrap();
+        assert!(load_catalog(&path).is_err());
+
+        let _ = fs::remove_dir_all(&scratch);
+    }
+
+    // ── P1: /v1/products JSON shape ───────────────────────────────────────────
+
+    /// Regression guard for the Checkpoint 1 finding: every documented field must
+    /// be present on every entry — a missing field here is exactly the class of
+    /// gap that diff caught.
+    #[tokio::test]
+    async fn v1_products_documented_field_shape() {
+        let scratch = scratch_dir("products");
+        let state = test_state_full(&scratch);
+
+        let (status, Json(body)) = v1_products(State(state)).await;
+        assert_eq!(status, StatusCode::OK);
+
+        let installers = body["installers"].as_array().unwrap();
+        assert_eq!(installers.len(), 1);
+        let i = &installers[0];
+        for field in [
+            "id",
+            "name",
+            "description",
+            "edition",
+            "platform",
+            "size_mb",
+            "download_url",
+            "manifest_url",
+            "type",
+            "cost",
+        ] {
+            assert!(
+                i.get(field).is_some(),
+                "installer entry missing documented field `{field}`"
+            );
+        }
+        assert_eq!(i["id"], "os-mediakit");
+        assert_eq!(i["edition"], "1.2.0");
+        assert_eq!(i["platform"], "linux-x86_64");
+        assert_eq!(i["size_mb"], 812);
+        assert_eq!(i["type"], "installer");
+        assert_eq!(i["cost"], "free");
+        assert_eq!(
+            i["download_url"],
+            "https://example.invalid/releases/os-mediakit/1.2.0/installer.run"
+        );
+        assert_eq!(
+            i["manifest_url"],
+            "https://example.invalid/releases/os-mediakit/1.2.0/installer.run/MANIFEST"
+        );
+
+        let licenses = body["licenses"].as_array().unwrap();
+        assert_eq!(licenses.len(), 3);
+        for l in licenses {
+            for field in [
+                "id",
+                "name",
+                "description",
+                "module_tag",
+                "price_usdc",
+                "type",
+                "payment_address",
+                "payment_chain",
+                "payment_token",
+            ] {
+                assert!(
+                    l.get(field).is_some(),
+                    "license entry missing documented field `{field}`"
+                );
+            }
+            assert_eq!(l["type"], "license");
+            assert_eq!(l["payment_address"], "0xTESTWALLET");
+            assert_eq!(l["payment_chain"], "polygon-pos");
+            assert_eq!(l["payment_token"], "USDC");
+        }
+        assert_eq!(licenses[1]["id"], "apache");
+        assert_eq!(licenses[1]["price_usdc"], 1_000_000); // micro-USDC passthrough
+
+        let _ = fs::remove_dir_all(&scratch);
+    }
+
+    #[tokio::test]
+    async fn v1_products_500_when_catalog_unavailable() {
+        let scratch = scratch_dir("products500");
+        let state = test_state_at(&scratch, scratch.join("no-such-products.yaml"));
+
+        let (status, Json(body)) = v1_products(State(state)).await;
+        assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR);
+        assert_eq!(body, json!({"error": "catalog unavailable"}));
+
+        let _ = fs::remove_dir_all(&scratch);
+    }
+
+    // ── P3: dynamic /software catalog page ────────────────────────────────────
+
+    #[tokio::test]
+    async fn software_page_renders_dynamic_catalog_with_chrome() {
+        let scratch = scratch_dir("swpage");
+        let state = test_state_full(&scratch);
+
+        let (parts, body) = software_page(State(state)).await.into_parts();
+        assert_eq!(parts.status, StatusCode::OK);
+        assert_eq!(
+            parts.headers.get(header::CONTENT_TYPE).unwrap(),
+            "text/html; charset=utf-8"
+        );
+        let html = body_text(body).await;
+
+        // Catalog data actually drives the page (the drift bug this phase fixed).
+        assert!(html.contains("os-mediakit"));
+        assert!(html.contains("MediaKit OS"));
+        assert!(html.contains("Beta Module"));
+        assert!(html.contains("Apache 2.0"));
+        assert!(html.contains("<title>Products — PointSav Software</title>"));
+
+        // P2 chrome wraps the dynamic content.
+        assert!(html.contains("sw-masthead"));
+        assert!(html.contains(SoftwareSurface::Marketplace.trademark_line()));
+        assert!(html.contains(SoftwareSurface::Marketplace.copyright_holder()));
+
+        let _ = fs::remove_dir_all(&scratch);
+    }
+
+    #[tokio::test]
+    async fn software_page_500_when_catalog_unavailable() {
+        let scratch = scratch_dir("swpage500");
+        let state = test_state_at(&scratch, scratch.join("no-such-products.yaml"));
+
+        let (parts, body) = software_page(State(state)).await.into_parts();
+        assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
+        assert_eq!(body_text(body).await, "catalog unavailable");
+
+        let _ = fs::remove_dir_all(&scratch);
+    }
+
+    // ── P1/P2: /licensing static page (UNCHANGED by the P3 dynamic-catalog work) ──
+
+    const LICENSING_FIXTURE: &str = r#"<!doctype html>
+<html><head><title>Licensing</title></head>
+<body>
+<header class="topnav">OLD LIGHT NAV</header>
+<main><h1>Licensing terms</h1><p>Static legal content, verbatim.</p></main>
+<footer>OLD THIN FOOTER</footer>
+</body></html>"#;
+
+    #[tokio::test]
+    async fn licensing_page_serves_static_content_with_chrome() {
+        let scratch = scratch_dir("licensing");
+        let state = test_state_full(&scratch);
+        fs::write(state.static_dir.join("licensing.html"), LICENSING_FIXTURE).unwrap();
+
+        let (parts, body) = licensing_page(State(state)).await.into_parts();
+        assert_eq!(parts.status, StatusCode::OK);
+        assert_eq!(
+            parts.headers.get(header::CONTENT_TYPE).unwrap(),
+            "text/html; charset=utf-8"
+        );
+        let html = body_text(body).await;
+
+        // Static document content served unchanged.
+        assert!(html.contains("Licensing terms"));
+        assert!(html.contains("Static legal content, verbatim."));
+
+        // Old light chrome stripped; Sovereign chrome mounted.
+        assert!(!html.contains("OLD LIGHT NAV"));
+        assert!(!html.contains("OLD THIN FOOTER"));
+        assert!(html.contains("sw-masthead"));
+        assert!(html.contains(SoftwareSurface::Marketplace.trademark_line()));
+
+        // NOT affected by P3: no dynamic catalog cards on /licensing.
+        assert!(!html.contains("sw-cat-card"));
+
+        let _ = fs::remove_dir_all(&scratch);
+    }
+
+    #[tokio::test]
+    async fn licensing_page_500_when_static_file_missing() {
+        let scratch = scratch_dir("licensing500");
+        let state = test_state_full(&scratch); // no licensing.html written
+
+        let (parts, body) = licensing_page(State(state)).await.into_parts();
+        assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
+        assert_eq!(body_text(body).await, "page unavailable");
+
+        let _ = fs::remove_dir_all(&scratch);
+    }
+
+    // ── P1: /healthz + / redirect ─────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn healthz_shape() {
+        let Json(body) = healthz().await;
+        assert_eq!(
+            body,
+            json!({"status": "ok", "service": "app-privategit-marketplace"})
+        );
+    }
+
+    #[tokio::test]
+    async fn root_redirects_302_to_software() {
+        let resp = root().await;
+        // P1 contract: 302 Found (NOT axum Redirect::to's 303).
+        assert_eq!(resp.status(), StatusCode::FOUND);
+        assert_eq!(resp.headers().get(header::LOCATION).unwrap(), "/software");
     }
 }
