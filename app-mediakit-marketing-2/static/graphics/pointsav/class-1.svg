@@ -14,15 +14,15 @@
             <!-- head -->
             <circle cx="72" cy="44" r="22" fill="#FFFFFF" stroke="#231F20" stroke-width="1.5"></circle>
             <!-- headset band -->
-            <path d="M46 44 Q46 18 72 18 Q98 18 98 44" fill="none" stroke="#164679" stroke-width="3" stroke-linecap="round"></path>
+            <path d="M46 44 Q46 18 72 18 Q98 18 98 44" fill="none" stroke="#234ed8" stroke-width="3" stroke-linecap="round"></path>
             <!-- ear cups -->
             <rect x="38" y="40" width="12" height="14" rx="2" fill="#FFFFFF" stroke="#231F20" stroke-width="1.5"></rect>
-            <rect x="40.5" y="42.5" width="7" height="9" rx="1" fill="#164679"></rect>
+            <rect x="40.5" y="42.5" width="7" height="9" rx="1" fill="#234ed8"></rect>
             <rect x="94" y="40" width="12" height="14" rx="2" fill="#FFFFFF" stroke="#231F20" stroke-width="1.5"></rect>
-            <rect x="96.5" y="42.5" width="7" height="9" rx="1" fill="#164679"></rect>
+            <rect x="96.5" y="42.5" width="7" height="9" rx="1" fill="#234ed8"></rect>
             <!-- mic -->
             <path d="M100 54 Q104 66 90 68" fill="none" stroke="#231F20" stroke-width="1.5" stroke-linecap="round"></path>
-            <circle cx="88" cy="68" r="3" fill="#164679" stroke="#231F20" stroke-width="1.5"></circle>
+            <circle cx="88" cy="68" r="3" fill="#234ed8" stroke="#231F20" stroke-width="1.5"></circle>
           </g>
 
                     <!-- label (no surrounding box) -->
