@@ -1,3 +1,5 @@
+[workspace]
+
 [package]
 name = "app-privategit-bim"
 version = "0.1.0"
