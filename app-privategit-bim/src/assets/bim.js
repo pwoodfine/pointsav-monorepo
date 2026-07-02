@@ -64,6 +64,27 @@ window.addEventListener('popstate', () => {
   navigate(location.pathname);
 });
 
+// ── Mobile nav toggle ────────────────────────────────────────────────────────
+
+function closeMobileNav() {
+  document.querySelector('.bim-side-nav')?.classList.remove('bim-side-nav--open');
+  document.querySelector('.bim-topbar__toggle')?.setAttribute('aria-expanded', 'false');
+}
+
+document.addEventListener('click', (e) => {
+  const toggle = e.target.closest('.bim-topbar__toggle');
+  if (toggle) {
+    const nav = document.querySelector('.bim-side-nav');
+    const isOpen = nav?.classList.toggle('bim-side-nav--open');
+    toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    return;
+  }
+  // Close the mobile drawer whenever a nav link is followed.
+  if (e.target.closest('.bim-side-nav [data-path], .bim-side-nav .bim-nav-link')) {
+    closeMobileNav();
+  }
+});
+
 // ── SSE hot-reload ──────────────────────────────────────────────────────────
 
 let sseRetries = 0;

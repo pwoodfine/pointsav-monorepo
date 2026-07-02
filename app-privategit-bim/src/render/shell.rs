@@ -27,6 +27,7 @@ pub fn page_shell(title: &str, active_path: &str, content: &str, state: &AppStat
 </head>
 <body class="bim-body">
   <header class="bim-topbar">
+    <button class="bim-topbar__toggle" aria-label="Toggle menu" aria-expanded="false" type="button">&#9776;</button>
     <a href="/" class="bim-topbar__brand">Woodfine</a>
     <span class="bim-topbar__sep" aria-hidden="true"></span>
     <span class="bim-topbar__label">BIM Object Library</span>
