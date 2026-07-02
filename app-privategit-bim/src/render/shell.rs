@@ -50,6 +50,7 @@ pub fn page_shell(title: &str, active_path: &str, content: &str, state: &AppStat
           <li>Specification BIM Objects for the built environment</li>
           <li>{tc} BIM Object categories &middot; {comp} components &middot; {rc} research entries</li>
           <li>IFC&nbsp;4.3 (ISO&nbsp;16739-1:2024) &middot; Uniclass&nbsp;2015 &middot; DTCG</li>
+          <li>BIM Object data licensed <strong>Apache-2.0</strong></li>
         </ul>
       </div>
       <div>
@@ -64,7 +65,8 @@ pub fn page_shell(title: &str, active_path: &str, content: &str, state: &AppStat
       <div>
         <p class="bim-footer__heading">Platform</p>
         <ul class="bim-footer__list">
-          <li>Open-source &middot; Apache-2.0</li>
+          <li>Platform code licensed <strong>AGPL-3.0-or-later</strong></li>
+          <li><a href="https://github.com/pointsav/pointsav-monorepo">Source (github.com/pointsav)</a></li>
           <li>Powered by <strong>PointSav Digital Systems&trade;</strong></li>
           <li><a href="https://pointsav.com">pointsav.com</a></li>
         </ul>
