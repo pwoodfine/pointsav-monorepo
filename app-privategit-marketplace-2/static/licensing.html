@@ -1,0 +1,1211 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1440">
+<title>Licensing — PointSav, Inc.</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700&family=League+Gothic&family=Mulish:ital,wght@0,300..700;1,400&family=Nunito+Sans:ital,wght@0,300..700;1,400&family=Oswald:wght@400;500;600;700&family=Roboto+Slab:wght@300;400;500;700&family=Zilla+Slab:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400&display=swap" rel="stylesheet">
+<style>
+  /* ── Woodfine tokens ───────────────────────────────────────────── */
+  :root {
+    --paper:    #FFFFFF;
+    --paper-2:  #F7F9FA;
+    --paper-3:  #E6E7E8;
+
+    --ink:         #111827;
+    --ink-2:       #374151;
+    --ink-3:       #6B7280;
+    --ink-4:       #9CA3AF;
+    --rule:        #E6E7E8;
+    --rule-strong: #9CA3AF;
+
+    --wf-blue:    #164679;
+    --wf-blue-tint: #E8EFF7;
+
+    --accent:      var(--wf-blue);
+    --accent-tint: var(--wf-blue-tint);
+
+    /* Brand-aligned 3-font system (free Google substitutes for Trade Gothic / Caecilia / Avenir) */
+    --display: "Oswald", "Trade Gothic LT Std", "Barlow Condensed", "Helvetica Neue", Arial, sans-serif;
+    --serif:   "Roboto Slab", "Caecilia LT Std", "Zilla Slab", Georgia, serif;
+    --sans:    "Nunito Sans", "Avenir LT Std", "Avenir Next", "Mulish", -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+  }
+
+  *,
+  *::before,
+  *::after { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--paper-2);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a { color: inherit; text-decoration: none; }
+
+  /* ── Outer page (mimics paper-on-canvas) ───────────────────────── */
+  .page {
+    width: 1440px;
+    margin: 0 auto;
+    background: var(--paper-2);
+    padding: 32px 0 0;
+  }
+
+  /* ── Header ────────────────────────────────────────────────────── */
+  .topnav {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    padding: 0 56px;
+    margin-bottom: 28px;
+  }
+  .topnav .left,
+  .topnav .right {
+    display: flex;
+    gap: 36px;
+    font-family: var(--sans);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    color: var(--ink-3);
+    text-transform: uppercase;
+  }
+  .topnav .left { justify-content: flex-start; }
+  .topnav .right {
+    justify-content: flex-end;
+    color: var(--accent);
+  }
+  .topnav .left a:hover,
+  .topnav .right a:hover { opacity: 0.7; }
+
+  .wordmark {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+  }
+  .wordmark img, .wordmark .logo-svg {
+    display: block;
+    height: 80px;
+    width: 320px;
+    /* SVG has institutional-fill paths — set color via filter-free approach: */
+    /* the SVG uses currentColor where possible; otherwise it carries its own fill */
+  }
+
+  /* ── Document area (white card on canvas) ─────────────────────── */
+  .doc {
+    margin: 0 56px;
+    background: var(--paper);
+    border: 0;
+  }
+
+  /* Sub-nav (HOME tab) */
+  .subnav {
+    background: var(--paper);
+    border-bottom: 1px solid var(--rule);
+    padding: 14px 36px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+  }
+  .subnav .tabs-right {
+    display: flex;
+    gap: 8px;
+  }
+  .subnav .tab {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    background: var(--accent);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    line-height: 1.25;
+    padding: 8px 14px;
+    min-width: 130px;
+    min-height: 40px;
+    text-transform: uppercase;
+    cursor: default;
+    box-sizing: border-box;
+  }
+
+  /* ── Hero band (blue) ─────────────────────────────────────────── */
+  .hero {
+    background: var(--accent);
+    color: #fff;
+    padding: 22px 64px 26px;
+  }
+  .hero .kicker {
+    text-align: center;
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: #fff;
+    padding-top: 12px;
+    padding-bottom: 12px;
+    border-top: 1px solid rgba(255,255,255,0.5);
+    border-bottom: 1px solid rgba(255,255,255,0.5);
+    margin: 0 auto 14px;
+    max-width: none;
+  }
+  .hero p {
+    font-family: var(--serif);
+    font-size: 19px;
+    line-height: 1.55;
+    color: #fff;
+    text-align: center;
+    max-width: none;
+    margin: 0 auto;
+    text-wrap: pretty;
+  }
+
+  /* ── Project classes band (grey) ───────────────────────────────── */
+  .classes {
+    background: var(--paper-3);
+    padding: 0 36px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+    align-items: center;
+    overflow: hidden;
+  }
+  .class {
+    position: relative;
+  }
+  .class .icon {
+    height: 180px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 0;
+    overflow: visible;
+  }
+  /* SVGs include their own text labels and have ~50% transparent padding
+     inside the viewBox. Show them at full square size; let neighbours
+     overlap via negative inline margin to bring icons visually closer. */
+  .class .icon svg, .class .icon .class-icon {
+    display: block;
+    width: 240px;
+    height: 240px;
+    margin: 0 -110px;
+  }
+  .class .label {
+    position: relative;
+    z-index: 2;
+  }
+  .class {
+    text-align: center;
+    color: var(--ink);
+  }
+
+  .class .label {
+    font-family: var(--sans);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    line-height: 1.4;
+    text-transform: uppercase;
+  }
+
+  /* ── Value-prop grid ──────────────────────────────────────────── */
+  .props {
+    padding: 36px 120px 56px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0 24px;
+  }
+  .prop {
+    padding-top: 14px;
+    padding-right: 10px;
+  }
+  .prop + .prop { /* divider before each except first in row handled separately */ }
+  .prop { position: relative; }
+  a.prop {
+    display: block;
+    color: inherit;
+    cursor: pointer;
+    transition: background 160ms ease;
+  }
+  a.prop:hover { background: var(--paper-3); }
+  a.prop:hover h3 { color: var(--accent); }
+  a.prop .ext {
+    font-family: var(--sans);
+    font-weight: 600;
+    margin-left: 6px;
+    font-size: 0.85em;
+    color: var(--accent);
+    letter-spacing: 0;
+    display: inline-block;
+    transform: translateY(-1px);
+  }
+  .prop + .prop::before {
+    content: "";
+    position: absolute;
+    left: -12px; top: 14px; bottom: 14px;
+    width: 1px;
+    background: var(--rule);
+  }
+  .props .row-2:first-of-type::before { display: none; }
+  .prop .propnum {
+    display: block;
+    font-family: var(--display);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    color: var(--ink-4);
+    margin-bottom: 6px;
+  }
+  .prop h3 sup, .compliance sup, .hero p sup {
+    font-size: 0.65em; vertical-align: super; line-height: 0;
+    color: var(--ink-3);
+    font-weight: 500;
+    padding-left: 1px;
+  }
+  .hero p sup { color: rgba(255,255,255,0.7); }
+  .compliance {
+    margin: 0 56px 0;
+    background: var(--paper-2);
+    border-top: 1px solid var(--rule);
+    padding: 28px 120px 32px;
+  }
+  .compliance h4 {
+    margin: 0 0 14px;
+    font-family: var(--display);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+  .compliance p {
+    margin: 0 0 10px;
+    font-family: var(--sans);
+    font-size: 11px;
+    line-height: 1.55;
+    color: var(--ink-3);
+  }
+  .compliance p:last-child { margin-bottom: 0; }
+  .compliance strong { color: var(--ink-2); font-weight: 700; }
+  .compliance em { font-style: italic; }
+  .prop h3 {
+    margin: 0 0 6px 0;
+    font-family: var(--sans);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    color: var(--accent);
+    text-transform: uppercase;
+    border-top: 2px solid var(--accent);
+    padding-top: 14px;
+  }
+  .prop p {
+    margin: 8px 0 0 0;
+    font-family: var(--sans);
+    font-size: 13px;
+    line-height: 1.55;
+    color: var(--ink);
+  }
+
+  /* second row spacing */
+  .props .row-2 { margin-top: 28px; }
+
+  /* === Footer (matches Disclaimer page) === */
+  footer {
+    margin: 0 56px;
+    background: var(--paper-2);
+    border-top: 1px solid var(--rule);
+    padding: 0 0 20px;
+  }
+  .footer-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+    background: #B4C5D5;
+    padding: 18px 140px;
+  }
+  .footer-bottom-wrap { padding: 0 140px; }
+  .footer-nav .offices {
+    font-family: var(--display);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #164679;
+  }
+  .footer-nav .offices span { margin: 0 6px; color: #164679; opacity: 0.45; }
+  .footer-nav .footer-links a { color: #164679; }
+  .footer-nav .footer-links a:hover { color: #0f3056; }
+  .footer-links {
+    display: flex;
+    gap: 20px;
+    font-family: var(--display);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .footer-links a { color: var(--ink-3); text-decoration: none; }
+  .footer-links a:hover { color: var(--accent); }
+  .footer-bottom {
+    border-top: 1px solid var(--rule);
+    padding-top: 14px;
+    font-family: var(--sans);
+    font-size: 11px;
+    color: var(--ink-3);
+    line-height: 1.7;
+  }
+  .footer-bottom strong { color: var(--ink-2); }
+  .footer-version {
+    margin-top: 10px;
+    font-family: var(--sans);
+    font-size: 10px;
+    color: var(--ink-4);
+    letter-spacing: 0.04em;
+  }
+
+  /* ── Tweaks panel hooks ───────────────────────────────────────── */
+  .tweak-hide-image .class .icon svg { opacity: 0.15; }
+
+  /* Font pairing presets — body class drives --serif / --sans */
+  /* Brand presets (3-font system: display / body-slab / UI-sans) */
+  body.fp-brand            { --display: "Oswald", sans-serif; --serif: "Roboto Slab", Georgia, serif; --sans: "Nunito Sans", system-ui, sans-serif; }
+  body.fp-brand-zilla      { --display: "Oswald", sans-serif; --serif: "Zilla Slab", Georgia, serif; --sans: "Mulish", system-ui, sans-serif; }
+  body.fp-barlow-roboto    { --display: "Barlow Condensed", sans-serif; --serif: "Roboto Slab", Georgia, serif; --sans: "Nunito Sans", system-ui, sans-serif; }
+  body.fp-league-zilla     { --display: "League Gothic", sans-serif; --serif: "Zilla Slab", Georgia, serif; --sans: "Nunito Sans", system-ui, sans-serif; }
+  body.fp-system           { --display: -apple-system, system-ui, sans-serif; --serif: ui-serif, Georgia, serif; --sans: -apple-system, system-ui, sans-serif; }
+
+  /* Apply display font to wordmark area, hero kicker, project class labels, value-prop kickers */
+  .hero .kicker      { font-family: var(--display); font-weight: 700; letter-spacing: 0.16em; }
+  .class .label      { font-family: var(--display); font-weight: 700; letter-spacing: 0.18em; }
+  .prop h3           { font-family: var(--display); font-weight: 700; letter-spacing: 0.14em; }
+  .topnav .left, .topnav .right { font-family: var(--display); font-weight: 500; letter-spacing: 0.16em; }
+  .subnav .tab       { font-family: var(--display); font-weight: 700; letter-spacing: 0.16em; }
+  /* Body / paragraph slab */
+  .hero p, .prop p   { font-family: var(--serif); }
+
+  /* hero kicker can be serif italic on some pairings */
+  body.kicker-serif .hero .kicker { font-family: var(--serif); font-style: italic; font-weight: 400; letter-spacing: 0.02em; text-transform: none; font-size: 16px; }
+  body.kicker-serif .prop h3      { font-family: var(--serif); font-style: italic; font-weight: 500; letter-spacing: 0.01em; text-transform: none; font-size: 15px; }
+
+  /* ── Page hero band (subpage) ─────────────────────────────────── */
+  .page-hero {
+    margin: 0 56px;
+    background: var(--paper-3);
+    border-bottom: 1px solid var(--rule);
+    padding: 22px 140px;
+    text-align: center;
+  }
+  .page-hero h1 {
+    margin: 0;
+    font-family: var(--display);
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink);
+  }
+  .topnav .left,
+  .topnav .right {
+    align-items: center;
+  }
+  .topnav .left a,
+  .topnav .right a {
+    display: inline-flex;
+    align-items: center;
+    height: 32px;
+    padding: 0 4px;
+    box-sizing: border-box;
+    line-height: 1;
+  }
+  .topnav .left a.active-page {
+    background: #B4C5D5;
+    color: var(--accent);
+    padding: 0 14px;
+    letter-spacing: 0.16em;
+  }
+  .subpage-subnav {
+    margin: 0 56px;
+    background: var(--paper);
+    border-bottom: 1px solid var(--rule);
+    padding: 14px 140px;
+    display: flex; align-items: center; gap: 12px;
+    font-family: var(--display);
+    font-size: 12px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--ink-3);
+  }
+  .subpage-subnav a:hover { color: var(--accent); }
+  .subpage-subnav .sep { color: var(--ink-4); }
+
+  /* Subpage main */
+  .subpage-main {
+    margin: 0 56px;
+    background: var(--paper);
+    min-height: 1200px;
+    padding: 48px 140px 80px;
+  }
+
+  /* Contact layout */
+  .contact-grid { display: flex; gap: 80px; }
+  .contact-grid .col-left { flex: 0 0 320px; }
+  .contact-grid .intro-text {
+    font-family: var(--sans);
+    font-size: 14px; line-height: 1.7; color: var(--accent);
+    margin-bottom: 36px;
+  }
+  .email-row { display: flex; align-items: center; gap: 18px; }
+  .email-icon {
+    width: 58px; height: 58px; border-radius: 50%;
+    border: 2px solid var(--ink);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .email-icon svg { width: 28px; height: 28px; stroke: var(--ink); fill: none; stroke-width: 1.5; }
+  .email-address {
+    font-family: var(--display);
+    font-size: 14px; font-weight: 500; letter-spacing: 0.1em;
+    color: var(--ink);
+  }
+  .contact-grid .col-right { flex: 1; }
+  .office-block {
+    margin-bottom: 36px; padding-bottom: 36px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .office-block:last-child { border-bottom: 0; margin-bottom: 0; padding-bottom: 0; }
+  .office-city {
+    font-family: var(--display);
+    font-size: 13px; font-weight: 600; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--accent); margin-bottom: 10px;
+  }
+  .office-address { font-family: var(--serif); font-size: 14px; line-height: 1.75; color: var(--ink); }
+  .office-address strong { font-family: var(--sans); font-weight: 700; color: var(--ink); }
+
+  /* Disclaimer layout */
+  .disclaimer-body { max-width: 760px; margin: 0 auto; }
+  .disclaimer-body p {
+    font-family: var(--serif);
+    font-size: 14px; line-height: 1.75; color: var(--ink-2);
+    margin-bottom: 18px;
+  }
+  .disclaimer-body ol { list-style: none; counter-reset: dc; margin: 16px 0 0 0; padding: 0; }
+  .disclaimer-body ol li {
+    counter-increment: dc;
+    font-family: var(--serif);
+    font-size: 14px; line-height: 1.75; color: var(--ink-2);
+    margin-bottom: 22px; padding-left: 28px; position: relative;
+  }
+  .disclaimer-body ol li::before {
+    content: counter(dc) ".";
+    position: absolute; left: 0; font-weight: 600; color: var(--ink);
+  }
+  .disclaimer-body ol li strong { font-weight: 700; color: var(--ink); }
+  </style>
+<style>
+  /* ── Software page: a small extension on the existing system ─────── */
+  .installers-intro {
+    max-width: 760px;
+    margin: 0 auto 28px;
+  }
+  .installers-intro p {
+    font-family: var(--serif);
+    font-size: 15px;
+    line-height: 1.75;
+    color: var(--ink-2);
+    text-wrap: pretty;
+  }
+  .installers-intro p + p { margin-top: 12px; }
+  .installers-intro p strong { font-family: var(--sans); color: var(--ink); font-weight: 700; }
+
+  .installers {
+    max-width: 920px;
+    margin: 0 auto;
+    border-top: 2px solid var(--ink);
+  }
+  .installer {
+    display: grid;
+    grid-template-columns: 1fr 100px 110px 90px 110px;
+    align-items: center;
+    gap: 16px;
+    padding: 20px 4px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .installer:last-child { border-bottom: 2px solid var(--ink); }
+  .installer .name {
+    font-family: var(--display);
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink);
+  }
+  .installer .name small {
+    display: block;
+    margin-top: 4px;
+    font-family: var(--serif);
+    font-size: 13px;
+    font-weight: 400;
+    letter-spacing: 0;
+    text-transform: none;
+    color: var(--ink-3);
+    line-height: 1.5;
+  }
+  .installer .name small .tag {
+    display: inline-block;
+    margin-left: 4px;
+    padding: 1px 6px;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    color: var(--accent);
+    background: var(--accent-tint);
+    border-radius: 2px;
+    white-space: nowrap;
+    vertical-align: 2px;
+  }
+  .installer .col {
+    font-family: var(--sans);
+    font-size: 12px;
+    color: var(--ink-2);
+    letter-spacing: 0.04em;
+  }
+  .installer .col .label {
+    display: block;
+    font-family: var(--display);
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-4);
+    margin-bottom: 4px;
+  }
+  .installer .get {
+    justify-self: end;
+    font-family: var(--display);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--accent);             /* Woodfine blue text */
+    background: #B4C5D5;              /* steel */
+    padding: 10px 18px;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .installer .get:hover { background: #A0B5C8; }
+
+  /* Header row labels on first row */
+  .installers .head {
+    padding: 12px 4px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .installers .head .col,
+  .installers .head .name {
+    font-family: var(--display);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+
+  /* Footnote */
+  .installers-note {
+    max-width: 920px;
+    margin: 28px auto 0;
+    padding: 22px 24px;
+    background: var(--accent-tint);
+    border-left: 3px solid var(--accent);
+    font-family: var(--serif);
+    font-size: 13px;
+    line-height: 1.75;
+    color: var(--ink-2);
+  }
+  .installers-note strong {
+    font-family: var(--sans);
+    color: var(--ink);
+    font-weight: 700;
+  }
+  .installers-note a { color: var(--accent); text-decoration: underline; }
+</style>
+
+<style>
+  /* ── Licensing page additions ──────────────────────────────────── */
+
+  .lic-intro { max-width: 920px; margin: 0 auto 36px; }
+  .lic-intro p {
+    font-family: var(--serif);
+    font-size: 15px; line-height: 1.75; color: var(--ink-2);
+    text-wrap: pretty;
+  }
+  .lic-intro p + p { margin-top: 12px; }
+  .lic-intro strong { font-family: var(--sans); color: var(--ink); font-weight: 700; }
+
+  /* Two-column free/paid header */
+  .lic-section {
+    max-width: 920px;
+    margin: 0 auto 48px;
+  }
+  .lic-section-head {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    padding-bottom: 12px;
+    margin-bottom: 18px;
+    border-bottom: 2px solid var(--ink);
+  }
+  .lic-section-head .marker {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    color: var(--accent);
+    background: var(--accent-tint);
+    padding: 4px 10px;
+    border-radius: 2px;
+  }
+  .lic-section-head .marker.free { color: var(--ink); background: var(--paper-3); }
+  .lic-section-head h2 {
+    font-family: var(--display);
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink);
+    margin: 0;
+  }
+
+  .lic-section .blurb {
+    font-family: var(--serif);
+    font-size: 14px;
+    line-height: 1.75;
+    color: var(--ink-2);
+    margin-bottom: 8px;
+  }
+  .lic-section .blurb .inline-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: 4px;
+    font-family: var(--display);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--accent);
+    background: #B4C5D5;
+    padding: 8px 16px;
+    text-decoration: none;
+    vertical-align: 2px;
+  }
+  .lic-section .blurb .inline-action:hover { background: #A0B5C8; }
+  .lic-section .blurb code {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 12.5px;
+    color: var(--accent);
+    background: var(--accent-tint);
+    padding: 1px 6px;
+    border-radius: 2px;
+  }
+
+  /* Free claim block */
+  .free-claim {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 24px;
+    align-items: center;
+    padding: 22px 24px;
+    background: var(--paper-2);
+    border-top: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+  }
+  .free-claim .what {
+    font-family: var(--sans);
+    font-size: 13px;
+    color: var(--ink-2);
+    line-height: 1.6;
+  }
+  .free-claim .what strong {
+    display: block;
+    font-family: var(--display);
+    font-size: 14px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink);
+    margin-bottom: 4px;
+  }
+  .btn-primary {
+    font-family: var(--display);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--accent);
+    background: #B4C5D5;
+    border: none;
+    padding: 12px 22px;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .btn-primary:hover { background: #A0B5C8; }
+  .btn-secondary {
+    font-family: var(--display);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--accent);
+    background: #B4C5D5;
+    border: none;
+    padding: 12px 22px;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .btn-secondary:hover { background: #A0B5C8; }
+
+  /* Paid license rows (mirrors .installer pattern) */
+  .licenses {
+    border-top: 2px solid var(--ink);
+  }
+  .license {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 16px;
+    padding: 20px 4px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .license:last-child { border-bottom: 2px solid var(--ink); }
+  .license .name {
+    font-family: var(--display);
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink);
+  }
+  .license .name small {
+    display: block;
+    margin-top: 4px;
+    font-family: var(--serif);
+    font-size: 13px;
+    font-weight: 400;
+    letter-spacing: 0;
+    text-transform: none;
+    color: var(--ink-3);
+    line-height: 1.5;
+  }
+  .license .name small .tag {
+    display: inline-block;
+    margin-left: 4px;
+    padding: 1px 6px;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    color: var(--accent);
+    background: var(--accent-tint);
+    border-radius: 2px;
+    white-space: nowrap;
+    vertical-align: 2px;
+  }
+  .license .col {
+    font-family: var(--sans);
+    font-size: 12px;
+    color: var(--ink-2);
+    letter-spacing: 0.04em;
+  }
+  .license .col .label {
+    display: block;
+    font-family: var(--display);
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-4);
+    margin-bottom: 4px;
+  }
+  .license .col.price-col {
+    font-family: var(--display);
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--ink);
+    letter-spacing: 0;
+  }
+  .license .col.price-col .label { color: var(--ink-4); font-size: 9px; }
+  .license .mint {
+    justify-self: end;
+    font-family: var(--display);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--accent);
+    background: #B4C5D5;
+    padding: 10px 18px;
+    text-decoration: none;
+  }
+  .license .mint:hover { background: #A0B5C8; }
+  .licenses .head {
+    padding: 12px 4px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .licenses .head .col,
+  .licenses .head .name {
+    font-family: var(--display);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+
+  /* ── Wallet panel (simplified to 2 rows) ───────────────────────── */
+  .wallet {
+    max-width: 920px;
+    margin: 0 auto 32px;
+    border: 1px solid var(--ink);
+    background: var(--paper);
+  }
+  .wallet-row {
+    display: grid;
+    grid-template-columns: 110px 1fr auto;
+    align-items: center;
+    gap: 20px;
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .wallet-row:last-child { border-bottom: 0; }
+  .wallet-row .label {
+    font-family: var(--display);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--ink-4);
+  }
+  .wallet-row .body {
+    font-family: var(--sans);
+    font-size: 13px;
+    color: var(--ink);
+    line-height: 1.5;
+  }
+  .chains {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .chains .chain {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    color: var(--ink-2);
+    background: var(--paper-2);
+    border: 1px solid var(--rule-strong);
+    padding: 4px 10px;
+    border-radius: 2px;
+    cursor: pointer;
+  }
+  .chains .chain.on {
+    color: var(--accent);
+    background: var(--accent-tint);
+    border-color: var(--accent);
+  }
+  .chains .chain.dim {
+    color: var(--ink-4);
+    border-color: var(--rule);
+  }
+
+  /* Tax row */
+  .wallet .tax-row { background: var(--paper-2); }
+  .wallet .tax-row .body {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 16px;
+    align-items: baseline;
+  }
+  .wallet .tax-row .juris {
+    font-family: var(--sans);
+    color: var(--ink-2);
+  }
+  .wallet .tax-row .juris .auto {
+    color: var(--accent);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+  }
+  .wallet .tax-row .change {
+    font-family: var(--display);
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    text-decoration: underline;
+    cursor: pointer;
+    margin-left: 8px;
+  }
+  .wallet .tax-row .totals {
+    display: grid;
+    grid-template-columns: auto auto;
+    column-gap: 18px;
+    row-gap: 4px;
+    align-items: baseline;
+    justify-content: end;
+    font-family: var(--sans);
+    font-size: 13px;
+    color: var(--ink-2);
+  }
+  .wallet .tax-row .totals .k { color: var(--ink-3); }
+  .wallet .tax-row .totals .v { color: var(--ink); text-align: right; }
+  .wallet .tax-row .totals .total-k,
+  .wallet .tax-row .totals .total-v {
+    border-top: 1px solid var(--rule);
+    padding-top: 6px;
+    margin-top: 2px;
+    font-weight: 700;
+    color: var(--ink);
+  }
+  .wallet .tax-row .totals .total-v {
+    font-family: var(--display);
+    font-size: 16px;
+    letter-spacing: 0.02em;
+  }
+
+  /* Compliance-style footnote (matches Software page tint) */
+  .lic-note {
+    max-width: 920px;
+    margin: 28px auto 0;
+    padding: 22px 24px;
+    background: var(--accent-tint);
+    border-left: 3px solid var(--accent);
+    font-family: var(--serif);
+    font-size: 13px;
+    line-height: 1.75;
+    color: var(--ink-2);
+  }
+  .lic-note strong {
+    font-family: var(--sans);
+    color: var(--ink);
+    font-weight: 700;
+  }
+  .lic-note p + p { margin-top: 10px; }
+  .lic-note code {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 12.5px;
+    color: var(--accent);
+    background: rgba(22,70,121,0.08);
+    padding: 1px 6px;
+    border-radius: 2px;
+  }
+</style>
+</head>
+
+<body class="fp-brand">
+
+<div class="page" data-screen-label="Licensing">
+  <header class="topnav">
+    <nav class="left">
+      <a href="/software">Software</a>
+      <a class="active-page" href="#">Licensing</a>
+      <a href="#">Disclaimer</a>
+      <a href="#">Contact us</a>
+    </nav>
+    <div class="wordmark" aria-label="PointSav, Inc.">
+      <svg class="logo-svg" role="img" aria-label="PointSav, Inc." viewBox="0 0 144 36" width="280" height="auto" xmlns="http://www.w3.org/2000/svg" fill="#111827">
+<g transform="translate(-28.8654, -10.2516) scale(1.3911)">
+  <defs id="defs2"></defs>
+  <path d="M 36.629983,15.88 V 12.4 h 0.7 q 1.44,0 1.44,1.74 0,0.9 -0.38,1.32 -0.36,0.42 -1.06,0.42 z m -3.72,-6.16 V 24 h 3.72 v -5.44 h 1.3 q 2.3,0 3.48,-1.1 1.2,-1.12 1.2,-3.34 0,-0.94 -0.24,-1.74 -0.24,-0.8 -0.76,-1.38 -0.5,-0.6 -1.28,-0.94 -0.78,-0.34 -1.84,-0.34 z m 14.300013,7.14 q 0,-1.44 0.04,-2.38 0.04,-0.96 0.16,-1.52 0.14,-0.56 0.38,-0.78 0.26,-0.22 0.68,-0.22 0.42,0 0.66,0.22 0.26,0.22 0.38,0.78 0.14,0.56 0.18,1.52 0.04,0.94 0.04,2.38 0,1.44 -0.04,2.4 -0.04,0.94 -0.18,1.5 -0.12,0.56 -0.38,0.78 -0.24,0.22 -0.66,0.22 -0.42,0 -0.68,-0.22 -0.24,-0.22 -0.38,-0.78 -0.12,-0.56 -0.16,-1.5 -0.04,-0.96 -0.04,-2.4 z m -3.84,0 q 0,2 0.26,3.42 0.26,1.4 0.86,2.3 0.6,0.88 1.58,1.26 0.98,0.38 2.4,0.38 1.42,0 2.4,-0.38 0.98,-0.38 1.58,-1.26 0.6,-0.9 0.86,-2.3 0.26,-1.42 0.26,-3.42 0,-2 -0.26,-3.4 -0.26,-1.42 -0.86,-2.3 -0.6,-0.9 -1.58,-1.3 -0.98,-0.42 -2.4,-0.42 -1.42,0 -2.4,0.42 -0.98,0.4 -1.58,1.3 -0.6,0.88 -0.86,2.3 -0.26,1.4 -0.26,3.4 z M 54.769991,9.72 V 24 h 3.72 V 9.72 Z m 5.340005,0 V 24 h 3.48 v -8.82 h 0.04 l 2.48,8.82 h 4.08 V 9.72 h -3.48 v 8.8 h -0.04 l -2.4,-8.8 z m 13.720019,3.16 V 24 h 3.72 V 12.88 h 2.8 V 9.72 h -9.28 v 3.16 z m 12.919998,0.96 h 3.48 q 0,-2.3 -1.1,-3.34 -1.08,-1.06 -3.52,-1.06 -2.36,0 -3.52,1.14 -1.16,1.14 -1.16,3.32 0,1.26 0.42,2.04 0.44,0.78 1.08,1.26 0.66,0.48 1.42,0.78 0.76,0.3 1.4,0.6 0.66,0.28 1.08,0.7 0.44,0.4 0.44,1.1 0,0.58 -0.32,0.98 -0.3,0.4 -0.88,0.4 -0.54,0 -0.88,-0.36 -0.34,-0.38 -0.34,-1.3 v -0.34 h -3.6 v 0.5 q 0,1.12 0.32,1.88 0.32,0.76 0.92,1.24 0.62,0.46 1.5,0.64 0.9,0.2 2.06,0.2 2.46,0 3.76,-1.02 1.3,-1.04 1.3,-3.32 0,-1.3 -0.46,-2.1 -0.44,-0.82 -1.12,-1.32 -0.68,-0.5 -1.46,-0.8 -0.78,-0.32 -1.46,-0.62 -0.68,-0.3 -1.14,-0.7 -0.44,-0.42 -0.44,-1.12 0,-0.48 0.28,-0.86 0.28,-0.4 0.88,-0.4 0.54,0 0.8,0.46 0.26,0.44 0.26,1.08 z m 9.840013,-1.2 -1.02,6.06 h 2.08 l -1.02,-6.06 z m 2.36,-2.92 3.480004,14.28 h -3.960004 l -0.38,-2.5 h -2.96 l -0.38,2.5 h -3.9 l 3.42,-14.28 z m 2.259984,0 3.02,14.28 h 4.8 l 3.08,-14.28 h -3.96 l -1.5,10.76 h -0.04 l -1.5,-10.76 z" id="text1" style="font-weight:900;font-size:20px;font-family:&#39;Helvetica Neue&#39;, Helvetica, Arial, sans-serif;text-anchor:middle;fill:#111827;fill-rule:evenodd" aria-label="POINTSAV"></path>
+  <path d="m 36.767496,30.4389 v -2.25 h 0.56 q 0.29,0 0.485,0.085 0.2,0.08 0.32,0.235 0.12,0.155 0.17,0.375 0.055,0.215 0.055,0.485 0,0.295 -0.075,0.5 -0.075,0.205 -0.2,0.335 -0.125,0.125 -0.285,0.18 -0.16,0.055 -0.33,0.055 z m -0.785,-2.91 v 3.57 h 1.54 q 0.41,0 0.71,-0.135 0.305,-0.14 0.505,-0.38 0.205,-0.24 0.305,-0.57 0.1,-0.33 0.1,-0.72 0,-0.445 -0.125,-0.775 -0.12,-0.33 -0.34,-0.55 -0.215,-0.22 -0.515,-0.33 -0.295,-0.11 -0.64,-0.11 z m 5.704996,0 v 3.57 h 0.785 v -3.57 z m 6.055,3.165 0.08,0.405 h 0.5 v -1.93 h -1.5 v 0.585 h 0.79 q -0.035,0.375 -0.25,0.575 -0.21,0.195 -0.6,0.195 -0.265,0 -0.45,-0.1 -0.185,-0.105 -0.3,-0.275 -0.115,-0.17 -0.17,-0.38 -0.05,-0.215 -0.05,-0.44 0,-0.235 0.05,-0.455 0.055,-0.22 0.17,-0.39 0.115,-0.175 0.3,-0.275 0.185,-0.105 0.45,-0.105 0.285,0 0.485,0.15 0.2,0.15 0.27,0.45 h 0.75 q -0.03,-0.305 -0.165,-0.54 -0.135,-0.235 -0.345,-0.395 -0.205,-0.16 -0.465,-0.24 -0.255,-0.085 -0.53,-0.085 -0.41,0 -0.74,0.145 -0.325,0.145 -0.55,0.4 -0.225,0.255 -0.345,0.6 -0.12,0.34 -0.12,0.74 0,0.39 0.12,0.73 0.12,0.335 0.345,0.585 0.225,0.25 0.55,0.395 0.33,0.14 0.74,0.14 0.26,0 0.515,-0.105 0.255,-0.11 0.465,-0.38 z m 3.215004,-3.165 v 3.57 h 0.785 v -3.57 z m 4.265001,0.66 v 2.91 h 0.785 v -2.91 h 1.07 v -0.66 h -2.925 v 0.66 z m 4.705005,1.53 0.465,-1.31 h 0.01 l 0.45,1.31 z m 0.075,-2.19 -1.35,3.57 h 0.79 l 0.28,-0.795 h 1.335 l 0.27,0.795 h 0.815 l -1.335,-3.57 z m 4.449997,0 v 3.57 h 2.525 v -0.66 h -1.74 v -2.91 z m 8.890002,2.385 h -0.76 q -0.005,0.33 0.12,0.57 0.125,0.24 0.335,0.395 0.215,0.155 0.49,0.225 0.28,0.075 0.575,0.075 0.365,0 0.64,-0.085 0.28,-0.085 0.465,-0.235 0.19,-0.155 0.285,-0.365 0.095,-0.21 0.095,-0.455 0,-0.3 -0.13,-0.49 -0.125,-0.195 -0.3,-0.31 -0.175,-0.115 -0.355,-0.165 -0.175,-0.055 -0.275,-0.075 -0.335,-0.085 -0.545,-0.14 -0.205,-0.055 -0.325,-0.11 -0.115,-0.055 -0.155,-0.12 -0.04,-0.065 -0.04,-0.17 0,-0.115 0.05,-0.19 0.05,-0.075 0.125,-0.125 0.08,-0.05 0.175,-0.07 0.095,-0.02 0.19,-0.02 0.145,0 0.265,0.025 0.125,0.025 0.22,0.085 0.095,0.06 0.15,0.165 0.06,0.105 0.07,0.265 h 0.76 q 0,-0.31 -0.12,-0.525 -0.115,-0.22 -0.315,-0.36 -0.2,-0.14 -0.46,-0.2 -0.255,-0.065 -0.535,-0.065 -0.24,0 -0.48,0.065 -0.24,0.065 -0.43,0.2 -0.19,0.135 -0.31,0.34 -0.115,0.2 -0.115,0.475 0,0.245 0.09,0.42 0.095,0.17 0.245,0.285 0.15,0.115 0.34,0.19 0.19,0.07 0.39,0.12 0.195,0.055 0.385,0.1 0.19,0.045 0.34,0.105 0.15,0.06 0.24,0.15 0.095,0.09 0.095,0.235 0,0.135 -0.07,0.225 -0.07,0.085 -0.175,0.135 -0.105,0.05 -0.225,0.07 -0.12,0.015 -0.225,0.015 -0.155,0 -0.3,-0.035 -0.145,-0.04 -0.255,-0.115 -0.105,-0.08 -0.17,-0.205 -0.065,-0.125 -0.065,-0.305 z m 5.635002,-0.205 v 1.39 h 0.785 v -1.37 l 1.325,-2.2 h -0.875 l -0.83,1.41 -0.835,-1.41 h -0.88 z m 4.944999,0.205 h -0.76 q -0.005,0.33 0.12,0.57 0.125,0.24 0.335,0.395 0.215,0.155 0.49,0.225 0.28,0.075 0.575,0.075 0.365,0 0.64,-0.085 0.28,-0.085 0.465,-0.235 0.19,-0.155 0.285,-0.365 0.095,-0.21 0.095,-0.455 0,-0.3 -0.13,-0.49 -0.125,-0.195 -0.3,-0.31 -0.175,-0.115 -0.355,-0.165 -0.175,-0.055 -0.275,-0.075 -0.335,-0.085 -0.545,-0.14 -0.205,-0.055 -0.325,-0.11 -0.115,-0.055 -0.155,-0.12 -0.04,-0.065 -0.04,-0.17 0,-0.115 0.05,-0.19 0.05,-0.075 0.125,-0.125 0.08,-0.05 0.175,-0.07 0.095,-0.02 0.19,-0.02 0.145,0 0.265,0.025 0.125,0.025 0.22,0.085 0.095,0.06 0.15,0.165 0.06,0.105 0.07,0.265 h 0.76 q 0,-0.31 -0.12,-0.525 -0.115,-0.22 -0.315,-0.36 -0.2,-0.14 -0.46,-0.2 -0.255,-0.065 -0.535,-0.065 -0.24,0 -0.48,0.065 -0.24,0.065 -0.43,0.2 -0.19,0.135 -0.31,0.34 -0.115,0.2 -0.115,0.475 0,0.245 0.09,0.42 0.095,0.17 0.245,0.285 0.15,0.115 0.34,0.19 0.19,0.07 0.39,0.12 0.195,0.055 0.385,0.1 0.19,0.045 0.34,0.105 0.15,0.06 0.24,0.15 0.095,0.09 0.095,0.235 0,0.135 -0.07,0.225 -0.07,0.085 -0.175,0.135 -0.105,0.05 -0.225,0.07 -0.12,0.015 -0.225,0.015 -0.155,0 -0.3,-0.035 -0.145,-0.04 -0.255,-0.115 -0.105,-0.08 -0.17,-0.205 -0.065,-0.125 -0.065,-0.305 z m 5.499999,-1.725 v 2.91 h 0.785 v -2.91 h 1.07 v -0.66 h -2.925 v 0.66 z m 4.265001,-0.66 v 3.57 h 2.71 v -0.66 h -1.925 v -0.875 h 1.73 v -0.61 h -1.73 v -0.765 h 1.885 v -0.66 z m 5.240001,0 v 3.57 h 0.735 v -2.505 h 0.01 l 0.874997,2.505 h 0.605 l 0.875,-2.53 h 0.01 v 2.53 h 0.735 v -3.57 h -1.105 l -0.79,2.455 h -0.01 l -0.835,-2.455 z m 7.070007,2.385 h -0.76 q -0.005,0.33 0.12,0.57 0.125,0.24 0.335,0.395 0.215,0.155 0.49,0.225 0.28,0.075 0.575,0.075 0.365,0 0.64,-0.085 0.28,-0.085 0.465,-0.235 0.19,-0.155 0.285,-0.365 0.095,-0.21 0.095,-0.455 0,-0.3 -0.13,-0.49 -0.125,-0.195 -0.3,-0.31 -0.175,-0.115 -0.355,-0.165 -0.175,-0.055 -0.275,-0.075 -0.335,-0.085 -0.545,-0.14 -0.205,-0.055 -0.325,-0.11 -0.115,-0.055 -0.155,-0.12 -0.04,-0.065 -0.04,-0.17 0,-0.115 0.05,-0.19 0.05,-0.075 0.125,-0.125 0.08,-0.05 0.175,-0.07 0.095,-0.02 0.19,-0.02 0.145,0 0.265,0.025 0.125,0.025 0.22,0.085 0.095,0.06 0.15,0.165 0.06,0.105 0.07,0.265 h 0.76 q 0,-0.31 -0.12,-0.525 -0.115,-0.22 -0.315,-0.36 -0.2,-0.14 -0.46,-0.2 -0.255,-0.065 -0.535,-0.065 -0.24,0 -0.48,0.065 -0.24,0.065 -0.43,0.2 -0.19,0.135 -0.31,0.34 -0.115,0.2 -0.115,0.475 0,0.245 0.09,0.42 0.095,0.17 0.245,0.285 0.15,0.115 0.34,0.19 0.19,0.07 0.39,0.12 0.195,0.055 0.385,0.1 0.19,0.045 0.34,0.105 0.15,0.06 0.24,0.15 0.095,0.09 0.095,0.235 0,0.135 -0.07,0.225 -0.07,0.085 -0.175,0.135 -0.105,0.05 -0.225,0.07 -0.12,0.015 -0.225,0.015 -0.155,0 -0.3,-0.035 -0.145,-0.04 -0.255,-0.115 -0.105,-0.08 -0.17,-0.205 -0.065,-0.125 -0.065,-0.305 z" id="text2" style="font-weight:700;font-size:5px;font-family:&#39;Helvetica Neue&#39;, Helvetica, Arial, sans-serif;letter-spacing:2;text-anchor:middle;fill:#111827;fill-rule:evenodd" aria-label="DIGITAL SYSTEMS"></path>
+</g>
+</svg>
+    </div>
+    <nav class="right">
+      <a href="https://documentation.pointsav.com/" target="_blank" rel="noopener">Documentation</a>
+      <a href="#">Marketplace</a>
+      <a href="https://pointsav.com/" target="_blank" rel="noopener">Newsroom</a>
+    </nav>
+  </header>
+
+  <div class="page-hero">
+    <h1>Licensing</h1>
+  </div>
+
+  <main class="subpage-main">
+
+    <div class="lic-intro">
+      <p><strong>One page, two transactions.</strong> Claim a free verification token to prove the software you installed came from PointSav, or mint a paid licence token to unlock proprietary modules. Both live in your own multi-chain wallet — no store, no cart, no account. Tax is calculated live against your wallet's billing jurisdiction and shown before you sign.</p>
+    </div>
+
+    <!-- ───────────  Free verification tokens  ─────────── -->
+    <section class="lic-section" aria-label="Free verification tokens">
+      <div class="lic-section-head">
+        <span class="marker free">Free</span>
+        <h2>Verification Tokens</h2>
+      </div>
+
+      <p class="blurb">
+        Every installer downloaded from <code>app-privategit-source</code> is signed against a free, single-use verification token. Claim the token after your install completes; the running software checks it against the chain you minted on, confirming the binary you have is the one we shipped. One per install. Revocable from your wallet.
+        <a class="inline-action" href="#claim">Claim token →</a>
+      </p>
+    </section>
+
+    <!-- ───────────  Paid license tokens  ─────────── -->
+    <section class="lic-section" aria-label="Paid license tokens">
+      <div class="lic-section-head">
+        <span class="marker">Paid</span>
+        <h2>Licence Tokens</h2>
+      </div>
+
+      <p class="blurb">
+        Proprietary apps and services on top of the open architecture are gated by licence tokens. Buy once, hold in your wallet, transfer between buildings as your portfolio changes. Tokens are checked at runtime by the relevant <code>app-*</code> or <code>service-*</code> module.
+      </p>
+
+      <div class="licenses">
+
+        <div class="license">
+          <div class="name">
+            F*KEYS CONSOLE
+            <small>Operator command surface across the PointSav OSes — work-orders, audits, role assignment. <span class="tag">app-keys-console</span></small>
+          </div>
+          <a class="mint" href="/licensing#wallet" aria-label="Mint Keys Console license">$180 →</a>
+        </div>
+
+        <div class="license">
+          <div class="name">
+            Command Centre
+            <small>Portfolio overlay: cross-site dashboards, capital planning, GIS-bound site analytics. <span class="tag">app-command-centre</span></small>
+          </div>
+          <a class="mint" href="/licensing#wallet" aria-label="Mint Command Centre license">$420 →</a>
+        </div>
+
+        <div class="license">
+          <div class="name">
+            Business Applications
+            <small>Tenant billing, vendor contracts, occupancy ledgers — runs against your Totebox archive. <span class="tag">app-business-applications</span></small>
+          </div>
+          <a class="mint" href="/licensing#wallet" aria-label="Mint Business Applications license">$240 →</a>
+        </div>
+
+        <div class="license">
+          <div class="name">
+            BMS Bridge
+            <small>Autonomous BACnet / MQTT / Modbus translator between legacy controls and PointSav Infrastructure OS. <span class="tag">service-bms-bridge</span></small>
+          </div>
+          <a class="mint" href="/licensing#wallet" aria-label="Mint BMS Bridge license">$300 →</a>
+        </div>
+
+        <div class="license">
+          <div class="name">
+            Peak-Load Forecast
+            <small>District-thermal and electrical peak-load forecasting service; hourly rebuilds against utility data. <span class="tag">service-peak-forecast</span></small>
+          </div>
+          <a class="mint" href="/licensing#wallet" aria-label="Mint Peak-Load Forecast license">$360 →</a>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ───────────  Wallet + tax  ─────────── -->
+    <section class="lic-section" aria-label="Wallet">
+      <div class="lic-section-head">
+        <span class="marker free" style="background:var(--paper-3);">Wallet</span>
+        <h2>Connect &amp; Mint</h2>
+      </div>
+
+      <div class="wallet">
+        <div class="wallet-row">
+          <div class="label">Connect</div>
+          <div class="body">
+            Not connected.
+            <div class="chains" style="margin-top:10px;">
+              <span class="chain on">ethereum</span>
+              <span class="chain">solana</span>
+              <span class="chain">bitcoin</span>
+              <span class="chain">polygon</span>
+              <span class="chain">base</span>
+              <span class="chain">avalanche</span>
+              <span class="chain dim">+ 2 more</span>
+            </div>
+          </div>
+          <a class="btn-primary" href="#connect">Connect wallet →</a>
+        </div>
+
+        <div class="wallet-row tax-row">
+          <div class="label">Tax</div>
+          <div class="body">
+            <div class="juris">
+              <span class="auto">Ontario, Canada</span> · HST 13% · auto-detected from wallet billing region
+              <a class="change" href="#change">change</a>
+            </div>
+            <div class="totals">
+              <span class="k">Subtotal</span>          <span class="v">$180.00 USD</span>
+              <span class="k">Tax · HST 13%</span>    <span class="v">+ $23.40</span>
+              <span class="k total-k">Total</span>     <span class="v total-v">$204.60</span>
+            </div>
+          </div>
+          <a class="btn-secondary" href="/licensing#wallet">Mint →</a>
+        </div>
+      </div>
+    </section>
+
+    <div class="lic-note">
+      <p><strong>Tax.</strong> The indirect tax for your wallet's billing jurisdiction — GST/HST, sales tax, VAT, or equivalent — is calculated live, shown before you sign, and remitted on your behalf. Verification tokens carry no tax. Need the installers first? See <a href="/software" style="color:var(--accent);">Software</a>.</p>
+    </div>
+
+  </main>
+
+  <!-- Footer (matches Disclaimer page) -->
+  <footer>
+    <div class="footer-nav">
+      <div class="offices">
+        Vancouver <span>|</span> New York <span>|</span> Berlin
+      </div>
+      <div class="footer-links">
+        <a href="/software">Software</a>
+        <a href="#">Contact us</a>
+        <a href="#">Disclaimer</a>
+      </div>
+    </div>
+    <div class="footer-bottom-wrap">
+    <div class="footer-bottom">
+      <p>
+        <strong>© 2011–2026 Woodfine Capital Projects Inc. All rights reserved.</strong>
+      </p>
+      <p style="margin-top:6px;">
+        Woodfine Capital Projects, Woodfine Management Corp, PointSav Digital Systems,
+        Totebox Orchestration, and Totebox Archive are trademarks owned by
+        Woodfine Capital Projects Inc. This notice serves as a formal declaration of
+        intellectual property rights, asserting continuous use in commerce regardless of
+        the omission of the ™ or ® symbols in the accompanying text. All operational and
+        architectural system designations (including but not limited to PointSav Console OS,
+        PointSav Infrastructure OS, PointSav MediaKit OS, PointSav Network OS,
+        PointSav PrivateGit OS, PointSav Workplace OS, Totebox Integration OS, and Totebox OS)
+        are proprietary structural wordmarks utilized exclusively within the PointSav Digital
+        Systems architecture.
+      </p>
+      <p class="footer-version">
+        Website Disclaimer v1.0 — Woodfine Capital Projects Inc. — Effective 2026-05-07 —
+        Source: factory-release-engineering/policies/DISCLAIMER.md
+      </p>
+    </div>
+    </div>
+  </footer>
+</div>
+
+</body></html>
