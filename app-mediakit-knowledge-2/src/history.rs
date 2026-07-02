@@ -11,10 +11,26 @@ use git2::{DiffOptions, Repository, Sort};
 
 /// One revision of an article.
 pub struct Revision {
+    pub sha: String,       // full oid, for diff links
     pub short_sha: String,
     pub author: String,
     pub date_iso: String, // YYYY-MM-DD
     pub message: String,  // subject line only
+}
+
+/// One line of a unified diff.
+pub struct DiffLine {
+    pub origin: char, // ' ' context, '+' add, '-' del, 'H' hunk header
+    pub content: String,
+}
+
+/// The diff a single commit made to one file (vs its first parent).
+pub struct FileDiff {
+    pub short_sha: String,
+    pub author: String,
+    pub date_iso: String,
+    pub message: String,
+    pub lines: Vec<DiffLine>,
 }
 
 /// History of `rel` (path relative to `repo_root`), newest first, up to `limit`.
@@ -48,6 +64,7 @@ pub fn file_history(repo_root: &Path, rel: &Path, limit: usize) -> Vec<Revision>
             .unwrap_or("")
             .to_string();
         out.push(Revision {
+            sha: oid.to_string(),
             short_sha: oid.to_string().chars().take(8).collect(),
             author: author.name().unwrap_or("unknown").to_string(),
             date_iso: iso_date(commit.time().seconds()),
@@ -55,6 +72,44 @@ pub fn file_history(repo_root: &Path, rel: &Path, limit: usize) -> Vec<Revision>
         });
     }
     out
+}
+
+/// The diff commit `sha` made to `rel` (vs its first parent; whole file for a
+/// root commit). Returns None on any git error.
+pub fn file_diff(repo_root: &Path, rel: &Path, sha: &str) -> Option<FileDiff> {
+    let repo = Repository::open(repo_root).ok()?;
+    let commit = repo.revparse_single(sha).ok()?.peel_to_commit().ok()?;
+    let tree = commit.tree().ok()?;
+    let parent_tree = commit.parent(0).ok().and_then(|p| p.tree().ok());
+    let mut opts = DiffOptions::new();
+    opts.pathspec(rel);
+    opts.context_lines(3);
+    let diff = repo
+        .diff_tree_to_tree(parent_tree.as_ref(), Some(&tree), Some(&mut opts))
+        .ok()?;
+    let mut lines = Vec::new();
+    diff.print(git2::DiffFormat::Patch, |_delta, _hunk, line| {
+        // Skip the 'F' file-header lines (diff --git / index / --- / +++).
+        if line.origin() != 'F' {
+            let content = String::from_utf8_lossy(line.content())
+                .trim_end_matches('\n')
+                .to_string();
+            lines.push(DiffLine {
+                origin: line.origin(),
+                content,
+            });
+        }
+        true
+    })
+    .ok()?;
+    let author = commit.author();
+    Some(FileDiff {
+        short_sha: commit.id().to_string().chars().take(8).collect(),
+        author: author.name().unwrap_or("unknown").to_string(),
+        date_iso: iso_date(commit.time().seconds()),
+        message: commit.summary().unwrap_or("").to_string(),
+        lines,
+    })
 }
 
 /// Did `commit` change `rel` relative to its first parent (or, for a root commit,

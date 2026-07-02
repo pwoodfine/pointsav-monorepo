@@ -10,7 +10,7 @@ use maud::{html, Markup, PreEscaped, DOCTYPE};
 
 use super::tenant::Tenant;
 use crate::content::render::Heading;
-use crate::history::Revision;
+use crate::history::{FileDiff, Revision};
 
 /// "article" / "articles" for a count.
 fn count_word(n: usize) -> &'static str {
@@ -379,7 +379,7 @@ pub fn history_page(title: &str, slug: &str, revs: &[Revision]) -> Markup {
                     @for r in revs {
                         li."k-history__item" {
                             time."k-history__date" datetime=(r.date_iso) { (format_date(&r.date_iso)) }
-                            span."k-history__msg" { (r.message) }
+                            a."k-history__msg" href={ "/history/" (slug) "?rev=" (r.sha) } { (r.message) }
                             span."k-history__meta" {
                                 (r.author) " \u{00b7} " code."k-history__sha" { (r.short_sha) }
                             }
@@ -397,6 +397,43 @@ fn count_word_rev(n: usize) -> &'static str {
         "revision"
     } else {
         "revisions"
+    }
+}
+
+fn diff_line_class(origin: char) -> &'static str {
+    match origin {
+        '+' => "k-diff__line k-diff__line--add",
+        '-' => "k-diff__line k-diff__line--del",
+        'H' => "k-diff__line k-diff__line--hunk",
+        _ => "k-diff__line",
+    }
+}
+
+/// A single revision's diff for one article (reached from the History tab).
+pub fn diff_page(title: &str, slug: &str, diff: &FileDiff) -> Markup {
+    html! {
+        article."k-article" {
+            div."k-article-nav" { (tab_bar(slug, "history")) }
+            h1."k-article__title" { (title) }
+            div."k-diff__head" {
+                a."k-diff__back" href={ "/history/" (slug) } { "\u{2190} All revisions" }
+                p."k-diff__meta" {
+                    code."k-history__sha" { (diff.short_sha) }
+                    " \u{00b7} " (diff.author)
+                    " \u{00b7} " time datetime=(diff.date_iso) { (format_date(&diff.date_iso)) }
+                }
+                p."k-diff__msg" { (diff.message) }
+            }
+            @if diff.lines.is_empty() {
+                p."k-searchpage__hint" { "No textual changes to this file in this revision." }
+            } @else {
+                pre."k-diff" {
+                    @for l in &diff.lines {
+                        span class=(diff_line_class(l.origin)) { (l.content) "\n" }
+                    }
+                }
+            }
+        }
     }
 }
 

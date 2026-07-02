@@ -221,8 +221,18 @@ async fn search_page(State(state): State<AppState>, Query(params): Query<SearchQ
     Html(ui::page(tenant, "en", head, body, &nav_cats(&state), &[], &q).into_string()).into_response()
 }
 
-/// Article revision history — the git log of the article's file (the History tab).
-async fn history_page(State(state): State<AppState>, Path(slug): Path<String>) -> Response {
+#[derive(serde::Deserialize)]
+struct HistoryQuery {
+    rev: Option<String>,
+}
+
+/// Article revision history (the git log of the file) — and, with `?rev=<sha>`,
+/// the diff that revision made to the file. Both are the History tab.
+async fn history_page(
+    State(state): State<AppState>,
+    Path(slug): Path<String>,
+    Query(params): Query<HistoryQuery>,
+) -> Response {
     let tenant = state.tenant;
     let slug = slug.trim_end_matches('/');
     let Some(doc) = state.index.resolve(slug, Lang::En) else {
@@ -230,6 +240,22 @@ async fn history_page(State(state): State<AppState>, Path(slug): Path<String>) -
     };
     let repo_root = &state.mounts.mounts[doc.mount_index].path;
     let rel = doc.path.strip_prefix(repo_root).unwrap_or(&doc.path);
+
+    // `?rev=<sha>` → the diff view for that revision.
+    if let Some(rev) = params.rev.as_deref().filter(|s| !s.is_empty()) {
+        let Some(diff) = crate::history::file_diff(repo_root, rel, rev) else {
+            return (StatusCode::NOT_FOUND, format!("no such revision: {rev}")).into_response();
+        };
+        let body = ui::diff_page(&doc.title, &doc.slug, &diff);
+        let head = ui::doc_head(
+            &format!("{} — {}", doc.title, diff.short_sha),
+            &format!("Changes to {} in revision {}", doc.title, diff.short_sha),
+            tenant,
+        );
+        return Html(ui::page(tenant, "en", head, body, &nav_cats(&state), &[], "").into_string())
+            .into_response();
+    }
+
     let revs = crate::history::file_history(repo_root, rel, 50);
     let body = ui::history_page(&doc.title, &doc.slug, &revs);
     let head = ui::doc_head(
