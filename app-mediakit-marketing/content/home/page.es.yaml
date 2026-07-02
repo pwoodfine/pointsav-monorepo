@@ -87,45 +87,7 @@ sections:
       - title: Inteligencia de Localización
         href: https://gis.woodfinegroup.com/
 
-  - type: prose
-    body: |
-      **Oferta de valores.** Los valores de las soluciones de tenencia directa
-      patrocinadas por Woodfine se ofrecen únicamente a inversores calificados
-      de conformidad con las exenciones de prospecto aplicables bajo el
-      Instrumento Nacional 45-106 — Exenciones de Prospecto. La información en
-      esta página se proporciona únicamente con fines informativos generales y
-      no constituye una oferta de venta ni una solicitud de oferta de compra de
-      ningún valor. Los inversores potenciales deben revisar el memorando de
-      oferta aplicable y consultar con sus propios asesores profesionales antes
-      de invertir.
-
-      1. La información en esta página describe la empresa y sus actividades a
-      alto nivel y está calificada en su totalidad por el memorando de oferta
-      aplicable y los estatutos universales que rigen la sociedad.
-
-      2. La inversión en soluciones de tenencia directa de inmuebles implica
-      riesgos significativos, incluida la posible pérdida de capital. El
-      rendimiento pasado no es indicativo de resultados futuros. Las referencias
-      a características estructurales como las comisiones de asesoría, la
-      transferibilidad y la metodología del valor liquidativo describen los
-      términos contractuales de las soluciones de tenencia directa y no
-      constituyen representaciones sobre resultados o rendimientos de la
-      inversión.
-
-      **Declaraciones prospectivas.** Las declaraciones que no son hechos
-      históricos pueden constituir información prospectiva en el sentido de las
-      leyes canadienses aplicables en materia de valores. Tales declaraciones
-      están sujetas a riesgos, incertidumbres y supuestos conocidos y
-      desconocidos, y los resultados reales pueden diferir materialmente.
-      Woodfine no asume ninguna obligación de actualizar dichas declaraciones
-      excepto cuando lo exija la ley.
-
-      **Registro.** Woodfine Capital Projects y sus filiales realizan
-      actividades registrables, donde sea requerido, bajo las categorías
-      relevantes prescritas por la Comisión de Valores de la Columbia Británica
-      y otros reguladores canadienses de valores. Los detalles específicos de
-      registro están disponibles a petición.
-
-      Woodfine Capital Projects, Woodfine Management Corp, PointSav Digital
-      Systems, Totebox Orchestration y Totebox Archive son marcas comerciales
-      propiedad de Woodfine Capital Projects Inc.
+  # Texto legal completo movido 2026-07-02 al acordeón "Información
+  # importante" del pie de página (Tenant::woodfine().disclosure_slots,
+  # campo body_es, en ui.rs) -- duplicaba ese mismo acordeón al vivir aquí
+  # también como una sección de prosa siempre visible.
