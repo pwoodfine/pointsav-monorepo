@@ -292,7 +292,15 @@ html:not(.js) .m-drawer-scrim {
 .m-card__title {
   font-family: var(--m-font-sans);
   font-weight: var(--m-weight-bold);
-  font-size: var(--m-text-lg);
+  /* Stepped down from --m-text-lg (2026-07-02, FABLE polish audit): at
+     --m-text-lg + break-word, long titles ("Open Documentation", "Real
+     Property Infrastructure") hard-broke mid-word with no hyphen at
+     1440px -- CSS `hyphens: auto` does not hyphenate text that
+     `text-transform: uppercase` has already transformed, so break-word's
+     raw fallback was firing visibly. 1rem gives every title in both
+     tenants' content enough room to wrap at a real word boundary instead
+     (verified: zero mid-word breaks after this change, both tenants). */
+  font-size: 1rem;
   text-transform: uppercase;
   letter-spacing: var(--m-label-tracking);
   color: var(--m-navy-700);
@@ -302,7 +310,10 @@ html:not(.js) .m-drawer-scrim {
      this rule, so a long unspaced compound word (e.g. "Partner-Governed")
      at the grid's 220px column floor had no fallback and could overflow
      the card's padding. `lang` is already set on <html>, so hyphens:auto
-     hyphenates correctly per-page-language. */
+     hyphenates correctly per-page-language (though see the font-size note
+     above -- uppercase text defeats hyphens:auto, so break-word alone is
+     the real safety net; hyphens:auto is kept for the rare non-uppercase
+     title). */
   overflow-wrap: break-word;
   hyphens: auto;
 }
@@ -326,7 +337,10 @@ html:not(.js) .m-drawer-scrim {
    feedback 2026-07-02: prior tinted-background/hover-only treatment "did
    something different" too subtly). */
 .m-card--linked {
-  background: var(--m-navy-700);
+  /* --m-card-linked-bg (not a raw --m-navy-700 reference) so this large
+     fill can be tenant-overridden independently of small text/links/CTAs
+     -- see the token definition in tokens.css for the contrast rationale. */
+  background: var(--m-card-linked-bg);
   border: var(--m-card-linked-border);
   border-top: var(--m-card-rule);
 }
