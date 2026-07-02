@@ -294,8 +294,12 @@ if [[ "${DRY_RUN}" -eq 0 ]]; then
     # /lora-adapters returns 503 during that window, not a fixed "unsupported" signal.
     # Poll with retries rather than a single attempt.
     _LORA_LIST=""
+    # 180s, not 60s: this workspace VM also runs the production Tier A extraction
+    # queue (often 1000+ deep), and scratch-server model loading competes for CPU
+    # with it — confirmed live (load average 5.75, queue_pending 1157) causing a
+    # 60s window to expire while /lora-adapters was still legitimately 503.
     _LORA_WAITED=0
-    while [[ "${_LORA_WAITED}" -lt 60 ]]; do
+    while [[ "${_LORA_WAITED}" -lt 180 ]]; do
         _LORA_HTTP_CODE=$(curl -sS -o /tmp/deploy-gate-lora-list.json -w "%{http_code}" \
             --connect-timeout 5 "${ENDPOINT}/lora-adapters" 2>/dev/null || echo "000")
         if [[ "${_LORA_HTTP_CODE}" == "200" ]]; then
@@ -310,7 +314,7 @@ if [[ "${DRY_RUN}" -eq 0 ]]; then
         _LORA_WAITED=$((_LORA_WAITED + 2))
     done
     if [[ -z "${_LORA_LIST}" ]]; then
-        log "ERROR: GET /lora-adapters did not return 200 within 60s (last HTTP ${_LORA_HTTP_CODE:-???})"
+        log "ERROR: GET /lora-adapters did not return 200 within 180s (last HTTP ${_LORA_HTTP_CODE:-???})"
         exit 3
     fi
     _ADAPTER_ID="$(python3 -c "
