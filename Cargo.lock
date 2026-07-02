@@ -370,6 +370,7 @@ dependencies = [
  "axum 0.8.9",
  "clap",
  "comrak",
+ "git2",
  "http-body-util",
  "maud",
  "mime_guess",

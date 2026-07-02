@@ -57,6 +57,7 @@ pub fn router(state: AppState) -> Router {
         .route("/wiki/{*slug}", get(wiki_raw))
         .route("/category/{name}", get(category_page))
         .route("/search", get(search_page))
+        .route("/history/{*slug}", get(history_page))
         .route("/static/syntax.css", get(syntax_css_handler))
         .route("/static/{*path}", get(static_asset))
         .with_state(state)
@@ -220,6 +221,25 @@ async fn search_page(State(state): State<AppState>, Query(params): Query<SearchQ
     Html(ui::page(tenant, "en", head, body, &nav_cats(&state), &[], &q).into_string()).into_response()
 }
 
+/// Article revision history — the git log of the article's file (the History tab).
+async fn history_page(State(state): State<AppState>, Path(slug): Path<String>) -> Response {
+    let tenant = state.tenant;
+    let slug = slug.trim_end_matches('/');
+    let Some(doc) = state.index.resolve(slug, Lang::En) else {
+        return (StatusCode::NOT_FOUND, format!("no article: {slug}")).into_response();
+    };
+    let repo_root = &state.mounts.mounts[doc.mount_index].path;
+    let rel = doc.path.strip_prefix(repo_root).unwrap_or(&doc.path);
+    let revs = crate::history::file_history(repo_root, rel, 50);
+    let body = ui::history_page(&doc.title, &doc.slug, &revs);
+    let head = ui::doc_head(
+        &format!("History: {}", doc.title),
+        &format!("Revision history of {}", doc.title),
+        tenant,
+    );
+    Html(ui::page(tenant, "en", head, body, &nav_cats(&state), &[], "").into_string()).into_response()
+}
+
 /// Liveness probe.
 async fn healthz() -> impl IntoResponse {
     (StatusCode::OK, "ok")
@@ -247,7 +267,12 @@ async fn wiki_raw(State(state): State<AppState>, Path(slug): Path<String>) -> Re
         .unwrap_or_else(|| doc.title.clone());
     let description = parsed.frontmatter.short_description.clone().unwrap_or_default();
     let tenant = state.tenant;
-    let body = ui::article(&title, parsed.frontmatter.last_edited.as_deref(), &rendered.html);
+    let body = ui::article(
+        &title,
+        &doc.slug,
+        parsed.frontmatter.last_edited.as_deref(),
+        &rendered.html,
+    );
     let head = ui::doc_head(&title, &description, tenant);
     Html(ui::page(tenant, "en", head, body, &nav_cats(&state), &rendered.headings, "").into_string())
         .into_response()

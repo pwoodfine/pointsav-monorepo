@@ -378,6 +378,39 @@
   font-size: var(--k-text-md);
 }
 
+/* --- Revision history (History tab) --------------------------------------- */
+.k-history { list-style: none; margin: var(--k-space-5) 0 0; padding: 0; }
+.k-history__item {
+  display: grid;
+  grid-template-columns: 7rem 1fr;
+  gap: var(--k-space-1) var(--k-space-4);
+  align-items: baseline;
+  padding: var(--k-space-3) 0;
+  border-bottom: 1px solid var(--k-border-subtle);
+}
+.k-history__date {
+  font-family: var(--k-font-sans);
+  font-size: var(--k-text-sm);
+  color: var(--k-ink-muted);
+  white-space: nowrap;
+}
+.k-history__msg {
+  font-family: var(--k-font-sans);
+  font-size: var(--k-text-md);
+  color: var(--k-ink);
+}
+.k-history__meta {
+  grid-column: 2;
+  font-family: var(--k-font-sans);
+  font-size: var(--k-text-xs);
+  color: var(--k-ink-muted);
+}
+.k-history__sha { font-family: var(--k-font-mono, monospace); font-size: 0.9em; }
+@media (max-width: 640px) {
+  .k-history__item { grid-template-columns: 1fr; }
+  .k-history__meta { grid-column: 1; }
+}
+
 .k-cat-list {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 30rem), 1fr));

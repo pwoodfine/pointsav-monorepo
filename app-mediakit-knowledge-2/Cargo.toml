@@ -39,6 +39,7 @@ toml = "0.8"
 anyhow = "1"
 thiserror = "2"
 tantivy = "0.24"
+git2 = "0.20"
 
 [dev-dependencies]
 tower = { version = "0.5", features = ["util"] }
