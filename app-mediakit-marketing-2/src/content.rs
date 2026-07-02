@@ -35,6 +35,13 @@ pub enum Section {
     CardGrid {
         columns: u8,
         cards: Vec<Card>,
+        /// Visual treatment hint. `None`/anything else renders the default
+        /// informational card (top-rule, title, body). `"buttons"` renders a
+        /// compact link-button row instead — for grids of pure navigation
+        /// links (e.g. "Manifest" / "BIM Library" / "Location Intelligence")
+        /// that have no body text and shouldn't look like content cards.
+        #[serde(default)]
+        style: Option<String>,
     },
     Prose {
         /// Markdown source. Rendered to HTML at render time via
@@ -42,6 +49,23 @@ pub enum Section {
         /// manifest the single source of truth and avoids caching staleness.
         body: String,
     },
+    /// A row of graphic tiles (self-hosted SVG, path under `/static/`).
+    /// Restores the "Development Classes" / capability icons that existed on
+    /// the retired production sites' `.classes` band, ported here as a real
+    /// content section rather than a per-tenant chrome fixture, since the
+    /// set of icons is page content (currently only used on `home`).
+    IconStrip {
+        icons: Vec<IconTile>,
+    },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct IconTile {
+    pub src: String,
+    /// The label is rendered as vector text baked into the SVG itself (it's
+    /// a graphic, not semantic HTML) — `alt` must repeat it verbatim so
+    /// screen readers get the same information sighted users do.
+    pub alt: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -190,12 +214,71 @@ sections:
         );
         let page = load_page(dir.path(), "home", None).unwrap();
         match &page.sections[0] {
-            Section::CardGrid { columns, cards } => {
+            Section::CardGrid { columns, cards, style } => {
                 assert_eq!(*columns, 3);
                 assert_eq!(cards.len(), 2);
                 assert!(cards[0].body.is_none());
                 assert_eq!(cards[1].href.as_deref(), Some("https://example.com"));
+                assert!(style.is_none());
             }
+            other => panic!("expected CardGrid, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn icon_strip_parses_icon_paths() {
+        let dir = tempfile::tempdir().unwrap();
+        write_page(
+            dir.path(),
+            "home",
+            "page.yaml",
+            r#"
+title: Home
+slug: home
+description: A test page.
+sections:
+  - type: icon-strip
+    icons:
+      - src: /static/graphics/woodfine/class-1.svg
+        alt: Professional Centres
+      - src: /static/graphics/woodfine/class-2.svg
+        alt: Tech Industrial
+"#,
+        );
+        let page = load_page(dir.path(), "home", None).unwrap();
+        match &page.sections[0] {
+            Section::IconStrip { icons } => {
+                assert_eq!(icons.len(), 2);
+                assert_eq!(icons[0].src, "/static/graphics/woodfine/class-1.svg");
+                assert_eq!(icons[0].alt, "Professional Centres");
+            }
+            other => panic!("expected IconStrip, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn card_grid_style_hint_parses() {
+        let dir = tempfile::tempdir().unwrap();
+        write_page(
+            dir.path(),
+            "home",
+            "page.yaml",
+            r#"
+title: Home
+slug: home
+description: A test page.
+sections:
+  - type: card-grid
+    columns: 3
+    style: buttons
+    cards:
+      - title: Manifest
+        href: https://example.com
+"#,
+        );
+        let page = load_page(dir.path(), "home", None).unwrap();
+        match &page.sections[0] {
+            Section::CardGrid { style, .. } => assert_eq!(style.as_deref(), Some("buttons")),
             other => panic!("expected CardGrid, got {other:?}"),
         }
     }

@@ -305,6 +305,86 @@ html:not(.js) .m-drawer-scrim {
   margin: 0;
 }
 
+/* Linked informational card (e.g. the cross-site "Digital Systems" card) —
+   same card shape, tinted background + a visible ↗ glyph so it doesn't read
+   identically to the seven non-clickable cards next to it. */
+.m-card--linked {
+  background: var(--m-card-linked-bg);
+  border: var(--m-card-linked-border);
+  border-top: var(--m-card-rule);
+  transition: background var(--m-dur-base) var(--m-ease-standard);
+}
+.m-card--linked:hover,
+.m-card--linked:focus-within {
+  background: var(--m-navy-700);
+}
+.m-card--linked:hover .m-card__title,
+.m-card--linked:focus-within .m-card__title,
+.m-card--linked:hover .m-card__body,
+.m-card--linked:focus-within .m-card__body {
+  color: var(--m-white);
+}
+.m-card__link-glyph {
+  display: inline-block;
+  margin-left: 0.35em;
+  font-size: 0.85em;
+}
+
+/* Button-style card row (pure-navigation grids — Manifest / BIM Library /
+   Location Intelligence, Source / Documentation / Software). Compact,
+   accent-filled, centered — visually distinct from the content cards above. */
+.m-card-grid--buttons {
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--m-space-3);
+}
+.m-card--button {
+  background: var(--m-button-card-bg);
+  border: none;
+  border-radius: var(--m-button-card-radius);
+  padding: var(--m-button-card-pad);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  transition: background var(--m-dur-base) var(--m-ease-standard);
+}
+.m-card--button:hover,
+.m-card--button:focus-within {
+  background: var(--m-button-card-bg-hover);
+}
+.m-card--button .m-card__title {
+  margin: 0;
+  font-size: var(--m-text-sm);
+}
+.m-card--button .m-card__title a {
+  color: var(--m-button-card-ink);
+}
+.m-card--button .m-card__link-glyph {
+  color: var(--m-button-card-ink);
+}
+
+/* ==========================================================================
+   Icon strip — restores the "Development Classes" / capability graphics.
+   ========================================================================== */
+
+.m-icon-strip {
+  background: var(--m-icon-strip-bg);
+}
+.m-icon-strip__inner {
+  max-width: var(--m-container-max);
+  margin-inline: auto;
+  padding: var(--m-icon-strip-pad-y) var(--m-gutter);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--m-icon-strip-gap);
+}
+.m-icon-strip__item img {
+  display: block;
+  width: var(--m-icon-strip-size);
+  height: var(--m-icon-strip-size);
+}
+
 /* ==========================================================================
    Prose sections
    ========================================================================== */
@@ -320,8 +400,9 @@ html:not(.js) .m-drawer-scrim {
 }
 
 /* ==========================================================================
-   Footer — three-tier: nav columns → on-page disclosure slots → badge/
-   trademark/copyright base row. Near-black (locked Sovereign Editorial dir).
+   Footer — three-tier: nav columns → on-page disclosure accordion → badge/
+   trademark/copyright base row. Light grey (#f8f9fa), matching the wiki's
+   footer surface exactly — operator call 2026-07-01.
    ========================================================================== */
 
 .m-footer {
@@ -359,14 +440,43 @@ html:not(.js) .m-drawer-scrim {
   color: var(--m-footer-link-hover);
 }
 
+/* Collapsed by default (<details> with no `open` attribute) — the content
+   still ships in the initial HTML (readable with JS off, fully indexable,
+   satisfies "clear and prominent"); collapsing it is what stops it from
+   reading as a second copy of the trademark paragraph below. Restores the
+   spirit of the retired site's "IMPORTANT INFORMATION ▾" accordion. */
 .m-footer__disclosure {
   max-width: var(--m-container-max);
   margin-inline: auto;
+  margin-bottom: var(--m-space-6);
+  border: var(--m-disclosure-border);
+  border-radius: var(--m-radius-control);
+}
+.m-footer__disclosure-summary {
+  cursor: pointer;
+  padding: var(--m-disclosure-pad);
+  color: var(--m-disclosure-summary-ink);
+  font-size: var(--m-disclosure-summary-size);
+  font-weight: var(--m-disclosure-summary-weight);
+  list-style: none;
+}
+.m-footer__disclosure-summary::-webkit-details-marker {
+  display: none;
+}
+.m-footer__disclosure-summary::after {
+  content: "\25be";
+  margin-left: var(--m-space-2);
+  display: inline-block;
+}
+.m-footer__disclosure[open] .m-footer__disclosure-summary::after {
+  transform: rotate(180deg);
+}
+.m-footer__slot {
+  padding: 0 var(--m-disclosure-pad) var(--m-disclosure-pad);
+}
+.m-footer__slot + .m-footer__slot {
+  padding-top: var(--m-slot-gap);
   border-top: var(--m-slot-rule-top);
-  padding-block: var(--m-space-6);
-  display: flex;
-  flex-direction: column;
-  gap: var(--m-slot-gap);
 }
 .m-footer__slot-label {
   font-family: var(--m-slot-label-family);

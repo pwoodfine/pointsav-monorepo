@@ -46,7 +46,12 @@
   --m-surface-raised:  var(--m-white);
   --m-surface-section: var(--m-grey-200);
   --m-surface-chrome:  var(--m-navy-700);  /* masthead: navy is now a background (locked) */
-  --m-surface-footer:  var(--m-ink-950);
+  /* Footer: light grey, matching the wiki's exact footer surface (#f8f9fa)
+     — operator call (2026-07-01): dropped the near-black footer that was
+     part of the original locked direction, in favor of full family
+     consistency with the wiki. Navy masthead remains the one differentiator
+     between marketing's dark-topped chrome and the wiki's all-light chrome. */
+  --m-surface-footer:  #f8f9fa;
   --m-surface-scrim:   rgba(14, 17, 23, 0.5);
 
   /* ---------------------------------------------------------- semantic: ink
@@ -59,8 +64,10 @@
   --m-ink-muted:            var(--m-ink-500);  /* page/raised ONLY */
   --m-ink-on-chrome:        var(--m-white);        /* 9.6:1 on navy-700 */
   --m-ink-on-chrome-muted:  var(--m-slate-300);    /* 5.4:1 on navy-700 */
-  --m-ink-on-footer:        #e5e7eb;
-  --m-ink-on-footer-muted:  var(--m-ink-400);
+  /* Footer ink — dark text on the light #f8f9fa surface, matching the
+     wiki's own footer ink colors (#54595d workhorse, #646a70 muted). */
+  --m-ink-on-footer:        var(--m-ink-550);   /* 8.1:1 on #f8f9fa */
+  --m-ink-on-footer-muted:  var(--m-ink-525);   /* 6.4:1 on #f8f9fa */
 
   /* ---------------------------------------------------------- semantic: interactive */
   --m-link:            var(--m-navy-700);
@@ -170,6 +177,28 @@
   --m-card-gap:       var(--m-space-4);   /* wiki-exact 1rem */
   --m-card-radius:    var(--m-radius-0);
 
+  /* Linked informational cards (e.g. the cross-site "Digital Systems" /
+     "Real Property Infrastructure" cards) — same shape as a plain card,
+     distinguished by an accent-tinted background + a visible ↗ glyph, so a
+     clickable card doesn't look identical to the seven next to it. */
+  --m-card-linked-bg:     var(--m-navy-100);
+  --m-card-linked-border: 1px solid var(--m-navy-100);
+
+  /* Button-style card row (pure-navigation grids: Manifest / BIM Library /
+     Location Intelligence, Source / Documentation / Software) — compact,
+     centered, accent-filled pill, visually distinct from content cards. */
+  --m-button-card-bg:         var(--m-navy-700);
+  --m-button-card-ink:        var(--m-white);
+  --m-button-card-bg-hover:   var(--m-navy-800);
+  --m-button-card-radius:     var(--m-radius-control);
+  --m-button-card-pad:        var(--m-space-3) var(--m-space-4);
+
+  /* Icon strip — restores the "Development Classes" / capability graphics */
+  --m-icon-strip-bg:      var(--m-grey-100);
+  --m-icon-strip-pad-y:   var(--m-space-8);
+  --m-icon-strip-gap:     var(--m-space-8);
+  --m-icon-strip-size:    120px;
+
   /* ---------------------------------------------------------- masthead + nav */
   --m-masthead-bg:        var(--m-surface-chrome);
   --m-masthead-ink:       var(--m-ink-on-chrome);
@@ -218,14 +247,21 @@
   --m-footer-bg:          var(--m-surface-footer);
   --m-footer-ink:         var(--m-ink-on-footer);
   --m-footer-ink-muted:   var(--m-ink-on-footer-muted);
-  --m-footer-link:        var(--m-ink-on-footer);
-  --m-footer-link-hover:  var(--m-white);
-  --m-footer-rule:        1px solid rgba(255, 255, 255, 0.12);
+  --m-footer-link:        var(--m-navy-700);   /* links stay the brand accent, not grey */
+  --m-footer-link-hover:  var(--m-navy-800);
+  --m-footer-rule:        1px solid var(--m-border-strong);
   --m-footer-col-gap:     var(--m-space-8);
   --m-footer-pad-y:       var(--m-space-12);
   --m-footer-heading-size: var(--m-label-size);
 
-  /* Tier 2 — jurisdiction disclosure slots */
+  /* Disclosure accordion (<details>/<summary>) — collapsed by default */
+  --m-disclosure-summary-ink:    var(--m-navy-700);
+  --m-disclosure-summary-size:   var(--m-text-sm);
+  --m-disclosure-summary-weight: var(--m-weight-semibold);
+  --m-disclosure-border:         1px solid var(--m-border-strong);
+  --m-disclosure-pad:            var(--m-space-4);
+
+  /* Tier 2 — jurisdiction disclosure slots (inside the accordion) */
   --m-slot-label-family:    var(--m-font-mono);
   --m-slot-label-size:      0.6875rem;
   --m-slot-label-tracking:  0.1em;
@@ -235,8 +271,8 @@
   --m-slot-body-lh:         1.55;
   --m-slot-body-ink:        var(--m-ink-on-footer-muted);
   --m-slot-max-measure:     var(--m-prose-max);
-  --m-slot-gap:             var(--m-space-8);
-  --m-slot-rule-top:        1px solid rgba(255, 255, 255, 0.12);
+  --m-slot-gap:             var(--m-space-6);
+  --m-slot-rule-top:        1px solid var(--m-border);
 
   --m-footer-legal-size:      var(--m-text-xs);
 
