@@ -439,6 +439,56 @@ html:not(.js) .m-drawer-scrim {
   font-family: var(--m-font-serif);
   font-size: var(--m-text-xl);
 }
+/* Lists — the numbered disclaimer clauses and any bulleted prose. Explicit
+   markers + item spacing (browser defaults were being inherited unstyled). */
+.m-prose ul,
+.m-prose ol {
+  padding-left: 1.5em;
+  margin: 0 0 var(--m-space-4);
+}
+.m-prose ul {
+  list-style: disc;
+}
+.m-prose ol {
+  list-style: decimal;
+}
+.m-prose li {
+  margin-bottom: 0.35em;
+}
+
+/* Data tables — wiki-parity styling for markdown-rendered tables. Applied
+   both to prose (the disclaimer's jurisdiction / exemption-framework table)
+   and to the footer disclosure accordion, which uses the same markdown
+   renderer. overflow-x:auto on the table itself gives narrow-viewport
+   horizontal scroll without any client JS (P3 locked: no bundler-pattern
+   client JS, so no table-wrapping script — the CSS does it directly). */
+.m-prose table,
+.m-footer__slot-body table {
+  display: block;
+  overflow-x: auto;
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--m-table-fs);
+  margin: 0 0 var(--m-space-4);
+}
+.m-prose th,
+.m-prose td,
+.m-footer__slot-body th,
+.m-footer__slot-body td {
+  border: 1px solid var(--m-table-border);
+  padding: var(--m-table-cell-pad);
+  text-align: left;
+  vertical-align: top;
+}
+.m-prose thead th,
+.m-footer__slot-body thead th {
+  background: var(--m-table-head-bg);
+  font-weight: var(--m-weight-semibold);
+}
+.m-prose tbody tr:nth-child(even),
+.m-footer__slot-body tbody tr:nth-child(even) {
+  background: var(--m-table-stripe);
+}
 
 /* ==========================================================================
    Footer — three-tier: nav columns → on-page disclosure accordion → badge/

@@ -205,6 +205,16 @@
   --m-icon-strip-gap:     var(--m-space-8);
   --m-icon-strip-size:    clamp(160px, 18vw, 260px);
 
+  /* ---------------------------------------------------------- data tables
+     Wiki-parity styling for markdown-rendered tables in legal/notice prose
+     (the disclaimer's jurisdiction / exemption-framework table) and in the
+     footer disclosure accordion (same markdown renderer). */
+  --m-table-border:   var(--m-grey-350);
+  --m-table-head-bg:  #f8f9fa;
+  --m-table-stripe:   color-mix(in srgb, #f8f9fa 55%, var(--m-white));
+  --m-table-cell-pad: 0.45rem 0.7rem;
+  --m-table-fs:       0.9375rem;
+
   /* ---------------------------------------------------------- masthead + nav */
   --m-masthead-bg:        var(--m-surface-chrome);
   --m-masthead-ink:       var(--m-ink-on-chrome);
