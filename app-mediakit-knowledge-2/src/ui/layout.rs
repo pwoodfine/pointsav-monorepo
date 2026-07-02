@@ -636,7 +636,6 @@ pub fn search_results(query: &str, results: &[(String, String, String)]) -> Mark
 /// Browse-by-area, Guides. Sticky on desktop; hidden below the tablet breakpoint
 /// where the off-canvas drawer covers navigation. `cats` is `(slug, label)`.
 fn sidebar(tenant: Tenant, cats: &[(String, String)], toc: &[Heading]) -> Markup {
-    let _ = tenant;
     html! {
         aside."k-sidebar" aria-label="Site navigation" {
             nav."k-sidenav" {
@@ -651,10 +650,12 @@ fn sidebar(tenant: Tenant, cats: &[(String, String)], toc: &[Heading]) -> Markup
                         }
                     }
                 }
-                div."k-sidenav__group" {
-                    h2."k-sidenav__heading" { "Guides" }
-                    ul."k-sidenav__list" {
-                        li { a."k-sidenav__link" href="/category/how-to" { "How-to guides" } }
+                @if tenant.serves_guides() {
+                    div."k-sidenav__group" {
+                        h2."k-sidenav__heading" { "Guides" }
+                        ul."k-sidenav__list" {
+                            li { a."k-sidenav__link" href="/category/how-to" { "How-to guides" } }
+                        }
                     }
                 }
                 // Article table of contents (present only on pages with headings).

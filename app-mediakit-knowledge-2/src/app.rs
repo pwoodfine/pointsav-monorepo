@@ -238,19 +238,24 @@ async fn home(State(state): State<AppState>) -> Response {
     let total: usize = state.index.article_count();
 
     // How-to guides (content_type/category "how-to") — surfaced as their own
-    // section, distinct from the topic areas. Show a sample + a browse-all link.
-    let guides: Vec<(String, String, String)> = state
-        .index
-        .in_category("how-to")
-        .into_iter()
-        .map(|d| {
-            (
-                d.slug.clone(),
-                d.title.clone(),
-                d.short_description.clone().unwrap_or_default(),
-            )
-        })
-        .collect();
+    // section, distinct from the topic areas. Documentation only: projects and
+    // corporate are TOPIC-only, so they never present a Guides affordance.
+    let guides: Vec<(String, String, String)> = if tenant.serves_guides() {
+        state
+            .index
+            .in_category("how-to")
+            .into_iter()
+            .map(|d| {
+                (
+                    d.slug.clone(),
+                    d.title.clone(),
+                    d.short_description.clone().unwrap_or_default(),
+                )
+            })
+            .collect()
+    } else {
+        Vec::new()
+    };
 
     let nav: Vec<(String, String)> = cats.iter().map(|(s, l, _)| (s.clone(), l.clone())).collect();
     let body = ui::home_page(tenant, &lede, total, &cats, &guides);
