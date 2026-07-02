@@ -107,6 +107,9 @@ pub struct Tenant {
     /// shorter-subset design for PointSav was superseded).
     pub trademark_line: &'static str,
     pub disclosure_slots: Vec<DisclosureSlot>,
+    /// Real canonical favicon SVG (FABLE audit 2026-07-02 found NEITHER
+    /// tenant shipped a favicon link at all — not just PointSav).
+    pub favicon_href: &'static str,
 
     // --- SEO (P4) ---
     /// Canonical base URL for this tenant (no trailing slash).
@@ -125,12 +128,14 @@ impl Tenant {
             module_id: "woodfine",
             site_title: "Woodfine Capital Projects",
             wordmark_label: "Woodfine Capital Projects",
-            // Content/product links before utility links (contact/legal) —
-            // most-important-first, applies to both the desktop nav and the
-            // mobile drawer (both render from this same list).
+            // Masthead/drawer nav = credibility layer (behind the hamburger
+            // on mobile — 2 taps). Task-destination items (Projects, BIM
+            // Library, Location Intelligence) live in the page's button row
+            // instead, which is the actual 1-tap mobile fast path — FABLE
+            // nav-priority audit 2026-07-02. "Projects" moved OUT of here
+            // (into the button row) to avoid re-creating a duplication.
             nav_links: vec![
                 NavLink::external("Corporate", "Corporativo", "https://corporate.woodfinegroup.com/"),
-                NavLink::external("Projects", "Proyectos", "https://projects.woodfinegroup.com/"),
                 // Restored 2026-07-02 — present on the retired production
                 // site's masthead nav, dropped when this chrome was rebuilt.
                 NavLink::external("Newsroom", "Sala de prensa", "https://woodfinegroup.com/"),
@@ -142,12 +147,19 @@ impl Tenant {
                 NavLink::internal("Disclaimer", "Aviso legal", "/page/disclaimer"),
                 NavLink::internal("Privacy", "Privacidad", "/page/privacy"),
             ],
-            // Same external triples as `nav_links` above — the off-site
-            // destinations, reachable from the footer without the hamburger.
+            // Full external-destination list (masthead + button-row items
+            // combined) so everything stays reachable from the footer
+            // regardless of what's promoted to the 1-tap button row above —
+            // FABLE nav-priority audit 2026-07-02. Hrefs duplicated from
+            // content/home/page.yaml's button-row cards by necessity (footer
+            // nav is tenant-wide Rust config, not per-page content).
             footer_network: vec![
                 NavLink::external("Corporate", "Corporativo", "https://corporate.woodfinegroup.com/"),
-                NavLink::external("Projects", "Proyectos", "https://projects.woodfinegroup.com/"),
                 NavLink::external("Newsroom", "Sala de prensa", "https://woodfinegroup.com/"),
+                NavLink::external("Projects", "Proyectos", "https://projects.woodfinegroup.com/"),
+                NavLink::external("BIM Library", "Biblioteca BIM", "https://bim.woodfinegroup.com/"),
+                NavLink::external("Location Intelligence", "Inteligencia de Localización", "https://gis.woodfinegroup.com/"),
+                NavLink::external("Manifest", "Manifiesto", "https://github.com/woodfine/woodfine-fleet-deployment"),
             ],
             cities: vec!["Vancouver", "New York"],
             copyright_holder: "Woodfine Capital Projects Inc.",
@@ -227,6 +239,7 @@ impl Tenant {
                     canadienses de valores. Los detalles específicos de registro están \
                     disponibles a petición.",
             }],
+            favicon_href: "/static/graphics/woodfine/favicon.svg",
             canonical_base: "https://home.woodfinegroup.com",
             og_site_name: "Woodfine Capital Projects",
             ld_json_type: "Organization",
@@ -240,11 +253,12 @@ impl Tenant {
             module_id: "pointsav",
             site_title: "PointSav Digital Systems",
             wordmark_label: "PointSav Digital Systems",
-            // Content/product links before utility links — see the Woodfine
-            // comment above; same convention both tenants.
+            // Masthead/drawer nav = credibility layer. Documentation and
+            // Software moved OUT of here (into the button row, the real
+            // 1-tap mobile fast path) — they used to appear in BOTH the
+            // masthead and the button row, an unflagged duplication FABLE's
+            // nav-priority audit caught 2026-07-02.
             nav_links: vec![
-                NavLink::external("Documentation", "Documentación", "https://documentation.pointsav.com/"),
-                NavLink::external("Software", "Software", "https://software.pointsav.com/"),
                 NavLink::external("Design System", "Sistema de diseño", "https://design.pointsav.com/"),
                 // Restored 2026-07-02 — present on the retired production
                 // site's masthead nav, dropped when this chrome was rebuilt.
@@ -257,13 +271,15 @@ impl Tenant {
                 NavLink::internal("Disclaimer", "Aviso legal", "/page/disclaimer"),
                 NavLink::internal("Privacy", "Privacidad", "/page/privacy"),
             ],
-            // Same external triples as `nav_links` above — the off-site
-            // destinations, reachable from the footer without the hamburger.
+            // Full external-destination list (masthead + button-row items
+            // combined), same rationale as Woodfine's — FABLE nav-priority
+            // audit 2026-07-02.
             footer_network: vec![
                 NavLink::external("Documentation", "Documentación", "https://documentation.pointsav.com/"),
                 NavLink::external("Software", "Software", "https://software.pointsav.com/"),
                 NavLink::external("Design System", "Sistema de diseño", "https://design.pointsav.com/"),
                 NavLink::external("Newsroom", "Sala de prensa", "https://pointsav.com/"),
+                NavLink::external("Source", "Código fuente", "https://github.com/pointsav"),
             ],
             // Berlin dropped 2026-07-02 per operator call (production has it,
             // but the operator wants it off both sites going forward).
@@ -319,6 +335,7 @@ impl Tenant {
                     productos describen capacidades previstas; la disponibilidad real de \
                     funciones puede variar según la versión y el acuerdo con el socio.",
             }],
+            favicon_href: "/static/graphics/pointsav/favicon.svg",
             canonical_base: "https://home.pointsav.com",
             og_site_name: "PointSav Digital Systems",
             ld_json_type: "SoftwareApplication",
@@ -341,8 +358,16 @@ fn render_nav(links: &[NavLink], class: &str, aria_label: &str, lang: &str) -> M
         nav class=(class) aria-label=(aria_label) {
             @for link in links {
                 @if link.external {
+                    // Visual external-link glyph, not just an aria-label suffix
+                    // (FABLE competitive-benchmark audit 2026-07-02: "a mobile
+                    // visitor can't tell on-site pages from off-site network
+                    // jumps" — sighted users had no indicator at all before this).
+                    // Same ↗ glyph already used on card_link for consistency.
                     a href=(link.href) target="_blank" rel="noopener"
-                        aria-label={ (link.label_for(lang)) (new_tab_suffix) } { (link.label_for(lang)) }
+                        aria-label={ (link.label_for(lang)) (new_tab_suffix) } {
+                        (link.label_for(lang))
+                        span.m-nav__external-glyph aria-hidden="true" { "\u{2197}" }
+                    }
                 } @else {
                     a href=(link.href) { (link.label_for(lang)) }
                 }
@@ -685,6 +710,7 @@ pub fn page_shell(
                     link rel="alternate" hreflang="es" href=(es_url);
                 }
                 link rel="alternate" hreflang="x-default" href=(en_url);
+                link rel="icon" type="image/svg+xml" href=(tenant.favicon_href);
                 meta name="robots" content="index, follow";
                 meta property="og:type" content="website";
                 meta property="og:site_name" content=(tenant.og_site_name);
