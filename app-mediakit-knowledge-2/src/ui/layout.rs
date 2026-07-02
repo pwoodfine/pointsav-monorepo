@@ -129,12 +129,7 @@ pub fn header(tenant: Tenant, lang: &str, query: &str) -> Markup {
                 div."k-header__center" { (search_block("k-search-input", query)) }
                 div."k-header__end" {
                     nav."k-controls" aria-label="Site controls" {
-                        a."k-control k-control--lang" href="/es/" aria-label="Change language" {
-                            svg."k-control__icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false" {
-                                path d="M10 2a8 8 0 1 0 0 16 8 8 0 0 0 0-16zm5.3 5h-2.24a12.3 12.3 0 0 0-1.1-3.02A6.02 6.02 0 0 1 15.3 7zM10 3.8c.63.9 1.13 1.97 1.46 3.2H8.54C8.87 5.77 9.37 4.7 10 3.8zM3.8 12A6.1 6.1 0 0 1 3.6 10c0-.7.08-1.37.2-2h2.5a13.7 13.7 0 0 0 0 4H3.8zm.9 2h2.24c.28 1.12.66 2.14 1.1 3.02A6.02 6.02 0 0 1 4.7 14zm2.24-8H4.7a6.02 6.02 0 0 1 3.34-2.98A12.3 12.3 0 0 0 6.94 6zM10 16.2c-.63-.9-1.13-1.97-1.46-3.2h2.92C11.13 14.23 10.63 15.3 10 16.2zm1.79-4.2H8.2a12 12 0 0 1 0-4h3.6a12 12 0 0 1 0 4zm.17 5.02c.44-.88.82-1.9 1.1-3.02h2.24a6.02 6.02 0 0 1-3.34 2.98zM13.9 12a13.7 13.7 0 0 0 0-4h2.5c.12.63.2 1.3.2 2 0 .69-.08 1.36-.2 2h-2.5z" {}
-                            }
-                            span."k-control__label" { (lang.to_uppercase()) }
-                        }
+                        // Language toggle hidden until the /es routes ship (no dead link).
                         button."k-control k-control--theme" type="button"
                                aria-pressed="false" aria-label="Switch theme" {
                             svg."k-control__icon k-icon-moon" viewBox="0 0 20 20" aria-hidden="true" focusable="false" {
@@ -180,13 +175,11 @@ pub fn mobile_nav(tenant: Tenant, query: &str) -> Markup {
                         li { a."k-nav-link" href="/" { "Home" } }
                         li { a."k-nav-link" href="/special/all-pages" { "Index of record" } }
                         li { a."k-nav-link" href="/special/recent-changes" { "Recent changes" } }
-                        li { a."k-nav-link" href="/random" { "Random entry" } }
                     }
                 }
                 section."k-nav-section" {
                     h2."k-nav-section__title" { "Resources" }
                     ul."k-nav-list" {
-                        li { a."k-nav-link" href="/special/categories" { "Categories" } }
                         li { a."k-nav-link" href="/feed.atom" { "Atom feed" } }
                     }
                 }
@@ -221,7 +214,6 @@ pub fn footer(tenant: Tenant) -> Markup {
                             li { a."k-footer__link" href="/" { "Home" } }
                             li { a."k-footer__link" href="/special/all-pages" { "All articles" } }
                             li { a."k-footer__link" href="/special/recent-changes" { "Recent changes" } }
-                            li { a."k-footer__link" href="/special/categories" { "Categories" } }
                         }
                     }
                     div."k-footer__col" {
@@ -322,8 +314,9 @@ fn format_date(iso: &str) -> String {
 }
 
 /// The article action-tab bar (Wikipedia Vector 2022 pattern). `active` is
-/// "article" or "history"; the current one is a non-link span, the others link.
-/// Notes stays a disabled placeholder until P5.
+/// "article" or "history"; the current one is a non-link span, the other links.
+/// (No "Notes" placeholder — a reviewer-annotation channel ships as a real tab or
+/// not at all; no dead controls in front of auditors.)
 fn tab_bar(slug: &str, active: &str) -> Markup {
     html! {
         nav."k-tabs" aria-label="Views" {
@@ -332,7 +325,6 @@ fn tab_bar(slug: &str, active: &str) -> Markup {
             } @else {
                 a."k-tab" href={ "/wiki/" (slug) } { "Article" }
             }
-            span."k-tab k-tab--soon" aria-disabled="true" title="Coming soon" { "Notes" }
             @if active == "history" {
                 span."k-tab k-tab--active" aria-current="page" { "History" }
             } @else {
@@ -521,6 +513,26 @@ pub fn category_index(label: &str, docs: &[(String, String, String)]) -> Markup 
                         @if !desc.is_empty() {
                             p."k-cat-entry__desc" { (desc) }
                         }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// A generic index page — "Index of record" (A–Z all articles) and "Recent
+/// changes". `items` is `(slug, title, meta)`; `meta` is a description or a date.
+pub fn special_list(heading: &str, eyebrow: &str, items: &[(String, String, String)]) -> Markup {
+    html! {
+        div."k-catpage" {
+            div."k-catpage__eyebrow" { (eyebrow) }
+            h1."k-article__title" { (heading) }
+            div."k-home__stat" { strong { (items.len()) } " " (count_word(items.len())) }
+            ul."k-cat-list" {
+                @for (slug, title, meta) in items {
+                    li."k-cat-entry" {
+                        a."k-cat-entry__title" href={ "/wiki/" (slug) } { (title) }
+                        @if !meta.is_empty() { p."k-cat-entry__desc" { (meta) } }
                     }
                 }
             }

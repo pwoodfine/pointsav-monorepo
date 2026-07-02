@@ -59,10 +59,11 @@ pub fn router(state: AppState) -> Router {
         .route("/category/{name}", get(category_page))
         .route("/search", get(search_page))
         .route("/history/{*slug}", get(history_page))
+        .route("/special/all-pages", get(special_all_pages))
+        .route("/special/recent-changes", get(special_recent))
         .route("/sitemap.xml", get(sitemap))
         .route("/robots.txt", get(robots))
         .route("/feed.atom", get(feed_atom))
-        .route("/feed.json", get(feed_json))
         .route("/llms.txt", get(llms))
         .route("/static/syntax.css", get(syntax_css_handler))
         .route("/static/{*path}", get(static_asset))
@@ -272,6 +273,51 @@ async fn history_page(
     Html(ui::page(tenant, "en", head, body, &nav_cats(&state), &[], "").into_string()).into_response()
 }
 
+/// "Index of record" — every article A–Z (the auditor's completeness check).
+async fn special_all_pages(State(state): State<AppState>) -> Response {
+    let tenant = state.tenant;
+    let mut items: Vec<(String, String, String)> = state
+        .index
+        .documents()
+        .map(|d| {
+            (
+                d.slug.clone(),
+                d.title.clone(),
+                d.short_description.clone().unwrap_or_default(),
+            )
+        })
+        .collect();
+    items.sort_by(|a, b| a.1.to_lowercase().cmp(&b.1.to_lowercase()));
+    let body = ui::special_list("Index of record", "All records", &items);
+    let head = ui::doc_head(
+        "Index of record",
+        "A–Z index of every record in the registry.",
+        tenant,
+    );
+    Html(ui::page(tenant, "en", head, body, &nav_cats(&state), &[], "").into_string()).into_response()
+}
+
+/// "Recent changes" — records most recently updated (the site-wide delta view).
+async fn special_recent(State(state): State<AppState>) -> Response {
+    let tenant = state.tenant;
+    let items: Vec<(String, String, String)> = state
+        .index
+        .recent(50)
+        .into_iter()
+        .map(|d| {
+            let meta = d
+                .last_edited
+                .as_deref()
+                .map(|dt| format!("Updated {dt}"))
+                .unwrap_or_default();
+            (d.slug.clone(), d.title.clone(), meta)
+        })
+        .collect();
+    let body = ui::special_list("Recent changes", "Recent changes", &items);
+    let head = ui::doc_head("Recent changes", "Records most recently updated.", tenant);
+    Html(ui::page(tenant, "en", head, body, &nav_cats(&state), &[], "").into_string()).into_response()
+}
+
 // --- Discovery surfaces (robots / sitemap / feeds / llms.txt) ---------------
 
 /// Canonical base URL (no trailing slash) for absolute links; "" if unconfigured.
@@ -301,12 +347,6 @@ async fn feed_atom(State(state): State<AppState>) -> Response {
     let docs = state.index.recent(20);
     let body = discovery::atom_feed(&site_base(&state), &state.config.site.title, &docs);
     ([(header::CONTENT_TYPE, "application/atom+xml; charset=utf-8")], body).into_response()
-}
-
-async fn feed_json(State(state): State<AppState>) -> Response {
-    let docs = state.index.recent(20);
-    let body = discovery::json_feed(&site_base(&state), &state.config.site.title, &docs);
-    ([(header::CONTENT_TYPE, "application/feed+json; charset=utf-8")], body).into_response()
 }
 
 async fn llms(State(state): State<AppState>) -> Response {
