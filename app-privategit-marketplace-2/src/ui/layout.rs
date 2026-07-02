@@ -79,13 +79,31 @@ fn chrome_style() -> Markup {
 .sw-footer__col li{{margin-bottom:8px;}}
 .sw-footer__col a{{color:var(--sw-footer-fg);text-decoration:none;font-size:13px;}}
 .sw-footer__col a:hover{{color:var(--sw-accent);}}
-.sw-footer__cities{{margin-top:36px;padding-top:20px;border-top:1px solid var(--sw-footer-divider);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#fff;}}
+.sw-footer__disclosure{{margin-top:32px;border:1px solid var(--sw-footer-divider);border-radius:6px;}}
+.sw-footer__disclosure-summary{{cursor:pointer;padding:14px 18px;color:#fff;font-size:12px;letter-spacing:.06em;text-transform:uppercase;list-style:none;}}
+.sw-footer__disclosure-summary::-webkit-details-marker{{display:none;}}
+.sw-footer__disclosure-summary::after{{content:"\25be";margin-left:8px;display:inline-block;}}
+.sw-footer__disclosure[open] .sw-footer__disclosure-summary::after{{transform:rotate(180deg);}}
+.sw-footer__slot{{padding:0 18px 16px;}}
+.sw-footer__slot-label{{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--sw-accent);margin:0 0 8px;}}
+.sw-footer__slot-body{{font-size:12.5px;line-height:1.6;color:var(--sw-footer-fg);max-width:70ch;}}
+.sw-footer__slot-body p{{margin:0 0 10px;}}
+.sw-footer__slot-body p:last-child{{margin-bottom:0;}}
+.sw-footer__slot-body a{{color:var(--sw-accent);}}
+.sw-footer__slot-body strong{{color:#fff;}}
+.sw-footer__cities{{margin-top:20px;padding-top:20px;border-top:1px solid var(--sw-footer-divider);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#fff;}}
 .sw-footer__meta{{margin-top:10px;font-size:12px;}}
 .sw-footer__meta a{{color:var(--sw-footer-fg);text-decoration:none;}}
 .sw-footer__meta a:hover{{color:var(--sw-accent);}}
 .sw-footer__legal{{margin-top:20px;padding-top:18px;border-top:1px solid var(--sw-footer-divider);font-size:11.5px;line-height:1.6;}}
 .sw-footer__copyright{{color:#fff;margin:0 0 8px;}}
 .sw-footer__trademark{{margin:0;color:var(--sw-footer-fg);max-width:80ch;}}
+.sw-legal{{max-width:70ch;margin:0 auto;padding:40px 24px 64px;line-height:1.65;}}
+.sw-legal h1{{font-family:"Playfair Display",Georgia,serif;font-size:32px;margin:0 0 8px;}}
+.sw-legal h2{{font-size:16px;margin:28px 0 8px;}}
+.sw-legal__lede{{color:#555;margin:0 0 20px;}}
+.sw-legal hr{{border:none;border-top:1px solid #ddd;margin:32px 0 20px;}}
+.sw-legal__copyright,.sw-legal__trademark{{font-size:12px;color:#666;max-width:80ch;}}
 @media (max-width:768px){{
 .sw-search,.sw-utility,.sw-subnav{{display:none;}}
 .sw-burger{{display:inline-flex;}}
@@ -205,6 +223,21 @@ pub fn footer(surface: SoftwareSurface) -> Markup {
                         }
                     }
                 }
+                // Collapsed by default — matches the pattern live on the wiki/home
+                // sites (`app-mediakit-marketing-2`'s `DisclosureSlot` accordion,
+                // operator-directed 2026-07-02): on-page and readable without JS
+                // (no hidden-behind-a-link disclosure), but collapsed so it doesn't
+                // read as a second copy of the trademark paragraph sitting directly
+                // below it. This site's one slot covers what it actually does that
+                // the wiki/marketing sites don't: sell software licenses paid for in
+                // on-chain USDC.
+                details."sw-footer__disclosure" {
+                    summary."sw-footer__disclosure-summary" { "Important information" }
+                    div."sw-footer__slot" {
+                        p."sw-footer__slot-label" { (surface.disclosure_label()) }
+                        div."sw-footer__slot-body" { (super::disclosure_body()) }
+                    }
+                }
                 div."sw-footer__cities" {
                     @for (i, c) in surface.cities().iter().enumerate() {
                         @if i > 0 { span aria-hidden="true" { " | " } }
@@ -223,7 +256,6 @@ pub fn footer(surface: SoftwareSurface) -> Markup {
                         "\u{00a9} 2026 " (surface.copyright_holder()) " All rights reserved."
                     }
                     p."sw-footer__trademark" { (surface.trademark_line()) }
-                    p."sw-footer__disclaimer-citation" { (surface.disclaimer_citation()) }
                 }
             }
         }
@@ -362,11 +394,13 @@ mod tests {
             assert!(page.contains(c), "missing footer city {c}");
         }
 
-        // Checkpoint 3a parity finding (2026-07-02): the OLD crate's footer carries
-        // a securities-disclosure citation (DISCLAIMER.md, NI 51-102 continuous
-        // disclosure) that P2's chrome build initially dropped. Must be present on
-        // every chrome-wrapped page, not just the trademark line.
-        assert!(page.contains(SURFACE.disclaimer_citation()));
+        // Footer disclosure accordion (operator instruction 2026-07-02, matching the
+        // wiki/home sites' "Important information" pattern): present, with the site's
+        // one disclosure slot. `<details>` without an `open` attribute renders
+        // collapsed by default in every browser — nothing to assert there.
+        assert!(page.contains("sw-footer__disclosure"));
+        assert!(page.contains("Important information"));
+        assert!(page.contains(SURFACE.disclosure_label()));
 
         // Document order: masthead element, then content, then footer element.
         // (Search for the tags, not the class names — the scoped CSS in <head>
@@ -395,10 +429,10 @@ mod tests {
         assert!(!out.contains("OLD FOOTER"));
 
         // Sovereign chrome present, including the verbatim trademark line and the
-        // securities-disclosure citation (Checkpoint 3a parity finding, 2026-07-02).
+        // "Important information" disclosure accordion (2026-07-02).
         assert!(out.contains("sw-masthead"));
         assert!(out.contains(SURFACE.trademark_line()));
-        assert!(out.contains(SURFACE.disclaimer_citation()));
+        assert!(out.contains("sw-footer__disclosure"));
 
         // Scoped chrome stylesheet injected before </head>.
         let style = out.find("--sw-topnav-bg").unwrap();

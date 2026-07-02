@@ -343,6 +343,25 @@ async fn licensing_page(State(state): State<Arc<AppState>>) -> Response {
     serve_chrome_page(&state.static_dir.join("licensing.html"))
 }
 
+// GET /page/disclaimer — self-contained disclaimer page (operator instruction 2026-07-02:
+// this site has its own content, no cross-site links out to the wiki/marketing sites'
+// disclaimers). Content is a compile-time constant (`ui::disclaimer::disclaimer_markup`),
+// not read from disk, so there is no "file missing" error path to handle here.
+async fn disclaimer_page() -> Response {
+    let body = ui::render_page(
+        SoftwareSurface::Marketplace,
+        "Disclaimer — PointSav Software",
+        ui::disclaimer_markup(),
+    )
+    .into_string();
+    (
+        StatusCode::OK,
+        [(header::CONTENT_TYPE, "text/html; charset=utf-8")],
+        body,
+    )
+        .into_response()
+}
+
 // Read the prerendered static page from disk (P1 logic, unchanged) and wrap it in
 // the Sovereign Editorial chrome (navy masthead + near-black footer) before serving.
 fn serve_chrome_page(path: &PathBuf) -> Response {
@@ -618,6 +637,7 @@ async fn main() -> Result<()> {
         .route("/", get(root))
         .route("/software", get(software_page))
         .route("/licensing", get(licensing_page))
+        .route("/page/disclaimer", get(disclaimer_page))
         .route("/healthz", get(healthz))
         .route("/v1/products", get(v1_products))
         .route("/v1/license/:tx_hash", get(v1_license))
@@ -1293,6 +1313,38 @@ licenses:
         assert_eq!(body_text(body).await, "page unavailable");
 
         let _ = fs::remove_dir_all(&scratch);
+    }
+
+    // Self-contained disclaimer page (operator instruction 2026-07-02): no static file,
+    // no disk read, no cross-site links — a compile-time constant every time.
+    #[tokio::test]
+    async fn disclaimer_page_serves_self_contained_content_with_chrome() {
+        let (parts, body) = disclaimer_page().await.into_parts();
+        assert_eq!(parts.status, StatusCode::OK);
+        assert_eq!(
+            parts.headers.get(header::CONTENT_TYPE).unwrap(),
+            "text/html; charset=utf-8"
+        );
+        let html = body_text(body).await;
+
+        // The genuinely new section (Checkpoint 3a follow-up, 2026-07-02): on-chain
+        // USDC payment risk, with no precedent elsewhere in the corpus.
+        assert!(html.contains("Polygon"));
+        assert!(html.contains("irreversible"));
+
+        // Not an LP-investment disclaimer -- confirms the DISCLAIMER.md securities
+        // -offering sections (accredited investor exemptions, PPM references) were
+        // correctly dropped, not carried forward unmodified.
+        assert!(!html.contains("Private Placement Memorandum"));
+        assert!(!html.contains("Accredited Investor"));
+
+        // Self-contained: no links out to the wiki's or marketing sites' own pages.
+        assert!(!html.contains("woodfinegroup.com"));
+        assert!(!html.contains("home.pointsav.com"));
+
+        // Sovereign chrome present (same page shell as /software and /licensing).
+        assert!(html.contains("sw-masthead"));
+        assert!(html.contains(SoftwareSurface::Marketplace.trademark_line()));
     }
 
     // ── P1: /healthz + / redirect ─────────────────────────────────────────────
