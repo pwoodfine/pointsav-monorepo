@@ -150,11 +150,14 @@ impl Tenant {
             ],
             cities: vec!["Vancouver", "New York"],
             copyright_holder: "Woodfine Capital Projects Inc.",
-            trademark_line: "Woodfine Capital Projects\u{2122}, Woodfine Management Corp\u{2122}, \
-                PointSav Digital Systems\u{2122}, Totebox Orchestration\u{2122}, and Totebox \
-                Archive\u{2122} are trademarks of Woodfine Capital Projects Inc., used in Canada, \
-                the United States, Latin America, and Europe. All other trademarks are the \
-                property of their respective owners.",
+            // Verbatim canonical sentence per TRADEMARK.md (2026-07-02 correction —
+            // "Woodfine Management Corp\u{2122}" was wrong, canonical mark is
+            // "MCorp\u{2122}"; "Capability Geometry\u{2122}" was missing entirely).
+            trademark_line: "Woodfine Capital Projects\u{2122}, MCorp\u{2122}, \
+                PointSav Digital Systems\u{2122}, Totebox Orchestration\u{2122}, Totebox \
+                Archive\u{2122}, and Capability Geometry\u{2122} are trademarks of Woodfine \
+                Capital Projects Inc., used in Canada, the United States, Latin America, and \
+                Europe. All other trademarks are the property of their respective owners.",
             // Full legal text — moved here 2026-07-02 from a separate,
             // always-visible `type: prose` home-page section (operator
             // feedback: it read as a duplicate of this same accordion).
@@ -265,6 +268,11 @@ impl Tenant {
             // but the operator wants it off both sites going forward).
             cities: vec!["Vancouver", "New York"],
             copyright_holder: "Woodfine Capital Projects Inc.",
+            // Deliberately a shorter roster than Woodfine's — PointSav's own
+            // marks only (architecture addendum, 2026-06-24: "PointSav-brand
+            // sites carry only PointSav Digital Systems...") — not affected
+            // by the 2026-07-02 drift fix (neither "Woodfine Management
+            // Corp" nor "Capability Geometry" appear in this list).
             trademark_line: "PointSav Digital Systems\u{2122}, Totebox Orchestration\u{2122}, and \
                 Totebox Archive\u{2122} are trademarks of Woodfine Capital Projects Inc., used in \
                 Canada, the United States, Latin America, and Europe. All other trademarks are the \
@@ -432,9 +440,13 @@ fn footer(tenant: &Tenant, lang: &str) -> Markup {
                         }
                     }
                     p.m-footer__copyright {
-                        // Year range confirmed against live production (both
-                        // tenants render "2011–2026", not just the current year).
-                        "\u{00a9} 2011\u{2013}2026 " (tenant.copyright_holder) " " (t(lang, "All rights reserved.", "Todos los derechos reservados."))
+                        // Matches canonical TRADEMARK.md ("Copyright © 2026 Woodfine
+                        // Capital Projects Inc.") — not the "2011–2026" range the old,
+                        // now-retired production engine renders; that range has no
+                        // founding-year record in the DataGraph and isn't in the
+                        // canonical doc, so it isn't carried into this rewrite
+                        // (flagged 2026-07-02, reconciled in favor of TRADEMARK.md).
+                        "\u{00a9} 2026 " (tenant.copyright_holder) " " (t(lang, "All rights reserved.", "Todos los derechos reservados."))
                     }
                     // Trademark line: same pending-professional-translation note as the
                     // disclosure slots above — verbatim legal text, not machine-localized.
@@ -707,11 +719,18 @@ mod tests {
 
     #[test]
     fn woodfine_and_pointsav_carry_distinct_trademark_lines() {
+        // Canonical roster per TRADEMARK.md (2026-07-02 correction): "MCorp"
+        // is the correct mark, not "Woodfine Management Corp"; "Capability
+        // Geometry" was missing entirely. Woodfine's site carries the full
+        // company-wide roster; PointSav's carries its own shorter subset.
         let w = Tenant::woodfine();
         let p = Tenant::pointsav();
         assert_ne!(w.trademark_line, p.trademark_line);
-        assert!(w.trademark_line.contains("Woodfine Management Corp"));
+        assert!(w.trademark_line.contains("MCorp"));
+        assert!(w.trademark_line.contains("Capability Geometry"));
+        assert!(!w.trademark_line.contains("Woodfine Management Corp"));
         assert!(!p.trademark_line.contains("Woodfine Management Corp"));
+        assert!(!p.trademark_line.contains("MCorp"));
     }
 
     #[test]
