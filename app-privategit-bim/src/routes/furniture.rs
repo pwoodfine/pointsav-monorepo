@@ -27,7 +27,7 @@ pub async fn furniture_fragment(State(state): State<AppState>) -> Html<String> {
 }
 
 pub async fn bundle_handler(State(state): State<AppState>) -> Response {
-    let lib_dir = state.config.library_dir.join("components");
+    let lib_dir = state.config.library_dir.join("blocks").join("furniture");
     match build_zip_bundle(&lib_dir) {
         Ok(bytes) => (
             axum::http::StatusCode::OK,
@@ -57,7 +57,12 @@ pub async fn single_handler(
     State(state): State<AppState>,
 ) -> Response {
     let safe_name = filename.replace("..", "").replace('/', "");
-    let file_path = state.config.library_dir.join("components").join(&safe_name);
+    let file_path = state
+        .config
+        .library_dir
+        .join("blocks")
+        .join("furniture")
+        .join(&safe_name);
     match std::fs::read(&file_path) {
         Ok(bytes) => (
             axum::http::StatusCode::OK,

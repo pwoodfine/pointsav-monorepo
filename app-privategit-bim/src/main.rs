@@ -1,4 +1,5 @@
 mod config;
+mod content;
 mod mcp;
 mod render;
 mod routes;

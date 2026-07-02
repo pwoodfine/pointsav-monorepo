@@ -1,4 +1,4 @@
-use crate::{schema::dtcg::SIDEBAR_ORDER, state::AppState};
+use crate::state::AppState;
 
 fn nav_link(href: &str, active_path: &str, label: &str) -> String {
     let active = if active_path == href {
@@ -18,7 +18,7 @@ fn nav_group(heading: &str, links: &str) -> String {
     )
 }
 
-pub fn render_sidebar(active_path: &str, _state: &AppState) -> String {
+pub fn render_sidebar(active_path: &str, state: &AppState) -> String {
     let overview = nav_group(
         "Overview",
         &format!(
@@ -30,9 +30,9 @@ pub fn render_sidebar(active_path: &str, _state: &AppState) -> String {
     );
 
     let mut category_links = String::new();
-    for (slug, label) in SIDEBAR_ORDER {
-        let href = format!("/tokens/{slug}");
-        category_links.push_str(&nav_link(&href, active_path, label));
+    for cat in state.categories.iter() {
+        let href = format!("/tokens/{}", cat.slug);
+        category_links.push_str(&nav_link(&href, active_path, &cat.display_name));
     }
     let objects = nav_group("BIM Objects", &category_links);
 

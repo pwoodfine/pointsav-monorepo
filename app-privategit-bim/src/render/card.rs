@@ -1,23 +1,34 @@
-use crate::{
-    schema::dtcg::{known_categories, SIDEBAR_ORDER},
-    state::AppState,
-};
+use crate::{content, state::AppState};
 use serde_json::Value;
 
 use super::shell::esc;
 
 pub fn render_home(state: &AppState) -> String {
     let cards = render_category_cards(state);
-    let category_count = SIDEBAR_ORDER.len();
+    let category_count = state.categories.len();
+    let page = &state.home_page;
+    let hero_eyebrow = esc(&page.field("hero_eyebrow"));
+    // hero_statline carries an intentional literal <br>, so it's not escaped.
+    let hero_statline = page.field("hero_statline");
+    let hero_lead = esc(&page.field("hero_lead"));
+
+    let mut sections = String::new();
+    for (i, section) in page.sections.iter().enumerate() {
+        if i > 0 {
+            sections.push_str(r#"<hr class="bim-rule">"#);
+        }
+        sections.push_str(&format!(
+            "<section><h2>{}</h2>{}</section>",
+            esc(&section.heading),
+            section.body_html,
+        ));
+    }
+
     format!(
         r#"<div class="bim-hero">
-  <p class="bim-hero__eyebrow">Woodfine BIM Object Library</p>
-  <p class="bim-hero__statline">Building specifications that enforce compliance at placement,<br>not inspection after the fact.</p>
-  <p class="bim-hero__lead">The AEC industry has spent twenty years validating BIM models after
-  design is complete. BIM Objects take a different position: if every element in the design
-  library already encodes its regulatory requirements and performance constraints, a
-  non-compliant model cannot be assembled. Compliance is a property of the starting
-  material, not a filter applied at the end.</p>
+  <p class="bim-hero__eyebrow">{hero_eyebrow}</p>
+  <p class="bim-hero__statline">{hero_statline}</p>
+  <p class="bim-hero__lead">{hero_lead}</p>
   <div class="bim-chip-row">
     <span class="bim-chip">CATEGORIES <strong>{category_count}</strong></span>
     <span class="bim-chip">STANDARD <strong>IFC 4.3 &middot; ISO 16739-1:2024</strong></span>
@@ -26,42 +37,12 @@ pub fn render_home(state: &AppState) -> String {
 </div>
 <hr class="bim-rule">
 <article class="bim-article">
-  <section>
-    <h2>The problem with building specifications</h2>
-    <p>Every building project generates thousands of specification decisions — fire ratings,
-    thermal values, structural classifications, material provenance. Those decisions are
-    scattered across incompatible containers: proprietary model files, PDF specification
-    clauses, product data sheets, contractor RFIs, O&amp;M binders. None of them travel
-    reliably between the software tools that design, finance, regulate, and manage buildings.</p>
-    <p>The U.S. construction sector loses an estimated $31.3 billion annually to rework caused
-    by data inconsistencies. At project handover, the BIM model that cost hundreds of thousands
-    of dollars to produce is commonly delivered to the owner as a static PDF extract.</p>
-  </section>
-  <hr class="bim-rule">
-  <section>
-    <h2>BIM Objects as the answer</h2>
-    <p>A BIM Object is a machine-readable specification unit stored in W3C DTCG format JSON.
-    Each object carries its IFC 4.3 entity anchor, Uniclass 2015 classification, applicable
-    property sets, and regulatory overlays as structured data — not prose. The object travels
-    with the element through every tool in the AEC stack.</p>
-    <p>When an architect places a wall, the BIM Object for that wall already knows its required
-    fire rating, its thermal transmittance range, and which jurisdictional code clause governs
-    it. No post-hoc checking. No separate specification document. The compliance constraint
-    is encoded in the starting material.</p>
-  </section>
-  <hr class="bim-rule">
-  <section>
-    <h2>Browse the catalog</h2>
-    <p>Organized by IFC 4.3 entity class. <a href="/tokens">Browse all categories</a> or
-    navigate by category in the sidebar.</p>
-  </section>
+  {sections}
 </article>
 <div class="bim-home">
   <h2>Categories</h2>
   <div class="bim-category-grid">{cards}</div>
 </div>"#,
-        cards = cards,
-        category_count = category_count,
     )
 }
 
@@ -70,8 +51,7 @@ pub fn render_tokens_index(state: &AppState) -> String {
 }
 
 pub fn render_token_page(category: &str, state: &AppState) -> String {
-    let cats = known_categories();
-    let meta = cats.get(category);
+    let meta = state.categories.iter().find(|c| c.slug == category);
 
     let Some(file_val) = state.tokens.get(category) else {
         return format!(
@@ -90,12 +70,13 @@ pub fn render_token_page(category: &str, state: &AppState) -> String {
         }
     };
 
-    let intro = meta.map(|m| m.intro).unwrap_or("");
-    let ifc_anchor = meta.map(|m| m.ifc_anchor).unwrap_or("");
-    let elements = meta.map(|m| m.elements).unwrap_or("");
-    let uniclass = meta.map(|m| m.uniclass).unwrap_or("—");
-    let ifc_hierarchy = meta.map(|m| m.ifc_hierarchy).unwrap_or("—");
-    let property_sets = meta.map(|m| m.property_sets).unwrap_or(&[]);
+    let intro_html = meta.map(|m| m.intro_html.as_str()).unwrap_or("");
+    let ifc_anchor = meta.map(|m| m.ifc_anchor.as_str()).unwrap_or("");
+    let elements = meta.map(|m| m.elements.as_str()).unwrap_or("");
+    let uniclass = meta.map(|m| m.uniclass.as_str()).unwrap_or("—");
+    let ifc_hierarchy = meta.map(|m| m.ifc_hierarchy.as_str()).unwrap_or("—");
+    let empty_psets = Vec::new();
+    let property_sets = meta.map(|m| &m.property_sets).unwrap_or(&empty_psets);
 
     let mut entity_count = 0usize;
     let mut rows = String::new();
@@ -168,7 +149,7 @@ pub fn render_token_page(category: &str, state: &AppState) -> String {
   <details class="bim-spec-card" open>
     <summary>Specification</summary>
     <div class="bim-spec-card__body">
-      <p class="bim-intro">{intro}</p>
+      <div class="bim-intro">{intro_html}</div>
       <p class="bim-elements"><code>{elements}</code></p>
       <table class="bim-detail-table">
         <tr><th>IFC entity</th><td><code>{ifc_anchor}</code></td></tr>
@@ -210,8 +191,8 @@ pub fn render_token_page(category: &str, state: &AppState) -> String {
     <div class="bim-spec-card__body"><pre><code>{dtcg_json}</code></pre></div>
   </details>
 </div>"#,
-        display_name = esc(meta.map(|m| m.display_name).unwrap_or(category)),
-        intro = esc(intro),
+        display_name = esc(meta.map(|m| m.display_name.as_str()).unwrap_or(category)),
+        intro_html = intro_html,
         ifc_anchor = esc(ifc_anchor),
         elements = esc(elements),
         uniclass = esc(uniclass),
@@ -290,7 +271,7 @@ pub fn render_key_plans(state: &AppState) -> String {
 }
 
 pub fn render_furniture(state: &AppState) -> String {
-    let components_dir = state.config.library_dir.join("components");
+    let components_dir = state.config.library_dir.join("blocks").join("furniture");
     let mut items = String::new();
     if let Ok(rd) = std::fs::read_dir(&components_dir) {
         let mut names: Vec<String> = rd
@@ -378,7 +359,7 @@ pub fn render_research_item(slug: &str, state: &AppState) -> String {
             )
         }
     };
-    let html_body = render_markdown(&raw);
+    let html_body = content::render_markdown(&raw);
     format!(
         r#"<div class="bim-research-item-page">
   <div class="bim-breadcrumbs">
@@ -392,22 +373,18 @@ pub fn render_research_item(slug: &str, state: &AppState) -> String {
 }
 
 fn render_category_cards(state: &AppState) -> String {
-    let cats = known_categories();
     let mut out = String::new();
-    for (slug, _label) in SIDEBAR_ORDER {
-        let meta = cats.get(slug);
-        let display = meta.map(|m| m.display_name).unwrap_or(slug);
-        let desc = meta.map(|m| m.card_desc).unwrap_or("");
-        let count = count_entities_in_file(state, slug);
+    for cat in state.categories.iter() {
+        let count = count_entities_in_file(state, &cat.slug);
         out.push_str(&format!(
             r#"<a class="bim-category-card bim-nav-link" href="/tokens/{slug}" data-path="/tokens/{slug}">
   <div class="bim-category-card-name">{display}</div>
   <div class="bim-category-card-desc">{desc}</div>
   <div class="bim-category-card-count">{count} entities</div>
 </a>"#,
-            slug = slug,
-            display = esc(display),
-            desc = esc(desc),
+            slug = cat.slug,
+            display = esc(&cat.display_name),
+            desc = esc(&cat.card_desc),
             count = count,
         ));
     }
@@ -425,13 +402,4 @@ fn count_entities_in_file(state: &AppState, category: &str) -> usize {
         .filter_map(|v| v.as_object())
         .flat_map(|o| o.values())
         .count()
-}
-
-fn render_markdown(md: &str) -> String {
-    use pulldown_cmark::{html, Options, Parser};
-    let opts = Options::ENABLE_TABLES | Options::ENABLE_STRIKETHROUGH;
-    let parser = Parser::new_ext(md, opts);
-    let mut out = String::new();
-    html::push_html(&mut out, parser);
-    out
 }
