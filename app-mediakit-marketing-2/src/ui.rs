@@ -297,9 +297,28 @@ impl Tenant {
             // always-visible `type: prose` home-page section (same reason
             // as Woodfine's, see comment above).
             disclosure_slots: vec![DisclosureSlot {
-                label: "Product disclosure",
-                label_es: "Divulgación del producto",
-                body: "**Intellectual property.** The PointSav name, marks, wordmark, product \
+                // Was "Product disclosure" — widened 2026-07-02 to "Company and
+                // product disclosure" because the body now opens with the
+                // corporate-structure and securities-boundary framing required
+                // by factory-release-engineering/policies/DISCLAIMER.md ¶1 and
+                // the "investment/technology boundary" rule in
+                // tokens/legal-tokens-pointsav.yaml, not just product IP. Not
+                // labelled "Securities disclosure" like Woodfine's: this page
+                // explicitly does NOT offer securities, so that label would
+                // overstate; "Company and product" states the true scope.
+                label: "Company and product disclosure",
+                label_es: "Divulgación de la empresa y del producto",
+                body: "**Corporate structure.** PointSav Digital Systems is a trade name of \
+                    Woodfine Capital Projects Inc. (\u{201c}Woodfine\u{201d}). PointSav does not \
+                    itself offer, sell, or solicit any security. Any securities offering \
+                    associated with Woodfine\u{2019}s real-property direct-hold solutions is made \
+                    exclusively by Woodfine Capital Projects Inc., and only by means of the \
+                    applicable offering memorandum.\n\n\
+                    **No investment advice.** PointSav software and documentation are provided for \
+                    operational, research, and development purposes. Nothing on this site \
+                    constitutes investment advice or a solicitation to invest in any Woodfine \
+                    Capital Projects partnership or direct-hold solution.\n\n\
+                    **Intellectual property.** The PointSav name, marks, wordmark, product \
                     names (including ToteBox, GIS Engine, Keys Console, Command Centre, \
                     Workplace OS, and Business Applications), software, source code, \
                     documentation, design system, and all related materials are proprietary to \
@@ -317,7 +336,18 @@ impl Tenant {
                     release and partner agreement.",
                 // Real human translation, ported verbatim from the retired
                 // page.es.yaml prose section — not machine-translated here.
-                body_es: "**Propiedad intelectual.** El nombre PointSav, las marcas, el \
+                body_es: "**Estructura corporativa.** PointSav Digital Systems es un nombre \
+                    comercial de Woodfine Capital Projects Inc. (\u{201c}Woodfine\u{201d}). \
+                    PointSav no ofrece, vende ni solicita por sí misma ningún valor. Toda oferta \
+                    de valores asociada a las soluciones de tenencia directa de inmuebles de \
+                    Woodfine se realiza exclusivamente a través de Woodfine Capital Projects Inc., \
+                    y únicamente por medio del memorando de oferta aplicable.\n\n\
+                    **Sin asesoramiento de inversión.** El software y la documentación de PointSav \
+                    se proporcionan con fines operativos, de investigación y de desarrollo. Nada \
+                    en este sitio constituye asesoramiento de inversión ni una solicitud para \
+                    invertir en ninguna sociedad de Woodfine Capital Projects ni en ninguna \
+                    solución de tenencia directa.\n\n\
+                    **Propiedad intelectual.** El nombre PointSav, las marcas, el \
                     logotipo, los nombres de producto (incluidos ToteBox, Motor GIS, Keys \
                     Console, Command Centre, Workplace OS y Aplicaciones de Negocio), el \
                     software, el código fuente, la documentación, el sistema de diseño y todos \
