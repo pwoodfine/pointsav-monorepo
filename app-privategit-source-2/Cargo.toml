@@ -1,0 +1,9 @@
+[package]
+name = "app-privategit-source-2"
+version = "0.1.0"
+edition = "2021"
+description = "PointSav PrivateGit Source — ground-up rewrite (P0 scaffold, see BRIEF-software-ng-rewrite.md)"
+
+[[bin]]
+name = "app-privategit-source-2"
+path = "src/main.rs"
