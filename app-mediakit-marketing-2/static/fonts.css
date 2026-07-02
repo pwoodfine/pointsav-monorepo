@@ -1,0 +1,53 @@
+/* app-mediakit-marketing-2 — self-hosted variable font trio.
+ * All three: OFL 1.1, freely licensed, self-hostable. Zero third-party
+ * font CDN — consistent with the zero-cookie posture. Files land in P3
+ * (asset fetch); this declares the contract the tokens/chrome build against.
+ *
+ * Chosen to match the live wiki standard (app-mediakit-knowledge-2) exactly
+ * for family consistency: same serif (Source Serif 4), same sans (Inter).
+ * Source Code Pro added for the marketing family's own mono needs (figures,
+ * jurisdiction/disclosure labels) — same Adobe superfamily as the serif.
+ */
+
+@font-face {
+  font-family: "Source Serif 4";
+  src: url("/static/fonts/SourceSerif4-Variable.woff2") format("woff2");
+  font-weight: 200 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Inter";
+  src: url("/static/fonts/InterVariable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Source Code Pro";
+  src: url("/static/fonts/SourceCodePro-Variable.woff2") format("woff2");
+  font-weight: 200 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* CLS-neutral local fallbacks while the variable fonts load (metric-tuned
+   against Georgia/Arial; exact size-adjust values to be verified against
+   the real font metrics once the woff2 files land in P3). */
+@font-face {
+  font-family: "Serif Fallback";
+  src: local("Georgia");
+  size-adjust: 104%;
+  ascent-override: 92%;
+  descent-override: 24%;
+}
+
+@font-face {
+  font-family: "Sans Fallback";
+  src: local("Arial");
+  size-adjust: 107%;
+  ascent-override: 90%;
+  descent-override: 22%;
+}

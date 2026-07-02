@@ -68,20 +68,24 @@ async fn page_es(
 
 fn render_slug(state: &AppStateInner, slug: &str, lang: Option<&str>) -> Result<Markup, MarketingError> {
     let page = content::load_page(&state.content_dir, slug, lang)?;
-    Ok(render_bare(&page))
+    Ok(render_bare(&page, &state.module_id))
 }
 
-/// Bare (unstyled) page render — proves the content pipeline works end to
-/// end. No chrome, no tokens, no brand dispatch: those land in P2/P3.
-fn render_bare(page: &Page) -> Markup {
+/// Bare page render, wired to the P2 design system (tokens.css/fonts.css) but
+/// without real chrome markup yet (masthead/hero/footer/drawer land in P3 —
+/// see DESIGN-SYSTEM.md "what's still open"). `data-brand` on `<html>` is
+/// what tokens.css keys its per-tenant overrides on.
+fn render_bare(page: &Page, module_id: &str) -> Markup {
     html! {
         (maud::DOCTYPE)
-        html lang=(page.lang) {
+        html lang=(page.lang) data-brand=(module_id) {
             head {
                 meta charset="utf-8";
                 meta name="viewport" content="width=device-width, initial-scale=1";
                 title { (page.title) }
                 meta name="description" content=(page.description);
+                link rel="stylesheet" href="/static/tokens.css";
+                link rel="stylesheet" href="/static/fonts.css";
                 link rel="stylesheet" href="/static/app.css";
             }
             body {
