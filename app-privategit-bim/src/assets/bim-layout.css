@@ -83,7 +83,6 @@ html, body {
   display: flex;
   flex: 1;
   margin-top: var(--bim-topbar-height, 48px);
-  min-height: calc(100vh - var(--bim-topbar-height, 48px));
 }
 
 /* Sidebar (ported from app-orchestration-bim) */
@@ -533,6 +532,13 @@ html, body {
   color: #c6c6c6;
   padding: 2rem;
   margin-top: auto;
+  margin-left: 16rem;
+}
+
+@media (max-width: 1056px) {
+  .bim-footer {
+    margin-left: 0;
+  }
 }
 .bim-footer__inner {
   display: grid;
