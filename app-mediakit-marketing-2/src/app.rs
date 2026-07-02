@@ -1,20 +1,23 @@
 //! Application state and axum Router. P0 mounted `/healthz` and
 //! `/static/*path`; P1 added the content pipeline; P3 wired real chrome;
-//! P4 adds SEO/discovery (canonical/OG/Twitter/JSON-LD, robots, sitemap).
+//! P4 added SEO/discovery; P5 adds the MCP JSON-RPC surface + review queue
+//! (mounted only when `enable_mcp` is set).
 
 use std::path::PathBuf;
 use std::sync::Arc;
 
 use axum::extract::{Path as AxumPath, State};
 use axum::http::header;
-use axum::response::{IntoResponse, Response};
-use axum::routing::get;
+use axum::response::{IntoResponse, Json, Response};
+use axum::routing::{get, post};
 use axum::Router;
 use maud::Markup;
 
 use crate::config::Config;
 use crate::content;
 use crate::error::MarketingError;
+use crate::mcp::{self, RpcRequest};
+use crate::pending::Queue;
 use crate::ui::{page_shell, Tenant};
 
 pub struct AppStateInner {
@@ -23,20 +26,22 @@ pub struct AppStateInner {
     /// `SERVICE_MARKETING_GOOGLE_VERIFY` — read directly from the
     /// environment (not a clap flag) to match the retired engine's contract.
     pub google_verify: Option<String>,
+    pub pending: Queue,
 }
 
 pub type AppState = Arc<AppStateInner>;
 
-pub fn build_state(cfg: &Config) -> AppState {
-    Arc::new(AppStateInner {
+pub fn build_state(cfg: &Config) -> Result<AppState, MarketingError> {
+    Ok(Arc::new(AppStateInner {
         content_dir: cfg.content_dir.clone(),
         module_id: cfg.module_id.clone(),
         google_verify: std::env::var("SERVICE_MARKETING_GOOGLE_VERIFY").ok(),
-    })
+        pending: Queue::open(&cfg.state_dir)?,
+    }))
 }
 
-pub fn router(state: AppState) -> Router {
-    Router::new()
+pub fn router(state: AppState, enable_mcp: bool) -> Router {
+    let mut router = Router::new()
         .route("/healthz", get(healthz))
         .route("/static/{*path}", get(crate::assets::serve))
         .route("/", get(home))
@@ -44,8 +49,17 @@ pub fn router(state: AppState) -> Router {
         .route("/page/{slug}", get(page))
         .route("/es/page/{slug}", get(page_es))
         .route("/robots.txt", get(robots_txt))
-        .route("/sitemap.xml", get(sitemap_xml))
-        .with_state(state)
+        .route("/sitemap.xml", get(sitemap_xml));
+
+    if enable_mcp {
+        router = router
+            .route("/api/mcp", post(mcp_rpc))
+            .route("/api/pending", get(list_pending))
+            .route("/api/pending/{id}/manifest", get(pending_manifest))
+            .route("/api/pending/{id}/approve", post(approve_pending));
+    }
+
+    router.with_state(state)
 }
 
 async fn healthz() -> &'static str {
@@ -124,4 +138,34 @@ async fn sitemap_xml(State(state): State<AppState>) -> Response {
         body,
     )
         .into_response()
+}
+
+// ---------------------------------------------------------------- P5: MCP
+
+async fn mcp_rpc(State(state): State<AppState>, Json(req): Json<RpcRequest>) -> Json<mcp::RpcResponse> {
+    Json(mcp::handle(&state, req))
+}
+
+async fn list_pending(State(state): State<AppState>) -> Result<Response, MarketingError> {
+    let items = state.pending.list()?;
+    Ok(Json(items).into_response())
+}
+
+async fn pending_manifest(
+    State(state): State<AppState>,
+    AxumPath(id): AxumPath<String>,
+) -> Result<Response, MarketingError> {
+    let manifest = state.pending.manifest(&id)?;
+    Ok(([(header::CONTENT_TYPE, "application/yaml")], manifest).into_response())
+}
+
+/// The F12 human-approval endpoint. Nothing in this codebase calls this
+/// automatically — it exists only to be triggered by an explicit
+/// human/operator action (a UI button, a curl command a human runs).
+async fn approve_pending(
+    State(state): State<AppState>,
+    AxumPath(id): AxumPath<String>,
+) -> Result<Response, MarketingError> {
+    state.pending.approve(&id, &state.content_dir)?;
+    Ok(Json(serde_json::json!({ "status": "approved", "id": id })).into_response())
 }

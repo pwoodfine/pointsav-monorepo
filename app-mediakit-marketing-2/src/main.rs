@@ -64,10 +64,10 @@ async fn serve(cfg: Config) -> anyhow::Result<()> {
         "starting marketing engine (rewrite)"
     );
 
-    let state = build_state(&cfg);
+    let state = build_state(&cfg)?;
     let listener = tokio::net::TcpListener::bind(cfg.bind).await?;
     tracing::info!(addr = %cfg.bind, "listening");
-    axum::serve(listener, router(state))
+    axum::serve(listener, router(state, cfg.enable_mcp))
         .with_graceful_shutdown(shutdown_signal())
         .await?;
     tracing::info!("shut down cleanly");

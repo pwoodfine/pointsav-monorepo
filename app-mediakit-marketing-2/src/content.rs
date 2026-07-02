@@ -6,11 +6,11 @@
 
 use std::path::{Path, PathBuf};
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::error::MarketingError;
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Page {
     pub title: String,
     pub slug: String,
@@ -24,7 +24,7 @@ fn default_lang() -> String {
     "en".to_string()
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "kebab-case")]
 pub enum Section {
     Hero {
@@ -44,7 +44,7 @@ pub enum Section {
     },
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Card {
     pub title: String,
     #[serde(default)]
