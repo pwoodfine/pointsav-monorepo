@@ -373,11 +373,51 @@ async fn healthz() -> impl IntoResponse {
 /// Article view — the rendered body wrapped in the new chrome shell.
 /// The full 2-column article layout (tabs above h1, TOC sidebar) arrives in P3;
 /// P2 renders the body inside the continuous header/sitenotice/footer chrome.
-async fn wiki_raw(State(state): State<AppState>, Path(slug): Path<String>) -> Response {
+async fn wiki_raw(
+    State(state): State<AppState>,
+    Path(slug): Path<String>,
+    Query(params): Query<HistoryQuery>,
+) -> Response {
     let slug = slug.trim_end_matches('/');
     let Some(doc) = state.index.resolve(slug, Lang::En) else {
         return (StatusCode::NOT_FOUND, format!("no article: {slug}")).into_response();
     };
+    let tenant = state.tenant;
+    let repo_root = &state.mounts.mounts[doc.mount_index].path;
+    let rel = doc.path.strip_prefix(repo_root).unwrap_or(&doc.path);
+
+    // Point-in-time "as-of" view — render the file as it stood at ?rev=<sha>.
+    if let Some(rev) = params.rev.as_deref().filter(|s| !s.is_empty()) {
+        let Some((text, date)) = crate::history::file_at_rev(repo_root, rel, rev) else {
+            return (StatusCode::NOT_FOUND, format!("no such revision: {rev}")).into_response();
+        };
+        let parsed = content::parse(&text);
+        let rendered = content::render(&parsed.body_md);
+        let title = parsed
+            .frontmatter
+            .title
+            .clone()
+            .unwrap_or_else(|| doc.title.clone());
+        let short = rev.chars().take(8).collect::<String>();
+        let body = ui::article(&title, &doc.slug, None, Some(&short), Some(&date), &rendered.html);
+        let head = ui::doc_head(&format!("{title} (as of {date})"), "", tenant);
+        return Html(
+            ui::page(
+                tenant,
+                "en",
+                head,
+                body,
+                &nav_cats(&state),
+                &rendered.headings,
+                "",
+                state.important_info.as_deref(),
+            )
+            .into_string(),
+        )
+        .into_response();
+    }
+
+    // Current view.
     let parsed = match content::load(doc) {
         Ok(p) => p,
         Err(e) => {
@@ -391,11 +431,15 @@ async fn wiki_raw(State(state): State<AppState>, Path(slug): Path<String>) -> Re
         .clone()
         .unwrap_or_else(|| doc.title.clone());
     let description = parsed.frontmatter.short_description.clone().unwrap_or_default();
-    let tenant = state.tenant;
+    // Provenance: the short hash of the file's most recent commit.
+    let prov = crate::history::file_history(repo_root, rel, 1);
+    let sha = prov.first().map(|r| r.short_sha.as_str());
     let body = ui::article(
         &title,
         &doc.slug,
         parsed.frontmatter.last_edited.as_deref(),
+        sha,
+        None,
         &rendered.html,
     );
     let head = ui::doc_head(&title, &description, tenant);

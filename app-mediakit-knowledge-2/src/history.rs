@@ -112,6 +112,20 @@ pub fn file_diff(repo_root: &Path, rel: &Path, sha: &str) -> Option<FileDiff> {
     })
 }
 
+/// The content of `rel` as it stood at commit `sha`, plus that commit's date
+/// (`YYYY-MM-DD`). Used by the point-in-time "as-of" article view. None on any
+/// git error or if the file did not exist at that revision.
+pub fn file_at_rev(repo_root: &Path, rel: &Path, sha: &str) -> Option<(String, String)> {
+    let repo = Repository::open(repo_root).ok()?;
+    let commit = repo.revparse_single(sha).ok()?.peel_to_commit().ok()?;
+    let tree = commit.tree().ok()?;
+    let entry = tree.get_path(rel).ok()?;
+    let obj = entry.to_object(&repo).ok()?;
+    let blob = obj.as_blob()?;
+    let content = String::from_utf8_lossy(blob.content()).to_string();
+    Some((content, iso_date(commit.time().seconds())))
+}
+
 /// Did `commit` change `rel` relative to its first parent (or, for a root commit,
 /// is the file present)?
 fn touches(repo: &Repository, commit: &git2::Commit, rel: &Path) -> bool {

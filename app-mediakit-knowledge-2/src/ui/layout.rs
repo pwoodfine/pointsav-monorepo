@@ -338,16 +338,41 @@ fn tab_bar(slug: &str, active: &str) -> Markup {
 
 /// Wrap a rendered article body in the reading shell: action tabs (+ "Last
 /// updated"), ruled title, prose column. `body_html` is trusted, pre-rendered.
-pub fn article(title: &str, slug: &str, updated: Option<&str>, body_html: &str) -> Markup {
+/// `sha` is the short commit hash the render is drawn from (provenance line);
+/// `asof` is set only for the point-in-time view (a historical revision) and
+/// carries that revision's date, which switches the meta label + shows a banner.
+pub fn article(
+    title: &str,
+    slug: &str,
+    updated: Option<&str>,
+    sha: Option<&str>,
+    asof: Option<&str>,
+    body_html: &str,
+) -> Markup {
     html! {
         article."k-article" {
             div."k-article-nav" {
                 (tab_bar(slug, "article"))
-                @if let Some(d) = updated.filter(|s| !s.trim().is_empty()) {
+                @if updated.is_some() || asof.is_some() || sha.is_some() {
                     p."k-article__meta" {
-                        "Last updated "
-                        time."k-article__date" datetime=(d) { (format_date(d)) }
+                        @if let Some(d) = asof {
+                            "Revision as of "
+                            time."k-article__date" datetime=(d) { (format_date(d)) }
+                        } @else if let Some(d) = updated.filter(|s| !s.trim().is_empty()) {
+                            "Last updated "
+                            time."k-article__date" datetime=(d) { (format_date(d)) }
+                        }
+                        @if let Some(s) = sha {
+                            " \u{00b7} " code."k-article__sha" { (s) }
+                        }
                     }
+                }
+            }
+            @if let Some(d) = asof {
+                div."k-asof" role="note" {
+                    strong { "Historical revision" }
+                    " — this record as it stood on " (format_date(d)) ", not the current version. "
+                    a."k-asof__link" href={ "/wiki/" (slug) } { "View the current record \u{2192}" }
                 }
             }
             h1."k-article__title" { (title) }
@@ -419,6 +444,11 @@ pub fn diff_page(title: &str, slug: &str, issuer: &str, diff: &FileDiff) -> Mark
                     " \u{00b7} " time datetime=(diff.date_iso) { (format_date(&diff.date_iso)) }
                 }
                 p."k-diff__msg" { (diff.message) }
+                p."k-diff__asof" {
+                    a href={ "/wiki/" (slug) "?rev=" (diff.short_sha) } {
+                        "View the full record as of this revision \u{2192}"
+                    }
+                }
             }
             @if diff.lines.is_empty() {
                 p."k-searchpage__hint" { "No textual changes to this file in this revision." }

@@ -46,6 +46,26 @@
   font-size: var(--k-text-sm);
   color: var(--k-ink-muted);
 }
+.k-article__sha { font-family: var(--k-font-mono, monospace); font-size: 0.9em; }
+
+/* Point-in-time "as-of" banner (historical revision) */
+.k-asof {
+  margin: 0 0 var(--k-space-5);
+  padding: var(--k-space-3) var(--k-space-4);
+  border: 1px solid var(--k-border);
+  border-left: 3px solid var(--k-accent);
+  border-radius: var(--k-radius-md);
+  background: var(--k-surface-sunken);
+  font-family: var(--k-font-sans);
+  font-size: var(--k-text-sm);
+  color: var(--k-ink-secondary);
+}
+.k-asof strong { color: var(--k-ink); }
+.k-diff__asof {
+  margin: var(--k-space-2) 0 0;
+  font-family: var(--k-font-sans);
+  font-size: var(--k-text-sm);
+}
 
 .k-article__title {
   font-family: var(--k-title-font);
