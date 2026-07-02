@@ -74,3 +74,41 @@ pub fn load_redirects(root: &Path) -> HashMap<String, String> {
         Err(_) => HashMap::new(),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn categories_sorted_by_order_and_absent_is_empty() {
+        let dir = tempfile::tempdir().unwrap();
+        // Deliberately out of order; loader must sort by `order`.
+        std::fs::write(
+            dir.path().join("categories.yaml"),
+            "wiki: docs\ncategories:\n  - id: services\n    name: \"Platform Services\"\n    order: 5\n  - id: architecture\n    name: \"How It's Built\"\n    order: 1\n",
+        )
+        .unwrap();
+        let cats = load_categories(dir.path());
+        assert_eq!(cats.len(), 2);
+        assert_eq!(cats[0].id, "architecture"); // order 1 first
+        assert_eq!(cats[0].name, "How It's Built");
+        assert_eq!(cats[1].id, "services");
+
+        // Absent file → empty (graceful fallback).
+        let empty = tempfile::tempdir().unwrap();
+        assert!(load_categories(empty.path()).is_empty());
+    }
+
+    #[test]
+    fn redirects_map_from_to() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(
+            dir.path().join("redirects.yaml"),
+            "redirects:\n  - from: /old-path\n    to: https://example.com/new\n",
+        )
+        .unwrap();
+        let map = load_redirects(dir.path());
+        assert_eq!(map.get("/old-path").map(String::as_str), Some("https://example.com/new"));
+        assert!(load_redirects(tempfile::tempdir().unwrap().path()).is_empty());
+    }
+}

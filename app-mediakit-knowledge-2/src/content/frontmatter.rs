@@ -134,6 +134,17 @@ mod tests {
     }
 
     #[test]
+    fn parses_references_with_int_and_string_ids() {
+        let doc = parse(
+            "---\ntitle: X\nreferences:\n  - id: 1\n    text: \"First\"\n    url: \"https://a\"\n  - id: rfc-9162\n    text: \"Second\"\n---\nbody\n",
+        );
+        assert_eq!(doc.frontmatter.references.len(), 2);
+        assert_eq!(doc.frontmatter.references[0].id, "1"); // int coerced to string
+        assert_eq!(doc.frontmatter.references[1].id, "rfc-9162");
+        assert_eq!(doc.frontmatter.references[0].url.as_deref(), Some("https://a"));
+    }
+
+    #[test]
     fn malformed_yaml_falls_back_to_default() {
         let doc = parse("---\n:::not valid yaml:::\n---\nBody.\n");
         assert!(doc.frontmatter.title.is_none());
