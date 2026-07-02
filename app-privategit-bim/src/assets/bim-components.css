@@ -92,6 +92,15 @@ cds-side-nav-menu-item a.bim-nav-link {
   margin-top: 1rem;
 }
 
+/* Horizontal scroll container for wide tables at narrow viewports —
+   applied directly to <table class="bim-table-wrap ...">, so display:block
+   is needed for overflow-x to actually establish a scroll container. */
+.bim-table-wrap {
+  display: block;
+  overflow-x: auto;
+  max-width: 100%;
+}
+
 /* Visual property editor table + token category table */
 .bim-prop-table,
 .bim-token-table {
