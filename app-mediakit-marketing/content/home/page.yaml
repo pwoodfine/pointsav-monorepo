@@ -69,12 +69,18 @@ sections:
           intelligence, and operational systems integrated across the
           direct-hold solution lifecycle.
 
+  # FABLE nav-priority audit 2026-07-02: this button row is the real 1-tap
+  # mobile fast path (masthead is 2 taps behind the hamburger). Projects
+  # promoted here (from the masthead, to avoid duplicating it in both
+  # places); Manifest demoted to the footer Network column — a niche
+  # transparency artifact, not a task destination either audience needs
+  # single-tap.
   - type: card-grid
     columns: 3
     style: buttons
     cards:
-      - title: Manifest
-        href: https://github.com/woodfine/woodfine-fleet-deployment
+      - title: Projects
+        href: https://projects.woodfinegroup.com/
       - title: BIM Library
         href: https://bim.woodfinegroup.com/
       - title: Location Intelligence

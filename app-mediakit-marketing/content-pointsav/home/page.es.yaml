@@ -85,12 +85,12 @@ sections:
     columns: 3
     style: buttons
     cards:
-      - title: Código Fuente
-        href: https://github.com/pointsav
       - title: Documentación
         href: https://documentation.pointsav.com/
       - title: Software
         href: https://software.pointsav.com/
+      - title: Código Fuente
+        href: https://github.com/pointsav
 
   # Texto legal completo movido 2026-07-02 al acordeón "Información
   # importante" del pie de página (Tenant::pointsav().disclosure_slots,
