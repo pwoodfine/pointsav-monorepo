@@ -17,6 +17,7 @@ pub mod app;
 pub mod assets;
 pub mod config;
 pub mod content;
+pub mod discovery;
 pub mod error;
 pub mod history;
 pub mod search;
