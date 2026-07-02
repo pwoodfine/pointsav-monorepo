@@ -1,7 +1,6 @@
-//! Application state and axum Router. Grows each phase — P0 mounts
-//! `/healthz` and `/static/*path`; P1 adds bare (unstyled) page routes to
-//! prove the content pipeline end to end. Real chrome/design system lands in
-//! P2/P3 (see `ui` module, added then).
+//! Application state and axum Router. P0 mounted `/healthz` and
+//! `/static/*path`; P1 added the content pipeline; P3 wires real chrome
+//! (masthead/hero/footer/drawer, see `ui`) in place of the P1/P2 bare render.
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -9,11 +8,12 @@ use std::sync::Arc;
 use axum::extract::{Path as AxumPath, State};
 use axum::routing::get;
 use axum::Router;
-use maud::{html, Markup};
+use maud::Markup;
 
 use crate::config::Config;
-use crate::content::{self, Page, Section};
+use crate::content;
 use crate::error::MarketingError;
+use crate::ui::{page_shell, Tenant};
 
 pub struct AppStateInner {
     pub content_dir: PathBuf,
@@ -68,71 +68,6 @@ async fn page_es(
 
 fn render_slug(state: &AppStateInner, slug: &str, lang: Option<&str>) -> Result<Markup, MarketingError> {
     let page = content::load_page(&state.content_dir, slug, lang)?;
-    Ok(render_bare(&page, &state.module_id))
-}
-
-/// Bare page render, wired to the P2 design system (tokens.css/fonts.css) but
-/// without real chrome markup yet (masthead/hero/footer/drawer land in P3 —
-/// see DESIGN-SYSTEM.md "what's still open"). `data-brand` on `<html>` is
-/// what tokens.css keys its per-tenant overrides on.
-fn render_bare(page: &Page, module_id: &str) -> Markup {
-    html! {
-        (maud::DOCTYPE)
-        html lang=(page.lang) data-brand=(module_id) {
-            head {
-                meta charset="utf-8";
-                meta name="viewport" content="width=device-width, initial-scale=1";
-                title { (page.title) }
-                meta name="description" content=(page.description);
-                link rel="stylesheet" href="/static/tokens.css";
-                link rel="stylesheet" href="/static/fonts.css";
-                link rel="stylesheet" href="/static/app.css";
-            }
-            body {
-                main {
-                    @for section in &page.sections {
-                        (render_section(section))
-                    }
-                }
-                script src="/static/app.js" {}
-            }
-        }
-    }
-}
-
-fn render_section(section: &Section) -> Markup {
-    match section {
-        Section::Hero { headline, subhead } => html! {
-            section.hero {
-                h1 { (headline) }
-                @if let Some(sub) = subhead {
-                    p { (sub) }
-                }
-            }
-        },
-        Section::CardGrid { columns: _, cards } => html! {
-            section.card-grid {
-                @for card in cards {
-                    div.card {
-                        @if let Some(href) = &card.href {
-                            a href=(href) { (card.title.clone()) }
-                        } @else {
-                            (card.title.clone())
-                        }
-                        @if let Some(body) = &card.body {
-                            p { (body) }
-                        }
-                    }
-                }
-            }
-        },
-        Section::Prose { body } => {
-            let rendered = content::render_markdown(body);
-            html! {
-                section.prose {
-                    (maud::PreEscaped(rendered))
-                }
-            }
-        }
-    }
+    let tenant = Tenant::by_module_id(&state.module_id);
+    Ok(page_shell(&tenant, &page, &state.module_id))
 }
