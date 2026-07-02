@@ -81,10 +81,43 @@ async fn root() -> Response {
     (StatusCode::FOUND, [(header::LOCATION, "/software")]).into_response()
 }
 
+// GET /software — dynamic product catalog.
+//
+// Replaces the P1 static-HTML read (`software.html` + `wrap_static_html`). The page is
+// now rendered from the SAME `Catalog` that `v1_products` loads, so the product cards
+// can never drift from `products.yaml` again (the bug this phase fixes). The Sovereign
+// Editorial chrome is supplied by `ui::render_page`.
 async fn software_page(State(state): State<Arc<AppState>>) -> Response {
-    serve_chrome_page(&state.static_dir.join("software.html"))
+    match load_catalog(&state.catalog_path) {
+        Ok(catalog) => {
+            let content = ui::catalog_markup(&catalog, &state.source_base_url);
+            let body = ui::render_page(
+                SoftwareSurface::Marketplace,
+                "Products — PointSav Software",
+                content,
+            )
+            .into_string();
+            (
+                StatusCode::OK,
+                [(header::CONTENT_TYPE, "text/html; charset=utf-8")],
+                body,
+            )
+                .into_response()
+        }
+        Err(e) => {
+            tracing::error!("catalog load failed for /software: {e:#}");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                [(header::CONTENT_TYPE, "text/plain; charset=utf-8")],
+                "catalog unavailable",
+            )
+                .into_response()
+        }
+    }
 }
 
+// GET /licensing — UNCHANGED. Static legal/terms document (not catalog data): keeps the
+// P1 static-file read + P2 chrome-wrap exactly as-is.
 async fn licensing_page(State(state): State<Arc<AppState>>) -> Response {
     serve_chrome_page(&state.static_dir.join("licensing.html"))
 }
