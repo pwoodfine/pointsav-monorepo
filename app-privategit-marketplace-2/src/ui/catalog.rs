@@ -13,7 +13,9 @@
 //!     each renders a real curl-pipe-sh install command.
 //!   - [`crate::License`]: `id`, `name`, `description`, `module_tag`, `price_usdc`.
 //!     `price_usdc == 0` → BETA/free (curl-pipe-sh install, same pattern). Non-zero
-//!     → paid tier: a pricing-display CTA only (no purchase button — payment is P4).
+//!     → paid tier: price display plus a "Pay with Polygon USDC" CTA (P4). The CTA is
+//!     display + navigation only — it links to `/v1/wallet/address` (the payment
+//!     descriptor); a live wallet-connect browser interaction is out of scope here.
 //!
 //! Fields NOT available in the catalog (noted rather than fabricated):
 //!   - **sha256** — no SHA field exists on either struct. Per-artifact SHA256 lives on
@@ -99,8 +101,15 @@ fn free_license_card(l: &crate::License, source_base_url: &str) -> Markup {
     }
 }
 
-/// A paid license-tier card — `price_usdc > 0`. Pricing-display CTA only; NO functional
-/// purchase button (payment is implemented in P4).
+/// A paid license-tier card — `price_usdc > 0`. Shows the price and a Polygon-USDC
+/// pay CTA.
+///
+/// P4 scope: the CTA is **display + navigation only**. It links to `/v1/wallet/address`
+/// (the JSON descriptor of the receiving wallet, chain, token, and USDC contract) so a
+/// buyer can retrieve the exact on-chain payment target. Wiring a live "connect wallet"
+/// browser-extension interaction is deliberately NOT done here — that would require a
+/// wallet-connect library dependency, which is out of scope for this phase. The button
+/// degrades to a plain link and is full-width on narrow viewports (see `catalog_style`).
 fn paid_license_card(l: &crate::License) -> Markup {
     let dollars = l.price_usdc as f64 / 1_000_000.0;
     html! {
@@ -117,7 +126,14 @@ fn paid_license_card(l: &crate::License) -> Markup {
             div."sw-cat-price" {
                 span."sw-cat-price__amt" { "$" (format!("{dollars:.2}")) }
                 span."sw-cat-price__unit" { "USDC \u{2014} license required" }
-                span."sw-cat-price__note" { "Purchasing opens in a later release." }
+                div."sw-cat-pay" {
+                    a."sw-cat-pay__cta" href="/v1/wallet/address"
+                        rel="nofollow" aria-label=(format!("Pay for {} with Polygon USDC", l.name)) {
+                        span."sw-cat-pay__mark" aria-hidden="true" { "\u{25C8}" }
+                        "Pay with Polygon USDC"
+                    }
+                    p."sw-cat-pay__meta" { "Polygon PoS \u{00b7} native USDC \u{00b7} verify your transaction to receive a license key" }
+                }
             }
         }
     }
@@ -151,8 +167,13 @@ fn catalog_style() -> Markup {
 .sw-cat-price{margin-top:auto;padding:14px 16px;border:1px dashed #d0d5dd;border-radius:8px;background:#fcfcfd;}
 .sw-cat-price__amt{font-size:22px;font-weight:700;color:#111;font-family:"Playfair Display",Georgia,serif;}
 .sw-cat-price__unit{font-size:13px;color:#667085;margin-left:6px;}
-.sw-cat-price__note{display:block;margin-top:6px;font-size:12px;color:#667085;}
-@media (max-width:768px){.sw-cat-grid{grid-template-columns:1fr;}.sw-cat-wrap{padding:28px 16px 48px;}}"#;
+.sw-cat-pay{margin-top:12px;}
+.sw-cat-pay__cta{display:inline-flex;align-items:center;justify-content:center;gap:8px;box-sizing:border-box;background:#6c4cf1;color:#fff;font-size:13px;font-weight:600;letter-spacing:.02em;text-decoration:none;padding:10px 16px;border-radius:8px;border:1px solid #5a3fd6;transition:background .12s ease;}
+.sw-cat-pay__cta:hover{background:#5a3fd6;}
+.sw-cat-pay__cta:focus-visible{outline:2px solid #164679;outline-offset:2px;}
+.sw-cat-pay__mark{font-size:14px;line-height:1;}
+.sw-cat-pay__meta{margin:8px 0 0;font-size:11.5px;line-height:1.45;color:#667085;}
+@media (max-width:768px){.sw-cat-grid{grid-template-columns:1fr;}.sw-cat-wrap{padding:28px 16px 48px;}.sw-cat-pay__cta{display:flex;width:100%;padding:13px 16px;font-size:14px;}}"#;
     html! { style { (PreEscaped(css)) } }
 }
 
