@@ -24,18 +24,17 @@ sections:
     cards:
       - title: Portabilidad
         body: >-
-          Los datos operativos, los registros de inquilinos y la telemetría de
-          edificios son portátiles por diseño. Los formatos abiertos y las
-          exportaciones estándar permiten a los clientes migrar cargas de
-          trabajo, replicar entornos o transferirlos a un sucesor sin la
-          intervención de PointSav.
+          Cada registro se almacena en formatos abiertos y documentados, y el
+          propio entorno operativo es una imagen de disco transferible — no un
+          puesto por suscripción. Si un cliente cambia de proveedor de
+          tecnología, los datos y el archivo se trasladan con él; nada se
+          reformatea y nada requiere la cooperación de PointSav.
       - title: Tarifas Predecibles
         body: >-
           Los socios pagan una única tarifa de plataforma calculada sobre los
           activos bajo gestión, en lugar de licencias por usuario o por módulo.
-          La estructura de tarifas no escala con el crecimiento del uso, lo que
-          mantiene el costo marginal predecible a medida que las operaciones se
-          expanden.
+          El modelo comercial es la propiedad del sustrato, no una suscripción
+          por puesto.
       - title: Hoja de Ruta Gobernada por Socios
         body: >-
           La hoja de ruta del producto es gobernada por un consejo cerrado de
@@ -45,17 +44,20 @@ sections:
           adicionales.
       - title: Archivo ToteBox
         body: >-
-          Cada documento, plano, contrato y flujo de sensores queda capturado
-          en ToteBox, un archivo con control de versiones y a prueba de
-          manipulaciones. Los registros se conservan durante toda la vida del
-          activo y son exportables a demanda en formatos abiertos.
+          Cada registro se escribe en un libro mayor WORM dentro de un Archivo
+          Totebox — un almacén de solo anexado sin verbo de eliminar o
+          actualizar, de modo que el archivo conserva un historial completo y a
+          prueba de manipulaciones de todo lo registrado. El archivo es una
+          imagen de disco transferible, exportable en formatos abiertos en
+          cualquier momento.
       - title: Motor GIS
         body: >-
-          Un motor de información geográfica integrado vincula cada registro a
-          una parcela, edificio, planta y habitación. Las consultas espaciales,
-          el análisis de emplazamientos y las superposiciones a escala de
-          cartera se ejecutan de forma nativa sobre datos operativos en tiempo
-          real sin necesidad de una suscripción GIS independiente.
+          Un motor de inteligencia de localización propiedad del cliente se
+          ejecuta sin conexión, a partir de archivos planos en el propio
+          sistema de archivos del cliente — sin base de datos central, sin
+          dependencia de red en vivo, sin suscripción de mapeo por puesto. Cada
+          consulta espacial y superposición de cartera se ejecuta contra el
+          propio archivo de mapas del cliente.
       - title: Integraciones Abiertas
         body: >-
           PointSav utiliza formatos de archivo abiertos y protocolos estándar
@@ -90,28 +92,7 @@ sections:
       - title: Software
         href: https://software.pointsav.com/
 
-  - type: prose
-    body: |
-      **Propiedad intelectual.** El nombre PointSav, las marcas, el logotipo,
-      los nombres de producto (incluidos ToteBox, Motor GIS, Keys Console,
-      Command Centre, Workplace OS y Aplicaciones de Negocio), el software, el
-      código fuente, la documentación, el sistema de diseño y todos los
-      materiales relacionados son propiedad de Woodfine Capital Projects Inc.
-      y sus subsidiarias, salvo que se identifiquen expresamente como código
-      abierto.
-
-      **Componentes de código abierto.** Partes de la plataforma están
-      disponibles bajo licencias de código abierto permisivas identificadas en
-      el repositorio correspondiente. El uso de dichos componentes se rige por
-      sus respectivos términos de licencia.
-
-      **Sin garantía; uso informativo.** La información en esta página se
-      proporciona únicamente con fines informativos generales y no constituye
-      una representación, garantía ni compromiso en relación con la
-      funcionalidad del producto, su disponibilidad, precio o hoja de ruta. Las
-      descripciones de productos describen capacidades previstas; la
-      disponibilidad real de funciones puede variar según la versión y el
-      acuerdo con el socio.
-
-      PointSav Digital Systems, Totebox Orchestration y Totebox Archive son
-      marcas comerciales propiedad de Woodfine Capital Projects Inc.
+  # Texto legal completo movido 2026-07-02 al acordeón "Información
+  # importante" del pie de página (Tenant::pointsav().disclosure_slots,
+  # campo body_es, en ui.rs) -- duplicaba ese mismo acordeón al vivir aquí
+  # también como una sección de prosa siempre visible.
