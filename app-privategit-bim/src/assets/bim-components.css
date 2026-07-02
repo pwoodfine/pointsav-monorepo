@@ -101,7 +101,7 @@ cds-side-nav-menu-item a.bim-nav-link {
 }
 .bim-prop-table th,
 .bim-token-table th {
-  background: #f4f4f4;
+  background: #F7F9FA;
   text-align: left;
   padding: 0.5rem 0.75rem;
   font-weight: 600;
@@ -157,9 +157,9 @@ cds-side-nav-menu-item a.bim-nav-link {
   font-size: 0.6875rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--bim-fg-secondary, #344054);
-  background: var(--bim-accent-subtle, #E6EBF2);
-  border: 1px solid var(--bim-border, #e0e0e0);
+  color: var(--bim-fg-secondary, #374151);
+  background: var(--bim-accent-subtle, #E8EFF7);
+  border: 1px solid var(--bim-border, #E6E7E8);
   border-radius: var(--bim-radius-sm, 2px);
   padding: 0.25rem 0.625rem;
 }
@@ -173,10 +173,10 @@ cds-side-nav-menu-item a.bim-nav-link {
 }
 .bim-chip--muted {
   background: transparent;
-  color: var(--bim-fg-muted, #6f6f6f);
+  color: var(--bim-fg-muted, #6B7280);
 }
 .bim-chip--muted strong {
-  color: var(--bim-fg-muted, #6f6f6f);
+  color: var(--bim-fg-muted, #6B7280);
 }
 
 /* AEC semantic status chip variants — for regulation/compliance display */
@@ -207,25 +207,25 @@ cds-side-nav-menu-item a.bim-nav-link {
 
 .bim-rule {
   border: none;
-  border-top: 1px solid var(--bim-border, #e0e0e0);
+  border-top: 1px solid var(--bim-border, #E6E7E8);
   margin: 2rem 0;
 }
 
 .bim-category-page__anchor {
   font-family: var(--bim-font-mono);
   font-size: 0.75rem;
-  color: var(--bim-fg-muted, #6f6f6f);
+  color: var(--bim-fg-muted, #6B7280);
   margin: 0 0 0.25rem;
 }
 
 .bim-fg-muted {
-  color: var(--bim-fg-muted, #6f6f6f);
+  color: var(--bim-fg-muted, #6B7280);
 }
 
 /* Specification card + accordions on category pages */
 .bim-spec-card,
 .bim-accordion {
-  border: 1px solid var(--bim-border, #e0e0e0);
+  border: 1px solid var(--bim-border, #E6E7E8);
   border-radius: var(--bim-radius-sm, 2px);
   margin: 0.75rem 0;
   background: #fff;
@@ -246,12 +246,12 @@ cds-side-nav-menu-item a.bim-nav-link {
 }
 .bim-spec-card summary::before {
   content: "▾ ";
-  color: var(--bim-fg-muted, #6f6f6f);
+  color: var(--bim-fg-muted, #6B7280);
 }
 .bim-spec-card:not([open]) summary::before,
 .bim-accordion summary::before {
   content: "▸ ";
-  color: var(--bim-fg-muted, #6f6f6f);
+  color: var(--bim-fg-muted, #6B7280);
 }
 .bim-spec-card__body {
   padding: 0 1.25rem 1.25rem;
@@ -265,14 +265,14 @@ cds-side-nav-menu-item a.bim-nav-link {
 .bim-detail-table th {
   text-align: left;
   font-weight: 600;
-  color: var(--bim-fg, #161616);
+  color: var(--bim-fg, #111827);
   padding: 0.25rem 1.5rem 0.25rem 0;
   vertical-align: top;
   white-space: nowrap;
 }
 .bim-detail-table td {
   padding: 0.25rem 0;
-  color: var(--bim-fg-secondary, #344054);
+  color: var(--bim-fg-secondary, #374151);
 }
 
 /* Editor layout */
