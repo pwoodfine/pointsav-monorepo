@@ -102,8 +102,9 @@ pub struct Tenant {
     /// Always "Woodfine Capital Projects Inc." per TRADEMARK.md v1.1 —
     /// never the tenant's own operating entity, on either brand's site.
     pub copyright_holder: &'static str,
-    /// Legal trademark string — the one field that genuinely differs in
-    /// content (not just styling) between the two brands.
+    /// Verbatim canonical sentence per TRADEMARK.md — identical on both
+    /// brands' sites (operator call 2026-07-02; an earlier per-brand
+    /// shorter-subset design for PointSav was superseded).
     pub trademark_line: &'static str,
     pub disclosure_slots: Vec<DisclosureSlot>,
 
@@ -268,15 +269,14 @@ impl Tenant {
             // but the operator wants it off both sites going forward).
             cities: vec!["Vancouver", "New York"],
             copyright_holder: "Woodfine Capital Projects Inc.",
-            // Deliberately a shorter roster than Woodfine's — PointSav's own
-            // marks only (architecture addendum, 2026-06-24: "PointSav-brand
-            // sites carry only PointSav Digital Systems...") — not affected
-            // by the 2026-07-02 drift fix (neither "Woodfine Management
-            // Corp" nor "Capability Geometry" appear in this list).
-            trademark_line: "PointSav Digital Systems\u{2122}, Totebox Orchestration\u{2122}, and \
-                Totebox Archive\u{2122} are trademarks of Woodfine Capital Projects Inc., used in \
-                Canada, the United States, Latin America, and Europe. All other trademarks are the \
-                property of their respective owners.",
+            // Full canonical roster per TRADEMARK.md, same as Woodfine's —
+            // operator call 2026-07-02, superseding the earlier shorter-
+            // subset design (architecture addendum 2026-06-24).
+            trademark_line: "Woodfine Capital Projects\u{2122}, MCorp\u{2122}, \
+                PointSav Digital Systems\u{2122}, Totebox Orchestration\u{2122}, Totebox \
+                Archive\u{2122}, and Capability Geometry\u{2122} are trademarks of Woodfine \
+                Capital Projects Inc., used in Canada, the United States, Latin America, and \
+                Europe. All other trademarks are the property of their respective owners.",
             // Full legal text — moved here 2026-07-02 from a separate,
             // always-visible `type: prose` home-page section (same reason
             // as Woodfine's, see comment above).
@@ -718,19 +718,21 @@ mod tests {
     use crate::content::load_page;
 
     #[test]
-    fn woodfine_and_pointsav_carry_distinct_trademark_lines() {
-        // Canonical roster per TRADEMARK.md (2026-07-02 correction): "MCorp"
-        // is the correct mark, not "Woodfine Management Corp"; "Capability
-        // Geometry" was missing entirely. Woodfine's site carries the full
-        // company-wide roster; PointSav's carries its own shorter subset.
+    fn both_tenants_carry_the_full_canonical_trademark_roster() {
+        // Both brands carry the identical canonical sentence per TRADEMARK.md
+        // (operator call 2026-07-02, superseding the earlier shorter-subset
+        // design for PointSav). "MCorp" is the correct mark, not "Woodfine
+        // Management Corp"; "Capability Geometry" must be present on both.
         let w = Tenant::woodfine();
         let p = Tenant::pointsav();
-        assert_ne!(w.trademark_line, p.trademark_line);
-        assert!(w.trademark_line.contains("MCorp"));
-        assert!(w.trademark_line.contains("Capability Geometry"));
-        assert!(!w.trademark_line.contains("Woodfine Management Corp"));
-        assert!(!p.trademark_line.contains("Woodfine Management Corp"));
-        assert!(!p.trademark_line.contains("MCorp"));
+        assert_eq!(w.trademark_line, p.trademark_line);
+        for line in [w.trademark_line, p.trademark_line] {
+            assert!(line.contains("MCorp"));
+            assert!(line.contains("Capability Geometry"));
+            assert!(line.contains("PointSav Digital Systems"));
+            assert!(line.contains("Woodfine Capital Projects"));
+            assert!(!line.contains("Woodfine Management Corp"));
+        }
     }
 
     #[test]

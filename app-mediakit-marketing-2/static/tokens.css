@@ -203,7 +203,7 @@
   --m-icon-strip-bg:      var(--m-surface-section);
   --m-icon-strip-pad-y:   var(--m-space-12);
   --m-icon-strip-gap:     var(--m-space-8);
-  --m-icon-strip-size:    clamp(160px, 18vw, 260px);
+  --m-icon-strip-size:    clamp(180px, 20vw, 300px);
 
   /* ---------------------------------------------------------- data tables
      Wiki-parity styling for markdown-rendered tables in legal/notice prose
