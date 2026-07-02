@@ -134,6 +134,10 @@ a:hover {
   background: var(--m-masthead-ink);
 }
 
+/* 60rem (960px) is content-driven, not arbitrary: PointSav's 6-link nav needs
+   ~918px minimum to sit on one row, so lowering this breakpoint would wrap or
+   overflow the masthead nav. The external destinations are instead made
+   drawer-free-reachable via the footer's Network column (see footer()). */
 @media (min-width: 60rem) {
   .m-masthead__nav {
     display: flex;

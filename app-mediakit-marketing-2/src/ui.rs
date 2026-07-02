@@ -91,6 +91,13 @@ pub struct Tenant {
     pub wordmark_label: &'static str,
     pub nav_links: Vec<NavLink>,
     pub footer_nav: Vec<NavLink>,
+    /// External network links duplicated into a second footer column so the
+    /// off-site destinations (Corporate/Projects/Newsroom, or Documentation/
+    /// Software/Design System/Newsroom) are reachable from the footer without
+    /// opening the hamburger drawer — mirrors the wiki's own footer pattern
+    /// (Browse / This site / Network). Reuses the same label/href triples as
+    /// the tenant's masthead `nav_links` external entries.
+    pub footer_network: Vec<NavLink>,
     pub cities: Vec<&'static str>,
     /// Always "Woodfine Capital Projects Inc." per TRADEMARK.md v1.1 —
     /// never the tenant's own operating entity, on either brand's site.
@@ -133,6 +140,13 @@ impl Tenant {
                 NavLink::internal("Contact us", "Contáctenos", "/page/contact"),
                 NavLink::internal("Disclaimer", "Aviso legal", "/page/disclaimer"),
                 NavLink::internal("Privacy", "Privacidad", "/page/privacy"),
+            ],
+            // Same external triples as `nav_links` above — the off-site
+            // destinations, reachable from the footer without the hamburger.
+            footer_network: vec![
+                NavLink::external("Corporate", "Corporativo", "https://corporate.woodfinegroup.com/"),
+                NavLink::external("Projects", "Proyectos", "https://projects.woodfinegroup.com/"),
+                NavLink::external("Newsroom", "Sala de prensa", "https://woodfinegroup.com/"),
             ],
             cities: vec!["Vancouver", "New York"],
             copyright_holder: "Woodfine Capital Projects Inc.",
@@ -238,6 +252,14 @@ impl Tenant {
                 NavLink::internal("Contact us", "Contáctenos", "/page/contact"),
                 NavLink::internal("Disclaimer", "Aviso legal", "/page/disclaimer"),
                 NavLink::internal("Privacy", "Privacidad", "/page/privacy"),
+            ],
+            // Same external triples as `nav_links` above — the off-site
+            // destinations, reachable from the footer without the hamburger.
+            footer_network: vec![
+                NavLink::external("Documentation", "Documentación", "https://documentation.pointsav.com/"),
+                NavLink::external("Software", "Software", "https://software.pointsav.com/"),
+                NavLink::external("Design System", "Sistema de diseño", "https://design.pointsav.com/"),
+                NavLink::external("Newsroom", "Sala de prensa", "https://pointsav.com/"),
             ],
             // Berlin dropped 2026-07-02 per operator call (production has it,
             // but the operator wants it off both sites going forward).
@@ -364,13 +386,24 @@ fn drawer(tenant: &Tenant, lang: &str) -> Markup {
 
 fn footer(tenant: &Tenant, lang: &str) -> Markup {
     let site_col_title = t(lang, "Site", "Sitio");
+    let network_col_title = t(lang, "Network", "Red");
     let footer_landmark = t(lang, "Footer", "Pie de página");
+    let network_landmark = t(lang, "Network", "Red");
     html! {
         footer.m-footer {
             div.m-footer__columns {
                 div.m-footer__col {
                     p.m-footer__col-title { (site_col_title) }
                     (render_nav(&tenant.footer_nav, "m-footer__nav", footer_landmark, lang))
+                }
+                // Network column — the external off-site links duplicated from
+                // the masthead nav so they're reachable from the footer without
+                // opening the hamburger drawer (wiki footer pattern).
+                @if !tenant.footer_network.is_empty() {
+                    div.m-footer__col {
+                        p.m-footer__col-title { (network_col_title) }
+                        (render_nav(&tenant.footer_network, "m-footer__nav", network_landmark, lang))
+                    }
                 }
             }
             @if !tenant.disclosure_slots.is_empty() {
