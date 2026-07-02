@@ -213,6 +213,19 @@
   --m-icon-strip-gap:     var(--m-space-8);
   --m-icon-strip-size:    clamp(140px, 16vw, 280px);
 
+  /* Mobile-only reduction (FABLE audit 2026-07-02): measured the 1-column
+     stacked strip at 752px tall on a 375x667 phone — 113% of one full
+     viewport — for 4 non-interactive icons before any real content. Sizing
+     down + tighter spacing below the grid's own 700px column-count
+     breakpoint (app.css) cuts that to roughly 500px. This transitions
+     110px -> 140px (the desktop clamp's own floor) as viewport crosses
+     700px — growing, not shrinking, avoiding the backwards-jump mistake
+     from the reverted two-tier attempt above. Column-count logic
+     (1-col/N-col) is untouched. */
+  --m-icon-strip-size-mobile: 110px;
+  --m-icon-strip-gap-mobile:  var(--m-space-6);
+  --m-icon-strip-pad-y-mobile: var(--m-space-8);
+
   /* ---------------------------------------------------------- data tables
      Wiki-parity styling for markdown-rendered tables in legal/notice prose
      (the disclaimer's jurisdiction / exemption-framework table) and in the
@@ -335,9 +348,22 @@
 }
 
 /* ================================================================ tenants
- * Minimal per-brand swap, mirroring the wiki's discipline: both tenants
- * share the navy accent #164679; only the hero band identity differs,
- * per the live production keep-list.
+ * Per-brand accent scale + hero-band identity. Corrected 2026-07-02 (FABLE
+ * color-compliance audit): PointSav was silently wearing Woodfine's navy
+ * #164679 for its ENTIRE chrome (masthead, links, CTAs, card rules) because
+ * `data-brand="pointsav"` never actually overrode any of the --m-navy-*
+ * primitives every semantic token derives from — this block only swapped
+ * the hero band. PointSav's own canonical brand color is #234ed8
+ * ("color.primary-60" in pointsav-design-system's DTCG token file,
+ * captioned verbatim "the canonical PointSav-brand interactive color").
+ * The full step scale below is NOT invented — it's lifted directly from
+ * that same canonical primitives table (primary-10/50/60/70/80), mapped by
+ * relative step distance from the Woodfine scale's own -100/-600/-700/-800/
+ * -900 structure, so hover/tint states stay internally consistent rather
+ * than half-swapped. Verified: white-on-#234ed8 = 6.66:1 (AA). A deeper
+ * "full dark-terminal" PointSav theme was considered and rejected — its own
+ * accent token is steel-blue, not blue, and #234ed8-on-black measures
+ * 2.99:1 (fails 3:1) — see FABLE audit notes.
  */
 [data-brand="woodfine"] {
   --m-hero-band-bg:        var(--m-navy-700);
@@ -348,6 +374,16 @@
 }
 
 [data-brand="pointsav"] {
+  /* Canonical PointSav accent scale — pointsav-design-system DTCG
+     primitives, not Woodfine's navy. Re-themes every downstream --m-link/
+     --m-cta-bg/--m-surface-chrome/--m-rule-accent/etc. token automatically,
+     since they all derive from these primitives rather than hardcoded hex. */
+  --m-navy-900: #0c2785;  /* color.primary-80 */
+  --m-navy-800: #173ab1;  /* color.primary-70 */
+  --m-navy-700: #234ed8;  /* color.primary-60 — canonical PointSav brand color */
+  --m-navy-600: #3f6cf2;  /* color.primary-50 */
+  --m-navy-100: #eef3ff;  /* color.primary-10 */
+
   --m-hero-band-bg:        var(--m-slate-300);
   --m-hero-band-ink:       var(--m-ink-900);
   --m-hero-band-ink-muted: var(--m-ink-700);  /* 5.3:1 on slate — fixes a live contrast failure */
@@ -364,6 +400,18 @@
     --m-dur-fast: 0ms;
     --m-dur-base: 0ms;
     --m-dur-slow: 0ms;
+  }
+}
+
+/* ================================================================ icon-strip mobile
+ * Below the grid's own 700px column-count breakpoint — see the
+ * --m-icon-strip-size-mobile comment above for the measured rationale.
+ */
+@media (max-width: 699px) {
+  :root {
+    --m-icon-strip-size:  var(--m-icon-strip-size-mobile);
+    --m-icon-strip-gap:   var(--m-icon-strip-gap-mobile);
+    --m-icon-strip-pad-y: var(--m-icon-strip-pad-y-mobile);
   }
 }
 

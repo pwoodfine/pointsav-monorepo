@@ -354,6 +354,18 @@ html:not(.js) .m-drawer-scrim {
   font-size: 0.85em;
 }
 
+/* Masthead/drawer/footer external-link glyph — FABLE competitive-benchmark
+   audit 2026-07-02: sighted visitors had no visual way to tell an on-site
+   page from an off-site network jump, only an aria-label suffix. Shared
+   across .m-masthead__nav, .m-drawer__nav, and .m-footer__nav since they
+   all render from the same render_nav() function. */
+.m-nav__external-glyph {
+  display: inline-block;
+  margin-left: 0.3em;
+  font-size: 0.8em;
+  opacity: 0.75;
+}
+
 /* Button-style card row (pure-navigation grids — Manifest / BIM Library /
    Location Intelligence, Source / Documentation / Software). Compact,
    accent-filled, centered — visually distinct from the content cards above. */
@@ -441,6 +453,19 @@ html:not(.js) .m-drawer-scrim {
   max-width: var(--m-icon-strip-size);
   height: auto;
   aspect-ratio: 1;
+}
+/* Hairline rhythm between stacked mobile items (FABLE audit 2026-07-02) —
+   gives the 1-column stack visual separation without new layout logic;
+   desktop's single row (>=700px) needs no divider. */
+@media (max-width: 699px) {
+  .m-icon-strip__item:not(:first-child) {
+    /* --m-border resolves to the exact same grey as this section's own
+       background (--m-surface-section) -- zero contrast, invisible.
+       --m-border-strong is the token this site already uses whenever a
+       rule needs to actually show (footer, h1 underline). */
+    border-top: 1px solid var(--m-border-strong);
+    padding-top: var(--m-icon-strip-gap);
+  }
 }
 
 /* ==========================================================================
