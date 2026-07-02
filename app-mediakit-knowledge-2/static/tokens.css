@@ -108,6 +108,7 @@
   /* --- Chrome geometry ----------------------------------------------------- */
   --k-header-height:      3.5rem;    /* 56px */
   --k-sitenotice-height:  2rem;      /* 32px */
+  --k-sidebar-width:      12rem;     /* 192px — Vector 2022 uses 13rem; our labels are short */
   --k-content-max:        none;      /* fill viewport (gutters only); the P3
                                         left sidebar will re-form the 2-column  */
   --k-search-max:         480px;
