@@ -1,3 +1,4 @@
+pub mod about;
 pub mod api;
 pub mod editor;
 pub mod furniture;

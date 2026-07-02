@@ -1,0 +1,29 @@
+/* tokens.css — Woodfine BIM design tokens (colors, spacing, topbar, radius)
+   Vendored from app-orchestration-bim's static/css/tokens.css (recovered
+   2026-07-02; was never committed to git — see BRIEF-app-privategit-bim.md). */
+
+:root {
+  --bim-accent:           #164679;
+  --bim-accent-hover:     #0F2E54;
+  --bim-accent-active:    #0A1F3D;
+  --bim-accent-subtle:    #E6EBF2;
+
+  --bim-fg:               #111827;
+  --bim-fg-secondary:     #344054;
+  --bim-fg-muted:         #6B7280;
+
+  --bim-border:           rgba(17, 24, 39, 0.1);
+  --bim-border-subtle:    rgba(17, 24, 39, 0.05);
+
+  --bim-bg-sidebar:       #F5F6F8;
+  --bim-bg-subtle:        #F7F9FA;
+
+  /* Topbar (blue institutional) */
+  --bim-topbar-bg:        var(--bim-accent);
+  --bim-topbar-fg:        #FFFFFF;
+  --bim-topbar-fg-muted:  rgba(255, 255, 255, 0.65);
+  --bim-topbar-height:    48px;
+
+  --bim-radius-sm: 2px;
+  --bim-radius-md: 2px;
+}

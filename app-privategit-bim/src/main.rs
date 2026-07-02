@@ -26,6 +26,7 @@ async fn main() {
     let app = Router::new()
         // Full-page routes
         .route("/", get(routes::home::home_handler))
+        .route("/about", get(routes::about::about_handler))
         .route("/tokens", get(routes::tokens::tokens_index_handler))
         .route(
             "/tokens/{name}",
