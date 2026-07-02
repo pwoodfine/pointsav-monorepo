@@ -223,6 +223,7 @@ pub fn footer(surface: SoftwareSurface) -> Markup {
                         "\u{00a9} 2026 " (surface.copyright_holder()) " All rights reserved."
                     }
                     p."sw-footer__trademark" { (surface.trademark_line()) }
+                    p."sw-footer__disclaimer-citation" { (surface.disclaimer_citation()) }
                 }
             }
         }
@@ -361,6 +362,12 @@ mod tests {
             assert!(page.contains(c), "missing footer city {c}");
         }
 
+        // Checkpoint 3a parity finding (2026-07-02): the OLD crate's footer carries
+        // a securities-disclosure citation (DISCLAIMER.md, NI 51-102 continuous
+        // disclosure) that P2's chrome build initially dropped. Must be present on
+        // every chrome-wrapped page, not just the trademark line.
+        assert!(page.contains(SURFACE.disclaimer_citation()));
+
         // Document order: masthead element, then content, then footer element.
         // (Search for the tags, not the class names — the scoped CSS in <head>
         // legitimately contains `.sw-masthead` / `.sw-footer` selector text.)
@@ -387,9 +394,11 @@ mod tests {
         assert!(!out.contains("OLD NAV"));
         assert!(!out.contains("OLD FOOTER"));
 
-        // Sovereign chrome present, including the verbatim trademark line.
+        // Sovereign chrome present, including the verbatim trademark line and the
+        // securities-disclosure citation (Checkpoint 3a parity finding, 2026-07-02).
         assert!(out.contains("sw-masthead"));
         assert!(out.contains(SURFACE.trademark_line()));
+        assert!(out.contains(SURFACE.disclaimer_citation()));
 
         // Scoped chrome stylesheet injected before </head>.
         let style = out.find("--sw-topnav-bg").unwrap();
