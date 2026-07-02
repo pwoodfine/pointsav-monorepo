@@ -1,0 +1,86 @@
+//! Per-surface identity for the software.pointsav.com chrome.
+//!
+//! Mirrors the wiki/marketing `Tenant` enum pattern (app-mediakit-knowledge-2
+//! `src/ui/tenant.rs`) but the dimension of variation here is the *binary
+//! surface*, not the brand — software.pointsav.com is always PointSav-brand.
+//!
+//! Only `Marketplace` is constructed. `app-privategit-source-2` serves no HTML
+//! (verified in the token-reconciliation research §d: zero `text/html` responses
+//! in that crate — it is a pure machine surface), so a `Source` variant would be
+//! dead code and is intentionally omitted rather than stubbed with a dead arm.
+
+/// A navigation entry rendered in the masthead sub-bar and the mobile drawer.
+#[derive(Clone, Copy)]
+pub struct NavLink {
+    pub label: &'static str,
+    pub href: &'static str,
+}
+
+/// The served surfaces of software.pointsav.com.
+///
+/// `Source` is intentionally absent — see the module docs.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum SoftwareSurface {
+    Marketplace,
+}
+
+impl SoftwareSurface {
+    /// Accessible label / wordmark text for the masthead.
+    pub fn home_label(self) -> &'static str {
+        match self {
+            SoftwareSurface::Marketplace => "PointSav Software",
+        }
+    }
+
+    /// Primary masthead sub-bar links (also drive the mobile drawer).
+    pub fn nav_links(self) -> &'static [NavLink] {
+        match self {
+            SoftwareSurface::Marketplace => &[
+                NavLink {
+                    label: "Products",
+                    href: "/software",
+                },
+                NavLink {
+                    label: "Licensing",
+                    href: "/licensing",
+                },
+                NavLink {
+                    label: "Downloads",
+                    href: "/software#downloads",
+                },
+                NavLink {
+                    label: "Documentation",
+                    href: "https://documentation.pointsav.com/",
+                },
+            ],
+        }
+    }
+
+    /// The marketplace carries an account / license-status control; a source
+    /// surface would not. Kept as a method so `Source` can diverge without forking.
+    pub fn show_account_nav(self) -> bool {
+        match self {
+            SoftwareSurface::Marketplace => true,
+        }
+    }
+
+    /// Verbatim trademark line — TRADEMARK.md v1.1 (2026-05-16), PointSav-brand
+    /// variant. Copied verbatim from app-mediakit-knowledge `chrome/sovereign.rs`
+    /// (the Documentation arm). Do not paraphrase — this is legal text.
+    pub fn trademark_line(self) -> &'static str {
+        "PointSav Digital Systems\u{2122}, Totebox Orchestration\u{2122}, and \
+         Totebox Archive\u{2122} are trademarks of Woodfine Capital Projects Inc., \
+         used in Canada, the United States, Latin America, and Europe. \
+         All other trademarks are the property of their respective owners."
+    }
+
+    /// Copyright holder — the parent company, for every surface.
+    pub fn copyright_holder(self) -> &'static str {
+        "Woodfine Capital Projects Inc."
+    }
+
+    /// Office cities for the footer line (BRIEF footer anatomy).
+    pub fn cities(self) -> &'static [&'static str] {
+        &["Vancouver", "New York", "Berlin"]
+    }
+}
