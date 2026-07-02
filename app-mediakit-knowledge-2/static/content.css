@@ -47,6 +47,7 @@
   color: var(--k-ink-muted);
 }
 .k-article__sha { font-family: var(--k-font-mono, monospace); font-size: 0.9em; }
+.k-article__lang { font-family: var(--k-font-sans); }
 
 /* Point-in-time "as-of" banner (historical revision) */
 .k-asof {
