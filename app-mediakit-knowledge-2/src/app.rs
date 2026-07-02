@@ -158,7 +158,7 @@ async fn home(State(state): State<AppState>) -> Response {
     let nav: Vec<(String, String)> = cats.iter().map(|(s, l, _)| (s.clone(), l.clone())).collect();
     let body = ui::home_page(tenant, &lede, total, &cats, &guides);
     let head = ui::doc_head(tenant.home_label(), &description, tenant);
-    Html(ui::page(tenant, "en", head, body, &nav, &[]).into_string()).into_response()
+    Html(ui::page(tenant, "en", head, body, &nav, &[], "").into_string()).into_response()
 }
 
 /// Category listing page — every article in one category.
@@ -183,7 +183,7 @@ async fn category_page(State(state): State<AppState>, Path(name): Path<String>) 
     let description = format!("Articles in the {label} area.");
     let body = ui::category_index(&label, &docs);
     let head = ui::doc_head(&label, &description, tenant);
-    Html(ui::page(tenant, "en", head, body, &nav_cats(&state), &[]).into_string()).into_response()
+    Html(ui::page(tenant, "en", head, body, &nav_cats(&state), &[], "").into_string()).into_response()
 }
 
 #[derive(serde::Deserialize)]
@@ -217,7 +217,7 @@ async fn search_page(State(state): State<AppState>, Query(params): Query<SearchQ
         format!("Search results for \u{201c}{}\u{201d}", q.trim())
     };
     let head = ui::doc_head("Search", &desc, tenant);
-    Html(ui::page(tenant, "en", head, body, &nav_cats(&state), &[]).into_string()).into_response()
+    Html(ui::page(tenant, "en", head, body, &nav_cats(&state), &[], &q).into_string()).into_response()
 }
 
 /// Liveness probe.
@@ -249,7 +249,7 @@ async fn wiki_raw(State(state): State<AppState>, Path(slug): Path<String>) -> Re
     let tenant = state.tenant;
     let body = ui::article(&title, parsed.frontmatter.last_edited.as_deref(), &rendered.html);
     let head = ui::doc_head(&title, &description, tenant);
-    Html(ui::page(tenant, "en", head, body, &nav_cats(&state), &rendered.headings).into_string())
+    Html(ui::page(tenant, "en", head, body, &nav_cats(&state), &rendered.headings, "").into_string())
         .into_response()
 }
 
