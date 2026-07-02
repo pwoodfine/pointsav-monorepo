@@ -24,16 +24,17 @@ sections:
     cards:
       - title: Portability
         body: >-
-          Operational data, tenant records, and building telemetry are portable
-          by design. Standard exports and open formats allow customers to move
-          workloads, replicate environments, or hand off to a successor without
-          PointSav's involvement.
+          Every record is stored in open, documented formats, and the operating
+          environment itself is a transferable disk image — not a subscription
+          seat. If a customer changes technology providers, the data and the
+          archive move with them; nothing is re-shaped, and nothing requires
+          PointSav's cooperation.
       - title: Predictable Fees
         body: >-
           Partners pay a single platform fee calculated on assets under
-          management rather than per-seat or per-module licensing. The fee
-          structure does not scale with usage growth, keeping marginal cost
-          predictable as operations expand.
+          management rather than per-seat or per-module licensing. The
+          commercial model is substrate ownership, not a price-per-seat
+          subscription.
       - title: Partner-Governed Roadmap
         body: >-
           The product roadmap is governed by a closed council of operating
@@ -42,16 +43,18 @@ sections:
           payment of additional license fees.
       - title: ToteBox Archive
         body: >-
-          Every document, drawing, contract, and sensor stream is captured into
-          ToteBox, a tamper-evident, version-controlled archive. Records are
-          retained for the full life of the asset and are exportable on demand
-          in open formats.
+          Every record is written to a WORM ledger inside a Totebox Archive —
+          an append-only flat-file store with no delete or update verb, so the
+          archive holds a complete, tamper-evident history of everything ever
+          recorded. The archive is a transferable disk image, exportable in
+          open formats at any time.
       - title: GIS Engine
         body: >-
-          A built-in geographic information engine ties every record to a
-          parcel, building, floor, and room. Spatial queries, site analytics,
-          and portfolio-wide overlays run natively against live operational
-          data without a separate GIS subscription.
+          A customer-owned location intelligence engine runs offline-first from
+          flat files on the customer's own filesystem — no central database, no
+          live network dependency, no per-seat mapping subscription. Every
+          spatial query and portfolio overlay executes against the customer's
+          own map-tile archive.
       - title: Open Integrations
         body: >-
           PointSav uses open file formats and standard protocols — BACnet,
@@ -83,26 +86,7 @@ sections:
       - title: Software
         href: https://software.pointsav.com/
 
-  - type: prose
-    body: |
-      **Intellectual property.** The PointSav name, marks, wordmark, product
-      names (including ToteBox, GIS Engine, Keys Console, Command Centre,
-      Workplace OS, and Business Applications), software, source code,
-      documentation, design system, and all related materials are proprietary
-      to Woodfine Capital Projects Inc. and its subsidiaries, unless otherwise
-      identified as open source.
-
-      **Open source components.** Portions of the platform are made available
-      under permissive open-source licenses identified in the accompanying
-      repository. Use of those components is governed by their respective
-      license terms.
-
-      **No warranty; informational use.** Information on this page is provided
-      for general informational purposes only and does not constitute a
-      representation, warranty, or commitment with respect to product
-      functionality, availability, pricing, or roadmap. Product descriptions
-      describe intended capabilities; actual feature availability may vary by
-      release and partner agreement.
-
-      PointSav Digital Systems, Totebox Orchestration, and Totebox Archive are
-      trademarks owned by Woodfine Capital Projects Inc.
+  # Full legal text (IP, open source, no-warranty) moved 2026-07-02 into the
+  # footer's "Important information" accordion (Tenant::pointsav()
+  # .disclosure_slots in ui.rs) -- it was duplicating that same accordion
+  # when it also lived here as a separate, always-visible prose section.
