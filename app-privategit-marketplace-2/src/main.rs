@@ -11,6 +11,9 @@ use serde_json::{json, Value};
 use std::{fs, path::PathBuf, sync::Arc};
 use tower_http::services::ServeDir;
 
+mod ui;
+use ui::SoftwareSurface;
+
 // ── State ─────────────────────────────────────────────────────────────────────
 //
 // P1 scope. `catalog_path`, `bind_addr`, and `static_dir` are used now; the
@@ -79,21 +82,26 @@ async fn root() -> Response {
 }
 
 async fn software_page(State(state): State<Arc<AppState>>) -> Response {
-    serve_static_html(&state.static_dir.join("software.html"))
+    serve_chrome_page(&state.static_dir.join("software.html"))
 }
 
 async fn licensing_page(State(state): State<Arc<AppState>>) -> Response {
-    serve_static_html(&state.static_dir.join("licensing.html"))
+    serve_chrome_page(&state.static_dir.join("licensing.html"))
 }
 
-fn serve_static_html(path: &PathBuf) -> Response {
+// Read the prerendered static page from disk (P1 logic, unchanged) and wrap it in
+// the Sovereign Editorial chrome (navy masthead + near-black footer) before serving.
+fn serve_chrome_page(path: &PathBuf) -> Response {
     match fs::read_to_string(path) {
-        Ok(body) => (
-            StatusCode::OK,
-            [(header::CONTENT_TYPE, "text/html; charset=utf-8")],
-            body,
-        )
-            .into_response(),
+        Ok(raw) => {
+            let body = ui::wrap_static_html(&raw, SoftwareSurface::Marketplace);
+            (
+                StatusCode::OK,
+                [(header::CONTENT_TYPE, "text/html; charset=utf-8")],
+                body,
+            )
+                .into_response()
+        }
         Err(e) => {
             tracing::error!("failed to read static page {}: {e}", path.display());
             (
