@@ -98,11 +98,14 @@ impl Tenant {
             module_id: "woodfine",
             site_title: "Woodfine Capital Projects",
             wordmark_label: "Woodfine Capital Projects",
+            // Content/product links before utility links (contact/legal) —
+            // most-important-first, applies to both the desktop nav and the
+            // mobile drawer (both render from this same list).
             nav_links: vec![
-                NavLink::internal("Contact us", "Contáctenos", "/page/contact"),
-                NavLink::internal("Disclaimer", "Aviso legal", "/page/disclaimer"),
                 NavLink::external("Corporate", "Corporativo", "https://corporate.woodfinegroup.com/"),
                 NavLink::external("Projects", "Proyectos", "https://projects.woodfinegroup.com/"),
+                NavLink::internal("Contact us", "Contáctenos", "/page/contact"),
+                NavLink::internal("Disclaimer", "Aviso legal", "/page/disclaimer"),
             ],
             footer_nav: vec![
                 NavLink::internal("Contact us", "Contáctenos", "/page/contact"),
@@ -136,11 +139,13 @@ impl Tenant {
             module_id: "pointsav",
             site_title: "PointSav Digital Systems",
             wordmark_label: "PointSav Digital Systems",
+            // Content/product links before utility links — see the Woodfine
+            // comment above; same convention both tenants.
             nav_links: vec![
-                NavLink::internal("Disclaimer", "Aviso legal", "/page/disclaimer"),
                 NavLink::external("Software", "Software", "https://software.pointsav.com/"),
                 NavLink::external("Design System", "Sistema de diseño", "https://design.pointsav.com/"),
                 NavLink::external("Documentation", "Documentación", "https://documentation.pointsav.com/"),
+                NavLink::internal("Disclaimer", "Aviso legal", "/page/disclaimer"),
             ],
             footer_nav: vec![
                 NavLink::internal("Disclaimer", "Aviso legal", "/page/disclaimer"),
@@ -242,7 +247,14 @@ fn footer(tenant: &Tenant, lang: &str) -> Markup {
                 }
             }
             @if !tenant.disclosure_slots.is_empty() {
-                div.m-footer__disclosure {
+                // Collapsed by default — matches the retired site's
+                // "IMPORTANT INFORMATION ▾" accordion. The content still
+                // ships on every page load (no JS required to read it,
+                // satisfying "clear and prominent"); collapsing it just
+                // stops it from reading as a second copy of the trademark
+                // paragraph sitting directly below.
+                details.m-footer__disclosure {
+                    summary.m-footer__disclosure-summary { (t(lang, "Important information", "Información importante")) }
                     @for slot in &tenant.disclosure_slots {
                         div.m-footer__slot {
                             // Disclosure slot text is legal/regulatory content — English-only
@@ -270,7 +282,7 @@ fn footer(tenant: &Tenant, lang: &str) -> Markup {
                     p.m-footer__trademark { (tenant.trademark_line) }
                 }
                 div.m-footer__badges {
-                    a.m-badge href="/page/about" {
+                    a.m-badge href="/page/mediakit" {
                         span.m-badge__glyph aria-hidden="true" {
                             svg viewBox="0 0 24 24" width="15" height="15" {
                                 path fill="currentColor"
@@ -301,20 +313,66 @@ fn hero(section_headline: &str, section_subhead: Option<&str>) -> Markup {
     }
 }
 
-fn card_grid(columns: u8, cards: &[crate::content::Card]) -> Markup {
+fn is_external(href: &str) -> bool {
+    href.starts_with("http://") || href.starts_with("https://")
+}
+
+/// Renders a link consistently with the masthead/drawer convention: external
+/// links get `target=_blank rel=noopener` plus an "(opens in new tab)"
+/// aria-label suffix; internal links are plain.
+fn card_link(href: &str, label: &str) -> Markup {
     html! {
-        section.m-card-grid style={ "--m-grid-cols: " (columns) } {
+        @if is_external(href) {
+            a href=(href) target="_blank" rel="noopener" aria-label={ (label) " (opens in new tab)" } {
+                (label)
+                span.m-card__link-glyph aria-hidden="true" { "\u{2197}" }
+            }
+        } @else {
+            a href=(href) { (label) }
+        }
+    }
+}
+
+fn card_grid(columns: u8, cards: &[crate::content::Card], style: Option<&str>) -> Markup {
+    let is_buttons = style == Some("buttons");
+    let grid_class = if is_buttons {
+        "m-card-grid m-card-grid--buttons"
+    } else {
+        "m-card-grid"
+    };
+    html! {
+        section class=(grid_class) style={ "--m-grid-cols: " (columns) } {
             @for card in cards {
-                div.m-card {
+                @let linked = card.href.is_some();
+                @let card_class = match (is_buttons, linked) {
+                    (true, _) => "m-card m-card--button",
+                    (false, true) => "m-card m-card--linked",
+                    (false, false) => "m-card",
+                };
+                div class=(card_class) {
                     h2.m-card__title {
                         @if let Some(href) = &card.href {
-                            a href=(href) { (card.title.clone()) }
+                            (card_link(href, &card.title))
                         } @else {
                             (card.title.clone())
                         }
                     }
                     @if let Some(body) = &card.body {
                         p.m-card__body { (body) }
+                    }
+                }
+            }
+        }
+    }
+}
+
+fn icon_strip(icons: &[crate::content::IconTile]) -> Markup {
+    html! {
+        section.m-icon-strip {
+            div.m-icon-strip__inner {
+                @for icon in icons {
+                    div.m-icon-strip__item {
+                        img src=(icon.src) alt=(icon.alt) loading="lazy" width="120" height="120";
                     }
                 }
             }
@@ -354,8 +412,11 @@ fn render_section(section: &Section, seen_h1: &mut bool) -> Markup {
             };
             markup
         }
-        Section::CardGrid { columns, cards } => card_grid(*columns, cards),
+        Section::CardGrid { columns, cards, style } => {
+            card_grid(*columns, cards, style.as_deref())
+        }
         Section::Prose { body } => prose(body),
+        Section::IconStrip { icons } => icon_strip(icons),
     }
 }
 
@@ -515,7 +576,7 @@ sections:
         let html = footer(&Tenant::woodfine(), "en").into_string();
         assert!(html.contains("Powered by"));
         assert!(html.contains("MediaKit"));
-        assert!(html.contains(r#"href="/page/about""#));
+        assert!(html.contains(r#"href="/page/mediakit""#));
     }
 
     #[test]
@@ -564,8 +625,67 @@ sections:
             body: None,
             href: None,
         }];
-        let html = card_grid(4, &cards).into_string();
+        let html = card_grid(4, &cards, None).into_string();
         assert!(html.contains("<h2"));
         assert!(!html.contains("<h3"));
+    }
+
+    #[test]
+    fn button_style_cards_get_button_class() {
+        let cards = vec![crate::content::Card {
+            title: "Manifest".to_string(),
+            body: None,
+            href: Some("https://example.com".to_string()),
+        }];
+        let html = card_grid(3, &cards, Some("buttons")).into_string();
+        assert!(html.contains("m-card--button"));
+        assert!(!html.contains("m-card--linked"));
+    }
+
+    #[test]
+    fn linked_informational_card_gets_linked_class_not_button_class() {
+        let cards = vec![crate::content::Card {
+            title: "Digital Systems".to_string(),
+            body: Some("cross-site link".to_string()),
+            href: Some("https://home.pointsav.com".to_string()),
+        }];
+        let html = card_grid(4, &cards, None).into_string();
+        assert!(html.contains("m-card--linked"));
+        assert!(!html.contains("m-card--button"));
+    }
+
+    #[test]
+    fn external_card_link_gets_new_tab_affordance() {
+        let cards = vec![crate::content::Card {
+            title: "Digital Systems".to_string(),
+            body: None,
+            href: Some("https://home.pointsav.com".to_string()),
+        }];
+        let html = card_grid(4, &cards, None).into_string();
+        assert!(html.contains(r#"target="_blank""#));
+        assert!(html.contains(r#"rel="noopener""#));
+        assert!(html.contains("opens in new tab"));
+    }
+
+    #[test]
+    fn internal_card_link_has_no_new_tab_affordance() {
+        let cards = vec![crate::content::Card {
+            title: "Contact".to_string(),
+            body: None,
+            href: Some("/page/contact".to_string()),
+        }];
+        let html = card_grid(3, &cards, Some("buttons")).into_string();
+        assert!(!html.contains("target=\"_blank\""));
+    }
+
+    #[test]
+    fn icon_strip_renders_alt_text_from_content() {
+        let icons = vec![crate::content::IconTile {
+            src: "/static/graphics/woodfine/class-1.svg".to_string(),
+            alt: "Professional Centres".to_string(),
+        }];
+        let html = icon_strip(&icons).into_string();
+        assert!(html.contains(r#"alt="Professional Centres""#));
+        assert!(html.contains(r#"src="/static/graphics/woodfine/class-1.svg""#));
     }
 }
