@@ -724,7 +724,18 @@ pub fn page_shell(
     es_path: Option<&str>,
     google_verify: Option<&str>,
 ) -> Markup {
-    let page_title = format!("{} \u{2014} {}", page.title, tenant.site_title);
+    // Empty page.title (home pages only, by content-file convention) means
+    // "this is the site's own front door" -- skip the "Page — Site" prefix
+    // and show just the site name in the tab, matching standard practice
+    // (operator feedback 2026-07-02: "Home —" read as redundant/uninformative
+    // once the favicon already carries tenant identity). Same
+    // empty-means-fall-back-to-tenant-default pattern already used for
+    // page.description a few lines below.
+    let page_title = if page.title.is_empty() {
+        tenant.site_title.to_string()
+    } else {
+        format!("{} \u{2014} {}", page.title, tenant.site_title)
+    };
     let self_path = if page.lang == "es" {
         es_path.unwrap_or(en_path)
     } else {
