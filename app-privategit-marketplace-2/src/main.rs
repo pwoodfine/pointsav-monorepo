@@ -117,18 +117,36 @@ async fn v1_products(State(state): State<Arc<AppState>>) -> (StatusCode, Json<Va
                 .installers
                 .iter()
                 .map(|i| {
-                    let mut v = serde_json::to_value(i).unwrap_or_else(|_| json!({}));
-                    // Every installer is free regardless of anything else.
-                    if let Some(obj) = v.as_object_mut() {
-                        obj.insert("cost".into(), json!("free"));
-                    }
-                    v
+                    json!({
+                        "id": i.id,
+                        "name": i.name,
+                        "description": i.description,
+                        "edition": i.edition,
+                        "platform": i.platform,
+                        "size_mb": i.size_mb,
+                        "download_url": format!("{}/{}", state.source_base_url, i.path),
+                        "manifest_url": format!("{}/{}/MANIFEST", state.source_base_url, i.path),
+                        "type": "installer",
+                        "cost": "free"
+                    })
                 })
                 .collect();
             let licenses: Vec<Value> = catalog
                 .licenses
                 .iter()
-                .map(|l| serde_json::to_value(l).unwrap_or_else(|_| json!({})))
+                .map(|l| {
+                    json!({
+                        "id": l.id,
+                        "name": l.name,
+                        "description": l.description,
+                        "module_tag": l.module_tag,
+                        "price_usdc": l.price_usdc,
+                        "type": "license",
+                        "payment_address": state.polygon_wallet_address,
+                        "payment_chain": "polygon-pos",
+                        "payment_token": "USDC"
+                    })
+                })
                 .collect();
             (
                 StatusCode::OK,
