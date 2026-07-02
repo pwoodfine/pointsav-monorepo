@@ -1,14 +1,16 @@
 use anyhow::Result;
 use axum::{
-    extract::State,
+    extract::{Path, State},
     http::{header, StatusCode},
     response::{IntoResponse, Json, Response},
-    routing::get,
+    routing::{get, post},
     Router,
 };
+use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use std::{fs, path::PathBuf, sync::Arc};
+use sha2::{Digest, Sha256};
+use std::{fs, path::PathBuf, process::Command, sync::Arc};
 use tower_http::services::ServeDir;
 
 mod ui;
@@ -16,10 +18,11 @@ use ui::SoftwareSurface;
 
 // ── State ─────────────────────────────────────────────────────────────────────
 //
-// P1 scope. `catalog_path`, `bind_addr`, and `static_dir` are used now; the
-// remaining fields are P4 payment-config placeholders — the env-var reads are
-// wired here so the P4 phase does not have to redo config plumbing. They are
-// intentionally unread until then.
+// The payment-config fields (`polygon_wallet_address`, `receipts_dir`,
+// `claims_dir`, `polygon_rpc_url`, `tool_wallet_bin`) were wired as placeholders
+// in P1 and are consumed by the P4 license/claim/wallet handlers below.
+// `bind_addr` remains stored for symmetry but is only read via the local in
+// `main`; it is retained behind `#[allow(dead_code)]`.
 #[derive(Clone)]
 #[allow(dead_code)]
 struct AppState {
@@ -30,12 +33,18 @@ struct AppState {
     // /static/* mounts the same directory via ServeDir. Nothing is baked with
     // include_str! — see BRIEF/report for the rationale.
     static_dir: PathBuf,
-    // ── P4 payment config (wired now, unused until P4) ──────────────────────
+    // ── P4 payment config ───────────────────────────────────────────────────
     polygon_wallet_address: String,
     receipts_dir: PathBuf,
     claims_dir: PathBuf,
     source_base_url: String,
     polygon_rpc_url: String,
+    // Name (or absolute path) of the `tool-wallet` binary shelled out to by
+    // `v1_license`. Defaults to `"tool-wallet"` (resolved via PATH, matching the
+    // OLD crate's `Command::new("tool-wallet")`). Overridable via the
+    // `TOOL_WALLET_BIN` env var so tests can inject a JSON test-double without a
+    // real Polygon RPC call. Production behaviour is unchanged.
+    tool_wallet_bin: String,
 }
 
 // ── Catalog types ─────────────────────────────────────────────────────────────
@@ -69,6 +78,182 @@ struct Catalog {
 fn load_catalog(catalog_path: &PathBuf) -> Result<Catalog> {
     let raw = fs::read_to_string(catalog_path)?;
     Ok(serde_yaml::from_str(&raw)?)
+}
+
+// ── Receipt (mirrors tool-wallet's LicenseReceipt) ────────────────────────────
+//
+// Field-for-field port of the OLD crate's `LicenseReceipt`. tool-wallet writes
+// receipt files that carry ONE extra field — `license_tier` — which serde
+// silently ignores here on read (no `deny_unknown_fields`), so files written by
+// either binary deserialize cleanly. When THIS crate writes a receipt (the
+// fresh-check path in `v1_license`), it omits `license_tier`, exactly as the OLD
+// crate did. `price_usdc` here stores `price_units` (micro-USDC), NOT the
+// catalog's dollar-labelled value — a pre-existing field-name quirk, not renamed
+// in this phase. See tool-wallet/src/main.rs for the writer side.
+#[derive(Debug, Serialize, Deserialize)]
+struct LicenseReceipt {
+    product_id: String,
+    version: String,
+    customer_ref: String,
+    price_usdc: u64,
+    tx_hash: String,
+    chain: String,
+    confirmed_at: String,
+    block_number: u64,
+    license_key: String,
+}
+
+// ── Payment helpers ───────────────────────────────────────────────────────────
+
+/// Deterministic license key: first 32 hex chars of SHA256("{product_id}:{tx_hash}:{customer_ref}"),
+/// split into four hyphen-joined 8-char groups. EXACT construction — must stay
+/// byte-identical to the OLD crate and tool-wallet so already-issued keys remain
+/// reproducible.
+fn generate_license_key(product_id: &str, tx_hash: &str, customer_ref: &str) -> String {
+    let h = hex::encode(Sha256::digest(
+        format!("{product_id}:{tx_hash}:{customer_ref}").as_bytes(),
+    ));
+    format!("{}-{}-{}-{}", &h[0..8], &h[8..16], &h[16..24], &h[24..32])
+}
+
+/// Receipt file path: `<receipts_dir>/<current-UTC-year>/<current-UTC-month>/<tx_hash>.json`.
+///
+/// NOTE (carried forward, NOT fixed in this phase): the year/month are TODAY's at
+/// request time, not the transaction's confirmation date. A receipt written near a
+/// month boundary and re-read the next month misses the cache and re-verifies. This
+/// is a known, pre-existing gap shared with the OLD crate and tool-wallet's own
+/// writer; it was not named as an in-scope fix for P4. Left as-is deliberately.
+fn receipt_path(receipts_dir: &std::path::Path, tx_hash: &str) -> PathBuf {
+    let now = Utc::now();
+    receipts_dir
+        .join(now.format("%Y").to_string())
+        .join(now.format("%m").to_string())
+        .join(format!("{tx_hash}.json"))
+}
+
+/// Convert a dollars-denominated USDC amount (as reported by `tool-wallet check`'s
+/// `amount_usdc` float) into integer micro-USDC base units (6 decimals). This
+/// dollars→micro-units conversion is CORRECT and unchanged: $1.00 → 1_000_000.
+fn price_units_from_amount(amount_usdc: f64) -> u64 {
+    (amount_usdc * 1_000_000.0) as u64
+}
+
+/// Resolve the catalog `product_id` whose price equals an on-chain payment of
+/// `price_units` (micro-USDC base units).
+///
+/// # P4 pricing-unit fix — the one deliberate behavioural change in this rewrite
+///
+/// The OLD crate (`app-privategit-marketplace/src/main.rs`) matched with:
+///
+/// ```text
+/// c.licenses.iter().find(|l| l.price_usdc * 1_000_000 == price_units)
+/// ```
+///
+/// That is WRONG. `products.yaml` already stores `price_usdc` in micro-USDC base
+/// units (`apache: 1000000` = $1.00, `fsl: 19000000` = $19.00 — the field is
+/// misleadingly *named* dollars but its *value* is micro-units). Re-multiplying
+/// the catalog side by 1_000_000 double-counts the unit conversion, so a genuine
+/// $1.00 payment (`price_units == 1_000_000`) was compared against
+/// `1_000_000 * 1_000_000` and could never match a real payment except by
+/// coincidence. It has never been exercised because every live catalog price is
+/// currently `0` (BETA/free), and `0 == 0` regardless of the bug.
+///
+/// THE FIX: compare `l.price_usdc == price_units` directly — both operands are
+/// already micro-USDC units, so no multiplication belongs on the catalog side.
+/// Full rationale: `docs/P4-PRICING-FIX.md`.
+fn match_license_product_id(catalog: &Catalog, price_units: u64) -> Option<String> {
+    catalog
+        .licenses
+        .iter()
+        // FIX: direct micro-unit equality. The OLD crate wrote `l.price_usdc *
+        // 1_000_000 == price_units`, which re-applied the dollars→micro-units
+        // scale to a value already in micro-units. No re-multiplication here.
+        .find(|l| l.price_usdc == price_units)
+        .map(|l| l.id.clone())
+}
+
+/// Outcome of shelling out to `tool-wallet check`.
+enum WalletCheck {
+    /// Subprocess exited 0 and its JSON reported `confirmed: true`.
+    Confirmed(Value),
+    /// Subprocess exited 0 and its JSON reported `confirmed: false`.
+    Pending,
+    /// Subprocess failed to spawn, exited non-zero, or emitted unparseable stdout.
+    NotFound,
+}
+
+/// Run `tool-wallet check <tx_hash> --rpc-url <url> --wallet-address <addr>` as an
+/// external subprocess and classify the result. Consumes tool-wallet's CLI
+/// contract exactly as-is; never modifies it. `bin` is normally `"tool-wallet"`
+/// (PATH-resolved); tests inject a JSON test-double path via it.
+fn run_tool_wallet_check(
+    bin: &str,
+    tx_hash: &str,
+    rpc_url: &str,
+    wallet_addr: &str,
+) -> WalletCheck {
+    let result = Command::new(bin)
+        .args([
+            "check",
+            tx_hash,
+            "--rpc-url",
+            rpc_url,
+            "--wallet-address",
+            wallet_addr,
+        ])
+        .output();
+
+    match result {
+        Ok(out) if out.status.success() => match serde_json::from_slice::<Value>(&out.stdout) {
+            Ok(check_json) => {
+                let confirmed = check_json
+                    .get("confirmed")
+                    .and_then(|v| v.as_bool())
+                    .unwrap_or(false);
+                if confirmed {
+                    WalletCheck::Confirmed(check_json)
+                } else {
+                    WalletCheck::Pending
+                }
+            }
+            Err(e) => {
+                tracing::warn!("tool-wallet check: unparseable stdout: {e}");
+                WalletCheck::NotFound
+            }
+        },
+        Ok(out) => {
+            tracing::warn!(
+                "tool-wallet check exit {:?}: {}",
+                out.status,
+                String::from_utf8_lossy(&out.stderr)
+            );
+            WalletCheck::NotFound
+        }
+        Err(e) => {
+            tracing::error!("tool-wallet not available: {e}");
+            WalletCheck::NotFound
+        }
+    }
+}
+
+/// The shared `200 OK` confirmed-license JSON shape (receipt-cache path and
+/// fresh-check path return identical bodies).
+fn confirmed_response(
+    license_key: &str,
+    product_id: &str,
+    confirmed_at: &str,
+    customer_ref: &str,
+) -> (StatusCode, Json<Value>) {
+    (
+        StatusCode::OK,
+        Json(json!({
+            "status": "confirmed",
+            "license_key": license_key,
+            "product_id": product_id,
+            "confirmed_at": confirmed_at,
+            "customer_ref": customer_ref
+        })),
+    )
 }
 
 // ── Handlers ──────────────────────────────────────────────────────────────────
@@ -204,6 +389,158 @@ async fn v1_products(State(state): State<Arc<AppState>>) -> (StatusCode, Json<Va
     }
 }
 
+// GET /v1/license/:tx_hash — payment state machine (receipt cache → tool-wallet check).
+async fn v1_license(
+    State(state): State<Arc<AppState>>,
+    Path(tx_hash): Path<String>,
+) -> (StatusCode, Json<Value>) {
+    let tx_hash = tx_hash.to_lowercase();
+
+    // 1. Check local receipt file (idempotent replay of a prior confirmation).
+    let rpath = receipt_path(&state.receipts_dir, &tx_hash);
+    if rpath.exists() {
+        if let Ok(raw) = fs::read_to_string(&rpath) {
+            if let Ok(receipt) = serde_json::from_str::<LicenseReceipt>(&raw) {
+                return confirmed_response(
+                    &receipt.license_key,
+                    &receipt.product_id,
+                    &receipt.confirmed_at,
+                    &receipt.customer_ref,
+                );
+            }
+        }
+    }
+
+    // 2. No receipt on file — verify on-chain via the tool-wallet subprocess.
+    match run_tool_wallet_check(
+        &state.tool_wallet_bin,
+        &tx_hash,
+        &state.polygon_rpc_url,
+        &state.polygon_wallet_address,
+    ) {
+        WalletCheck::Confirmed(check_json) => {
+            let amount_usdc = check_json
+                .get("amount_usdc")
+                .and_then(|v| v.as_f64())
+                .unwrap_or(0.0);
+            let customer_ref = check_json
+                .get("from")
+                .and_then(|v| v.as_str())
+                .unwrap_or("unknown")
+                .to_string();
+            let block_number = check_json
+                .get("block")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(0);
+
+            let price_units = price_units_from_amount(amount_usdc);
+            let product_id = load_catalog(&state.catalog_path)
+                .ok()
+                .and_then(|c| match_license_product_id(&c, price_units))
+                .unwrap_or_else(|| format!("unknown-{price_units}"));
+
+            let license_key = generate_license_key(&product_id, &tx_hash, &customer_ref);
+            let confirmed_at = Utc::now().to_rfc3339();
+
+            let receipt = LicenseReceipt {
+                product_id: product_id.clone(),
+                version: "0.0.1".into(),
+                customer_ref: customer_ref.clone(),
+                price_usdc: price_units,
+                tx_hash: tx_hash.clone(),
+                chain: "polygon-pos".into(),
+                confirmed_at: confirmed_at.clone(),
+                block_number,
+                license_key: license_key.clone(),
+            };
+
+            if let Some(parent) = rpath.parent() {
+                let _ = fs::create_dir_all(parent);
+            }
+            if let Ok(raw) = serde_json::to_string_pretty(&receipt) {
+                let _ = fs::write(&rpath, raw);
+            }
+
+            confirmed_response(&license_key, &product_id, &confirmed_at, &customer_ref)
+        }
+        WalletCheck::Pending => (
+            StatusCode::ACCEPTED,
+            Json(json!({
+                "status": "pending",
+                "retry_after": 30,
+                "message": "Transaction not yet confirmed on Polygon. Retry in 30 seconds."
+            })),
+        ),
+        WalletCheck::NotFound => (
+            StatusCode::NOT_FOUND,
+            Json(json!({
+                "status": "not_found",
+                "message": "Transaction not found or not a recognised USDC payment to this address."
+            })),
+        ),
+    }
+}
+
+#[derive(Debug, Deserialize)]
+struct ClaimRequest {
+    binary_sha256: String,
+    wallet_address: String,
+}
+
+// POST /v1/claim — placeholder token issuance (on-chain mint arrives v0.0.2). Ported
+// as-is from the OLD crate; not made "more real" in this phase.
+async fn v1_claim(
+    State(state): State<Arc<AppState>>,
+    Json(req): Json<ClaimRequest>,
+) -> (StatusCode, Json<Value>) {
+    let claimed_at = Utc::now().to_rfc3339();
+    let token = hex::encode(Sha256::digest(
+        format!(
+            "{}|{}|{}",
+            req.binary_sha256, req.wallet_address, claimed_at
+        )
+        .as_bytes(),
+    ));
+
+    let claim_dir = state
+        .claims_dir
+        .join(req.wallet_address.trim_start_matches("0x"));
+    let _ = fs::create_dir_all(&claim_dir);
+    let short = &req.binary_sha256[..16.min(req.binary_sha256.len())];
+    let claim_file = claim_dir.join(format!("{short}.json"));
+    let payload = json!({
+        "token": token,
+        "binary_sha256": req.binary_sha256,
+        "wallet_address": req.wallet_address,
+        "claimed_at": claimed_at
+    });
+    let _ = fs::write(
+        claim_file,
+        serde_json::to_string_pretty(&payload).unwrap_or_default(),
+    );
+
+    (
+        StatusCode::OK,
+        Json(json!({
+            "token": token,
+            "claimed_at": claimed_at,
+            "status": "ok",
+            "note": "on-chain mint arrives v0.0.2"
+        })),
+    )
+}
+
+// GET /v1/wallet/address — the receiving wallet + chain/token/contract descriptor.
+// The USDC contract is a hardcoded public constant (native USDC on Polygon PoS).
+async fn v1_wallet_address(State(state): State<Arc<AppState>>) -> Json<Value> {
+    Json(json!({
+        "address": state.polygon_wallet_address,
+        "chain": "polygon-pos",
+        "token": "USDC",
+        "contract": "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359"
+    }))
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 #[tokio::main]
@@ -231,6 +568,7 @@ async fn main() -> Result<()> {
         .unwrap_or_else(|_| "https://software.pointsav.com/releases".into());
     let polygon_rpc_url =
         std::env::var("POLYGON_RPC_URL").unwrap_or_else(|_| "https://polygon-rpc.com".into());
+    let tool_wallet_bin = std::env::var("TOOL_WALLET_BIN").unwrap_or_else(|_| "tool-wallet".into());
 
     let state = Arc::new(AppState {
         catalog_path,
@@ -241,6 +579,7 @@ async fn main() -> Result<()> {
         claims_dir,
         source_base_url,
         polygon_rpc_url,
+        tool_wallet_bin,
     });
 
     let app = Router::new()
@@ -249,6 +588,9 @@ async fn main() -> Result<()> {
         .route("/licensing", get(licensing_page))
         .route("/healthz", get(healthz))
         .route("/v1/products", get(v1_products))
+        .route("/v1/license/:tx_hash", get(v1_license))
+        .route("/v1/claim", post(v1_claim))
+        .route("/v1/wallet/address", get(v1_wallet_address))
         .nest_service("/static", ServeDir::new(static_dir))
         .with_state(state);
 
@@ -256,4 +598,326 @@ async fn main() -> Result<()> {
     let listener = tokio::net::TcpListener::bind(&bind_addr).await?;
     axum::serve(listener, app).await?;
     Ok(())
+}
+
+// ── Tests ─────────────────────────────────────────────────────────────────────
+//
+// SAFETY: no test binds a TCP port (handlers are called directly) and every test
+// writes ONLY under a unique scratch dir inside `std::env::temp_dir()` (`/tmp`).
+// Nothing here touches `/var/lib/local-software/` or ports 9201/9202. The
+// subprocess path is exercised via a locally-written JSON test-double — no real
+// Polygon RPC call is ever made.
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::os::unix::fs::PermissionsExt;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    static SEQ: AtomicUsize = AtomicUsize::new(0);
+
+    /// Fresh, unique scratch directory under /tmp for one test.
+    fn scratch_dir(tag: &str) -> PathBuf {
+        let n = SEQ.fetch_add(1, Ordering::SeqCst);
+        let nanos = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let dir = std::env::temp_dir().join(format!(
+            "mkt2-test-{tag}-{}-{n}-{nanos}",
+            std::process::id()
+        ));
+        fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    /// Minimal products.yaml with a realistic paid tier (apache = $1.00 = 1_000_000
+    /// micro-USDC), written into `dir`. Returns the catalog path.
+    fn write_catalog(dir: &std::path::Path) -> PathBuf {
+        let path = dir.join("products.yaml");
+        fs::write(
+            &path,
+            r#"installers: []
+licenses:
+  - id: apache
+    name: Apache 2.0
+    module_tag: ""
+    price_usdc: 1000000
+    description: Source-readable, fully open.
+  - id: fsl
+    name: FSL
+    module_tag: ""
+    price_usdc: 19000000
+    description: Source-readable, non-compete.
+"#,
+        )
+        .unwrap();
+        path
+    }
+
+    /// Write an executable bash test-double that mimics `tool-wallet check`.
+    /// Branches on the (lowercased) tx_hash argument:
+    ///   *confirmed* -> confirmed:true, $1.00 payment, exit 0
+    ///   *pending*   -> confirmed:false, exit 0
+    ///   otherwise   -> confirmed:false + exit 1 (mirrors real tool-wallet's not-found)
+    fn write_tool_wallet_double(dir: &std::path::Path) -> PathBuf {
+        let path = dir.join("tool-wallet-double.sh");
+        fs::write(
+            &path,
+            r#"#!/usr/bin/env bash
+# args: check <tx_hash> --rpc-url <url> --wallet-address <addr>
+tx="$2"
+case "$tx" in
+  *confirmed*) echo '{"confirmed":true,"amount_usdc":1.00,"amount_units":1000000,"from":"0xcaffee","block":123,"tx_hash":"'"$tx"'"}'; exit 0;;
+  *pending*)   echo '{"confirmed":false,"reason":"not yet mined"}'; exit 0;;
+  *)           echo '{"confirmed":false,"reason":"transaction not found"}'; exit 1;;
+esac
+"#,
+        )
+        .unwrap();
+        let mut perms = fs::metadata(&path).unwrap().permissions();
+        perms.set_mode(0o755);
+        fs::set_permissions(&path, perms).unwrap();
+        path
+    }
+
+    fn test_state(scratch: &std::path::Path, tool_wallet_bin: String) -> Arc<AppState> {
+        Arc::new(AppState {
+            catalog_path: write_catalog(scratch),
+            bind_addr: "127.0.0.1:0".into(),
+            static_dir: scratch.to_path_buf(),
+            polygon_wallet_address: "0xTESTWALLET".into(),
+            receipts_dir: scratch.join("receipts"),
+            claims_dir: scratch.join("claims"),
+            source_base_url: "https://example.invalid/releases".into(),
+            polygon_rpc_url: "https://rpc.invalid".into(),
+            tool_wallet_bin,
+        })
+    }
+
+    // ── Pure functions ────────────────────────────────────────────────────────
+
+    #[test]
+    fn license_key_construction_is_exact() {
+        // Must stay byte-identical to the OLD binary + tool-wallet.
+        let key = generate_license_key("apache", "0xabc", "0xcaffee");
+        let full = hex::encode(Sha256::digest(b"apache:0xabc:0xcaffee"));
+        let expected = format!(
+            "{}-{}-{}-{}",
+            &full[0..8],
+            &full[8..16],
+            &full[16..24],
+            &full[24..32]
+        );
+        assert_eq!(key, expected);
+        // Shape: four hyphen-joined 8-hex-char groups.
+        let parts: Vec<&str> = key.split('-').collect();
+        assert_eq!(parts.len(), 4);
+        assert!(parts
+            .iter()
+            .all(|p| p.len() == 8 && p.chars().all(|c| c.is_ascii_hexdigit())));
+    }
+
+    #[test]
+    fn price_units_conversion_is_unchanged() {
+        // Dollars -> micro-USDC. THIS conversion is correct and not the bug.
+        assert_eq!(price_units_from_amount(1.00), 1_000_000);
+        assert_eq!(price_units_from_amount(19.00), 19_000_000);
+    }
+
+    /// THE reviewable proof: for a realistic $1.00 apache-tier payment, the OLD
+    /// formula fails to match and the NEW (fixed) formula matches. Catalog
+    /// `price_usdc` is already micro-USDC (apache = 1_000_000).
+    #[test]
+    fn pricing_fix_old_formula_fails_new_formula_matches() {
+        let scratch = scratch_dir("pricematch");
+        let catalog = load_catalog(&write_catalog(&scratch)).unwrap();
+
+        // A confirmed $1.00 payment -> 1_000_000 micro-USDC.
+        let price_units = price_units_from_amount(1.00);
+        assert_eq!(price_units, 1_000_000);
+
+        // OLD (buggy) matcher, reproduced verbatim for the before/after proof:
+        //   l.price_usdc * 1_000_000 == price_units
+        // apache.price_usdc (1_000_000) * 1_000_000 = 1_000_000_000_000 != 1_000_000.
+        let old_match: Option<String> = catalog
+            .licenses
+            .iter()
+            .find(|l| l.price_usdc * 1_000_000 == price_units)
+            .map(|l| l.id.clone());
+        assert_eq!(
+            old_match, None,
+            "OLD formula must FAIL to match a real $1.00 payment (this was the bug)"
+        );
+
+        // NEW (fixed) matcher: direct micro-unit equality.
+        let new_match = match_license_product_id(&catalog, price_units);
+        assert_eq!(
+            new_match,
+            Some("apache".to_string()),
+            "NEW formula must match apache for a $1.00 payment"
+        );
+
+        // Sanity: $19.00 -> fsl under the fix as well.
+        assert_eq!(
+            match_license_product_id(&catalog, price_units_from_amount(19.00)),
+            Some("fsl".to_string())
+        );
+
+        let _ = fs::remove_dir_all(&scratch);
+    }
+
+    // ── Handler: receipt-cache path ───────────────────────────────────────────
+
+    #[tokio::test]
+    async fn license_confirmed_via_existing_receipt() {
+        let scratch = scratch_dir("receipt");
+        // tool_wallet_bin points at a non-existent binary: this path must NOT shell out.
+        let state = test_state(&scratch, "/nonexistent/tool-wallet".into());
+
+        let tx = "0xdeadbeefreceipt";
+        let rpath = receipt_path(&state.receipts_dir, tx);
+        fs::create_dir_all(rpath.parent().unwrap()).unwrap();
+        // Fixture INCLUDES `license_tier` — the extra field tool-wallet writes.
+        // It must be ignored on read (proves cross-binary receipt compatibility).
+        fs::write(
+            &rpath,
+            r#"{
+  "product_id": "apache",
+  "license_tier": "apache",
+  "version": "0.0.1",
+  "customer_ref": "0xcaffee",
+  "price_usdc": 1000000,
+  "tx_hash": "0xdeadbeefreceipt",
+  "chain": "polygon-pos",
+  "confirmed_at": "2026-07-01T00:00:00+00:00",
+  "block_number": 123,
+  "license_key": "aaaaaaaa-bbbbbbbb-cccccccc-dddddddd"
+}"#,
+        )
+        .unwrap();
+
+        let (status, Json(body)) = v1_license(State(state.clone()), Path(tx.to_string())).await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(body["status"], "confirmed");
+        assert_eq!(body["product_id"], "apache");
+        assert_eq!(body["license_key"], "aaaaaaaa-bbbbbbbb-cccccccc-dddddddd");
+        assert_eq!(body["customer_ref"], "0xcaffee");
+
+        let _ = fs::remove_dir_all(&scratch);
+    }
+
+    // ── Handler: fresh tool-wallet check (mocked) ─────────────────────────────
+
+    #[tokio::test]
+    async fn license_confirmed_via_fresh_check_matches_apache_and_writes_receipt() {
+        let scratch = scratch_dir("fresh");
+        let double = write_tool_wallet_double(&scratch);
+        let state = test_state(&scratch, double.to_string_lossy().into_owned());
+
+        let tx = "0xconfirmedpayment01";
+        let (status, Json(body)) = v1_license(State(state.clone()), Path(tx.to_string())).await;
+
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(body["status"], "confirmed");
+        // The FIX in action end-to-end: $1.00 -> 1_000_000 -> catalog "apache".
+        assert_eq!(body["product_id"], "apache");
+        assert_eq!(body["customer_ref"], "0xcaffee");
+        let expected_key = generate_license_key("apache", tx, "0xcaffee");
+        assert_eq!(body["license_key"], expected_key);
+
+        // A receipt must have been written to the SCRATCH dir (never /var/lib).
+        let rpath = receipt_path(&state.receipts_dir, tx);
+        assert!(
+            rpath.exists(),
+            "receipt should be persisted to scratch receipts dir"
+        );
+        assert!(rpath.starts_with(&scratch));
+        let written: LicenseReceipt =
+            serde_json::from_str(&fs::read_to_string(&rpath).unwrap()).unwrap();
+        assert_eq!(written.product_id, "apache");
+        assert_eq!(written.price_usdc, 1_000_000); // micro-USDC, not dollars
+
+        let _ = fs::remove_dir_all(&scratch);
+    }
+
+    #[tokio::test]
+    async fn license_pending_when_check_unconfirmed() {
+        let scratch = scratch_dir("pending");
+        let double = write_tool_wallet_double(&scratch);
+        let state = test_state(&scratch, double.to_string_lossy().into_owned());
+
+        let (status, Json(body)) =
+            v1_license(State(state), Path("0xpendingtx01".to_string())).await;
+        assert_eq!(status, StatusCode::ACCEPTED);
+        assert_eq!(body["status"], "pending");
+        assert_eq!(body["retry_after"], 30);
+
+        let _ = fs::remove_dir_all(&scratch);
+    }
+
+    #[tokio::test]
+    async fn license_not_found_when_check_fails() {
+        let scratch = scratch_dir("notfound");
+        let double = write_tool_wallet_double(&scratch);
+        let state = test_state(&scratch, double.to_string_lossy().into_owned());
+
+        // Neither *confirmed* nor *pending* -> test-double exits 1 -> NotFound.
+        let (status, Json(body)) =
+            v1_license(State(state), Path("0xunknowntx01".to_string())).await;
+        assert_eq!(status, StatusCode::NOT_FOUND);
+        assert_eq!(body["status"], "not_found");
+
+        let _ = fs::remove_dir_all(&scratch);
+    }
+
+    #[tokio::test]
+    async fn not_found_when_tool_wallet_binary_missing() {
+        let scratch = scratch_dir("nobin");
+        let state = test_state(&scratch, "/nonexistent/tool-wallet".into());
+
+        let (status, Json(body)) = v1_license(State(state), Path("0xanytx01".to_string())).await;
+        assert_eq!(status, StatusCode::NOT_FOUND);
+        assert_eq!(body["status"], "not_found");
+
+        let _ = fs::remove_dir_all(&scratch);
+    }
+
+    // ── Handler: wallet address + claim ───────────────────────────────────────
+
+    #[tokio::test]
+    async fn wallet_address_shape_and_hardcoded_contract() {
+        let scratch = scratch_dir("wallet");
+        let state = test_state(&scratch, "tool-wallet".into());
+        let Json(body) = v1_wallet_address(State(state)).await;
+        assert_eq!(body["address"], "0xTESTWALLET");
+        assert_eq!(body["chain"], "polygon-pos");
+        assert_eq!(body["token"], "USDC");
+        assert_eq!(
+            body["contract"],
+            "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359"
+        );
+        let _ = fs::remove_dir_all(&scratch);
+    }
+
+    #[tokio::test]
+    async fn claim_writes_placeholder_and_returns_ok() {
+        let scratch = scratch_dir("claim");
+        let state = test_state(&scratch, "tool-wallet".into());
+        let req = ClaimRequest {
+            binary_sha256: "0123456789abcdef0123456789abcdef".into(),
+            wallet_address: "0xWALLET123".into(),
+        };
+        let (status, Json(body)) = v1_claim(State(state.clone()), Json(req)).await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(body["status"], "ok");
+        assert_eq!(body["note"], "on-chain mint arrives v0.0.2");
+        assert!(body["token"].as_str().unwrap().len() == 64);
+        // File written under claims/<addr-without-0x>/<first16>.json in scratch.
+        let claim_file = state
+            .claims_dir
+            .join("WALLET123")
+            .join("0123456789abcdef.json");
+        assert!(claim_file.exists());
+        let _ = fs::remove_dir_all(&scratch);
+    }
 }
