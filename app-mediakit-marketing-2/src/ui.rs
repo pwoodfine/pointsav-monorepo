@@ -239,9 +239,9 @@ impl Tenant {
                 NavLink::internal("Disclaimer", "Aviso legal", "/page/disclaimer"),
                 NavLink::internal("Privacy", "Privacidad", "/page/privacy"),
             ],
-            // Berlin is PointSav-specific — confirmed against live production
-            // (Woodfine's footer has no Berlin entry, PointSav's does).
-            cities: vec!["Vancouver", "New York", "Berlin"],
+            // Berlin dropped 2026-07-02 per operator call (production has it,
+            // but the operator wants it off both sites going forward).
+            cities: vec!["Vancouver", "New York"],
             copyright_holder: "Woodfine Capital Projects Inc.",
             trademark_line: "PointSav Digital Systems\u{2122}, Totebox Orchestration\u{2122}, and \
                 Totebox Archive\u{2122} are trademarks of Woodfine Capital Projects Inc., used in \
@@ -549,23 +549,28 @@ fn render_section(section: &Section, seen_h1: &mut bool) -> Markup {
 /// Render a complete HTML document: skip-link + masthead + sections + footer
 /// + drawer. No client-side bundler/template DOM-swap — fully server-rendered.
 ///
-/// `en_path`/`es_path` are the two language variants of the current page
-/// (e.g. `/page/contact` / `/es/page/contact`) — used for the canonical link
-/// and `hreflang` alternates. `google_verify` comes from
-/// `SERVICE_MARKETING_GOOGLE_VERIFY` at startup, per-instance.
+/// `en_path` is the page's English path (e.g. `/page/contact`). `es_path` is
+/// its Spanish variant path if one is actually routed (`None` means this
+/// page has no `/es` route — e.g. `home`, operator call 2026-07-02 — and no
+/// `hreflang="es"`/`x-default` alternate is emitted for it). `google_verify`
+/// comes from `SERVICE_MARKETING_GOOGLE_VERIFY` at startup, per-instance.
 pub fn page_shell(
     tenant: &Tenant,
     page: &Page,
     module_id: &str,
     en_path: &str,
-    es_path: &str,
+    es_path: Option<&str>,
     google_verify: Option<&str>,
 ) -> Markup {
     let page_title = format!("{} \u{2014} {}", page.title, tenant.site_title);
-    let self_path = if page.lang == "es" { es_path } else { en_path };
+    let self_path = if page.lang == "es" {
+        es_path.unwrap_or(en_path)
+    } else {
+        en_path
+    };
     let canonical_url = format!("{}{}", tenant.canonical_base, self_path);
     let en_url = format!("{}{}", tenant.canonical_base, en_path);
-    let es_url = format!("{}{}", tenant.canonical_base, es_path);
+    let es_url = es_path.map(|p| format!("{}{}", tenant.canonical_base, p));
     let ld_description = if page.description.is_empty() {
         tenant.ld_json_description
     } else {
@@ -586,7 +591,9 @@ pub fn page_shell(
                 meta name="description" content=(page.description);
                 link rel="canonical" href=(canonical_url);
                 link rel="alternate" hreflang="en" href=(en_url);
-                link rel="alternate" hreflang="es" href=(es_url);
+                @if let Some(es_url) = &es_url {
+                    link rel="alternate" hreflang="es" href=(es_url);
+                }
                 link rel="alternate" hreflang="x-default" href=(en_url);
                 meta name="robots" content="index, follow";
                 meta property="og:type" content="website";
@@ -665,7 +672,7 @@ sections:
         )
         .unwrap();
         let page = load_page(dir.path(), "home", None).unwrap();
-        let html = page_shell(&Tenant::woodfine(), &page, "woodfine", "/", "/es", None).into_string();
+        let html = page_shell(&Tenant::woodfine(), &page, "woodfine", "/", Some("/es"), None).into_string();
         assert_eq!(html.matches("<h1").count(), 1);
         assert!(html.contains("<h2"));
     }
@@ -681,7 +688,7 @@ sections:
         )
         .unwrap();
         let page = load_page(dir.path(), "home", None).unwrap();
-        let html = page_shell(&Tenant::woodfine(), &page, "woodfine", "/", "/es", None).into_string();
+        let html = page_shell(&Tenant::woodfine(), &page, "woodfine", "/", Some("/es"), None).into_string();
         assert!(!html.contains("__bundler"));
         assert!(html.contains("<!DOCTYPE html>"));
         assert!(html.contains(r#"lang="en""#));

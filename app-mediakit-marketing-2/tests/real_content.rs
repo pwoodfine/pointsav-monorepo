@@ -44,7 +44,7 @@ fn assert_all_pages_load(content_dir: &Path, module_id: &str) {
             &page,
             module_id,
             "/",
-            "/es",
+            Some("/es"),
             None,
         );
         assert!(markup.into_string().contains("<!DOCTYPE html>"));

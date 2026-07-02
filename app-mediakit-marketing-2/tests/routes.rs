@@ -33,6 +33,11 @@ fn fixture(module_id: &str, enable_mcp: bool) -> (TempDir, TempDir, axum::Router
         "title: Contact\nslug: contact\ndescription: Test contact.\nsections:\n  - type: hero\n    headline: Contact us\n",
     )
     .unwrap();
+    std::fs::write(
+        content_dir.path().join("contact/page.es.yaml"),
+        "title: Contacto\nslug: contact\ndescription: Prueba.\nlang: es\nsections:\n  - type: hero\n    headline: Contáctenos\n",
+    )
+    .unwrap();
 
     let cfg = Config {
         content_dir: content_dir.path().to_path_buf(),
@@ -71,11 +76,20 @@ async fn home_renders_with_no_bundler_dom_swap_pattern() {
 }
 
 #[tokio::test]
-async fn spanish_home_route_serves_spanish_content() {
+async fn home_has_no_spanish_route() {
+    // Operator call 2026-07-02: home is English-only, no /es route.
     let (_c, _s, app) = fixture("woodfine", false);
-    let (status, body) = get(&app, "/es").await;
+    let (status, _) = get(&app, "/es").await;
+    assert_eq!(status, StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
+async fn spanish_subpage_route_still_serves_spanish_content() {
+    // Non-home pages keep their /es/page/{slug} variant.
+    let (_c, _s, app) = fixture("woodfine", false);
+    let (status, body) = get(&app, "/es/page/contact").await;
     assert_eq!(status, StatusCode::OK);
-    assert!(body.contains("Hola"));
+    assert!(body.contains("Contáctenos"));
     assert!(body.contains(r#"lang="es""#));
 }
 
