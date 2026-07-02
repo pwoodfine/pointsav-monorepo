@@ -10,7 +10,41 @@
 
 /* --- Article shell -------------------------------------------------------- */
 .k-article {
-  padding-block: var(--k-space-5) var(--k-space-7);
+  padding-block: var(--k-space-4) var(--k-space-7);
+}
+
+/* --- Article action tabs (Vector 2022 heading nav) ------------------------ */
+.k-article-nav {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--k-space-1) var(--k-space-4);
+  border-bottom: 1px solid var(--k-border);
+  margin-bottom: var(--k-space-5);
+}
+.k-tabs { display: flex; gap: var(--k-space-1); }
+.k-tab {
+  display: inline-block;
+  padding: var(--k-space-2) var(--k-space-3);
+  margin-bottom: -1px;                       /* sit on the nav's bottom border */
+  font-family: var(--k-font-sans);
+  font-size: var(--k-text-sm);
+  color: var(--k-ink-secondary);
+  border-bottom: 2px solid transparent;
+}
+.k-tab--active {
+  color: var(--k-ink);
+  font-weight: var(--k-weight-medium);
+  border-bottom-color: var(--k-accent);
+}
+.k-tab--soon { color: var(--k-ink-muted); opacity: 0.55; cursor: default; }
+.k-article__meta {
+  margin: 0;
+  padding-bottom: var(--k-space-2);
+  font-family: var(--k-font-sans);
+  font-size: var(--k-text-sm);
+  color: var(--k-ink-muted);
 }
 
 .k-article__title {

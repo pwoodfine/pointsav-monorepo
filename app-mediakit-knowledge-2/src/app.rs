@@ -82,6 +82,25 @@ fn humanize(slug: &str) -> String {
         .join(" ")
 }
 
+/// Ordered `(slug, label)` category list for the sidebar nav — the configured
+/// order when set, else discovered categories. Mirrors the home-grid ordering.
+fn nav_cats(state: &AppState) -> Vec<(String, String)> {
+    let counts = state.index.category_counts();
+    let mut cats: Vec<(String, String)> = Vec::new();
+    if state.config.site.categories.is_empty() {
+        for (slug, _) in &counts {
+            cats.push((slug.clone(), humanize(slug)));
+        }
+    } else {
+        for slug in &state.config.site.categories {
+            if counts.contains_key(slug) {
+                cats.push((slug.clone(), humanize(slug)));
+            }
+        }
+    }
+    cats
+}
+
 /// Home page (Main Page) — index lede + a "Browse by area" category grid.
 async fn home(State(state): State<AppState>) -> Response {
     let tenant = state.tenant;
@@ -131,9 +150,10 @@ async fn home(State(state): State<AppState>) -> Response {
         })
         .collect();
 
+    let nav: Vec<(String, String)> = cats.iter().map(|(s, l, _)| (s.clone(), l.clone())).collect();
     let body = ui::home_page(tenant, &lede, total, &cats, &guides);
     let head = ui::doc_head(tenant.home_label(), &description, tenant);
-    Html(ui::page(tenant, "en", head, body).into_string()).into_response()
+    Html(ui::page(tenant, "en", head, body, &nav).into_string()).into_response()
 }
 
 /// Category listing page — every article in one category.
@@ -158,7 +178,7 @@ async fn category_page(State(state): State<AppState>, Path(name): Path<String>) 
     let description = format!("Articles in the {label} area.");
     let body = ui::category_index(&label, &docs);
     let head = ui::doc_head(&label, &description, tenant);
-    Html(ui::page(tenant, "en", head, body).into_string()).into_response()
+    Html(ui::page(tenant, "en", head, body, &nav_cats(&state)).into_string()).into_response()
 }
 
 /// Liveness probe.
@@ -188,9 +208,9 @@ async fn wiki_raw(State(state): State<AppState>, Path(slug): Path<String>) -> Re
         .unwrap_or_else(|| doc.title.clone());
     let description = parsed.frontmatter.short_description.clone().unwrap_or_default();
     let tenant = state.tenant;
-    let body = ui::article(&title, &rendered.html);
+    let body = ui::article(&title, parsed.frontmatter.last_edited.as_deref(), &rendered.html);
     let head = ui::doc_head(&title, &description, tenant);
-    Html(ui::page(tenant, "en", head, body).into_string()).into_response()
+    Html(ui::page(tenant, "en", head, body, &nav_cats(&state)).into_string()).into_response()
 }
 
 /// Serve an embedded static asset by path.

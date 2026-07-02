@@ -295,12 +295,53 @@ pub fn footer(tenant: Tenant) -> Markup {
     }
 }
 
-/// Wrap a rendered article body in the reading shell: ruled title + prose
-/// column. `body_html` is trusted, pre-rendered HTML from the content pipeline.
-/// (The "Last updated" metadata line lands with the P3 article heading nav/tabs.)
-pub fn article(title: &str, body_html: &str) -> Markup {
+/// Format an ISO `YYYY-MM-DD` as "25 May 2026"; pass anything else through.
+fn format_date(iso: &str) -> String {
+    const MONTHS: [&str; 12] = [
+        "January", "February", "March", "April", "May", "June", "July", "August", "September",
+        "October", "November", "December",
+    ];
+    let p: Vec<&str> = iso.trim().split('-').collect();
+    if p.len() == 3 {
+        if let (Ok(y), Ok(m), Ok(d)) =
+            (p[0].parse::<i32>(), p[1].parse::<usize>(), p[2].parse::<u32>())
+        {
+            if (1..=12).contains(&m) {
+                return format!("{d} {} {y}", MONTHS[m - 1]);
+            }
+        }
+    }
+    iso.to_string()
+}
+
+/// The article action-tab bar (Wikipedia Vector 2022 pattern), sitting above the
+/// `<h1>`. "Article" is the live view; Notes/History are declared but not yet
+/// wired (they arrive with P5/P4) so they render as disabled tabs, not dead
+/// links. The "Last updated" line rides on the right of the bar.
+fn article_tabs(updated: Option<&str>) -> Markup {
+    html! {
+        div."k-article-nav" {
+            nav."k-tabs" aria-label="Views" {
+                span."k-tab k-tab--active" aria-current="page" { "Article" }
+                span."k-tab k-tab--soon" aria-disabled="true" title="Coming soon" { "Notes" }
+                span."k-tab k-tab--soon" aria-disabled="true" title="Coming soon" { "History" }
+            }
+            @if let Some(d) = updated.filter(|s| !s.trim().is_empty()) {
+                p."k-article__meta" {
+                    "Last updated "
+                    time."k-article__date" datetime=(d) { (format_date(d)) }
+                }
+            }
+        }
+    }
+}
+
+/// Wrap a rendered article body in the reading shell: action tabs, ruled title,
+/// prose column. `body_html` is trusted, pre-rendered HTML from the pipeline.
+pub fn article(title: &str, updated: Option<&str>, body_html: &str) -> Markup {
     html! {
         article."k-article" {
+            (article_tabs(updated))
             h1."k-article__title" { (title) }
             div."k-prose" { (PreEscaped(body_html)) }
         }
@@ -396,8 +437,44 @@ pub fn category_index(label: &str, docs: &[(String, String, String)]) -> Markup 
     }
 }
 
-/// The full document as one balanced tree.
-pub fn page(tenant: Tenant, lang: &str, head: Markup, body: Markup) -> Markup {
+/// The left navigation column (Wikipedia Vector 2022 pattern): Main page,
+/// Browse-by-area, Guides. Sticky on desktop; hidden below the tablet breakpoint
+/// where the off-canvas drawer covers navigation. `cats` is `(slug, label)`.
+fn sidebar(tenant: Tenant, cats: &[(String, String)]) -> Markup {
+    let _ = tenant;
+    html! {
+        aside."k-sidebar" aria-label="Site navigation" {
+            nav."k-sidenav" {
+                a."k-sidenav__home" href="/" { "Main page" }
+                @if !cats.is_empty() {
+                    div."k-sidenav__group" {
+                        h2."k-sidenav__heading" { "Browse by area" }
+                        ul."k-sidenav__list" {
+                            @for (slug, label) in cats {
+                                li { a."k-sidenav__link" href={ "/category/" (slug) } { (label) } }
+                            }
+                        }
+                    }
+                }
+                div."k-sidenav__group" {
+                    h2."k-sidenav__heading" { "Guides" }
+                    ul."k-sidenav__list" {
+                        li { a."k-sidenav__link" href="/category/how-to" { "How-to guides" } }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// The full document as one balanced tree. `cats` drives the sidebar nav.
+pub fn page(
+    tenant: Tenant,
+    lang: &str,
+    head: Markup,
+    body: Markup,
+    cats: &[(String, String)],
+) -> Markup {
     html! {
         (DOCTYPE)
         html lang=(lang) data-instance=(tenant.instance_str()) {
@@ -408,7 +485,10 @@ pub fn page(tenant: Tenant, lang: &str, head: Markup, body: Markup) -> Markup {
                 div."k-page" {
                     (utility_bar(tenant))
                     (header(tenant, lang))
-                    main."k-page__body" #"k-main" tabindex="-1" { (body) }
+                    div."k-shell" {
+                        (sidebar(tenant, cats))
+                        main."k-page__body" #"k-main" tabindex="-1" { (body) }
+                    }
                     (footer(tenant))
                 }
                 script src="/static/app.js" defer {}

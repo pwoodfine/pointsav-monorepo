@@ -110,12 +110,56 @@ button:disabled { cursor: default; }
   flex-direction: column;
   min-height: 100vh;
 }
-.k-page__body {
+/* 2-column shell: sticky left nav + full-width content (Vector 2022, wide). */
+.k-shell {
   flex: 1 0 auto;
+  display: grid;
+  grid-template-columns: var(--k-sidebar-width, 15rem) minmax(0, 1fr);
+  gap: var(--k-gutter-lg);
   width: 100%;
-  max-width: var(--k-content-max);
-  margin-inline: auto;
   padding-inline: var(--k-gutter);
+  align-items: start;
+}
+.k-page__body {
+  min-width: 0;   /* let the content column shrink inside the grid track */
+}
+
+.k-sidebar {
+  position: sticky;
+  top: calc(var(--k-header-height) + var(--k-space-3));
+  align-self: start;
+  max-height: calc(100vh - var(--k-header-height) - var(--k-space-5));
+  overflow-y: auto;
+  padding-block: var(--k-space-5) var(--k-space-4);
+  font-family: var(--k-font-sans);
+  font-size: var(--k-text-sm);
+}
+.k-sidenav__home {
+  display: block;
+  font-weight: var(--k-weight-medium);
+  color: var(--k-ink);
+  padding-block: var(--k-space-1);
+}
+.k-sidenav__group { margin-top: var(--k-space-5); }
+.k-sidenav__heading {
+  margin: 0 0 var(--k-space-2);
+  font-size: var(--k-text-sm);
+  font-weight: var(--k-weight-medium);
+  color: var(--k-ink-muted);
+}
+.k-sidenav__list { list-style: none; margin: 0; padding: 0; }
+.k-sidenav__link {
+  display: block;
+  padding: var(--k-space-1) 0 var(--k-space-1) var(--k-space-2);
+  margin-left: calc(-1 * var(--k-space-2));
+  color: var(--k-ink-secondary);
+  border-left: 2px solid transparent;
+}
+.k-sidenav__link:hover { color: var(--k-accent); border-left-color: var(--k-accent); }
+
+@media (max-width: 1024px) {
+  .k-shell { grid-template-columns: 1fr; }
+  .k-sidebar { display: none; }
 }
 
 /* ========================================================================== */
@@ -607,7 +651,7 @@ button:disabled { cursor: default; }
 
   .k-footer__grid { grid-template-columns: 1fr; gap: var(--k-space-6); }
   .k-footer__inner { padding: var(--k-gutter) var(--k-gutter); }
-  .k-page__body { padding-inline: var(--k-space-4); }
+  .k-shell { padding-inline: var(--k-space-4); }
 }
 
 @media (min-width: 769px) {
