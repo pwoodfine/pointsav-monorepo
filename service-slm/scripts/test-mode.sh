@@ -813,15 +813,18 @@ between_phases
 
 # ══════════════════════════════════════════════════════════════════════════════
 # PHASE — convert + quality gate (deploy-gate.sh)
-#   deploy-gate.sh takes --adapter-path and runs the REAL quality gate
-#   (envelope-format compliance + git apply --check) against an off-port scratch
-#   server. It writes its own result file; it does NOT promote or write a receipt.
+#   deploy-gate.sh takes --adapter-path and runs the REAL quality gate: converts
+#   the PEFT adapter to GGUF, boots a dedicated scratch llama-server (never
+#   production :8080/local-slm.service) with the adapter pre-loaded but
+#   inactive, then A/B's base-vs-adapter output by toggling the adapter's scale
+#   between 0.0 and 1.0 via POST /lora-adapters on the SAME running instance.
+#   It writes its own result file; it does NOT promote or write a receipt.
 # ══════════════════════════════════════════════════════════════════════════════
 phase "GATE — real quality gate (deploy-gate.sh)"
 
 if (( TRAIN_DONE == 1 )) && [[ -f "${ADAPTER_OUT}/adapter_config.json" ]]; then
     GATE_RESULT="${TEST_ROOT}/deploy-gate-result.json"
-    log "  Running deploy-gate.sh on ${ADAPTER_OUT} (scratch server, NOT local-slm.service)..."
+    log "  Running deploy-gate.sh on ${ADAPTER_OUT} (scratch server on :8090, NOT local-slm.service)..."
     if RESULT_FILE="${GATE_RESULT}" "${SCRIPT_DIR}/deploy-gate.sh" \
             --adapter-path "${ADAPTER_OUT}" --probes 20 >>"${LOG_FILE}" 2>&1; then
         record "quality-gate" "pass" "deploy-gate passed; see ${GATE_RESULT}"

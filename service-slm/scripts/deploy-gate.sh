@@ -7,40 +7,42 @@
 # GAP-4 / D3 remediation: proves the adapter is NOT a no-op before any
 # service restart that loads it via --lora-scaled.
 #
-# Approach (two-run protocol):
-#   llama-server exposes a runtime hot-swap endpoint at POST /lora-adapters
-#   (llama.cpp; NOT a Doorman endpoint). We use this to toggle the adapter in
-#   and out on the SAME running instance rather than spinning up two servers.
-#   Protocol:
-#     Run 1 (baseline)  — clear any loaded adapter, collect N outputs.
-#     Run 2 (adapted)   — POST /lora-adapters to load the adapter, collect
-#                         the same N outputs, then clear again.
-#   Delta: for each probe pair, compare outputs. "Non-trivial" = the two
-#   outputs differ after stripping leading/trailing whitespace.
+# Protocol (scratch-server scale-toggle — rewritten 2026-07-01):
+#   llama-server's POST /lora-adapters endpoint ONLY re-scales an adapter that
+#   is already loaded at server STARTUP via --lora/--lora-init-without-apply.
+#   It never accepts a runtime path to a newly trained adapter — earlier
+#   versions of this script assumed otherwise (see git history), which meant
+#   every prior gate run compared the fixed default endpoint against itself,
+#   guaranteeing a null result regardless of adapter quality.
 #
-# Single-GPU fallback:
-#   If POST /lora-adapters returns 404 (llama.cpp build without dynamic-lora
-#   support, or the endpoint is gated by compile flag), we fall back to a
-#   two-pass sequential approach that requires the operator to have run the
-#   script ONCE with SLM_BASELINE_FILE pre-populated (export mode), and once
-#   more after restarting with --lora-scaled (compare mode).
-#   In that case, exit code 2 with a clear OPERATOR REQUIRED message.
+#   Corrected flow:
+#     1. Convert the PEFT (safetensors) adapter to GGUF via llama.cpp's
+#        convert_lora_to_gguf.py (CPU-only, no GPU needed).
+#     2. Start a dedicated SCRATCH llama-server (never the production
+#        endpoint) with the adapter pre-loaded but INACTIVE
+#        (--lora-init-without-apply).
+#     3. POST /lora-adapters [{"id":N,"scale":0.0}] -> collect baseline probes.
+#     4. POST /lora-adapters [{"id":N,"scale":1.0}] -> collect adapter probes.
+#     5. Kill the scratch server (trap-guaranteed, same discipline as
+#        test-mode.sh's VM stop trap) and compute the delta.
 #
 # Requirements:
-#   - llama-server running and reachable at SLM_LOCAL_ENDPOINT (default
-#     http://127.0.0.1:8080)
-#   - curl, python3 (stdlib only), jq (optional — falls back to python3)
-#   - /srv/foundry/data/adapters/ writable by this user
+#   - convert_lora_to_gguf.py + a built llama-server at LLAMA_CPP_DIR
+#     (default /opt/llama.cpp) — CPU-only, does not touch the GPU/yoyo-batch.
+#   - A base GGUF matching base-registry.yaml's served_gguf, readable locally
+#     (default resolved under the Tier A weights dir).
+#   - curl, python3 (stdlib only).
+#   - /srv/foundry/data/adapters/ writable by this user.
 #
 # Usage:
 #   deploy-gate.sh --adapter-path <path> [--base-model <path>]
-#                  [--probes <N>] [--endpoint <url>] [--dry-run]
+#                  [--probes <N>] [--dry-run]
 #
 # Exit codes:
 #   0   PASS  — adapter produces non-trivial delta on >= 15/20 probes
-#   1   FAIL  — adapter is a no-op (null delta on >= 6 probes) or prereq error
-#   2   DEFER — dynamic lora endpoint unavailable; operator two-run required
-#   3   Error — missing required argument or unreachable endpoint
+#   1   FAIL  — adapter is a no-op (null delta on >= 6 probes)
+#   3   Error — missing required argument, unreachable endpoint, conversion
+#               failure, or unexpected llama.cpp build (no /lora-adapters route)
 
 set -uo pipefail
 
@@ -48,16 +50,22 @@ set -uo pipefail
 
 FOUNDRY_ROOT="${FOUNDRY_ROOT:-/srv/foundry}"
 ADAPTER_PATH=""
-BASE_MODEL="${FOUNDRY_ROOT}/data/adapters"   # informational; not used directly
+BASE_MODEL="${SLM_GATE_BASE_MODEL:-}"   # resolved from base-registry.yaml if unset
 PROBES=20
-ENDPOINT="${SLM_LOCAL_ENDPOINT:-http://127.0.0.1:8080}"
 DRY_RUN=0
-RESULT_FILE="${FOUNDRY_ROOT}/data/adapters/deploy-gate-result.json"
+RESULT_FILE="${RESULT_FILE:-${FOUNDRY_ROOT}/data/adapters/deploy-gate-result.json}"
 PASS_THRESHOLD=15        # out of PROBES
 FAIL_THRESHOLD=6         # null-delta count triggers FAIL (>=)
 PROBE_MAX_TOKENS=128
 PROBE_TEMPERATURE="0.0"  # greedy — deterministic outputs required for comparison
-LORA_SCALE="1.0"
+
+# Scratch-server config — deliberately never the production endpoint (127.0.0.1:8080).
+SCRATCH_PORT="${SLM_GATE_SCRATCH_PORT:-8090}"
+ENDPOINT="http://127.0.0.1:${SCRATCH_PORT}"
+LLAMA_CPP_DIR="${SLM_GATE_LLAMA_CPP_DIR:-/opt/llama.cpp}"
+CONVERT_VENV="${SLM_GATE_CONVERT_VENV:-${FOUNDRY_ROOT}/data/adapters/.gguf-convert-venv}"
+BASE_REGISTRY="${SLM_GATE_BASE_REGISTRY:-$(cd "$(dirname "$0")/.." && pwd)/data/base-registry.yaml}"
+_SCRATCH_PID=""
 
 # ── Probe prompts (20 diverse short prompts for a coding-domain base model) ──
 # Fixed set ensures reproducibility across runs. Prompts are intentionally
@@ -97,11 +105,9 @@ while [[ $# -gt 0 ]]; do
         --base-model)      BASE_MODEL="$2"; shift ;;
         --probes=*)        PROBES="${1#--probes=}" ;;
         --probes)          PROBES="$2"; shift ;;
-        --endpoint=*)      ENDPOINT="${1#--endpoint=}" ;;
-        --endpoint)        ENDPOINT="$2"; shift ;;
         --dry-run)         DRY_RUN=1 ;;
         --help|-h)
-            sed -n '2,50p' "$0"
+            sed -n '2,42p' "$0"
             exit 0
             ;;
         *)
@@ -116,17 +122,27 @@ if [[ -z "${ADAPTER_PATH}" ]]; then
     exit 3
 fi
 
-# ── Prereq checks ─────────────────────────────────────────────────────────────
+# ── Logging + cleanup trap ────────────────────────────────────────────────────
 
 log() { printf '[deploy-gate %s] %s\n' "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" "$*"; }
+
+cleanup() {
+    if [[ -n "${_SCRATCH_PID}" ]] && kill -0 "${_SCRATCH_PID}" 2>/dev/null; then
+        log "Stopping scratch llama-server (pid ${_SCRATCH_PID})..."
+        kill "${_SCRATCH_PID}" 2>/dev/null || true
+        wait "${_SCRATCH_PID}" 2>/dev/null || true
+    fi
+}
+trap cleanup EXIT INT TERM
 
 log "deploy-gate.sh starting"
 log "  adapter_path:  ${ADAPTER_PATH}"
 log "  probes:        ${PROBES}"
-log "  endpoint:      ${ENDPOINT}"
+log "  endpoint:      ${ENDPOINT} (scratch — never production :8080)"
 log "  result_file:   ${RESULT_FILE}"
 
-# Validate adapter directory.
+# ── Prereq checks ─────────────────────────────────────────────────────────────
+
 if [[ ! -d "${ADAPTER_PATH}" ]]; then
     log "ERROR: adapter directory not found: ${ADAPTER_PATH}"
     exit 3
@@ -137,112 +153,187 @@ if [[ ! -f "${ADAPTER_PATH}/adapter_config.json" ]]; then
     exit 3
 fi
 
-# Validate llama-server is reachable.
-if ! curl -sS --connect-timeout 5 "${ENDPOINT}/health" >/dev/null 2>&1; then
-    log "ERROR: llama-server not reachable at ${ENDPOINT}/health"
-    log "       Ensure local-slm.service is running: systemctl status local-slm"
-    exit 3
-fi
-log "llama-server reachable at ${ENDPOINT}"
-
-# Ensure result directory exists.
 mkdir -p "$(dirname "${RESULT_FILE}")"
 
-# python3 for JSON output construction (stdlib only).
 if ! command -v python3 >/dev/null 2>&1; then
     log "ERROR: python3 required (stdlib only)"
     exit 3
 fi
 
-# ── Dynamic LoRA endpoint probe ───────────────────────────────────────────────
-# llama.cpp exposes POST /lora-adapters to hot-swap adapters at runtime.
-# Test whether this endpoint is available before choosing the protocol.
-#
-# Note: we call with an empty list to clear any existing adapters first.
-# A 200 or 204 means the endpoint is available. 404 means not compiled in.
+if [[ ! -x "${LLAMA_CPP_DIR}/build/bin/llama-server" ]]; then
+    log "ERROR: llama-server binary not found at ${LLAMA_CPP_DIR}/build/bin/llama-server"
+    exit 3
+fi
+if [[ ! -f "${LLAMA_CPP_DIR}/convert_lora_to_gguf.py" ]]; then
+    log "ERROR: convert_lora_to_gguf.py not found at ${LLAMA_CPP_DIR}"
+    exit 3
+fi
 
-log "probing /lora-adapters endpoint availability..."
-_LORA_CLEAR_STATUS=$(curl -sS -o /dev/null -w "%{http_code}" \
-    --connect-timeout 5 \
-    -X POST "${ENDPOINT}/lora-adapters" \
-    -H "Content-Type: application/json" \
-    -d '[]' 2>/dev/null || echo "000")
-
-log "  /lora-adapters clear status: ${_LORA_CLEAR_STATUS}"
-
-if [[ "${_LORA_CLEAR_STATUS}" == "404" || "${_LORA_CLEAR_STATUS}" == "000" ]]; then
-    # Dynamic lora hot-swap not available.
-    # Fall back to two-run sequential protocol.
-    log ""
-    log "OPERATOR REQUIRED — two-run sequential protocol:"
-    log ""
-    log "  The running llama-server binary does not support the dynamic"
-    log "  /lora-adapters endpoint (compiled without LLAMA_SERVER_LORA_HOTSWAP,"
-    log "  or using a llama.cpp build before PR #7634)."
-    log ""
-    log "  To complete Phase D validation, run this script TWICE:"
-    log ""
-    log "  Run 1 (baseline — no adapter):"
-    log "    SLM_GATE_MODE=baseline $0 --adapter-path ${ADAPTER_PATH} --probes ${PROBES}"
-    log "    This saves outputs to: ${RESULT_FILE%.json}-baseline.json"
-    log ""
-    log "  Then restart llama-server with --lora-scaled:"
-    log "    See scripts/lora-scaled-dropin.sh --adapter-path ${ADAPTER_PATH} --apply"
-    log "    sudo systemctl daemon-reload && sudo systemctl restart local-slm"
-    log ""
-    log "  Run 2 (adapter active):"
-    log "    SLM_GATE_MODE=compare $0 --adapter-path ${ADAPTER_PATH} --probes ${PROBES}"
-    log "    This loads baseline from disk and computes delta."
-    log ""
-
-    # Check if we are in a sequential mode explicitly.
-    _MODE="${SLM_GATE_MODE:-}"
-    if [[ "${_MODE}" == "baseline" ]]; then
-        log "MODE=baseline — collecting baseline outputs..."
-        # Fall through to baseline collection below (no adapter active).
-        _USE_HOTSWAP=0
-        _SEQUENTIAL_BASELINE=1
-        _SEQUENTIAL_COMPARE=0
-    elif [[ "${_MODE}" == "compare" ]]; then
-        log "MODE=compare — loading baseline and computing delta..."
-        _USE_HOTSWAP=0
-        _SEQUENTIAL_BASELINE=0
-        _SEQUENTIAL_COMPARE=1
-    else
-        # Not in a sequential mode; exit with DEFER.
-        _TS="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-        python3 - <<PYEOF
-import json, sys
-result = {
-    "passed": False,
-    "probes_run": 0,
-    "delta_count": 0,
-    "null_count": 0,
-    "timestamp": "${_TS}",
-    "protocol": "deferred",
-    "reason": "dynamic /lora-adapters endpoint not available; two-run sequential required",
-    "adapter_path": "${ADAPTER_PATH}",
-}
-with open("${RESULT_FILE}", "w") as f:
-    json.dump(result, f, indent=2)
-print(json.dumps(result, indent=2))
-PYEOF
-        exit 2
+# Resolve BASE_MODEL from base-registry.yaml if not explicitly overridden —
+# canonical_base / served_gguf is the single source of truth for SFT base ==
+# DPO base == ref_model == served GGUF (base-registry.yaml's own header comment).
+_CANONICAL_BASE=""
+if [[ -z "${BASE_MODEL}" ]]; then
+    if [[ ! -f "${BASE_REGISTRY}" ]]; then
+        log "ERROR: base-registry.yaml not found at ${BASE_REGISTRY} and --base-model not given"
+        exit 3
     fi
+    _SERVED_GGUF="$(grep -E '^served_gguf:' "${BASE_REGISTRY}" | sed 's/^served_gguf:[[:space:]]*//' | tr -d '"'"'"'\r')"
+    _CANONICAL_BASE="$(grep -E '^canonical_base:' "${BASE_REGISTRY}" | sed 's/^canonical_base:[[:space:]]*//' | tr -d '"'"'"'\r')"
+    if [[ -z "${_SERVED_GGUF}" ]]; then
+        log "ERROR: could not read served_gguf: from ${BASE_REGISTRY}"
+        exit 3
+    fi
+    BASE_MODEL="/var/lib/local-slm/weights/${_SERVED_GGUF}"
+    log "  base_model:    ${BASE_MODEL} (resolved from base-registry.yaml served_gguf)"
+
+    # /var/lib/local-slm/ is local-slm:local-slm drwxr-x--- — not traversable by this
+    # user even though the file itself is other-readable. Cache a copy once under a
+    # mathew-owned dir rather than running the scratch server as root.
+    _BASE_CACHE_DIR="${FOUNDRY_ROOT}/data/adapters/.gate-base-model"
+    _BASE_CACHE_PATH="${_BASE_CACHE_DIR}/${_SERVED_GGUF}"
+    if [[ ! -f "${_BASE_CACHE_PATH}" ]]; then
+        mkdir -p "${_BASE_CACHE_DIR}"
+        log "  Caching base GGUF (one-time, ~4.5GB) to ${_BASE_CACHE_PATH}..."
+        if ! sudo cp "${BASE_MODEL}" "${_BASE_CACHE_PATH}"; then
+            log "ERROR: could not read/copy ${BASE_MODEL} via sudo"
+            exit 3
+        fi
+        sudo chown "$(id -u):$(id -g)" "${_BASE_CACHE_PATH}"
+    fi
+    BASE_MODEL="${_BASE_CACHE_PATH}"
 else
-    _USE_HOTSWAP=1
-    _SEQUENTIAL_BASELINE=0
-    _SEQUENTIAL_COMPARE=0
+    log "  base_model:    ${BASE_MODEL} (explicit --base-model override)"
+fi
+if [[ ! -f "${BASE_MODEL}" ]]; then
+    log "ERROR: base model GGUF not found: ${BASE_MODEL}"
+    exit 3
+fi
+if [[ -z "${_CANONICAL_BASE}" && -f "${BASE_REGISTRY}" ]]; then
+    _CANONICAL_BASE="$(grep -E '^canonical_base:' "${BASE_REGISTRY}" | sed 's/^canonical_base:[[:space:]]*//' | tr -d '"'"'"'\r')"
+fi
+if [[ -z "${_CANONICAL_BASE}" ]]; then
+    log "ERROR: could not resolve canonical_base (HF repo id) for GGUF conversion — pass --base-model and set SLM_GATE_BASE_MODEL_ID"
+    exit 3
+fi
+
+# ── GGUF conversion (CPU-only, no GPU) ────────────────────────────────────────
+
+_ADAPTER_GGUF="${ADAPTER_PATH%/}.gguf"
+
+if [[ "${DRY_RUN}" -eq 1 ]]; then
+    log "(dry-run — skipping GGUF conversion + scratch server)"
+elif [[ -f "${_ADAPTER_GGUF}" && "${_ADAPTER_GGUF}" -nt "${ADAPTER_PATH}/adapter_model.safetensors" ]]; then
+    log "GGUF adapter already converted and up to date: ${_ADAPTER_GGUF}"
+else
+    log ""
+    log "=== Phase 0: GGUF conversion ==="
+
+    if [[ ! -x "${CONVERT_VENV}/bin/python3" ]] || \
+       ! "${CONVERT_VENV}/bin/python3" -c "import torch, transformers, safetensors, huggingface_hub, requests" >/dev/null 2>&1; then
+        log "  Bootstrapping CPU-only conversion venv at ${CONVERT_VENV}..."
+        python3 -m venv "${CONVERT_VENV}"
+        "${CONVERT_VENV}/bin/pip" install --quiet \
+            torch --index-url https://download.pytorch.org/whl/cpu
+        "${CONVERT_VENV}/bin/pip" install --quiet \
+            transformers safetensors huggingface_hub requests
+    fi
+
+    log "  Converting ${ADAPTER_PATH} -> ${_ADAPTER_GGUF} (base-model-id=${_CANONICAL_BASE})..."
+    if ! "${CONVERT_VENV}/bin/python3" "${LLAMA_CPP_DIR}/convert_lora_to_gguf.py" \
+            --outtype f16 \
+            --base-model-id "${_CANONICAL_BASE}" \
+            --outfile "${_ADAPTER_GGUF}" \
+            "${ADAPTER_PATH}"; then
+        log "ERROR: convert_lora_to_gguf.py failed"
+        exit 3
+    fi
+    if [[ ! -f "${_ADAPTER_GGUF}" ]]; then
+        log "ERROR: conversion reported success but ${_ADAPTER_GGUF} does not exist"
+        exit 3
+    fi
+    log "  Conversion OK: $(du -h "${_ADAPTER_GGUF}" | cut -f1) at ${_ADAPTER_GGUF}"
+fi
+
+# ── Start scratch llama-server with the adapter pre-loaded but inactive ──────
+
+if [[ "${DRY_RUN}" -eq 0 ]]; then
+    log ""
+    log "=== Phase 1: scratch llama-server (adapter loaded, scale 0) ==="
+    "${LLAMA_CPP_DIR}/build/bin/llama-server" \
+        --host 127.0.0.1 --port "${SCRATCH_PORT}" \
+        --model "${BASE_MODEL}" \
+        --lora "${_ADAPTER_GGUF}" --lora-init-without-apply \
+        --ctx-size 2048 --threads 4 --no-jinja \
+        >>"${RESULT_FILE%.json}-scratch-server.log" 2>&1 &
+    _SCRATCH_PID=$!
+    log "  scratch llama-server pid=${_SCRATCH_PID}, port=${SCRATCH_PORT}"
+
+    _WAITED=0
+    _READY=0
+    while [[ "${_WAITED}" -lt 60 ]]; do
+        if curl -sS --connect-timeout 2 "${ENDPOINT}/health" >/dev/null 2>&1; then
+            _READY=1
+            break
+        fi
+        if ! kill -0 "${_SCRATCH_PID}" 2>/dev/null; then
+            log "ERROR: scratch llama-server exited during startup — see ${RESULT_FILE%.json}-scratch-server.log"
+            exit 3
+        fi
+        sleep 2
+        _WAITED=$((_WAITED + 2))
+    done
+    if [[ "${_READY}" -ne 1 ]]; then
+        log "ERROR: scratch llama-server did not become healthy within 60s"
+        exit 3
+    fi
+    log "  scratch llama-server healthy after ${_WAITED}s"
+
+    # Discover the adapter id (don't hardcode 0) and confirm /lora-adapters exists.
+    # /health can return OK while tensor loading (mmap, lazy) is still in progress —
+    # /lora-adapters returns 503 during that window, not a fixed "unsupported" signal.
+    # Poll with retries rather than a single attempt.
+    _LORA_LIST=""
+    _LORA_WAITED=0
+    while [[ "${_LORA_WAITED}" -lt 60 ]]; do
+        _LORA_HTTP_CODE=$(curl -sS -o /tmp/deploy-gate-lora-list.json -w "%{http_code}" \
+            --connect-timeout 5 "${ENDPOINT}/lora-adapters" 2>/dev/null || echo "000")
+        if [[ "${_LORA_HTTP_CODE}" == "200" ]]; then
+            _LORA_LIST="$(cat /tmp/deploy-gate-lora-list.json 2>/dev/null)"
+            break
+        fi
+        if [[ "${_LORA_HTTP_CODE}" == "404" ]]; then
+            log "ERROR: GET /lora-adapters returned 404 — unexpected llama.cpp build (no hotswap route)"
+            exit 3
+        fi
+        sleep 2
+        _LORA_WAITED=$((_LORA_WAITED + 2))
+    done
+    if [[ -z "${_LORA_LIST}" ]]; then
+        log "ERROR: GET /lora-adapters did not return 200 within 60s (last HTTP ${_LORA_HTTP_CODE:-???})"
+        exit 3
+    fi
+    _ADAPTER_ID="$(python3 -c "
+import json, sys
+try:
+    items = json.loads(sys.argv[1])
+    print(items[0]['id'] if items else '')
+except Exception:
+    print('')
+" "${_LORA_LIST}" 2>/dev/null)"
+    if [[ -z "${_ADAPTER_ID}" ]]; then
+        log "ERROR: /lora-adapters returned no entries — adapter did not load at startup"
+        log "       response: ${_LORA_LIST}"
+        exit 3
+    fi
+    log "  adapter id=${_ADAPTER_ID} loaded (inactive, scale 0)"
 fi
 
 # ── Helper: send one completions probe ────────────────────────────────────────
 
-# Outputs the model's response text to stdout.
-# Args: $1 = prompt string
 probe_completions() {
     local _prompt="$1"
     local _payload
-    # Build JSON payload with python3 for safe quoting.
     _payload="$(python3 -c "
 import json, sys
 print(json.dumps({
@@ -272,10 +363,29 @@ except Exception:
 " 2>/dev/null || echo ""
 }
 
-# ── Collect baseline outputs (no adapter) ─────────────────────────────────────
+# ── Helper: set adapter scale via POST /lora-adapters ─────────────────────────
 
-# In hotswap mode: adapter should already be cleared (we just POSTed []).
-# In sequential baseline mode: adapter should not be loaded (user responsibility).
+set_adapter_scale() {
+    local _scale="$1"
+    local _payload
+    _payload="$(python3 -c "
+import json
+print(json.dumps([{'id': ${_ADAPTER_ID}, 'scale': ${_scale}}]))
+" 2>/dev/null)"
+    local _status
+    _status=$(curl -sS -o /dev/null -w "%{http_code}" \
+        --connect-timeout 5 \
+        -X POST "${ENDPOINT}/lora-adapters" \
+        -H "Content-Type: application/json" \
+        -d "${_payload}" 2>/dev/null || echo "000")
+    log "  /lora-adapters scale=${_scale} status: ${_status}"
+    if [[ "${_status}" != "200" && "${_status}" != "204" ]]; then
+        log "ERROR: setting adapter scale=${_scale} failed (HTTP ${_status})"
+        exit 3
+    fi
+}
+
+# ── Collect baseline outputs (scale 0.0) ──────────────────────────────────────
 
 _EFFECTIVE_PROBES="${PROBES}"
 if [[ "${_EFFECTIVE_PROBES}" -gt "${#PROBE_PROMPTS[@]}" ]]; then
@@ -283,8 +393,12 @@ if [[ "${_EFFECTIVE_PROBES}" -gt "${#PROBE_PROMPTS[@]}" ]]; then
     log "WARN: requested ${PROBES} probes but only ${#PROBE_PROMPTS[@]} prompts available; capping at ${_EFFECTIVE_PROBES}"
 fi
 
+if [[ "${DRY_RUN}" -eq 0 ]]; then
+    set_adapter_scale "0.0"
+fi
+
 log ""
-log "=== Phase 1: baseline outputs (no adapter) ==="
+log "=== Phase 2: baseline outputs (adapter scale 0.0) ==="
 
 declare -a BASELINE_OUTPUTS=()
 _i=0
@@ -301,104 +415,14 @@ while [[ "${_i}" -lt "${_EFFECTIVE_PROBES}" ]]; do
     _i=$((_i + 1))
 done
 
-# In sequential baseline mode, save to disk and exit.
-if [[ "${_SEQUENTIAL_BASELINE}" -eq 1 ]]; then
-    _BASELINE_FILE="${RESULT_FILE%.json}-baseline.json"
-    # Write baseline outputs to a temp file for safe JSON serialisation.
-    _BASELINE_TMP="$(mktemp /tmp/deploy-gate-baseline-XXXXXX.txt)"
-    for _o in "${BASELINE_OUTPUTS[@]}"; do printf '%s\n' "${_o}"; done > "${_BASELINE_TMP}"
-    python3 - "${_BASELINE_TMP}" "${_BASELINE_FILE}" "${_EFFECTIVE_PROBES}" <<'PYEOF'
-import json, sys
+# ── Collect adapter outputs (scale 1.0) ───────────────────────────────────────
 
-tmp_path   = sys.argv[1]
-out_path   = sys.argv[2]
-probes     = int(sys.argv[3])
-
-with open(tmp_path) as f:
-    outputs = [line.rstrip("\n") for line in f]
-
-with open(out_path, "w") as f:
-    json.dump({"baseline_outputs": outputs, "probes": probes}, f, indent=2)
-
-print(f"Baseline saved to {out_path}")
-print("Next: restart llama-server with --lora-scaled, then run with SLM_GATE_MODE=compare")
-PYEOF
-    rm -f "${_BASELINE_TMP}"
-    exit 0
+if [[ "${DRY_RUN}" -eq 0 ]]; then
+    set_adapter_scale "1.0"
 fi
-
-# In sequential compare mode, load baseline from disk.
-if [[ "${_SEQUENTIAL_COMPARE}" -eq 1 ]]; then
-    _BASELINE_FILE="${RESULT_FILE%.json}-baseline.json"
-    if [[ ! -f "${_BASELINE_FILE}" ]]; then
-        log "ERROR: baseline file not found: ${_BASELINE_FILE}"
-        log "       Run with SLM_GATE_MODE=baseline first."
-        exit 3
-    fi
-    log "Loading baseline from ${_BASELINE_FILE}"
-    # Overwrite BASELINE_OUTPUTS from disk.
-    mapfile -t BASELINE_OUTPUTS < <(python3 -c "
-import json, sys
-with open('${_BASELINE_FILE}') as f:
-    d = json.load(f)
-for o in d['baseline_outputs']:
-    print(o)
-" 2>/dev/null)
-fi
-
-# ── Load adapter via /lora-adapters (hotswap mode only) ───────────────────────
-
-if [[ "${_USE_HOTSWAP}" -eq 1 ]]; then
-    log ""
-    log "=== Phase 2: loading adapter via /lora-adapters ==="
-
-    # PEFT adapters trained with python PEFT produce a safetensors + adapter_config.json
-    # directory. llama.cpp /lora-adapters accepts a path to a pre-converted .gguf adapter.
-    # If the adapter is a PEFT directory (not a .gguf file), we look for a co-located
-    # gguf conversion, or fall back to using the path directly (some llama.cpp builds
-    # accept the PEFT directory path).
-    #
-    # Convention: if <adapter_path>/../<basename>.gguf exists, use that.
-    _ADAPTER_GGUF="${ADAPTER_PATH}"
-    _ADAPTER_BASENAME="$(basename "${ADAPTER_PATH}")"
-    _ADAPTER_PARENT="$(dirname "${ADAPTER_PATH}")"
-    if [[ -f "${_ADAPTER_PARENT}/${_ADAPTER_BASENAME}.gguf" ]]; then
-        _ADAPTER_GGUF="${_ADAPTER_PARENT}/${_ADAPTER_BASENAME}.gguf"
-        log "  using pre-converted GGUF: ${_ADAPTER_GGUF}"
-    else
-        log "  no .gguf conversion found; passing PEFT directory path to /lora-adapters"
-        log "  (requires llama.cpp build with PEFT-directory support)"
-    fi
-
-    _LORA_LOAD_PAYLOAD="$(python3 -c "
-import json, sys
-print(json.dumps([{'path': sys.argv[1], 'scale': ${LORA_SCALE}}]))
-" "${_ADAPTER_GGUF}" 2>/dev/null)"
-
-    _LORA_LOAD_STATUS=$(curl -sS -o /tmp/deploy-gate-lora-load-resp.txt \
-        -w "%{http_code}" \
-        --connect-timeout 5 \
-        -X POST "${ENDPOINT}/lora-adapters" \
-        -H "Content-Type: application/json" \
-        -d "${_LORA_LOAD_PAYLOAD}" 2>/dev/null || echo "000")
-
-    log "  /lora-adapters load status: ${_LORA_LOAD_STATUS}"
-    if [[ -f /tmp/deploy-gate-lora-load-resp.txt ]]; then
-        log "  response: $(cat /tmp/deploy-gate-lora-load-resp.txt | head -c 200)"
-    fi
-
-    if [[ "${_LORA_LOAD_STATUS}" != "200" && "${_LORA_LOAD_STATUS}" != "204" ]]; then
-        log "WARN: adapter load returned ${_LORA_LOAD_STATUS}; adapter probes may equal baseline"
-        log "      Outputs will be compared anyway; null delta will trigger FAIL."
-    else
-        log "  adapter loaded at scale ${LORA_SCALE}"
-    fi
-fi
-
-# ── Collect adapter outputs ────────────────────────────────────────────────────
 
 log ""
-log "=== Phase 3: adapter outputs ==="
+log "=== Phase 3: adapter outputs (adapter scale 1.0) ==="
 
 declare -a ADAPTER_OUTPUTS=()
 _i=0
@@ -416,23 +440,12 @@ while [[ "${_i}" -lt "${_EFFECTIVE_PROBES}" ]]; do
     _i=$((_i + 1))
 done
 
-# ── Unload adapter (hotswap mode cleanup) ─────────────────────────────────────
-
-if [[ "${_USE_HOTSWAP}" -eq 1 ]]; then
-    log ""
-    log "=== Phase 4: unloading adapter ==="
-    _LORA_CLEAR_STATUS2=$(curl -sS -o /dev/null -w "%{http_code}" \
-        --connect-timeout 5 \
-        -X POST "${ENDPOINT}/lora-adapters" \
-        -H "Content-Type: application/json" \
-        -d '[]' 2>/dev/null || echo "000")
-    log "  /lora-adapters clear status: ${_LORA_CLEAR_STATUS2}"
-fi
+# Scratch server is killed by the EXIT trap — no explicit unload phase needed.
 
 # ── Compute delta ─────────────────────────────────────────────────────────────
 
 log ""
-log "=== Phase 5: delta computation ==="
+log "=== Phase 4: delta computation ==="
 
 _DELTA_COUNT=0
 _NULL_COUNT=0
@@ -483,10 +496,11 @@ else
     if [[ "${_NULL_COUNT}" -ge "${FAIL_THRESHOLD}" ]]; then
         log "RESULT: FAIL — adapter is a no-op: null delta on ${_NULL_COUNT}/${_PROBES_RUN} probes"
         log "         Possible causes:"
-        log "           - adapter was not actually loaded (check /lora-adapters response above)"
-        log "           - PEFT adapter was not converted to GGUF before serving"
-        log "           - LoRA scale ${LORA_SCALE} too low (try 1.0)"
-        log "           - base model mismatch (verify base-registry.yaml)"
+        log "           - GGUF conversion produced a degenerate/empty adapter"
+        log "           - adapter was undertrained (check optimizer step count vs corpus size)"
+        log "           - LoRA scale 1.0 too low for this rank/alpha (check adapter_config.json)"
+        log "           - base model mismatch (verify base-registry.yaml canonical_base matches"
+        log "             the adapter's own base_model_name_or_path)"
     else
         log "RESULT: FAIL — insufficient delta: ${_DELTA_COUNT}/${_PROBES_RUN} < threshold ${PASS_THRESHOLD}"
     fi
@@ -495,25 +509,23 @@ fi
 # ── Write result JSON ─────────────────────────────────────────────────────────
 
 _TS="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-_PROTOCOL="hotswap"
-if [[ "${_USE_HOTSWAP}" -eq 0 && "${_SEQUENTIAL_COMPARE}" -eq 1 ]]; then
-    _PROTOCOL="sequential-compare"
-elif [[ "${_USE_HOTSWAP}" -eq 0 ]]; then
-    _PROTOCOL="baseline-only"
-fi
+_PASSED_PY="False"
+[[ "${_PASSED}" == "true" ]] && _PASSED_PY="True"
 
 python3 - <<PYEOF
 import json
 
 result = {
-    "passed": ${_PASSED},
+    "passed": ${_PASSED_PY},
     "probes_run": ${_PROBES_RUN},
     "delta_count": ${_DELTA_COUNT},
     "null_count": ${_NULL_COUNT},
     "timestamp": "${_TS}",
-    "protocol": "${_PROTOCOL}",
+    "protocol": "scratch-scale-toggle",
     "adapter_path": "${ADAPTER_PATH}",
+    "adapter_gguf": "${_ADAPTER_GGUF}",
     "endpoint": "${ENDPOINT}",
+    "base_model": "${BASE_MODEL}",
     "pass_threshold": ${PASS_THRESHOLD},
     "fail_threshold": ${FAIL_THRESHOLD},
 }
