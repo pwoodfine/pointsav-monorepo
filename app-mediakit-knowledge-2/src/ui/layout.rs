@@ -277,14 +277,11 @@ pub fn footer(tenant: Tenant) -> Markup {
                         a."k-badge k-badge--license" href=(tenant.license_url())
                           target="_blank" rel="noopener license"
                           aria-label={ "Content licensed " (tenant.license_name()) } {
-                            span."k-badge__roundels" aria-hidden="true" {
-                                svg viewBox="0 0 48 24" width="42" height="21" {
-                                    circle cx="12" cy="12" r="10.4" fill="none" stroke="currentColor" stroke-width="1.6" {}
-                                    text x="12" y="16" text-anchor="middle" font-size="11" font-weight="700"
-                                         font-family="var(--k-font-sans)" fill="currentColor" { "cc" }
-                                    circle cx="36" cy="12" r="10.4" fill="none" stroke="currentColor" stroke-width="1.6" {}
-                                    circle cx="36" cy="8.4" r="2.1" fill="currentColor" {}
-                                    path fill="currentColor" d="M32.4 17.6c0-2.2 1.6-3.7 3.6-3.7s3.6 1.5 3.6 3.7h-1.8v-.2c0-1-.8-1.8-1.8-1.8s-1.8.8-1.8 1.8v.2h-1.8z" {}
+                            span."k-badge__cc" aria-hidden="true" {
+                                img."k-cc-icon" src="/static/cc.svg" alt="" width="20" height="20";
+                                img."k-cc-icon" src="/static/cc-by.svg" alt="" width="20" height="20";
+                                @if tenant.license_nd() {
+                                    img."k-cc-icon" src="/static/cc-nd.svg" alt="" width="20" height="20";
                                 }
                             }
                             span."k-badge__text" {

@@ -88,6 +88,11 @@ impl Tenant {
         }
     }
 
+    /// Whether the licence carries the No-Derivatives term (adds the ND badge icon).
+    pub fn license_nd(&self) -> bool {
+        matches!(self, Tenant::Projects | Tenant::Corporate)
+    }
+
     /// Registered seat of the maintaining entity.
     pub fn seat(&self) -> &'static str {
         match self {
