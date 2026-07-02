@@ -27,6 +27,7 @@ pub struct DocRef {
     pub title: String,
     pub category: Option<String>,
     pub short_description: Option<String>,
+    pub last_edited: Option<String>,
     pub mount_index: usize,
 }
 
@@ -77,6 +78,15 @@ impl ContentIndex {
             }
         }
         counts
+    }
+
+    /// English documents most-recently edited first (by `last_edited`; undated
+    /// docs sort last), truncated to `n`. Used by the feeds.
+    pub fn recent(&self, n: usize) -> Vec<&DocRef> {
+        let mut docs: Vec<&DocRef> = self.documents().collect();
+        docs.sort_by(|a, b| b.last_edited.cmp(&a.last_edited));
+        docs.truncate(n);
+        docs
     }
 
     /// English documents in a category, sorted by title.
@@ -171,6 +181,7 @@ fn load_ref(root: &Path, path: &Path, mount_index: usize) -> Option<DocRef> {
             .clone()
             .filter(|s| !s.trim().is_empty())
             .or_else(|| first_body_summary(&doc.body_md)),
+        last_edited: doc.frontmatter.last_edited.clone(),
         mount_index,
     })
 }

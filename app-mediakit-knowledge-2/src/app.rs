@@ -17,6 +17,7 @@ use axum::Router;
 use crate::assets::StaticAssets;
 use crate::config::Config;
 use crate::content::{self, ContentIndex, Lang, MountSet};
+use crate::discovery;
 use crate::search::SearchIndex;
 use crate::ui::{self, Tenant};
 
@@ -58,6 +59,11 @@ pub fn router(state: AppState) -> Router {
         .route("/category/{name}", get(category_page))
         .route("/search", get(search_page))
         .route("/history/{*slug}", get(history_page))
+        .route("/sitemap.xml", get(sitemap))
+        .route("/robots.txt", get(robots))
+        .route("/feed.atom", get(feed_atom))
+        .route("/feed.json", get(feed_json))
+        .route("/llms.txt", get(llms))
         .route("/static/syntax.css", get(syntax_css_handler))
         .route("/static/{*path}", get(static_asset))
         .with_state(state)
@@ -264,6 +270,49 @@ async fn history_page(
         tenant,
     );
     Html(ui::page(tenant, "en", head, body, &nav_cats(&state), &[], "").into_string()).into_response()
+}
+
+// --- Discovery surfaces (robots / sitemap / feeds / llms.txt) ---------------
+
+/// Canonical base URL (no trailing slash) for absolute links; "" if unconfigured.
+fn site_base(state: &AppState) -> String {
+    state
+        .config
+        .site
+        .canonical_url
+        .as_deref()
+        .unwrap_or("")
+        .trim_end_matches('/')
+        .to_string()
+}
+
+async fn robots(State(state): State<AppState>) -> Response {
+    let body = discovery::robots_txt(&site_base(&state));
+    ([(header::CONTENT_TYPE, "text/plain; charset=utf-8")], body).into_response()
+}
+
+async fn sitemap(State(state): State<AppState>) -> Response {
+    let docs: Vec<_> = state.index.documents().collect();
+    let body = discovery::sitemap_xml(&site_base(&state), &docs);
+    ([(header::CONTENT_TYPE, "application/xml; charset=utf-8")], body).into_response()
+}
+
+async fn feed_atom(State(state): State<AppState>) -> Response {
+    let docs = state.index.recent(20);
+    let body = discovery::atom_feed(&site_base(&state), &state.config.site.title, &docs);
+    ([(header::CONTENT_TYPE, "application/atom+xml; charset=utf-8")], body).into_response()
+}
+
+async fn feed_json(State(state): State<AppState>) -> Response {
+    let docs = state.index.recent(20);
+    let body = discovery::json_feed(&site_base(&state), &state.config.site.title, &docs);
+    ([(header::CONTENT_TYPE, "application/feed+json; charset=utf-8")], body).into_response()
+}
+
+async fn llms(State(state): State<AppState>) -> Response {
+    let docs: Vec<_> = state.index.documents().collect();
+    let body = discovery::llms_txt(&site_base(&state), &state.config.site.title, &docs);
+    ([(header::CONTENT_TYPE, "text/plain; charset=utf-8")], body).into_response()
 }
 
 /// Liveness probe.
