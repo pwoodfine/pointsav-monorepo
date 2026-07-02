@@ -14,8 +14,18 @@ they paid to a catalog product. The OLD crate computed that mapping with a
 comparison that multiplied the catalog price by 1,000,000 — a unit conversion that
 had **already been applied** to the catalog value. That double-counts the
 conversion, so a real payment would never match the correct product. This phase
-replaces the comparison with a direct equality. The change is safe to make now
-because there is currently **zero paid traffic**: every live catalog price is `0`.
+replaces the comparison with a direct equality.
+
+**Correction (Checkpoint 2 review, 2026-07-02):** an earlier version of this doc
+claimed "every live catalog price is 0" as the safety basis — that is false.
+`apache` ($1.00) and `fsl` ($19.00) are live, non-zero, purchasable license tiers,
+and this same phase adds a working "Pay with Polygon USDC" CTA for both. The real
+safety argument (see §d) is that the OLD formula's bug means no historical paid
+transaction could ever have matched correctly — any real payment would have fallen
+through to the `unknown-*` fallback — so switching to the correct comparison
+cannot invalidate any previously-issued license key. That is a structural
+guarantee (receipts replay verbatim from disk, independent of this matcher), not
+a claim about catalog pricing.
 
 ---
 
@@ -41,7 +51,11 @@ let product_id = catalog
   `tool-wallet check` (its JSON field `amount_usdc`, e.g. `1.00`).
 - `price_units = (amount_usdc * 1_000_000.0) as u64` converts dollars to
   micro-USDC base units (USDC has 6 decimals). For a $1.00 payment this is
-  `1_000_000`. **This conversion is correct and is not being changed.**
+  `1_000_000`. **Correction (Checkpoint 2 review): this float round-trip is
+  lossy for ~2% of whole-cent prices — see §(e) below. This handler no longer
+  relies on it as the primary path; `amount_units` (an exact integer
+  `tool-wallet` already provides) is preferred, with this float conversion kept
+  only as a defensive fallback.**
 - The bug is on the **catalog side** of the comparison: `l.price_usdc * 1_000_000`.
 
 ## (b) Why it is wrong (unit double-counting)
@@ -101,14 +115,20 @@ minimal and reviewable.
 
 ## (d) Why it is safe to change now specifically
 
-- **Zero paid traffic today.** Every license in the live `products.yaml` that is
-  actually purchasable is priced `price_usdc: 0`. The only non-zero entries
-  (`apache` = 1,000,000; `fsl` = 19,000,000) are licensing *labels*; no paid
-  purchase has ever flowed through this matcher.
-- **The bug was masked, never exercised.** With a `0` price, both formulas agree:
-  `0 * 1_000_000 == 0` and `0 == 0` are both true. So the OLD formula produced
-  correct results for every transaction that has ever occurred. There is no
-  historical behaviour to preserve and nothing to migrate.
+**Correction (Checkpoint 2 review):** the argument below does NOT rest on "every
+catalog price is 0" — `apache` and `fsl` are real, non-zero, live prices. The
+safety argument is structural, independent of what any price happens to be:
+
+- **The OLD formula could never have matched a real paid transaction, for any
+  non-zero price.** `l.price_usdc * 1_000_000 == price_units` only holds when
+  `price_units` is itself a multiple of `1_000_000 * l.price_usdc` — for the live
+  prices (1,000,000 and 19,000,000), that requires an absurd payment size (e.g.
+  $1,000,000 to match `apache`). Any real-sized payment against `apache` or `fsl`
+  would have fallen through to the `unknown-{price_units}` fallback under the OLD
+  code, every time, with no exception. This is a structural guarantee from reading
+  the formula, not an empirical claim about what has or hasn't happened on
+  software.pointsav.com (a different machine from this development session, whose
+  actual payment history was not and could not be checked from here).
 - **No receipts depend on the old matching.** `product_id` is recomputed per
   request from the catalog; it is not a stored key that older receipts index on.
   Existing receipt files are replayed verbatim from disk (the receipt-cache path),
@@ -118,9 +138,27 @@ minimal and reviewable.
   reproducible. The fix changes only which `product_id` a *future* paid
   transaction resolves to — from a wrong `unknown-*` fallback to the correct tier.
 
-Because the change strictly turns a latent wrong answer (that has never been hit)
-into a correct answer, and there is no paid transaction history to regress, it is
-safe to land now rather than deferring to the first real payment.
+Because the OLD formula was structurally incapable of correctly matching any
+realistic non-zero payment, and no receipt or issued key depends on that matcher's
+output, there is nothing to migrate or regress — the fix can land immediately.
+
+## (e) Related precision issue found and fixed in the same review pass
+
+The dollars→micro-USDC conversion (`price_units_from_amount`, using
+`amount_usdc: f64`) is a **lossy float round-trip**: `tool-wallet` computes
+`amount_usdc = amount_units as f64 / 1_000_000.0` for display, and this handler
+then computes `(amount_usdc * 1_000_000.0) as u64` to get back to integer
+micro-units. That round-trip is off-by-one for roughly 2% of whole-cent prices
+(e.g. $2.01), which would silently reintroduce the exact failure class this fix
+exists to eliminate — just latent, since today's live prices ($1.00, $19.00)
+happen to round-trip exactly.
+
+**Fixed:** `tool-wallet` already emits the exact source integer as
+`amount_units` in its JSON output (`tool-wallet/src/main.rs:568`). The handler
+now reads `amount_units` directly when present, falling back to the float
+conversion only if that field is absent. This removes the precision-loss class
+entirely rather than certifying a conversion that was still silently wrong for
+some inputs.
 
 ---
 
