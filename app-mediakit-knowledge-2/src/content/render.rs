@@ -245,6 +245,26 @@ mod tests {
     }
 
     #[test]
+    fn render_doc_turns_references_into_footnotes() {
+        use super::super::frontmatter::{Frontmatter, ParsedDoc, Reference};
+        let doc = ParsedDoc {
+            frontmatter: Frontmatter {
+                references: vec![Reference {
+                    id: "1".into(),
+                    text: "Yjs library.".into(),
+                    url: Some("https://yjs.dev".into()),
+                }],
+                ..Default::default()
+            },
+            body_md: "This cites a source[^1].\n".into(),
+        };
+        let r = render_doc(&doc);
+        assert!(r.html.contains("footnotes"), "footnotes section: {}", r.html);
+        assert!(r.html.contains("Yjs library."));
+        assert!(!r.html.contains("[^1]"), "marker should be resolved, not literal");
+    }
+
+    #[test]
     fn resolves_wikilinks_with_and_without_label() {
         let r = render("See [[zero-container-inference]] and [[yoyo-compute|GPU compute]].\n");
         assert!(r.html.contains(r#"href="/wiki/zero-container-inference""#));

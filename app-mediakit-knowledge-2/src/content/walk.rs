@@ -313,4 +313,34 @@ mod tests {
         assert_eq!(path_slug(Path::new("architecture/foo.md")), "foo");
         assert_eq!(path_slug(Path::new("bar.es.md")), "bar");
     }
+
+    #[test]
+    fn resolves_aliases_to_canonical_slug() {
+        let tmp = tempfile::tempdir().unwrap();
+        let root = tmp.path();
+        write(
+            root,
+            "reference/guide-catalog.md",
+            "---\ntitle: Catalog\nslug: guide-catalog\naliases:\n  - developer-guide-index\n  - old-catalog\n---\nBody\n",
+        );
+        let mounts = MountSet {
+            mounts: vec![super::super::mount::Mount {
+                path: root.to_path_buf(),
+                role: "primary".into(),
+                blueprint_set: vec![],
+            }],
+        };
+        let idx = ContentIndex::build(&mounts);
+        assert_eq!(idx.resolve_alias("developer-guide-index"), Some("guide-catalog"));
+        assert_eq!(idx.resolve_alias("old-catalog"), Some("guide-catalog"));
+        assert_eq!(idx.resolve_alias("nope"), None);
+    }
+
+    #[test]
+    fn excludes_index_and_chrome_files() {
+        assert!(!is_content_file("_index.md"));
+        assert!(!is_content_file("important-information.md"));
+        assert!(!is_content_file("README.md"));
+        assert!(is_content_file("architecture/topic-foo.md"));
+    }
 }
