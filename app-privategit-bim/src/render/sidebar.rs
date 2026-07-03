@@ -40,7 +40,7 @@ pub fn render_sidebar(active_path: &str, state: &AppState) -> String {
         "More",
         &format!(
             "{}{}{}",
-            nav_link("/key-plans", active_path, "Key Plans"),
+            nav_link("/key-plans", active_path, "Key Plan Diagrams"),
             nav_link("/furniture", active_path, "Furniture Library"),
             nav_link("/research", active_path, "Research"),
         ),
