@@ -201,7 +201,7 @@ impl Tenant {
                     risks, uncertainties and assumptions, and actual results may differ \
                     materially. Woodfine undertakes no obligation to update such statements \
                     except as required by law.\n\n\
-                    **Registration.** Woodfine Capital Projects and its affiliates conduct \
+                    **Registration.** Woodfine and its affiliates conduct \
                     registrable activities, where required, under the relevant categories \
                     prescribed by the British Columbia Securities Commission and other Canadian \
                     securities regulators. Specific registration details are available on \
@@ -233,7 +233,7 @@ impl Tenant {
                     resultados reales pueden diferir materialmente. Woodfine no asume ninguna \
                     obligación de actualizar dichas declaraciones excepto cuando lo exija la \
                     ley.\n\n\
-                    **Registro.** Woodfine Capital Projects y sus filiales realizan actividades \
+                    **Registro.** Woodfine y sus filiales realizan actividades \
                     registrables, donde sea requerido, bajo las categorías relevantes prescritas \
                     por la Comisión de Valores de la Columbia Británica y otros reguladores \
                     canadienses de valores. Los detalles específicos de registro están \
@@ -306,23 +306,36 @@ impl Tenant {
                 // labelled "Securities disclosure" like Woodfine's: this page
                 // explicitly does NOT offer securities, so that label would
                 // overstate; "Company and product" states the true scope.
+                //
+                // Content rewrite 2026-07-02 (Opus agent): fixed a factually
+                // broken "Intellectual property" product list (two invented
+                // names, one internal-only ops codename, one misspelled mark
+                // — verified against the real product catalog instead) and an
+                // abbreviation inconsistency ("Woodfine" defined as shorthand
+                // then not used). A canonical copy of this text has been
+                // staged for factory-release-engineering as
+                // policies/HOMEPAGE-DISCLAIMER-POINTSAV.md (admin-tier repo —
+                // this session cannot commit there directly; handed off via
+                // mailbox to Command Session). ui.rs is a derived copy, not
+                // the source of truth — reconcile against the canonical file
+                // once it lands.
                 label: "Company and product disclosure",
                 label_es: "Divulgación de la empresa y del producto",
                 body: "**Corporate structure.** PointSav Digital Systems is a trade name of \
                     Woodfine Capital Projects Inc. (\u{201c}Woodfine\u{201d}). PointSav does not \
                     itself offer, sell, or solicit any security. Any securities offering \
                     associated with Woodfine\u{2019}s real-property direct-hold solutions is made \
-                    exclusively by Woodfine Capital Projects Inc., and only by means of the \
+                    exclusively by Woodfine, and only by means of the \
                     applicable offering memorandum.\n\n\
                     **No investment advice.** PointSav software and documentation are provided for \
                     operational, research, and development purposes. Nothing on this site \
                     constitutes investment advice or a solicitation to invest in any Woodfine \
-                    Capital Projects partnership or direct-hold solution.\n\n\
+                    partnership or direct-hold solution.\n\n\
                     **Intellectual property.** The PointSav name, marks, wordmark, product \
-                    names (including ToteBox, GIS Engine, Keys Console, Command Centre, \
-                    Workplace OS, and Business Applications), software, source code, \
+                    names (including PointSav Console OS, PointSav Workplace OS, PointSav \
+                    Network OS, and Totebox OS), software, source code, \
                     documentation, design system, and all related materials are proprietary to \
-                    Woodfine Capital Projects Inc. and its subsidiaries, unless otherwise \
+                    Woodfine and its subsidiaries, unless otherwise \
                     identified as open source.\n\n\
                     **Open source components.** Portions of the platform are made available \
                     under permissive open-source licenses identified in the accompanying \
@@ -340,18 +353,18 @@ impl Tenant {
                     comercial de Woodfine Capital Projects Inc. (\u{201c}Woodfine\u{201d}). \
                     PointSav no ofrece, vende ni solicita por sí misma ningún valor. Toda oferta \
                     de valores asociada a las soluciones de tenencia directa de inmuebles de \
-                    Woodfine se realiza exclusivamente a través de Woodfine Capital Projects Inc., \
+                    Woodfine se realiza exclusivamente a través de Woodfine, \
                     y únicamente por medio del memorando de oferta aplicable.\n\n\
                     **Sin asesoramiento de inversión.** El software y la documentación de PointSav \
                     se proporcionan con fines operativos, de investigación y de desarrollo. Nada \
                     en este sitio constituye asesoramiento de inversión ni una solicitud para \
-                    invertir en ninguna sociedad de Woodfine Capital Projects ni en ninguna \
+                    invertir en ninguna sociedad de Woodfine ni en ninguna \
                     solución de tenencia directa.\n\n\
                     **Propiedad intelectual.** El nombre PointSav, las marcas, el \
-                    logotipo, los nombres de producto (incluidos ToteBox, Motor GIS, Keys \
-                    Console, Command Centre, Workplace OS y Aplicaciones de Negocio), el \
+                    logotipo, los nombres de producto (incluidos PointSav Console OS, PointSav \
+                    Workplace OS, PointSav Network OS y Totebox OS), el \
                     software, el código fuente, la documentación, el sistema de diseño y todos \
-                    los materiales relacionados son propiedad de Woodfine Capital Projects Inc. \
+                    los materiales relacionados son propiedad de Woodfine \
                     y sus subsidiarias, salvo que se identifiquen expresamente como código \
                     abierto.\n\n\
                     **Componentes de código abierto.** Partes de la plataforma están \
