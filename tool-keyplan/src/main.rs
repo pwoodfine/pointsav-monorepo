@@ -31,7 +31,6 @@ struct DimensionsMm {
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, Deserialize)]
-#[allow(dead_code)]
 struct ClearanceMm {
     front: f64,
     sides: f64,
@@ -40,7 +39,6 @@ struct ClearanceMm {
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, Deserialize)]
-#[allow(dead_code)]
 struct FurnitureValue {
     manufacturer: String,
     product_line: Option<String>,
