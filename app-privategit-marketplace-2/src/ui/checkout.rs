@@ -86,6 +86,7 @@ mod tests {
             license_tier: LicenseTier::Commercial,
             price_usdc: 1_000_000,
             fsl_conversion_date: None,
+            guide_url: None,
         }
     }
 

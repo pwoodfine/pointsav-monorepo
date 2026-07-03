@@ -262,6 +262,7 @@ mod tests {
                     license_tier: LicenseTier::Fsl,
                     price_usdc: 0, // active BETA gate
                     fsl_conversion_date: None,
+                    guide_url: None,
                 },
                 Installer {
                     id: "os-privategit".into(),
@@ -274,6 +275,7 @@ mod tests {
                     license_tier: LicenseTier::Commercial,
                     price_usdc: 19_000_000, // BETA lifted, test fixture only ($19)
                     fsl_conversion_date: None,
+                    guide_url: None,
                 },
             ],
         }

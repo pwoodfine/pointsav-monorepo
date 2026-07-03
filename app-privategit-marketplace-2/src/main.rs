@@ -139,6 +139,13 @@ struct Installer {
     /// Read by `xtask fsl-clock`, not by any route in this crate.
     #[serde(default)]
     fsl_conversion_date: Option<String>,
+    /// S136: link to the product's operational GUIDE, when one exists.
+    /// Genuinely optional — the original request's own wording was "GUIDE link
+    /// (when available)". No `products.yaml` entry populates this yet; the
+    /// product detail page (`ui::product_detail`) simply omits the row when
+    /// `None` rather than fabricating a URL.
+    #[serde(default)]
+    guide_url: Option<String>,
 }
 
 // `deny_unknown_fields`: a stray legacy `licenses:` key (from a pre-migration
@@ -734,6 +741,98 @@ async fn disclaimer_page() -> Response {
         .into_response()
 }
 
+// GET /page/privacy — self-contained privacy page, same pattern as disclaimer_page.
+async fn privacy_page() -> Response {
+    let body = ui::render_page(
+        SoftwareSurface::Marketplace,
+        "Privacy — PointSav Software",
+        ui::privacy_markup(),
+    )
+    .into_string();
+    (
+        StatusCode::OK,
+        [(header::CONTENT_TYPE, "text/html; charset=utf-8")],
+        body,
+    )
+        .into_response()
+}
+
+// GET /page/accessibility — self-contained accessibility page, same pattern as disclaimer_page.
+async fn accessibility_page() -> Response {
+    let body = ui::render_page(
+        SoftwareSurface::Marketplace,
+        "Accessibility — PointSav Software",
+        ui::accessibility_markup(),
+    )
+    .into_string();
+    (
+        StatusCode::OK,
+        [(header::CONTENT_TYPE, "text/html; charset=utf-8")],
+        body,
+    )
+        .into_response()
+}
+
+// GET /page/contact — self-contained contact page, same pattern as disclaimer_page.
+// Closes the highest-priority finding from the original Sovereign Editorial audit
+// (this route previously did not exist at all — HTTP 0, flagged twice).
+async fn contact_page() -> Response {
+    let body = ui::render_page(
+        SoftwareSurface::Marketplace,
+        "Contact us — PointSav Software",
+        ui::contact_markup(),
+    )
+    .into_string();
+    (
+        StatusCode::OK,
+        [(header::CONTENT_TYPE, "text/html; charset=utf-8")],
+        body,
+    )
+        .into_response()
+}
+
+// GET /software/:product_id — S136 product detail page. Mirrors checkout_page's
+// catalog-lookup + 404/500 shape exactly.
+async fn product_detail_page(
+    State(state): State<Arc<AppState>>,
+    Path(product_id): Path<String>,
+) -> Response {
+    match load_catalog(&state.catalog_path) {
+        Ok(catalog) => match catalog.installers.iter().find(|i| i.id == product_id) {
+            Some(installer) => {
+                let content = ui::product_detail_markup(installer, &state.source_base_url);
+                let body = ui::render_page(
+                    SoftwareSurface::Marketplace,
+                    &format!("{} — PointSav Software", installer.name),
+                    content,
+                )
+                .into_string();
+                (
+                    StatusCode::OK,
+                    [(header::CONTENT_TYPE, "text/html; charset=utf-8")],
+                    body,
+                )
+                    .into_response()
+            }
+            None => (
+                StatusCode::NOT_FOUND,
+                [(header::CONTENT_TYPE, "text/plain; charset=utf-8")],
+                "product not found",
+            )
+                .into_response(),
+        },
+        Err(e) => {
+            tracing::error!("catalog load failed for /software/:id: {e:#}");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                [(header::CONTENT_TYPE, "text/plain; charset=utf-8")],
+                "catalog unavailable",
+            )
+                .into_response()
+        }
+    }
+}
+
 // Read the prerendered static page from disk (P1 logic, unchanged) and wrap it in
 // the Sovereign Editorial chrome (navy masthead + near-black footer) before serving.
 fn serve_chrome_page(path: &PathBuf) -> Response {
@@ -1118,9 +1217,13 @@ async fn main() -> Result<()> {
     let app = Router::new()
         .route("/", get(root))
         .route("/software", get(software_page))
+        .route("/software/:product_id", get(product_detail_page))
         .route("/licensing", get(licensing_page))
         .route("/pricing", get(pricing_page))
         .route("/page/disclaimer", get(disclaimer_page))
+        .route("/page/privacy", get(privacy_page))
+        .route("/page/accessibility", get(accessibility_page))
+        .route("/page/contact", get(contact_page))
         .route("/healthz", get(healthz))
         .route("/v1/products", get(v1_products))
         .route("/v1/license/:tx_hash", get(v1_license))
@@ -1947,6 +2050,54 @@ esac
         assert!(html.contains(SoftwareSurface::Marketplace.trademark_line()));
     }
 
+    // Three footer pages closing the long-standing dead-link gap
+    // (BRIEF-sovereign-editorial-software.md audit finding #1: /page/contact
+    // returning HTTP 0). Same self-contained, no-disk-read pattern as disclaimer_page.
+
+    #[tokio::test]
+    async fn privacy_page_serves_self_contained_content_with_chrome() {
+        let (parts, body) = privacy_page().await.into_parts();
+        assert_eq!(parts.status, StatusCode::OK);
+        assert_eq!(
+            parts.headers.get(header::CONTENT_TYPE).unwrap(),
+            "text/html; charset=utf-8"
+        );
+        let html = body_text(body).await;
+        assert!(html.contains("Polygon"));
+        assert!(html.contains("open.source@pointsav.com"));
+        assert!(html.contains("sw-masthead"));
+        assert!(html.contains(SoftwareSurface::Marketplace.trademark_line()));
+    }
+
+    #[tokio::test]
+    async fn accessibility_page_serves_self_contained_content_with_chrome() {
+        let (parts, body) = accessibility_page().await.into_parts();
+        assert_eq!(parts.status, StatusCode::OK);
+        assert_eq!(
+            parts.headers.get(header::CONTENT_TYPE).unwrap(),
+            "text/html; charset=utf-8"
+        );
+        let html = body_text(body).await;
+        assert!(html.contains("WCAG 2.1"));
+        assert!(html.contains("open.source@pointsav.com"));
+        assert!(html.contains("sw-masthead"));
+        assert!(html.contains(SoftwareSurface::Marketplace.trademark_line()));
+    }
+
+    #[tokio::test]
+    async fn contact_page_serves_self_contained_content_with_chrome() {
+        let (parts, body) = contact_page().await.into_parts();
+        assert_eq!(parts.status, StatusCode::OK);
+        assert_eq!(
+            parts.headers.get(header::CONTENT_TYPE).unwrap(),
+            "text/html; charset=utf-8"
+        );
+        let html = body_text(body).await;
+        assert!(html.contains("open.source@pointsav.com"));
+        assert!(html.contains("sw-masthead"));
+        assert!(html.contains(SoftwareSurface::Marketplace.trademark_line()));
+    }
+
     // ── Phase 4: GET /pricing ─────────────────────────────────────────────────
 
     #[tokio::test]
@@ -2032,6 +2183,40 @@ esac
         let scratch = scratch_dir("checkout-500");
         let state = test_state_at(&scratch, scratch.join("no-such-products.yaml"));
         let resp = checkout_page(State(state), Path("os-console".to_string())).await;
+        assert_eq!(resp.status(), StatusCode::INTERNAL_SERVER_ERROR);
+        let _ = fs::remove_dir_all(&scratch);
+    }
+
+    // ── S136: GET /software/:product_id ───────────────────────────────────────
+
+    #[tokio::test]
+    async fn product_detail_page_renders_known_product() {
+        let scratch = scratch_dir("product-detail-ok");
+        let state = test_state_full(&scratch);
+        let resp = product_detail_page(State(state), Path("os-mediakit".to_string())).await;
+        assert_eq!(resp.status(), StatusCode::OK);
+        let html = body_text(resp.into_body()).await;
+        assert!(html.contains("MediaKit OS"));
+        assert!(html.contains("BETA \u{00b7} free"));
+        assert!(html.contains("v1.2.0"));
+        assert!(html.contains("sw-masthead"));
+        let _ = fs::remove_dir_all(&scratch);
+    }
+
+    #[tokio::test]
+    async fn product_detail_page_404_for_unknown_product() {
+        let scratch = scratch_dir("product-detail-404");
+        let state = test_state_full(&scratch);
+        let resp = product_detail_page(State(state), Path("no-such-product".to_string())).await;
+        assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+        let _ = fs::remove_dir_all(&scratch);
+    }
+
+    #[tokio::test]
+    async fn product_detail_page_500_when_catalog_unavailable() {
+        let scratch = scratch_dir("product-detail-500");
+        let state = test_state_at(&scratch, scratch.join("no-such-products.yaml"));
+        let resp = product_detail_page(State(state), Path("os-console".to_string())).await;
         assert_eq!(resp.status(), StatusCode::INTERNAL_SERVER_ERROR);
         let _ = fs::remove_dir_all(&scratch);
     }
