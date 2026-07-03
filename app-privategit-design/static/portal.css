@@ -1,3 +1,8 @@
+/*
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ * SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+ */
+
 /* PointSav Design System portal layout (D6/D7).
    Depends on tokens.css for --cds-* custom properties. */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }

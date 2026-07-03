@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 //! RFC 9162 v2 Merkle consistency proofs (compatible with C2SP
 //! tlog-tiles per `~/Foundry/conventions/worm-ledger-design.md` §3 D1).
 //!

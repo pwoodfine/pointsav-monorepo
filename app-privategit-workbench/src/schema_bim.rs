@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 /// BIM schema handlers — IFC-SPF files (*.ifc) and BIM JSON manifests (*.bim.json).
 ///
 /// GET /api/bim/files           → list *.ifc + *.bim.json files under configured roots

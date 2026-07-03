@@ -1,4 +1,7 @@
 #![allow(clippy::unit_arg)]
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 //! criterion benchmarks for the kernel-side ledger consultation
 //! latency budget. Master 4b deliverable from
 //! `~/Foundry/clones/project-system/.claude/inbox-archive.md`.

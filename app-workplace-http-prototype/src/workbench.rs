@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 // Workbench file-browser and editor handlers, nested at /workbench/ in the prototype.
 // Handler logic ported from app-privategit-workbench/src/main.rs (read-only vendor source).
 

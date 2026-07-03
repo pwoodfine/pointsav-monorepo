@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 """
 Part 2: collect tab order, touch targets, contrast, tokens, meta.
 Fixes the arrow-function/arguments issue from part 1.

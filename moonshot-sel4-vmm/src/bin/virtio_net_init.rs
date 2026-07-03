@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 // Phase H5 — VirtIO-net MMIO device probe and init via seL4 frame mapping.
 //
 // Demonstrates the full MMIO path for a non-UART peripheral:

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 /// service-ingress — mTLS Phase A public ingress for os-console.
 ///
 /// Listens on 0.0.0.0:8443 (HTTPS/TLS 1.3). On first start, auto-generates a

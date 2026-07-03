@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: FSL-1.1-ALv2
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 //! Content mounts — the ordered set of source directories an instance serves.
 //!
 //! The first `primary` mount is editable (articles); `guide` mounts are

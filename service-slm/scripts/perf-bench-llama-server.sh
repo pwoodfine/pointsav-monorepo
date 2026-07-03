@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 # perf-bench-llama-server.sh — Tier A (local llama-server) throughput / throttle gate.
 #
 # Catches the throughput-regression class. On 2026-06-01 a cgroup MemoryMax +

@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 # Foundry workspace DataGraph feeder — module_id: foundry-workspace
 #
 # Scans known artifact paths in ~/Foundry and emits CORPUS_*.json into

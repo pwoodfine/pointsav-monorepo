@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 // seL4 BootInfo and IPC buffer types for AArch64.
 //
 // All sizes match seL4 v15.0.0-dev, KernelIsMCS=OFF, KernelSel4Arch=aarch64.

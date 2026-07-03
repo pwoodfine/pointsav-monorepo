@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 # eval-prepare.sh — Curate eval-holdout candidates from the training corpus.
 #
 # Phase 1 (P1-1.2-prep) of learning-loop-master-plan-2026-05-18.md.

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: FSL-1.1-ALv2
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 //! YAML frontmatter parsing.
 //!
 //! A content file is an optional `---`-delimited YAML block followed by a

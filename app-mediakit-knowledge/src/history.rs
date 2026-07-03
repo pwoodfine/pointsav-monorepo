@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: FSL-1.1-ALv2
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 //! Git-backed article history (git2 0.20).
 //!
 //! The content mount is itself a git repository (canonical per Doctrine §IV.e), so

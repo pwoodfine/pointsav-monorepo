@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 // ClaudeCloud adapter — relays to api.anthropic.com/v1/messages with streaming.
 // Credential comes from the per-request X-Api-Key header; never stored in AppState.
 

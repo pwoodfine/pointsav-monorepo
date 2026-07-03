@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 // bim.js — partial-page navigation, SSE hot-reload, SchemaState
 // Hand-written; no HTMX dependency.
 

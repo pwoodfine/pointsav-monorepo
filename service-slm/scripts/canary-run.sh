@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 # canary-run.sh — Run the canary task set against the running Doorman.
 #
 # Phase 3 (P3-3.2) of learning-loop-master-plan-2026-05-18.md.

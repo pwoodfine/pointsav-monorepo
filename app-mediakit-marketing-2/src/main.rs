@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: FSL-1.1-ALv2
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 //! Marketing platform engine (rewrite) — binary entry.
 //!
 //! `app-mediakit-marketing-2 serve --content-dir <dir>` renders a tenant's

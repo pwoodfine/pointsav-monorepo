@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 # slm-chat.sh — proof-of-life chat REPL against the Doorman
 # Usage: ./slm-chat.sh [module_id]
 # Env:   SLM_DOORMAN_ENDPOINT (default http://127.0.0.1:9080)

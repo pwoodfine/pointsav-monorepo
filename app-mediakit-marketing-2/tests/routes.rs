@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: FSL-1.1-ALv2
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 //! Integration tests — exercise the full axum `Router` (handler → content →
 //! chrome) without binding a socket, via `tower::ServiceExt::oneshot`. Each
 //! test owns its own content/state fixtures (tempdirs); none depend on the

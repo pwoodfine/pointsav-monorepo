@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 # quality-probe.sh — Live flow + quality check for service-content and service-slm.
 # Run from the archive root: bash scripts/quality-probe.sh
 # No Tier B required — Tier A only.

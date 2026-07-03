@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: FSL-1.1-ALv2
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 //! Compile-time embedded static assets (CSS, JS, fonts, SVG).
 //!
 //! In release builds the `static/` tree is baked into the binary, so the

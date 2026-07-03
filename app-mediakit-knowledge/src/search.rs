@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: FSL-1.1-ALv2
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 //! Full-text search over the content corpus (tantivy 0.24, in-RAM).
 //!
 //! The index is built once at startup from the English documents and lives for

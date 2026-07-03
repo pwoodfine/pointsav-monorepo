@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: FSL-1.1-ALv2
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 //! Per-instance identity. The three wikis share one structure and differ only
 //! by brand accent (CSS, via `[data-instance]`) and these factual strings.
 //!

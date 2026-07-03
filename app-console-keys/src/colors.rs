@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 //! os-console design-system palette (Phase C-1): "Graphite & Molten Cyan".
 //!
 //! The six original `tc_*` helpers keep their exact signatures, so every existing

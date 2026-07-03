@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 //! moonshot-crdt — edit history: undo/redo + version lineage.
 //!
 //! Replaces the history/undo facilities of Loro / Yjs / Automerge. v0 is the local

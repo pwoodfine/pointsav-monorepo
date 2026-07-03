@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 // Phase H4 — ANSI cartridge status panel via serial PD IPC.
 //
 // Proves ANSI escape sequence rendering via the serial-PD IPC channel:

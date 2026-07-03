@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 //! SystemSpec — Rust-native equivalent of Microkit 2.2.0's
 //! system-description XML schema. Parsed from TOML on disk.
 //!

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 // Pipeline integration test: exercises the full chain in one pass.
 // filter chain (noise rejection + coerce_classification) →
 // LbugGraphStore::upsert_entities → query_context → count_all

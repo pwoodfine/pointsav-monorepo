@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 //! os-console seL4 rootserver — Phase H2a milestone.
 //!
 //! Pure Rust PD binary. Entry point is `_start`; no C in the PD.

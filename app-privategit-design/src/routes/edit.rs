@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 // D3 — WYSIWYG edit overlay: raw markdown GET + authenticated PUT save-back.
 
 use crate::state::AppState;

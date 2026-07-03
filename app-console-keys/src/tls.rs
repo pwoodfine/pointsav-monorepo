@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 use std::time::Duration;
 
 /// Build a blocking reqwest client with an optional trusted root PEM certificate.

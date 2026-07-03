@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: FSL-1.1-ALv2
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 //! The typed Section component vocabulary — the contract an AI author writes
 //! against, and the only set of building blocks a page may be composed from.
 //!

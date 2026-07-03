@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: FSL-1.1-ALv2
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 //! In-process route tests — exercise the full axum stack (handler →
 //! content::load_page_lang → shell::render_page) without binding a socket, via
 //! `tower::ServiceExt::oneshot`. Each test owns its content fixtures (a

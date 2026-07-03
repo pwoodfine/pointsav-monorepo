@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 import xml.etree.ElementTree as ET, sys
 ns = {'t': 'http://schemas.microsoft.com/exchange/services/2006/types'}
 try:

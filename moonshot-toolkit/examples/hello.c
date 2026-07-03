@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 /*
  * hello.c — Phase 1C minimal bare-metal AArch64 seL4 protection domain.
  *

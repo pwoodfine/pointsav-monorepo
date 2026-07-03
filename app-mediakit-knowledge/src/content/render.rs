@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: FSL-1.1-ALv2
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 //! Markdown rendering.
 //!
 //! Bodies are CommonMark (via comrak) with one platform extension: `[[slug]]`

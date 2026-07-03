@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 # Identity: Ingestion Gateway (Ground Control - v1.9 Surgical)
 GCP_IP="35.212.238.174" 
 REMOTE_USER="mathew"

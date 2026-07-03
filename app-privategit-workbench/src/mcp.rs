@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 /// MCP bridge — JSON-RPC 2.0 over HTTP POST /mcp.
 ///
 /// Implements the Model Context Protocol (MCP) server side for the three

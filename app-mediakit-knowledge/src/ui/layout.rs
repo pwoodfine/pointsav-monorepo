@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: FSL-1.1-ALv2
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 //! The continuous chrome that wraps every page: `<head>`, sitenotice, sticky
 //! white header, off-canvas mobile nav, and the institutional footer.
 //!

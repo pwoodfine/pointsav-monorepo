@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 // seL4 Microkit IPC types for AArch64 bare-metal Protection Domains.
 //
 // seL4 message info layout (AArch64, 64-bit word):

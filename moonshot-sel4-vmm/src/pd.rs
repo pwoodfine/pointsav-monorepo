@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 // Protection Domain event-loop trait and entry-point macro.
 //
 // Microkit PD protocol (from the seL4 Microkit manual):

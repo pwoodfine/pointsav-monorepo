@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 // Phase H2 — Serial PD + Console PD via seL4 IPC.
 //
 // Demonstrates the serial PD architectural pattern:

@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 # provision-data-disk.sh — Create the 8 GiB data QCOW2 for OLMo 7B weights.
 #
 # Produces: build/os-totebox-data.qcow2 (sparse QCOW2, up to 8 GiB)

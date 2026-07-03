@@ -1,4 +1,7 @@
 #!/bin/bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 # Git post-commit hook — send diff to Doorman /v1/shadow for apprenticeship capture.
 # Install: cp service-slm/scripts/git-post-commit-hook.sh .git/hooks/post-commit && chmod +x .git/hooks/post-commit
 # Runs asynchronously (&) so it never blocks the commit.

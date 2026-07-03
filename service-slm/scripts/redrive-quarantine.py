@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 """redrive-quarantine.py — move poison-queue apprenticeship briefs back to active queue.
 
 Targets queue-poison/ (retry-exhausted dead-letter) — not the legacy quarantine/ dir

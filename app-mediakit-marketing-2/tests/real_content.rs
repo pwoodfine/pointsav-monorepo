@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: FSL-1.1-ALv2
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 //! Validates every real, shipped content file — not just test fixtures.
 //!
 //! Added 2026-07-02 after a real bug reached a shadow deploy undetected: an

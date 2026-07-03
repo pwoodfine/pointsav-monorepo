@@ -1,4 +1,7 @@
 #!/bin/bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 # launch-console.sh — Linux Mint launcher for os-console
 #
 # Starts the GCE VM service tunnel if not running, opens os-console,

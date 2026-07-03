@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 //! moonshot-editor — file-tree virtualization core.
 //!
 //! Replaces react-arborist / react-window (tree virtualization) and the current

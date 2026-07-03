@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: FSL-1.1-ALv2
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 //! Chrome shell: masthead, hero band, footer, mobile drawer. Tenant-dispatched
 //! through [`Tenant`] so one binary serves two brands with the same chrome
 //! shape and different marks/links/legal text — the Sovereign Editorial

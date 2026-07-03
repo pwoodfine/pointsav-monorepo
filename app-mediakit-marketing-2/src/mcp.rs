@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: FSL-1.1-ALv2
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 //! Native JSON-RPC 2.0 MCP surface — no vendor SDK, matching the retired
 //! engine's contract. Exposes the typed section vocabulary and the
 //! read/validate/propose/list-pending operations to an AI authoring agent.

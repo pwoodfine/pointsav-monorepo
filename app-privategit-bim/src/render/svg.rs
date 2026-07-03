@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 use serde_json::Value;
 
 pub fn render_kp_zone_svg_from_value(val: &Value) -> String {

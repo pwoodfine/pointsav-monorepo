@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: FSL-1.1-ALv2
+# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 # build-image.sh — Build the os-mediakit Ubuntu 24.04 QCOW2 guest image.
 #
 # Produces: build/os-mediakit.qcow2 (self-contained Ubuntu 24.04, ~2 GiB)

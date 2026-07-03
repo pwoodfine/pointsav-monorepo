@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 // P0.2 — click-to-copy token names on the /tokens gallery page.
 (function () {
   document.addEventListener('click', function (e) {

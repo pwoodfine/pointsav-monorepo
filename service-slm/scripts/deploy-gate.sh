@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 # deploy-gate.sh — Phase D deploy gate: base-vs-adapter output delta probe.
 #
 # GAP-4 / D3 remediation: proves the adapter is NOT a no-op before any

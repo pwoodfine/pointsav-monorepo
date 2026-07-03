@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 // Phase H6 — VirtIO-net device locate + virtqueue ring setup + STATUS to DRIVER_OK.
 //
 // Phase H5 showed DEVICE_ID=0 at slot 0: QEMU virt allocates VirtIO-mmio devices from

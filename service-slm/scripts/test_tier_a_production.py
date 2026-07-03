@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 """
 Test Tier A extraction using the exact production code path:
   - EXTRACTION_SYSTEM_PROMPT from service-content/src/main.rs (lines 29-73)

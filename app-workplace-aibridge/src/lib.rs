@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 //! app-workplace-aibridge — the AI section-edit bridge core.
 //!
 //! Implements the workbench's headline feature (req #4): highlight a section, hand

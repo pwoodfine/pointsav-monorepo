@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 # edit-live-content.sh — Open the correct deployment HTML in $EDITOR.
 #
 # This is the ONLY correct way to make live content changes to

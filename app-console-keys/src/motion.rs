@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 //! The motion engine (Phase C-1).
 //!
 //! Pure, deterministic easing sampled by the chassis's existing ~16ms redraw

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: FSL-1.1-ALv2
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 //! File-based AI-proposal review queue. Reimplements the retired engine's
 //! stage→list→approve pattern fresh: `propose` NEVER writes into the content
 //! tree — only `approve` does, and `approve` is only ever called by an
