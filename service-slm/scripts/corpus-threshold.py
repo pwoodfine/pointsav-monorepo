@@ -335,7 +335,7 @@ def main() -> None:
     if not any_triggered:
         print("  No adapters at threshold. No training triggered.")
 
-    sys.exit(0)
+    sys.exit(0 if any_triggered else 1)
 
 
 if __name__ == "__main__":
