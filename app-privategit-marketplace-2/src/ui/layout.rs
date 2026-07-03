@@ -213,7 +213,6 @@ pub fn footer(surface: SoftwareSurface) -> Markup {
                         h2 { "Catalog" }
                         ul {
                             li { a href="/software" { "Products" } }
-                            li { a href="/software#downloads" { "Downloads" } }
                             li { a href="/licensing" { "Pricing" } }
                             li { a href="/licensing" { "Support" } }
                         }

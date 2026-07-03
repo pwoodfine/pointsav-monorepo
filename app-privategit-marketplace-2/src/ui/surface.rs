@@ -33,6 +33,14 @@ impl SoftwareSurface {
     }
 
     /// Primary masthead sub-bar links (also drive the mobile drawer).
+    ///
+    /// Phase 3 (nav restructuring): stays a flat list — no dropdown/mega-menu is
+    /// needed for a single, small, two-tier product catalog (the public storefront
+    /// sells os-* products only; the earlier 4-family dropdown design from the
+    /// original audit was corrected once the ratified three-path model was
+    /// checked). `Downloads` used to anchor at `#downloads`, a section id that no
+    /// longer exists now that the catalog groups by license tier (`#commercial`/
+    /// `#fsl`) rather than free/paid status — points at the bare page instead.
     pub fn nav_links(self) -> &'static [NavLink] {
         match self {
             SoftwareSurface::Marketplace => &[
@@ -43,10 +51,6 @@ impl SoftwareSurface {
                 NavLink {
                     label: "Licensing",
                     href: "/licensing",
-                },
-                NavLink {
-                    label: "Downloads",
-                    href: "/software#downloads",
                 },
                 NavLink {
                     label: "Documentation",
