@@ -388,11 +388,28 @@ h1, h2 {
   .bim-header__lockup {
     display: none;
   }
+  .bim-header__inner {
+    gap: 0.625rem;
+    padding: 0 0.75rem;
+  }
   .bim-search {
-    max-width: 11rem;
+    max-width: 8.5rem;
+    min-width: 0;
+  }
+  .bim-search__form {
+    padding: 0 0.25rem 0 0.5rem;
   }
   .bim-search__button {
     padding: 0 0.5rem;
+  }
+}
+
+@media (max-width: 420px) {
+  .bim-search__icon {
+    display: none;
+  }
+  .bim-search {
+    max-width: 6.5rem;
   }
 }
 
