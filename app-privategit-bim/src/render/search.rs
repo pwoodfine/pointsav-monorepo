@@ -116,12 +116,11 @@ fn highlight_snippet(text: &str, tokens: &[String]) -> String {
 pub fn render_search_results(query: &str, state: &AppState) -> String {
     let trimmed = query.trim();
     if trimmed.is_empty() {
-        return format!(
-            r#"<div class="bim-search-page">
+        return r#"<div class="bim-search-page">
   <h1>Search</h1>
   <p class="bim-empty">Enter a search term above — categories, entity slugs, IFC classes, and research articles are all searched.</p>
 </div>"#
-        );
+            .to_string();
     }
 
     let tokens: Vec<String> = trimmed
