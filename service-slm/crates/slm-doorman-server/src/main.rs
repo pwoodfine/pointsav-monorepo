@@ -766,12 +766,30 @@ fn build_doorman() -> anyhow::Result<Doorman> {
         info!("SLM_FORCE_BROKER_MODE=true: Tier A disabled; all inference routes to Yo-Yo");
         None
     } else {
+        let local_endpoint = std::env::var("SLM_LOCAL_ENDPOINT")
+            .unwrap_or_else(|_| "http://127.0.0.1:8080".to_string());
+        let local_default_model = std::env::var("SLM_LOCAL_MODEL")
+            .unwrap_or_else(|_| "olmo-3-7b-instruct".to_string());
+        // Surfaces SLM_LOCAL_MODEL resolution at boot — this is a response-metadata/
+        // audit-ledger LABEL only (llama-server ignores the request's "model" field
+        // for routing), but it has drifted silently before: 3 separate env sources
+        // (main unit Environment=, EnvironmentFile=, and a drop-in override) can each
+        // set this var, and a `daemon-reload` without a following `restart` leaves an
+        // already-running process on a stale value that `systemctl show` no longer
+        // reflects (confirmed live 2026-07-03: process env still said
+        // OLMo-2-1124-7B-Instruct-Q4_K_M.gguf while the drop-in and `systemctl show`
+        // both correctly resolved to OLMo-3-7B-Instruct). Logging it here makes that
+        // class of drift visible in journalctl without manual /proc/<pid>/environ
+        // inspection.
+        info!(
+            default_model = %local_default_model,
+            endpoint = %local_endpoint,
+            "Local tier (Tier A) model label resolved at startup"
+        );
         Some(
             LocalTierClient::new(LocalTierConfig {
-                endpoint: std::env::var("SLM_LOCAL_ENDPOINT")
-                    .unwrap_or_else(|_| "http://127.0.0.1:8080".to_string()),
-                default_model: std::env::var("SLM_LOCAL_MODEL")
-                    .unwrap_or_else(|_| "olmo-3-7b-instruct".to_string()),
+                endpoint: local_endpoint,
+                default_model: local_default_model,
             })
             .with_semaphores(Arc::clone(&total_sem), Arc::clone(&background_sem)),
         )
