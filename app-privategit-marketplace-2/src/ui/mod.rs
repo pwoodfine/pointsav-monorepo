@@ -12,6 +12,7 @@ pub mod checkout;
 pub mod disclaimer;
 pub mod layout;
 pub mod order;
+pub mod pricing;
 pub mod surface;
 pub mod tokens;
 
@@ -20,4 +21,5 @@ pub use checkout::checkout_markup;
 pub use disclaimer::{disclaimer_markup, disclosure_body};
 pub use layout::{render_page, wrap_static_html};
 pub use order::{order_confirmed_markup, order_not_found_markup, order_pending_markup};
+pub use pricing::pricing_markup;
 pub use surface::SoftwareSurface;

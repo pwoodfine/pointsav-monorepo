@@ -49,6 +49,10 @@ impl SoftwareSurface {
                     href: "/software",
                 },
                 NavLink {
+                    label: "Pricing",
+                    href: "/pricing",
+                },
+                NavLink {
                     label: "Licensing",
                     href: "/licensing",
                 },
