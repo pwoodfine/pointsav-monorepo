@@ -72,10 +72,7 @@ async fn main() {
     eprintln!("app-privategit-design edit token: {}", edit_token);
 
     let mut jinja = Environment::new();
-    jinja.set_loader(path_loader(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/templates"
-    )));
+    jinja.set_loader(path_loader(&cfg.templates_dir));
     jinja.add_filter("to_title", |s: String| -> String { vault::to_title(&s) });
     let env = Arc::new(jinja);
 
