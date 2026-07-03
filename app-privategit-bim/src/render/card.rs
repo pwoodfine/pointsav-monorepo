@@ -267,6 +267,11 @@ pub fn render_key_plans(state: &AppState) -> String {
         let area_sf = val.get("area_sf").and_then(|v| v.as_u64()).unwrap_or(0);
 
         let svg = super::svg::render_kp_zone_svg_from_value(&val);
+        let no_furniture_note = if val.get("zone1_depth_m").and_then(|v| v.as_f64()).is_none() {
+            r#"<div class="bim-kp-note">Floor-scale plan &mdash; no zone/furniture layout modeled at this program level</div>"#
+        } else {
+            ""
+        };
 
         cards.push_str(&format!(
             r#"<div class="bim-kp-card">
@@ -275,6 +280,7 @@ pub fn render_key_plans(state: &AppState) -> String {
     <div class="bim-kp-name">{display_name}</div>
     <div class="bim-kp-meta"><span class="bim-tag">{internal_code}</span> <span class="bim-cat">{category}</span></div>
     <div class="bim-kp-area">{area_sf} SF</div>
+    {no_furniture_note}
   </div>
 </div>"#,
             display_name = esc(display_name),
@@ -282,6 +288,7 @@ pub fn render_key_plans(state: &AppState) -> String {
             category = esc(category),
             area_sf = area_sf,
             svg = svg,
+            no_furniture_note = no_furniture_note,
         ));
     }
 
