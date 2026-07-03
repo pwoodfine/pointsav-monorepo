@@ -424,14 +424,13 @@ fn render_category_cards(state: &AppState) -> String {
         let count = count_entities_in_file(state, &cat.slug);
         out.push_str(&format!(
             r#"<a class="bim-category-card bim-nav-link" href="/tokens/{slug}" data-path="/tokens/{slug}">
-  <div class="bim-category-card-name">{display}</div>
-  <div class="bim-category-card-desc">{desc}</div>
-  <div class="bim-category-card-count">{count} entities</div>
+  <span class="bim-category-card-name">{display}</span>
+  <span class="bim-category-card-count">{count} {entity_word}</span>
 </a>"#,
             slug = cat.slug,
             display = esc(&cat.display_name),
-            desc = esc(&cat.card_desc),
             count = count,
+            entity_word = if count == 1 { "entity" } else { "entities" },
         ));
     }
     out
