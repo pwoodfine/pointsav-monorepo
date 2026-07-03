@@ -9,7 +9,7 @@ html, body {
   padding: 0;
   height: 100%;
   font-family: var(--bim-font-sans, 'IBM Plex Sans'), system-ui, sans-serif;
-  background: #ffffff;
+  background: var(--bim-bg-page, #ffffff);
   color: var(--bim-fg, #111827);
 }
 
@@ -26,64 +26,118 @@ h1, h2 {
   min-height: 100vh;
 }
 
-.bim-header-spacer {
-  flex: 1;
-}
-
-/* Topbar (ported from app-orchestration-bim) */
-.bim-topbar {
+/* Utility bar — light strip above the header linking to sibling
+   Woodfine properties (matches the wiki instances' pattern). */
+.bim-utility {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
-  height: var(--bim-topbar-height, 48px);
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0 1.5rem;
-  background: var(--bim-topbar-bg, #164679);
-  color: var(--bim-topbar-fg, #fff);
-  z-index: 100;
+  height: var(--bim-utility-height);
+  background: var(--bim-bg-subtle, #F7F9FA);
+  border-bottom: 1px solid var(--bim-border, #E6E7E8);
+  z-index: 101;
 }
 
-.bim-topbar__brand {
+.bim-utility__inner {
   display: flex;
   align-items: center;
-  color: #fff;
+  height: 100%;
+  gap: 1.5rem;
+  padding: 0 1.5rem;
+}
+
+.bim-utility__home {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--bim-fg-secondary, #374151);
   text-decoration: none;
 }
 
-.bim-topbar__logo {
-  width: 96px;
-  height: 24px;
-  color: #fff;
+.bim-utility__home:hover {
+  color: var(--bim-accent, #164679);
 }
 
-.bim-topbar__sep {
-  width: 1px;
-  height: 1rem;
-  background: var(--bim-topbar-fg-muted, rgba(255,255,255,0.35));
+.bim-utility__nav {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  margin-left: auto;
 }
 
-.bim-topbar__label {
-  font-family: var(--bim-font-mono);
+.bim-utility__link {
   font-size: 0.75rem;
-  letter-spacing: 0.08em;
+  color: var(--bim-fg-muted, #6B7280);
+  text-decoration: none;
+}
+
+.bim-utility__link:hover {
+  color: var(--bim-accent, #164679);
+}
+
+/* Header — light chrome (the wiki's proven pattern for this site type,
+   not a solid-navy app-shell bar). */
+.bim-header {
+  position: fixed;
+  top: var(--bim-utility-height);
+  left: 0;
+  right: 0;
+  height: var(--bim-header-height);
+  display: flex;
+  align-items: center;
+  background: var(--bim-bg-page, #fff);
+  border-bottom: 1px solid var(--bim-border, #E6E7E8);
+  z-index: 100;
+}
+
+.bim-header__inner {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  width: 100%;
+  padding: 0 1.5rem;
+}
+
+.bim-header__brand {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  color: var(--bim-fg, #111827);
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
+.bim-header__logo {
+  width: 76px;
+  height: 19px;
+  color: var(--bim-accent, #164679);
+}
+
+.bim-header__lockup {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+  border-left: 1px solid var(--bim-border, #E6E7E8);
+  padding-left: 0.625rem;
+}
+
+.bim-header__word {
+  display: none; /* the wordmark SVG already renders "Woodfine" */
+}
+
+.bim-header__subtitle {
+  font-family: var(--bim-font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--bim-topbar-fg-muted, rgba(255,255,255,0.85));
-}
-
-.bim-topbar__meta {
-  font-family: var(--bim-font-mono);
-  font-size: 0.75rem;
-  color: var(--bim-topbar-fg-muted, rgba(255,255,255,0.65));
+  color: var(--bim-fg-muted, #6B7280);
 }
 
 .bim-topbar__toggle {
   display: none;
   background: transparent;
   border: none;
-  color: #fff;
+  color: var(--bim-fg, #111827);
   font-size: 1.25rem;
   line-height: 1;
   padding: 0.5rem;
@@ -91,10 +145,108 @@ h1, h2 {
   cursor: pointer;
 }
 
+/* Search */
+.bim-search {
+  flex: 1;
+  max-width: 30rem;
+}
+
+.bim-search__label {
+  position: absolute;
+  width: 1px; height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+.bim-search__form {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 2rem;
+  padding: 0 0.25rem 0 0.625rem;
+  background: var(--bim-bg-subtle, #F7F9FA);
+  border: 1px solid var(--bim-border, #E6E7E8);
+  border-radius: var(--bim-radius-md, 4px);
+}
+
+.bim-search__icon {
+  width: 1rem;
+  height: 1rem;
+  color: var(--bim-fg-muted, #6B7280);
+  flex-shrink: 0;
+}
+
+.bim-search__input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  font-family: var(--bim-font-sans);
+  font-size: 0.8125rem;
+  color: var(--bim-fg, #111827);
+}
+
+.bim-search__input:focus {
+  outline: none;
+}
+
+.bim-search__input::placeholder {
+  color: var(--bim-fg-faint, #9CA3AF);
+}
+
+.bim-search__button {
+  height: 1.75rem;
+  padding: 0 0.75rem;
+  font-family: var(--bim-font-display);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #fff;
+  background: var(--bim-accent, #164679);
+  border: none;
+  border-radius: var(--bim-radius-sm, 2px);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.bim-search__button:hover {
+  background: var(--bim-accent-hover, #0F2E54);
+}
+
+/* Theme toggle */
+.bim-theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  flex-shrink: 0;
+  color: var(--bim-fg-secondary, #374151);
+  background: transparent;
+  border: 1px solid var(--bim-border, #E6E7E8);
+  border-radius: var(--bim-radius-md, 4px);
+  cursor: pointer;
+}
+
+.bim-theme-toggle:hover {
+  border-color: var(--bim-accent, #164679);
+  color: var(--bim-accent, #164679);
+}
+
+.bim-theme-toggle__sun,
+.bim-theme-toggle__moon {
+  width: 1.125rem;
+  height: 1.125rem;
+}
+
+.bim-theme-toggle__moon { display: none; }
+:root[data-theme="dark"] .bim-theme-toggle__sun { display: none; }
+:root[data-theme="dark"] .bim-theme-toggle__moon { display: block; }
+
 .bim-shell {
   display: flex;
   flex: 1;
-  margin-top: var(--bim-topbar-height, 48px);
+  margin-top: var(--bim-header-stack);
 }
 
 /* Sidebar (ported from app-orchestration-bim) */
@@ -105,7 +257,7 @@ h1, h2 {
   border-right: 1px solid var(--bim-border, #E6E7E8);
   padding: 1.5rem 0;
   position: fixed;
-  top: var(--bim-topbar-height, 48px);
+  top: var(--bim-header-stack);
   bottom: 0;
   overflow-y: auto;
 }
@@ -162,12 +314,12 @@ h1, h2 {
   }
   .bim-side-nav {
     position: fixed;
-    top: var(--bim-topbar-height, 48px);
+    top: var(--bim-header-stack);
     left: 0;
     right: 0;
     bottom: auto;
     width: auto;
-    max-height: calc(100vh - var(--bim-topbar-height, 48px));
+    max-height: calc(100vh - var(--bim-header-stack));
     overflow-y: auto;
     display: none;
     border-right: none;
@@ -185,20 +337,39 @@ h1, h2 {
   .bim-nav-link {
     padding: 0.625rem 0.5rem;
   }
+  .bim-search {
+    max-width: 16rem;
+  }
+}
+
+/* Utility bar folds away on smaller screens (its network links move into
+   the mobile drawer instead — see sidebar.rs); header-stack shrinks to
+   just the header's own height once the utility bar is gone. */
+.bim-nav-group--mobile-only {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  :root {
+    --bim-header-stack: var(--bim-header-height);
+  }
+  .bim-utility {
+    display: none;
+  }
+  .bim-nav-group--mobile-only {
+    display: block;
+  }
 }
 
 @media (max-width: 600px) {
-  .bim-topbar__meta {
+  .bim-header__lockup {
     display: none;
   }
-}
-
-@media (max-width: 420px) {
-  .bim-topbar__label {
-    display: none;
+  .bim-search {
+    max-width: 11rem;
   }
-  .bim-topbar__sep {
-    display: none;
+  .bim-search__button {
+    padding: 0 0.5rem;
   }
 }
 
@@ -211,10 +382,16 @@ h1, h2 {
   }
 }
 
+@media (max-width: 420px) {
+  .bim-search__button-label {
+    display: none;
+  }
+}
+
 /* Breadcrumbs */
 .bim-breadcrumbs {
   font-size: 0.875rem;
-  color: #374151;
+  color: var(--bim-fg-secondary, #374151);
   margin-bottom: 1rem;
 }
 
@@ -239,7 +416,7 @@ h1, h2 {
 }
 
 .bim-home-subtitle {
-  color: #374151;
+  color: var(--bim-fg-secondary, #374151);
   margin-bottom: 2rem;
 }
 
@@ -278,13 +455,13 @@ h1, h2 {
 
 .bim-category-card-desc {
   font-size: 0.8125rem;
-  color: #374151;
+  color: var(--bim-fg-secondary, #374151);
   margin-bottom: 0.5rem;
 }
 
 .bim-category-card-count {
   font-size: 0.75rem;
-  color: #6B7280;
+  color: var(--bim-fg-muted, #6B7280);
 }
 
 /* Category page */
@@ -301,13 +478,13 @@ h1, h2 {
 }
 
 .bim-intro {
-  color: #374151;
+  color: var(--bim-fg-secondary, #374151);
   margin-bottom: 0.75rem;
 }
 
 .bim-ifc-anchor, .bim-elements {
   font-size: 0.875rem;
-  color: #374151;
+  color: var(--bim-fg-secondary, #374151);
   margin-bottom: 0.5rem;
 }
 
@@ -363,19 +540,19 @@ h1, h2 {
 }
 
 .bim-cat {
-  color: #374151;
+  color: var(--bim-fg-secondary, #374151);
 }
 
 .bim-kp-area {
   font-size: 0.75rem;
-  color: #6B7280;
+  color: var(--bim-fg-muted, #6B7280);
 }
 
 .bim-kp-note {
   margin-top: 0.375rem;
   font-size: 0.6875rem;
   font-style: italic;
-  color: #6B7280;
+  color: var(--bim-fg-muted, #6B7280);
 }
 
 /* Furniture */
@@ -447,13 +624,13 @@ h1, h2 {
   margin-top: 0.25rem;
   font-family: var(--bim-font-mono);
   font-size: 0.75rem;
-  color: #6B7280;
+  color: var(--bim-fg-muted, #6B7280);
 }
 
 .bim-markdown {
   max-width: 72ch;
   line-height: 1.6;
-  color: #374151;
+  color: var(--bim-fg-secondary, #374151);
 }
 
 .bim-markdown h1 {
@@ -519,7 +696,7 @@ h1, h2 {
 /* Empty state */
 .bim-empty {
   padding: 2rem;
-  color: #374151;
+  color: var(--bim-fg-secondary, #374151);
 }
 
 /* Editor */
@@ -579,20 +756,20 @@ h1, h2 {
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #6B7280;
+  color: var(--bim-fg-muted, #6B7280);
   margin: 0 0 0.5rem;
 }
 .bim-hero__statline {
   font-size: 1.5rem;
   font-weight: 600;
-  color: #111827;
+  color: var(--bim-fg, #111827);
   line-height: 1.3;
   margin: 0 0 1rem;
 }
 .bim-hero__lead {
   font-size: 1rem;
   line-height: 1.6;
-  color: #374151;
+  color: var(--bim-fg-secondary, #374151);
   max-width: 72ch;
   margin: 0;
 }
@@ -609,7 +786,7 @@ h1, h2 {
 }
 .bim-article p {
   line-height: 1.7;
-  color: #374151;
+  color: var(--bim-fg-secondary, #374151);
   margin: 0 0 1rem;
 }
 .bim-article a {
@@ -619,7 +796,7 @@ h1, h2 {
 .bim-article ul {
   padding-left: 1.5rem;
   line-height: 1.7;
-  color: #374151;
+  color: var(--bim-fg-secondary, #374151);
 }
 .bim-article li {
   margin-bottom: 0.5rem;
