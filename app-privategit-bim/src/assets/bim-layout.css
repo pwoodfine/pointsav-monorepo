@@ -624,21 +624,78 @@ h1, h2 {
 .bim-research-item a {
   display: block;
   padding: 0.875rem 1rem;
-  border: 1px solid #E6E7E8;
+  border: 1px solid var(--bim-border, #E6E7E8);
   border-radius: 2px;
   color: inherit;
   text-decoration: none;
 }
 
 .bim-research-item a:hover {
-  border-color: #164679;
+  border-color: var(--bim-accent, #164679);
 }
 
 .bim-research-item__title {
   display: block;
   font-family: var(--bim-font-display);
   font-size: 1.0625rem;
-  color: #164679;
+  color: var(--bim-accent, #164679);
+}
+
+/* Search results — same card treatment as research-index items */
+.bim-search-page__meta {
+  color: var(--bim-fg-muted, #6B7280);
+  margin-bottom: 1.5rem;
+}
+
+.bim-search-results {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.bim-search-result {
+  display: block;
+  padding: 0.875rem 1rem;
+  border: 1px solid var(--bim-border, #E6E7E8);
+  border-radius: 2px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.bim-search-result:hover {
+  border-color: var(--bim-accent, #164679);
+}
+
+.bim-search-result__kind {
+  display: block;
+  font-family: var(--bim-font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--bim-fg-muted, #6B7280);
+  margin-bottom: 0.25rem;
+}
+
+.bim-search-result__title {
+  display: block;
+  font-family: var(--bim-font-display);
+  font-size: 1.0625rem;
+  color: var(--bim-accent, #164679);
+}
+
+.bim-search-result__snippet {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.8125rem;
+  color: var(--bim-fg-secondary, #374151);
+  line-height: 1.5;
+}
+
+.bim-search-result__snippet mark {
+  background: var(--bim-accent-subtle, #E8EFF7);
+  color: var(--bim-fg, #111827);
+  border-radius: 2px;
+  padding: 0 0.1em;
 }
 
 .bim-research-item__slug {

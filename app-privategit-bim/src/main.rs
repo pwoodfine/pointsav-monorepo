@@ -52,6 +52,7 @@ async fn main() {
             "/research/{slug}",
             get(routes::research::research_item_handler),
         )
+        .route("/search", get(routes::search::search_handler))
         .route("/edit/{slug}", get(routes::editor::edit_get))
         .route("/edit/{slug}", post(routes::editor::edit_post))
         // Fragment routes (content-only; same handlers, X-Fragment header also works)
