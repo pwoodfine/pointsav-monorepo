@@ -55,7 +55,7 @@ pub fn page_shell(title: &str, active_path: &str, content: &str, state: &AppStat
         <p class="bim-footer__heading">Woodfine BIM Object Library</p>
         <ul class="bim-footer__list">
           <li>Specification BIM Objects for the built environment</li>
-          <li>{tc} BIM Object categories &middot; {comp} components &middot; {rc} research entries</li>
+          <li>{tc} BIM Object categories &middot; {comp} components &middot; {rc} research&nbsp;entries</li>
           <li>IFC&nbsp;4.3 (ISO&nbsp;16739-1:2024) &middot; Uniclass&nbsp;2015 &middot; DTCG</li>
           <li>BIM Object data licensed <strong>Apache-2.0</strong></li>
         </ul>
