@@ -572,7 +572,7 @@ h1, h2 {
   padding: 0;
   margin: 0;
   font-size: 0.8125rem;
-  line-height: 1.8;
+  line-height: 1.6;
 }
 .bim-footer__list a {
   color: #a8c8f8;
@@ -596,6 +596,8 @@ h1, h2 {
   margin-bottom: 0;
 }
 .bim-footer__trademark {
-  color: #6B7280;
+  max-width: 72ch;
+  font-size: 0.6875rem;
+  color: #6f6f6f;
   line-height: 1.5;
 }
