@@ -71,6 +71,33 @@ def canonical_base_model(default: str = "allenai/OLMo-3-7B-Instruct") -> str:
     return default
 
 
+def assert_checkpoint_rank_compatible(checkpoint_dir: str, expected_r: int, expected_alpha: int) -> None:
+    """Fail loudly if `checkpoint_dir`'s adapter_config.json rank/alpha don't match the
+    values this run is about to construct the model with — a PEFT `size mismatch` during
+    `resume_from_checkpoint` otherwise surfaces as a 30+ line stack trace with no indication
+    of which two numbers actually disagree (see 2026-07-03 apprenticeship-pointsav-incremental
+    r=16-checkpoint vs r=32-run crash)."""
+    config_path = os.path.join(checkpoint_dir, "adapter_config.json")
+    try:
+        with open(config_path) as fh:
+            saved = json.load(fh)
+    except (OSError, json.JSONDecodeError) as e:
+        print(f"[ERROR] could not read {config_path} to verify rank compatibility: {e}", file=sys.stderr)
+        sys.exit(1)
+    saved_r = saved.get("r")
+    saved_alpha = saved.get("lora_alpha")
+    if saved_r != expected_r or saved_alpha != expected_alpha:
+        print(
+            f"[ERROR] checkpoint rank mismatch: {checkpoint_dir} was saved with "
+            f"r={saved_r} alpha={saved_alpha}, but this run is configured for "
+            f"r={expected_r} alpha={expected_alpha}. Resuming would crash with a PEFT "
+            f"size-mismatch on every layer. Either point --output-dir at a fresh directory "
+            f"or align this run's LoRA rank with the existing checkpoint.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+
 # LoRA hyperparameters for OLMo 7B
 # r=32/alpha=64: a sound default for 7B preference LoRA (r=16-32, alpha=2r). Rank is a minor
 # lever vs all-linear targeting / LR / data quality (verified research 2026-06-20).
@@ -97,6 +124,15 @@ BETA = 0.1  # DPO default. Prior 0.5 justification (empty-"[]" rejected) is obso
 # epochs on a ~1-2k example corpus.
 SFT_LEARNING_RATE = 2e-4   # was 2e-5 (full-FT default); LoRA-SFT band is 1e-4..3e-4
 SFT_NUM_EPOCHS = 2
+# R1 (BRIEF-flow-quality-audit.md, commit f85e6711, 2026-07-01): alpha/r=0.5 per Databricks
+# OLMo-3 LoRA guidance, not the 2.0 ratio LORA_R/LORA_ALPHA above use for the real DPO/SimPO
+# preference path. Kept as a separate constant pair (not a LORA_R/LORA_ALPHA overwrite) because
+# run_sft_training() below shares this module with run_training()'s real preference path, which
+# deliberately keeps r=32/alpha=64 — see the LORA_R comment above. Must match
+# run-sft-training.py's LORA_R/LORA_ALPHA exactly, since both scripts write/resume checkpoints
+# in the same production adapter directory (apprenticeship-pointsav-incremental).
+SFT_LORA_R = 16
+SFT_LORA_ALPHA = 8
 
 # System message wrapped around every SFT example so the training prompt matches
 # the exact system+user shape the model conditions on at inference. Mirrors
@@ -721,6 +757,7 @@ def run_training(records: list[dict], base_model: str, output_dir: str, dry_run:
                           file=sys.stderr)
                     stale = True
             if not stale:
+                assert_checkpoint_rank_compatible(candidate, LORA_R, LORA_ALPHA)
                 resume_ckpt = candidate
                 print(f"[train] resuming from checkpoint: {resume_ckpt}")
             else:
@@ -846,8 +883,8 @@ def run_sft_training(records: list[dict], base_model: str, output_dir: str, dry_
 
     peft_config = LoraConfig(
         task_type=TaskType.CAUSAL_LM,
-        r=LORA_R,
-        lora_alpha=LORA_ALPHA,
+        r=SFT_LORA_R,
+        lora_alpha=SFT_LORA_ALPHA,
         lora_dropout=LORA_DROPOUT,
         target_modules=LORA_TARGET_MODULES,
         bias="none",
@@ -904,8 +941,34 @@ def run_sft_training(records: list[dict], base_model: str, output_dir: str, dry_
     if resume:
         checkpoints = sorted(glob.glob(os.path.join(output_dir, "checkpoint-*")))
         if checkpoints:
-            resume_ckpt = checkpoints[-1]
-            print(f"[sft] resuming from checkpoint: {resume_ckpt}")
+            candidate = checkpoints[-1]
+            # Staleness guard (parity with run_training()'s guard above): a checkpoint from
+            # a completed run (epoch >= NUM_EPOCHS) should not be resumed — that skips
+            # training entirely.
+            state_file = os.path.join(candidate, "trainer_state.json")
+            stale = False
+            if os.path.exists(state_file):
+                try:
+                    with open(state_file) as _sf:
+                        _state = json.load(_sf)
+                    ckpt_epoch = _state.get("epoch", 0)
+                    if ckpt_epoch >= SFT_NUM_EPOCHS:
+                        print(f"[sft] checkpoint {os.path.basename(candidate)} is from a "
+                              f"completed run (epoch={ckpt_epoch:.2f}) — starting fresh",
+                              file=sys.stderr)
+                        stale = True
+                except Exception as _e:
+                    print(f"[sft] could not read trainer_state.json ({_e}) — starting fresh",
+                          file=sys.stderr)
+                    stale = True
+            if not stale:
+                assert_checkpoint_rank_compatible(candidate, SFT_LORA_R, SFT_LORA_ALPHA)
+                resume_ckpt = candidate
+                print(f"[sft] resuming from checkpoint: {resume_ckpt}")
+            else:
+                print(f"[sft] no valid resume checkpoint — starting fresh")
+        else:
+            print(f"[sft] no checkpoint in {output_dir} — starting fresh")
     print(f"[sft] starting SFT on {len(split['train'])} records ...")
     trainer.train(resume_from_checkpoint=resume_ckpt)
     print(f"[sft] saving adapter to {output_dir}")

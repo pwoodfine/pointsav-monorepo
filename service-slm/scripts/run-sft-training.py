@@ -70,6 +70,32 @@ def canonical_base_model() -> str:
     return default
 
 
+def assert_checkpoint_rank_compatible(checkpoint_dir: str, expected_r: int, expected_alpha: int) -> None:
+    """Fail loudly if `checkpoint_dir`'s adapter_config.json rank/alpha don't match the values
+    this run is about to construct the model with (same logic as run-dpo-training.py — kept in
+    sync since both scripts can resume checkpoints from the same production adapter directory).
+    """
+    config_path = os.path.join(checkpoint_dir, "adapter_config.json")
+    try:
+        with open(config_path) as fh:
+            saved = json.load(fh)
+    except (OSError, json.JSONDecodeError) as e:
+        print(f"[ERROR] could not read {config_path} to verify rank compatibility: {e}", file=sys.stderr)
+        sys.exit(1)
+    saved_r = saved.get("r")
+    saved_alpha = saved.get("lora_alpha")
+    if saved_r != expected_r or saved_alpha != expected_alpha:
+        print(
+            f"[ERROR] checkpoint rank mismatch: {checkpoint_dir} was saved with "
+            f"r={saved_r} alpha={saved_alpha}, but this run is configured for "
+            f"r={expected_r} alpha={expected_alpha}. Resuming would crash with a PEFT "
+            f"size-mismatch on every layer. Either point --output-dir at a fresh directory "
+            f"or align this run's LoRA rank with the existing checkpoint.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+
 # LoRA hyperparameters — target_modules/dropout shared with run-dpo-training.py for
 # A/B comparability; r/alpha differ (SFT uses smaller r for L4 24GB headroom) but keep
 # the same alpha/r=0.5 ratio per BRIEF-flow-quality-audit.md R1 (Databricks OLMo-3
@@ -445,6 +471,7 @@ def run_training(records: list[dict], base_model: str, output_dir: str,
                           file=sys.stderr)
                     stale = True
             if not stale:
+                assert_checkpoint_rank_compatible(candidate, LORA_R, LORA_ALPHA)
                 resume_ckpt = candidate
                 print(f"[train] resuming from checkpoint: {resume_ckpt}")
             else:

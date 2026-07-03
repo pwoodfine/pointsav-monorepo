@@ -245,7 +245,13 @@ impl Doorman {
                     0,
                     slm_core::ChatMessage {
                         role: "system".to_string(),
-                        content: format!("[ENTITY CONTEXT]\n{}", ctx),
+                        content: format!(
+                            "[ENTITY CONTEXT — verified data retrieved from the knowledge graph \
+                             for this exact query. Treat it as ground truth and prefer it over \
+                             any prior assumption you may have about this entity, even if a \
+                             different identity seems familiar.]\n{}",
+                            ctx
+                        ),
                     },
                 );
                 effective_req = cloned;
@@ -1020,5 +1026,98 @@ mod tests {
             .select_tier(&req(Complexity::High, None, None))
             .expect("cap not exceeded — should pick yoyo");
         assert_eq!(picked, Tier::Yoyo);
+    }
+
+    /// End-to-end proof that `route()` actually injects graph context before
+    /// dispatch. Closes a confirmed zero-coverage gap (2026-07-03 quality audit):
+    /// every existing test in this file and in http_test.rs sets
+    /// `graph_context_client: None`, so the candidate-word lookup + system-message
+    /// insertion logic (lines ~198-274) had never been exercised end-to-end by an
+    /// automated test — only `GraphContextClient::fetch_context` in isolation
+    /// (graph.rs) was covered.
+    #[tokio::test]
+    async fn graph_context_is_injected_as_system_message_before_dispatch() {
+        use wiremock::matchers::{method, path};
+        use wiremock::{Mock, MockServer, ResponseTemplate};
+
+        let server = MockServer::start().await;
+
+        // service-content: any entity-context lookup returns one fixed entity,
+        // regardless of which candidate word the router happens to try first.
+        Mock::given(method("GET"))
+            .and(path("/v1/graph/context"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+                {
+                    "entity_name": "Hamid Moghadam",
+                    "classification": "Person",
+                    "role_vector": "chief executive",
+                    "location_vector": null,
+                    "contact_vector": null,
+                    "module_id": "jennifer",
+                    "confidence": 0.85
+                }
+            ])))
+            .mount(&server)
+            .await;
+
+        // Tier A (llama-server): the assertion is on what the Doorman SENT, not
+        // what it got back, so any well-formed response is fine here.
+        Mock::given(method("POST"))
+            .and(path("/v1/chat/completions"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "choices": [{ "message": { "role": "assistant", "content": "ok" } }]
+            })))
+            .mount(&server)
+            .await;
+
+        let doorman = Doorman::new(
+            DoormanConfig {
+                local: Some(LocalTierClient::new(crate::tier::LocalTierConfig {
+                    endpoint: server.uri(),
+                    default_model: "OLMo-3-7B-Instruct".into(),
+                })),
+                yoyo: HashMap::new(),
+                external: None,
+                lark_validator: None,
+                graph_context_client: Some(GraphContextClient::new(server.uri())),
+                tier_a_first: false,
+                daily_yoyo_cap_usd: None,
+                cost_ledger: None,
+            },
+            ledger(),
+        );
+
+        let mut request = req(Complexity::Low, Some(Tier::Local), None);
+        request.messages = vec![ChatMessage {
+            role: "user".into(),
+            content: "who is Hamid Moghadam?".into(),
+        }];
+
+        doorman.route(&request).await.expect("route should succeed");
+
+        let received = server
+            .received_requests()
+            .await
+            .expect("wiremock request recording should be enabled");
+        let chat_call = received
+            .iter()
+            .find(|r| r.url.path() == "/v1/chat/completions")
+            .expect("expected a dispatched chat-completions call");
+        let body: serde_json::Value =
+            serde_json::from_slice(&chat_call.body).expect("chat request body should be JSON");
+        let messages = body["messages"].as_array().expect("messages array");
+        assert_eq!(
+            messages[0]["role"], "system",
+            "first message must be the injected system message"
+        );
+        let content = messages[0]["content"].as_str().unwrap_or("");
+        assert!(
+            content.contains("[ENTITY CONTEXT"),
+            "expected injected entity-context marker, got: {content}"
+        );
+        assert!(
+            content.contains("Hamid Moghadam"),
+            "expected the fetched entity name in the injected context, got: {content}"
+        );
     }
 }
