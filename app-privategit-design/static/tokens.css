@@ -17,13 +17,15 @@
   --cds-sidebar-bg: #f4f4f4;
 
   /* Type scale (P1.4 — dogfood the site's own tokens instead of hardcoded literals) */
-  --cds-type-label: 0.6875rem;
+  --cds-type-label: 0.75rem; /* was 0.6875rem (11px) — bumped for legibility (P2.6) */
   --cds-type-body-sm: 0.75rem;
   --cds-type-body: 0.875rem;
   --cds-type-body-lg: 1rem;
   --cds-type-heading: 1.25rem;
-  --cds-type-title: 1.75rem;
-  --cds-type-display: 2rem;
+  /* Fluid across the viewport range (P2.7) — mirrors home.pointsav.com's proven
+     clamp()-based scaling instead of a hard per-breakpoint step. */
+  --cds-type-title: clamp(1.5rem, 1.3rem + 1vw, 1.75rem);
+  --cds-type-display: clamp(1.625rem, 1.35rem + 1.4vw, 2rem);
 
   /* Spacing scale */
   --cds-space-1: 0.25rem;
@@ -48,3 +50,22 @@
   --cds-footer-pad-y: 3rem;
   --cds-footer-gutter: clamp(1rem, 0.5rem + 2.5vw, 2rem);
 }
+
+/* Dark mode (P2) — explicit data-theme, set inline in <head> before paint. */
+[data-theme="dark"] {
+  --cds-background: #161616;
+  --cds-layer: #262626;
+  --cds-border-subtle: #393939;
+  --cds-border-strong: #6f6f6f;
+  --cds-text-primary: #f4f4f4;
+  --cds-text-secondary: #c6c6c6;
+  --cds-text-tertiary: #a8a8a8;
+  --cds-link-primary: #78a9ff;
+  --cds-interactive: #4589ff;
+  --cds-focus: #4589ff;
+  --cds-background-brand: #0a0a0a;
+  --cds-selected-background: #263449;
+  --cds-selected-text: #78a9ff;
+  --cds-sidebar-bg: #1a1a1a;
+}
+

@@ -2,6 +2,17 @@
    Depends on tokens.css for --cds-* custom properties. */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :focus-visible { outline: 2px solid var(--cds-focus); outline-offset: 2px; }
+.skip-link {
+  position: absolute; top: -100%; left: 0; z-index: 1000;
+  background: var(--cds-interactive); color: #fff;
+  padding: 0.75rem 1.25rem; font-size: 0.875rem; text-decoration: none;
+}
+.skip-link:focus { top: 0; }
+.theme-toggle {
+  background: none; border: 1px solid rgba(255,255,255,0.3); border-radius: 4px;
+  color: #fff; cursor: pointer; font-size: 0.9375rem; padding: 0.25rem 0.5rem;
+  margin-left: 0.75rem;
+}
 body {
   font-family: 'IBM Plex Sans', system-ui, sans-serif;
   font-size: 16px; line-height: 1.5;
@@ -52,7 +63,7 @@ header a { color: #fff; text-decoration: none; font-size: 0.875rem; font-weight:
 .nav-section { margin-bottom: 0.5rem; }
 .nav-section-title {
   display: block; padding: 0.5rem 1rem;
-  font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.08em;
+  font-size: var(--cds-type-label); font-weight: 600; letter-spacing: 0.08em;
   text-transform: uppercase; color: var(--cds-text-secondary);
 }
 .sidebar ul { list-style: none; }
@@ -90,7 +101,7 @@ header a { color: #fff; text-decoration: none; font-size: 0.875rem; font-weight:
 .content table { display: block; overflow-x: auto; border-collapse: collapse; width: 100%; margin-bottom: 1.5rem; font-size: 0.875rem; }
 .content th { background: var(--cds-layer); text-align: left; padding: 0.5rem 0.75rem; font-weight: 600; border-bottom: 2px solid var(--cds-border-subtle); }
 .content td { padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--cds-border-subtle); vertical-align: top; }
-.content code { font-family: 'IBM Plex Mono', monospace; font-size: 0.875em; background: var(--cds-layer); padding: 0.1em 0.3em; border-radius: 2px; }
+.content code { font-family: 'IBM Plex Mono', monospace; font-size: 0.875em; background: var(--cds-layer); padding: 0.1em 0.3em; border-radius: 2px; overflow-wrap: anywhere; }
 .content pre { background: var(--cds-layer); padding: 1rem; border-radius: 4px; overflow-x: auto; margin-bottom: 1rem; font-size: 0.875rem; position: relative; }
 .content pre code { background: none; padding: 0; }
 .code-copy-btn {
@@ -104,12 +115,22 @@ header a { color: #fff; text-decoration: none; font-size: 0.875rem; font-weight:
 .content figure { margin: 0; display: inline-block; }
 .home-body { padding: 4rem 2rem; }
 .home-body h1 { font-size: var(--cds-type-display); font-weight: 300; margin-bottom: var(--cds-space-4); }
-.home-body p { color: var(--cds-text-secondary); }
+.home-body p { color: var(--cds-text-secondary); margin-bottom: var(--cds-space-8); max-width: 640px; }
+.home-body p a { color: var(--cds-link-primary); }
+.home-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--cds-space-4); max-width: 860px; }
+.home-card {
+  display: block; padding: var(--cds-space-4); border: 1px solid var(--cds-border-subtle);
+  border-radius: var(--cds-radius); text-decoration: none; color: var(--cds-text-primary);
+  transition: border-color 0.15s ease;
+}
+.home-card:hover { border-color: var(--cds-interactive); }
+.home-card h2 { font-size: var(--cds-type-body-lg); font-weight: 600; margin-bottom: var(--cds-space-1); }
+.home-card p { font-size: var(--cds-type-body-sm); color: var(--cds-text-tertiary); margin: 0; }
 
 /* Schema badge + metadata panel (D2) */
 .schema-badge {
   display: inline-block; padding: 0.125rem 0.5rem;
-  font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.04em;
+  font-size: var(--cds-type-label); font-weight: 600; letter-spacing: 0.04em;
   text-transform: uppercase; border-radius: 2px; margin-bottom: 1.25rem;
 }
 .schema-badge--component { background: var(--cds-selected-background); color: var(--cds-selected-text); }
@@ -142,8 +163,17 @@ header a { color: #fff; text-decoration: none; font-size: 0.875rem; font-weight:
   color: var(--cds-link-primary); cursor: pointer; word-break: break-all;
 }
 .tg-value { font-family: 'IBM Plex Mono', monospace; font-size: 0.75rem; color: var(--cds-text-secondary); }
-.tg-contrast { font-size: 0.6875rem; color: var(--cds-text-tertiary); }
+.tg-contrast { font-size: var(--cds-type-label); color: var(--cds-text-tertiary); }
 .tg-desc { font-size: 0.75rem; color: var(--cds-text-tertiary); margin-top: 0.25rem; }
+
+/* Breadcrumb (P2.2) */
+.breadcrumb {
+  font-size: var(--cds-type-body-sm); color: var(--cds-text-tertiary);
+  margin-bottom: var(--cds-space-4); padding-top: var(--cds-space-4);
+}
+.breadcrumb a { color: var(--cds-link-primary); text-decoration: none; }
+.breadcrumb a:hover { text-decoration: underline; }
+.breadcrumb [aria-current="page"] { color: var(--cds-text-secondary); }
 
 /* Live component preview (P1.1) */
 .component-preview { margin-bottom: var(--cds-space-8); }
@@ -211,6 +241,14 @@ header a { color: #fff; text-decoration: none; font-size: 0.875rem; font-weight:
   .content { padding: 1rem 1rem 3rem; }
   .page-title { padding: 1.5rem 1rem 0.75rem; }
   .ds-footer__cols { flex-direction: column; gap: 1.5rem; }
+}
+
+/* Windows High Contrast / forced-colors — the active-state cue and badge fills are
+   color-only; add non-color fallbacks so they survive forced-colors mode (P2.4). */
+@media (forced-colors: active) {
+  .sidebar li a.active { text-decoration: underline; font-weight: 700; }
+  .schema-badge { border: 1px solid CanvasText; }
+  .tab-bar a.active { text-decoration: underline; }
 }
 
 @media print {

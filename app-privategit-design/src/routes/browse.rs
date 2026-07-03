@@ -9,15 +9,39 @@ use std::{fs, io::Write};
 
 pub async fn index(State(state): State<AppState>) -> Html<String> {
     let nav_html = render::render_nav(&state.env, &state.nav, vault::SECTIONS, "", "");
-    let content = "<div class=\"home-body\"><h1>PointSav Design System</h1>\
-                   <p>Select an element from the sidebar.</p></div>";
+
+    let mut cards = String::new();
+    for (section, _) in vault::SECTIONS {
+        let Some(slugs) = state.nav.get(*section) else {
+            continue;
+        };
+        if slugs.is_empty() {
+            continue;
+        }
+        let first = &slugs[0];
+        let tab = vault::default_tab(section);
+        cards.push_str(&format!(
+            "<a class=\"home-card\" href=\"/{section}/{first}/{tab}\">\
+             <h2>{}</h2><p>{} items</p></a>\n",
+            vault::to_title(section),
+            slugs.len()
+        ));
+    }
+
+    let content = format!(
+        "<div class=\"home-body\"><h1>PointSav Design System</h1>\
+         <p>DTCG-native design tokens and components, self-hostable and machine-readable. \
+         Pick a section below, search above, or <a href=\"/bundles/tokens\">download the token bundle</a>.</p>\
+         <div class=\"home-grid\">{cards}</div></div>"
+    );
+
     Html(render::shell(
         &state.env,
         "PointSav Design System",
         &nav_html,
         "",
         "",
-        content,
+        &content,
     ))
 }
 
@@ -97,6 +121,18 @@ pub async fn item_tab(
     let nav_html = render::render_nav(&state.env, &state.nav, vault::SECTIONS, &section, &slug);
     let tab_bar = render::render_tab_bar(&state.env, &section, &slug, &tabs, &tab);
     let label = vault::to_title(&slug);
+
+    // P2.2 — breadcrumb wayfinding (Home > Section > Item), especially useful in the
+    // mobile drawer where the sidebar is collapsed by default.
+    let breadcrumb = format!(
+        "<nav class=\"breadcrumb\" aria-label=\"Breadcrumb\">\
+         <a href=\"/\">Home</a><span aria-hidden=\"true\"> / </span>\
+         <span>{}</span><span aria-hidden=\"true\"> / </span>\
+         <span aria-current=\"page\">{}</span></nav>",
+        vault::to_title(&section),
+        label
+    );
+    let content = format!("{breadcrumb}{content}");
 
     Html(render::shell(
         &state.env,
