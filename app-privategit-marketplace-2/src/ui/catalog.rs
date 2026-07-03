@@ -91,13 +91,13 @@ fn free_product_card(i: &crate::Installer, source_base_url: &str) -> Markup {
 /// A paid product card — `price_usdc > 0` (BETA lifted for this product). Shows the
 /// price and a Polygon-USDC pay CTA.
 ///
-/// The CTA is **display + navigation only**. It links to `/v1/wallet/address` (the
-/// JSON descriptor of the receiving wallet, chain, token, and USDC contract) so a
-/// buyer can retrieve the exact on-chain payment target. Wiring a live "connect
-/// wallet" browser-extension interaction is deliberately NOT done here. The button
-/// degrades to a plain link and is full-width on narrow viewports (see `catalog_style`).
+/// Phase 2: the CTA now links to a real, rendered invoice page (`/checkout/:id`)
+/// instead of the bare `GET /v1/wallet/address` JSON response — closing the first
+/// raw-JSON hop the audit flagged. That JSON endpoint still exists unchanged as
+/// the underlying data source; this is just where a human clicking the button lands.
 fn paid_product_card(i: &crate::Installer) -> Markup {
     let dollars = i.price_usdc as f64 / 1_000_000.0;
+    let checkout_href = format!("/checkout/{}", i.id);
     html! {
         article."sw-cat-card" {
             span."sw-cat-card__id" { (i.id) }
@@ -113,7 +113,7 @@ fn paid_product_card(i: &crate::Installer) -> Markup {
                 span."sw-cat-price__amt" { "$" (format!("{dollars:.2}")) }
                 span."sw-cat-price__unit" { "USDC \u{2014} own it forever, no subscription" }
                 div."sw-cat-pay" {
-                    a."sw-cat-pay__cta" href="/v1/wallet/address"
+                    a."sw-cat-pay__cta" href=(checkout_href)
                         rel="nofollow" aria-label=(format!("Pay for {} with Polygon USDC", i.name)) {
                         span."sw-cat-pay__mark" aria-hidden="true" { "\u{25C8}" }
                         "Pay with Polygon USDC"
@@ -314,7 +314,7 @@ mod tests {
         // Non-zero price_usdc -> price display + Polygon USDC CTA.
         assert!(html.contains("$19.00"));
         assert!(html.contains("Pay with Polygon USDC"));
-        assert!(html.contains("href=\"/v1/wallet/address\""));
+        assert!(html.contains("href=\"/checkout/os-privategit\""));
         // And NO curl-pipe-sh install command for the paid product.
         assert!(
             !html.contains("releases/os-privategit/install.sh"),
