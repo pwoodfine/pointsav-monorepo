@@ -1,4 +1,4 @@
-use crate::{render, schema, state::AppState, tokens_gallery, vault};
+use crate::{component_preview, render, schema, state::AppState, tokens_gallery, vault};
 use axum::{
     body::Body,
     extract::{Path, State},
@@ -85,7 +85,14 @@ pub async fn item_tab(
 
     let (frontmatter, body) = vault::parse_frontmatter(&raw);
     let schema_type = schema::detect(&frontmatter);
-    let content = schema::render(schema_type, &frontmatter, &body);
+    let mut content = schema::render(schema_type, &frontmatter, &body);
+
+    // P1.1 — live component preview (recipe.json variants, sandboxed via iframe).
+    if section == "components" {
+        if let Some(preview) = component_preview::render_preview(&state.vault, &slug) {
+            content = format!("{preview}{content}");
+        }
+    }
 
     let nav_html = render::render_nav(&state.env, &state.nav, vault::SECTIONS, &section, &slug);
     let tab_bar = render::render_tab_bar(&state.env, &section, &slug, &tabs, &tab);

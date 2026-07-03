@@ -59,6 +59,11 @@ pub fn shell(
     page_title: &str,
     content: &str,
 ) -> String {
+    let footer_html = env
+        .get_template("footer.html")
+        .expect("footer.html missing")
+        .render(context! { version => env!("CARGO_PKG_VERSION") })
+        .expect("render footer.html failed");
     env.get_template("shell.html")
         .expect("shell.html missing")
         .render(context! {
@@ -67,6 +72,7 @@ pub fn shell(
             tab_bar => tab_bar,
             page_title => page_title,
             content => content,
+            footer_html => footer_html,
         })
         .expect("render shell.html failed")
 }

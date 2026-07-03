@@ -8,7 +8,14 @@
 <link rel="stylesheet" href="/static/portal.css">
 </head>
 <body>
-<header><a href="/">PointSav Design System</a><a href="/tokens" class="header-tokens-link">Tokens</a></header>
+<header>
+<a href="/">PointSav Design System</a>
+<div class="header-search-wrap">
+<input type="search" id="header-search-q" class="header-search" placeholder="Search…" aria-label="Search the design system" autocomplete="off">
+<div id="search-autocomplete-dropdown" class="search-dropdown"></div>
+</div>
+<a href="/tokens" class="header-tokens-link">Tokens</a>
+</header>
 <div class="layout">
 <nav class="sidebar">{{ nav_html | safe }}</nav>
 <div class="main">
@@ -18,6 +25,7 @@
 <div class="content">{{ content | safe }}</div>
 </div>
 </div>
+{{ footer_html | safe }}
 <script>
 var _es=new EventSource('/sidebar/sse');
 _es.onmessage=function(e){var n=document.querySelector('nav.sidebar');if(n)n.innerHTML=e.data;};
@@ -26,5 +34,7 @@ _es.onmessage=function(e){var n=document.querySelector('nav.sidebar');if(n)n.inn
 <script defer src="/static/edit.js"></script>
 <script defer src="/static/ai.js"></script>
 <script defer src="/static/tokens-gallery.js"></script>
+<script defer src="/static/code-copy.js"></script>
+<script defer src="/static/search.js"></script>
 </body>
 </html>

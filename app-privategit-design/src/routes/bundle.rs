@@ -15,6 +15,8 @@ struct BundleFile {
     title: String,
 }
 
+/// Lists any file in the mount (not just `.md`) — non-.md files (e.g. the tokens.css /
+/// tokens.full.json bundle) get a title derived from the filename instead of frontmatter.
 fn list_bundle_files(dir: &StdPath) -> Vec<BundleFile> {
     let Ok(entries) = fs::read_dir(dir) else {
         return Vec::new();
@@ -24,15 +26,15 @@ fn list_bundle_files(dir: &StdPath) -> Vec<BundleFile> {
         .filter(|e| e.file_type().map(|t| t.is_file()).unwrap_or(false))
         .filter_map(|e| {
             let name = e.file_name().into_string().ok()?;
-            if !name.ends_with(".md") {
-                return None;
-            }
-            let raw = fs::read_to_string(e.path()).ok()?;
-            let (fm, _) = vault::parse_frontmatter(&raw);
-            let title = fm
-                .get("title")
-                .cloned()
-                .unwrap_or_else(|| vault::to_title(name.strip_suffix(".md").unwrap_or(&name)));
+            let title = if name.ends_with(".md") {
+                let raw = fs::read_to_string(e.path()).ok()?;
+                let (fm, _) = vault::parse_frontmatter(&raw);
+                fm.get("title")
+                    .cloned()
+                    .unwrap_or_else(|| vault::to_title(name.strip_suffix(".md").unwrap_or(&name)))
+            } else {
+                name.clone()
+            };
             Some(BundleFile {
                 filename: name,
                 title,
@@ -41,6 +43,16 @@ fn list_bundle_files(dir: &StdPath) -> Vec<BundleFile> {
         .collect();
     files.sort_by(|a, b| a.filename.cmp(&b.filename));
     files
+}
+
+fn content_type_for(filename: &str) -> &'static str {
+    if filename.ends_with(".css") {
+        "text/css; charset=utf-8"
+    } else if filename.ends_with(".json") {
+        "application/json; charset=utf-8"
+    } else {
+        "text/plain; charset=utf-8"
+    }
 }
 
 pub async fn list(Path(name): Path<String>, State(state): State<AppState>) -> Response {
@@ -86,6 +98,10 @@ pub async fn file(
     let Ok(raw) = fs::read_to_string(dir.join(&filename)) else {
         return (StatusCode::NOT_FOUND, "file not found").into_response();
     };
+
+    if !filename.ends_with(".md") {
+        return ([(header::CONTENT_TYPE, content_type_for(&filename))], raw).into_response();
+    }
 
     let (frontmatter, body) = vault::parse_frontmatter(&raw);
     let schema_type = schema::detect(&frontmatter);

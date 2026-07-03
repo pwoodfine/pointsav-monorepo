@@ -5,6 +5,7 @@ use axum::{
     response::IntoResponse,
 };
 use serde::Deserialize;
+use std::path::Path;
 
 #[derive(Deserialize)]
 pub struct SearchQuery {
@@ -35,11 +36,13 @@ pub async fn token_search(
             .take(20)
             .map(|doc| {
                 let snippet = snippet(&doc.body, &q);
+                let url = doc_url(&doc.id, &state.vault);
                 format!(
-                    "{{\"id\":{},\"title\":{},\"snippet\":{}}}",
+                    "{{\"id\":{},\"title\":{},\"snippet\":{},\"url\":{}}}",
                     json_str(&doc.id),
                     json_str(&doc.title),
-                    json_str(&snippet)
+                    json_str(&snippet),
+                    json_str(&url)
                 )
             })
             .collect();
@@ -57,8 +60,13 @@ fn snippet(body: &str, query: &str) -> String {
     let q_lower = query.to_lowercase();
     let b_lower = body.to_lowercase();
     if let Some(pos) = b_lower.find(q_lower.split_whitespace().next().unwrap_or("")) {
-        let start = pos.saturating_sub(40);
-        let end = (pos + 120).min(body.len());
+        // `pos` is a valid byte offset into `b_lower`, which is a lowercased copy of
+        // `body` — lowercasing can change a character's byte length (e.g. some Unicode
+        // casing expansions), so `pos` is not guaranteed to land on a `body` char
+        // boundary. Round outward to the nearest valid boundaries rather than slicing
+        // blind (previously panicked on any multi-byte char straddling the window).
+        let start = floor_char_boundary(body, pos.saturating_sub(40));
+        let end = ceil_char_boundary(body, (pos + 120).min(body.len()));
         let s = &body[start..end];
         s.replace('\n', " ").trim().to_string()
     } else {
@@ -67,6 +75,38 @@ fn snippet(body: &str, query: &str) -> String {
             .collect::<String>()
             .replace('\n', " ")
     }
+}
+
+fn floor_char_boundary(s: &str, mut i: usize) -> usize {
+    while i > 0 && !s.is_char_boundary(i) {
+        i -= 1;
+    }
+    i
+}
+
+fn ceil_char_boundary(s: &str, mut i: usize) -> usize {
+    while i < s.len() && !s.is_char_boundary(i) {
+        i += 1;
+    }
+    i
+}
+
+/// Turns an indexed doc's absolute file path (`<vault>/<section>/<slug>/<tab>.md`) into
+/// its route (`/<section>/<slug>/<tab>`). Falls back to `#` if it doesn't parse cleanly
+/// (e.g. a future indexed source outside the section/slug/tab shape).
+fn doc_url(id: &str, vault: &Path) -> String {
+    let Ok(rel) = Path::new(id).strip_prefix(vault) else {
+        return "#".to_string();
+    };
+    let parts: Vec<&str> = rel
+        .components()
+        .filter_map(|c| c.as_os_str().to_str())
+        .collect();
+    if parts.len() != 3 {
+        return "#".to_string();
+    }
+    let tab = parts[2].strip_suffix(".md").unwrap_or(parts[2]);
+    format!("/{}/{}/{}", parts[0], parts[1], tab)
 }
 
 fn json_str(s: &str) -> String {
