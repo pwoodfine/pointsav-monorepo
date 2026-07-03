@@ -12,6 +12,14 @@ pub struct Config {
 
 impl Config {
     pub fn from_env() -> Self {
+        let vault = PathBuf::from(
+            env::var("DESIGN_VAULT_DIR")
+                .or_else(|_| env::var("DESIGN_VAULT"))
+                .unwrap_or_else(|_| {
+                    "/srv/foundry/deployments/vault-privategit-design-1".to_string()
+                }),
+        );
+
         let mut bundle_mounts = HashMap::new();
         bundle_mounts.insert(
             "editorial-style-guide".to_string(),
@@ -19,15 +27,18 @@ impl Config {
                 "/srv/foundry/clones/project-editorial/media-knowledge-documentation/.internal/style-guides".to_string()
             })),
         );
+        // P1.11 — "Get started / Download tokens" front door: the compiled DTCG bundle
+        // exports (tokens.css, tokens.full.json), not markdown drafts.
+        bundle_mounts.insert(
+            "tokens".to_string(),
+            PathBuf::from(
+                env::var("BUNDLE_MOUNT_TOKENS")
+                    .unwrap_or_else(|_| vault.join("exports").to_string_lossy().into_owned()),
+            ),
+        );
 
         Config {
-            vault: PathBuf::from(
-                env::var("DESIGN_VAULT_DIR")
-                    .or_else(|_| env::var("DESIGN_VAULT"))
-                    .unwrap_or_else(|_| {
-                        "/srv/foundry/deployments/vault-privategit-design-1".to_string()
-                    }),
-            ),
+            vault,
             bind: env::var("DESIGN_BIND").unwrap_or_else(|_| "127.0.0.1:9094".to_string()),
             doorman_url: env::var("DOORMAN_URL")
                 .unwrap_or_else(|_| "http://127.0.0.1:9092".to_string()),

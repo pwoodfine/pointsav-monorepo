@@ -1,4 +1,5 @@
 mod ai;
+mod component_preview;
 mod config;
 mod render;
 mod routes;

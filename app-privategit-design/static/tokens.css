@@ -15,4 +15,36 @@
   --cds-selected-background: #e8f0f8;
   --cds-selected-text: #0e3a66;
   --cds-sidebar-bg: #f4f4f4;
+
+  /* Type scale (P1.4 — dogfood the site's own tokens instead of hardcoded literals) */
+  --cds-type-label: 0.6875rem;
+  --cds-type-body-sm: 0.75rem;
+  --cds-type-body: 0.875rem;
+  --cds-type-body-lg: 1rem;
+  --cds-type-heading: 1.25rem;
+  --cds-type-title: 1.75rem;
+  --cds-type-display: 2rem;
+
+  /* Spacing scale */
+  --cds-space-1: 0.25rem;
+  --cds-space-2: 0.5rem;
+  --cds-space-3: 0.75rem;
+  --cds-space-4: 1rem;
+  --cds-space-6: 1.5rem;
+  --cds-space-8: 2rem;
+  --cds-space-12: 3rem;
+
+  --cds-radius: 4px;
+
+  /* Footer (P1.3) — echoes --cds-* family, resolves to existing primitives */
+  --cds-footer-bg: var(--cds-layer);
+  --cds-footer-ink: var(--cds-text-secondary);
+  --cds-footer-ink-muted: var(--cds-text-tertiary);
+  --cds-footer-link: var(--cds-link-primary);
+  --cds-footer-link-hover: var(--cds-interactive);
+  --cds-footer-rule: 1px solid var(--cds-border-subtle);
+  --cds-footer-legal-size: 0.75rem;
+  --cds-footer-heading-size: 0.6875rem;
+  --cds-footer-pad-y: 3rem;
+  --cds-footer-gutter: clamp(1rem, 0.5rem + 2.5vw, 2rem);
 }

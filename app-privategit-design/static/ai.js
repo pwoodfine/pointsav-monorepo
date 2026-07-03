@@ -7,7 +7,7 @@
   function buildOverlay() {
     var el = document.createElement('div');
     el.id = 'ai-overlay';
-    el.style.cssText = 'position:fixed;bottom:1.5rem;right:1.5rem;width:360px;max-height:60vh;'
+    el.style.cssText = 'position:fixed;bottom:1.5rem;right:1.5rem;width:min(360px, calc(100vw - 2rem));max-height:60vh;'
       + 'background:var(--cds-layer,#161616);border:1px solid var(--cds-border-subtle,#393939);'
       + 'border-radius:4px;padding:1rem;overflow-y:auto;z-index:900;display:none;'
       + 'font-size:0.875rem;color:var(--cds-text-primary,#f4f4f4);';
@@ -92,7 +92,9 @@
     btn = document.createElement('button');
     btn.id = 'ai-trigger';
     btn.textContent = 'Ask AI';
-    btn.style.cssText = 'position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);'
+    // Bottom-left, deliberately separate from the edit/save cluster (bottom-right)
+    // so the two floating-button groups never overlap on narrow viewports (P1.9).
+    btn.style.cssText = 'position:fixed;bottom:1.5rem;left:1.5rem;'
       + 'padding:0.5rem 1.25rem;background:var(--cds-interactive,#4589ff);color:#fff;'
       + 'border:none;border-radius:4px;cursor:pointer;font-size:0.875rem;display:none;z-index:800;';
     btn.onclick = function () {
