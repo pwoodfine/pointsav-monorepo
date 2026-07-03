@@ -11,13 +11,14 @@
 #
 # Usage:
 #   eval-adapter.sh --adapter-dir <path> [--held-out <jsonl-path>]
-#                   [--name <slug>] [--base-model <id>] [--dry-run]
+#                   [--name <slug>] [--base-model <id>] [--corpus-pairs <n>]
+#                   [--dry-run]
 #
 # Prerequisites:
-#   - ~/training-venv activated with trl, peft, transformers
+#   - python3 with PyYAML (no GPU-training libs needed — this script only
+#     reads adapter_config.json and appends to the registry, both stdlib+yaml)
 #   - data/adapters/registry.yaml exists (created by repo scaffold)
 #   - SLM_YOYO_ENDPOINT reachable (adapter test uses live llama-server)
-#   - yq installed (yaml edit for registry append)
 #
 # Pass criterion:
 #   pass@5 >= 0.50 AND pass@5 >= (current adapter pass@5 - 0.02)
@@ -28,7 +29,7 @@
 #   0  PASS — adapter registered (or dry-run: would register)
 #   1  Argument error
 #   2  FAIL — pass@5 below threshold or below current adapter
-#   3  Prereq missing (venv, yq, held-out set)
+#   3  Prereq missing (PyYAML, held-out set)
 #   4  Adapter dir not found or corrupt
 
 set -euo pipefail
@@ -40,12 +41,26 @@ ARCHIVE_ROOT="${ARCHIVE_ROOT:-${FOUNDRY_ROOT}/clones/project-totebox}"
 REGISTRY="${ARCHIVE_ROOT}/data/adapters/registry.yaml"
 HELD_OUT="${FOUNDRY_ROOT}/data/training-corpus/eval/holdout-v1.jsonl"
 ADAPTER_DIR=""
-BASE_MODEL="allenai/OLMo-2-1124-7B-Instruct"
 ADAPTER_NAME=""
+CORPUS_PAIRS_OVERRIDE=""
 DRY_RUN=0
 PASS_THRESHOLD="0.50"
 REGRESSION_TOLERANCE="0.02"
 DATE_STAMP="$(date -u +%Y-%m-%d)"
+
+# Single source of truth for the canonical base model (must match the served
+# GGUF / training scripts' own canonical_base_model() — base-registry.yaml
+# decided 2026-06-21, BRIEF-flow-build-plan). Falls back to the canonical
+# default if the registry is unreadable.
+canonical_base_model() {
+    local registry="${ARCHIVE_ROOT}/service-slm/data/base-registry.yaml"
+    local default="allenai/OLMo-3-7B-Instruct"
+    local val
+    val="$(grep -E '^canonical_base:' "${registry}" 2>/dev/null | head -1 \
+        | sed -E 's/^canonical_base:[[:space:]]*//' | tr -d '"'"'"'"' | xargs)"
+    echo "${val:-${default}}"
+}
+BASE_MODEL="$(canonical_base_model)"
 
 # ── Argument parse ──────────────────────────────────────────────────
 
@@ -58,6 +73,9 @@ while [[ $# -gt 0 ]]; do
         --name=*)          ADAPTER_NAME="${1#--name=}" ;;
         --name)            ADAPTER_NAME="$2"; shift ;;
         --base-model=*)    BASE_MODEL="${1#--base-model=}" ;;
+        --base-model)      BASE_MODEL="$2"; shift ;;
+        --corpus-pairs=*)  CORPUS_PAIRS_OVERRIDE="${1#--corpus-pairs=}" ;;
+        --corpus-pairs)    CORPUS_PAIRS_OVERRIDE="$2"; shift ;;
         --dry-run)         DRY_RUN=1 ;;
         --help|-h)
             sed -n '3,32p' "$0"
@@ -88,14 +106,8 @@ if [[ ! -f "${HELD_OUT}" ]]; then
     exit 3
 fi
 
-if ! command -v yq >/dev/null 2>&1; then
-    echo "ERROR: yq is required for registry writes; install with: pip install yq" >&2
-    exit 3
-fi
-
-VENV="${HOME}/training-venv/bin/python3"
-if [[ ! -x "${VENV}" ]]; then
-    echo "ERROR: ~/training-venv not found; run ML lib install first" >&2
+if ! python3 -c "import yaml" >/dev/null 2>&1; then
+    echo "ERROR: PyYAML is required for registry writes; install with: pip install pyyaml" >&2
     exit 3
 fi
 
@@ -113,7 +125,7 @@ echo "Step 1/3: verifying adapter checkpoint structure..."
 # Check that the PEFT checkpoint is a valid LoRA adapter directory.
 # adapter_config.json is the canonical PEFT marker; its absence means
 # the checkpoint was not fully written or was from a different framework.
-if ! "${VENV}" -c "
+if ! python3 -c "
 import sys, json, pathlib
 adapter_dir = '${ADAPTER_DIR}'
 config_path = pathlib.Path(adapter_dir) / 'adapter_config.json'
@@ -229,7 +241,7 @@ fi
 echo ""
 echo "Step 3/3: PASS — registering adapter..."
 
-CORPUS_PAIRS="$(ls "${ADAPTER_DIR}" 2>/dev/null | wc -l || echo 0)"
+CORPUS_PAIRS="${CORPUS_PAIRS_OVERRIDE:-$(ls "${ADAPTER_DIR}" 2>/dev/null | wc -l || echo 0)}"
 
 if [[ "${DRY_RUN}" -eq 1 ]]; then
     echo ""
@@ -242,7 +254,7 @@ if [[ "${DRY_RUN}" -eq 1 ]]; then
     exit 0
 fi
 
-# Append to registry using yq (python-yq CLI).
+# Append to registry (plain python3 + PyYAML).
 python3 - <<PYEOF
 import yaml, sys
 
