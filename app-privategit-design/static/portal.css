@@ -72,6 +72,11 @@ header a { color: #fff; text-decoration: none; font-size: 0.875rem; font-weight:
   text-transform: uppercase; color: var(--cds-text-secondary);
 }
 .sidebar ul { list-style: none; }
+.nav-subgroup-label {
+  display: block; padding: 0.75rem 1rem 0.15rem 1.5rem;
+  font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.03em;
+  color: var(--cds-text-tertiary);
+}
 .sidebar li a {
   display: block; padding: 0.6rem 1rem 0.6rem 1.5rem;
   font-size: 0.875rem; color: var(--cds-text-primary);
@@ -119,9 +124,24 @@ header a { color: #fff; text-decoration: none; font-size: 0.875rem; font-weight:
 .content a { color: var(--cds-link-primary); }
 .content figure { margin: 0; display: inline-block; }
 .home-body { padding: 4rem 2rem; }
-.home-body h1 { font-size: var(--cds-type-display); font-weight: 300; margin-bottom: var(--cds-space-4); }
-.home-body p { color: var(--cds-text-secondary); margin-bottom: var(--cds-space-8); max-width: 640px; }
-.home-body p a { color: var(--cds-link-primary); }
+.home-eyebrow {
+  font-size: var(--cds-type-label); font-weight: 600; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--cds-text-secondary); margin-bottom: var(--cds-space-2);
+}
+.home-body h1 {
+  font-size: clamp(1.75rem, 1.3rem + 1.8vw, 2.5rem); font-weight: 500; line-height: 1.2;
+  max-width: 22ch; margin-bottom: var(--cds-space-6);
+}
+.home-lede { color: var(--cds-text-secondary); margin-bottom: var(--cds-space-4); max-width: 68ch; }
+.home-lede a { color: var(--cds-link-primary); }
+.home-badges { display: flex; flex-wrap: wrap; gap: var(--cds-space-2); margin: var(--cds-space-2) 0 var(--cds-space-8); }
+.home-badge {
+  display: inline-flex; align-items: center; padding: 0.2rem 0.65rem;
+  font-size: var(--cds-type-label); font-weight: 600; letter-spacing: 0.02em;
+  color: var(--cds-text-secondary); background: var(--cds-layer);
+  border: 1px solid var(--cds-border-subtle); border-radius: 99px;
+}
+.home-badge--mono { font-family: 'IBM Plex Mono', monospace; letter-spacing: 0.04em; }
 .home-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--cds-space-4); max-width: 860px; }
 .home-card {
   display: block; padding: var(--cds-space-4); border: 1px solid var(--cds-border-subtle);

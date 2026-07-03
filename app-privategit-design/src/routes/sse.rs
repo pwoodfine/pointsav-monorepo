@@ -19,14 +19,21 @@ pub async fn sidebar_sse(
     let rx = state.watch_tx.subscribe();
     let nav = state.nav.clone();
     let env = state.env.clone();
+    let component_groups = state.component_groups.clone();
 
-    let s = stream::unfold((rx, nav, env), |(mut rx, nav, env)| async move {
-        if rx.changed().await.is_err() {
-            return None;
-        }
-        let html = render::render_nav(&env, &nav, SECTIONS, "", "");
-        Some((Ok(Event::default().data(html)), (rx, nav, env)))
-    });
+    let s = stream::unfold(
+        (rx, nav, env, component_groups),
+        |(mut rx, nav, env, component_groups)| async move {
+            if rx.changed().await.is_err() {
+                return None;
+            }
+            let html = render::render_nav(&env, &nav, &component_groups, SECTIONS, "", "");
+            Some((
+                Ok(Event::default().data(html)),
+                (rx, nav, env, component_groups),
+            ))
+        },
+    );
 
     Sse::new(s).keep_alive(KeepAlive::default())
 }

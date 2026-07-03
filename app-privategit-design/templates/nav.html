@@ -8,11 +8,22 @@
 {% if items %}
 <div class="nav-section">
 <span class="nav-section-title">{{ section | to_title }}</span>
+{% if section == "components" %}
+{% for label, slugs in component_groups %}
+{% if label %}<span class="nav-subgroup-label">{{ label }}</span>{% endif %}
+<ul{% if label %} class="nav-subgroup"{% endif %}>
+{% for slug in slugs %}
+<li><a href="/{{ section }}/{{ slug }}/{{ default_tabs[section] }}"{% if section == active_section and slug == active_slug %} class="active"{% endif %}>{{ slug | to_title }}</a></li>
+{% endfor %}
+</ul>
+{% endfor %}
+{% else %}
 <ul>
 {% for slug in items %}
 <li><a href="/{{ section }}/{{ slug }}/{{ default_tabs[section] }}"{% if section == active_section and slug == active_slug %} class="active"{% endif %}>{{ slug | to_title }}</a></li>
 {% endfor %}
 </ul>
+{% endif %}
 </div>
 {% endif %}
 {% endfor %}
