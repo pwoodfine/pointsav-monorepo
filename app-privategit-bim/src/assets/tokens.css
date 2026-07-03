@@ -20,15 +20,23 @@
   --bim-border-subtle:    rgba(17, 24, 39, 0.05);  /* no home equivalent; derived from --ink */
   --bim-border-strong:    #9CA3AF;  /* = --rule-strong */
 
+  --bim-bg-page:          #FFFFFF;
   --bim-bg-sidebar:       #F7F9FA;  /* = --paper-2 */
   --bim-bg-subtle:        #F7F9FA;  /* = --paper-2 */
   --bim-bg-tertiary:      #E6E7E8;  /* = --paper-3 */
 
-  /* Topbar (blue institutional) */
-  --bim-topbar-bg:        var(--bim-accent);
+  /* Topbar (blue institutional) — hardcoded, NOT derived from --bim-accent:
+     the topbar/footer are permanently-dark chrome regardless of theme, so
+     --bim-accent itself is free to shift lighter in dark mode for text
+     contrast (see :root[data-theme="dark"] below) without dragging the
+     topbar's fill along with it. */
+  --bim-topbar-bg:        #164679;
   --bim-topbar-fg:        #FFFFFF;
   --bim-topbar-fg-muted:  rgba(255, 255, 255, 0.65);
   --bim-topbar-height:    48px;
+  --bim-utility-height:   32px;
+  --bim-header-height:    64px;
+  --bim-header-stack:     calc(var(--bim-utility-height) + var(--bim-header-height));
 
   --bim-radius-sm: 2px;
   --bim-radius-md: 2px;
@@ -45,4 +53,35 @@
   --bim-mep-bg:    #ECFEFF;
   --bim-error:     #B42318;  /* clash / IDS fail */
   --bim-error-bg:  #FEF3F2;
+}
+
+/* color-scheme hints the browser's native form-control/scrollbar rendering
+   to match the active theme (data-theme is set before first paint by the
+   inline script in shell.rs's <head>, defaulting to "light" — see there
+   for the /edit/* force-light rule). */
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"]  { color-scheme: dark; }
+
+/* Dark mode — overrides only the surfaces that actually render light and
+   must flip. Topbar/footer are already permanently-dark chrome in both
+   themes and are intentionally NOT overridden here. */
+:root[data-theme="dark"] {
+  --bim-accent:           #6FA8DC;  /* lightened for AA text contrast on dark surfaces */
+  --bim-accent-hover:     #8CBAE3;
+  --bim-accent-active:    #ABCCEA;
+  --bim-accent-subtle:    rgba(111, 168, 220, 0.16);
+
+  --bim-fg:               #F3F4F6;
+  --bim-fg-secondary:     #D1D5DB;
+  --bim-fg-muted:         #9CA3AF;
+  --bim-fg-faint:         #6B7280;
+
+  --bim-border:           #2D333F;
+  --bim-border-subtle:    rgba(255, 255, 255, 0.06);
+  --bim-border-strong:    #4B5563;
+
+  --bim-bg-page:          #0F1218;
+  --bim-bg-sidebar:       #171B24;
+  --bim-bg-subtle:        #171B24;
+  --bim-bg-tertiary:      #1F2430;
 }
