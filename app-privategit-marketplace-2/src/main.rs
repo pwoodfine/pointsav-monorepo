@@ -53,6 +53,16 @@ struct AppState {
     // that crate's `load_verify_key`). `None` until a production key is
     // provisioned (a deployment-time secrets step, not decided by this code).
     signing_key: Option<SigningKey>,
+    // ── Phase 5: CRA barter-transaction log ─────────────────────────────────
+    // `data/software-catalog/tx-log.jsonl`'s local-crate counterpart, per
+    // `BRIEF-software-distribution-substrate.md` §8 — required from the first
+    // real sale.
+    tx_log_path: PathBuf,
+    // Placeholder USDC->CAD spot rate (no live FX feed is wired into this crate;
+    // building one is out of scope for this cleanup). Configurable via
+    // `USDC_CAD_SPOT_RATE` so production can update it without a code change —
+    // see `append_tx_log`'s doc comment.
+    usdc_cad_spot_rate: f64,
 }
 
 // ── Catalog types ─────────────────────────────────────────────────────────────
@@ -121,6 +131,14 @@ struct Installer {
     /// one-line data change once Command sends an explicit per-product BETA-lifted
     /// message — not a code change.
     price_usdc: u64,
+    /// Phase 5: the date (`YYYY-MM-DD`) this specific version's FSL term
+    /// automatically converts to Apache 2.0 (two years after release, per
+    /// FSL-1.1-ALv2 — see `LICENSE-MATRIX.md`). Populated manually per release;
+    /// no release-date data exists in this catalog to derive it automatically.
+    /// Meaningless for `commercial`-tier products (always `None` there).
+    /// Read by `xtask fsl-clock`, not by any route in this crate.
+    #[serde(default)]
+    fsl_conversion_date: Option<String>,
 }
 
 // `deny_unknown_fields`: a stray legacy `licenses:` key (from a pre-migration
@@ -221,6 +239,61 @@ fn flag_if_first_live_transaction(receipts_dir: &std::path::Path, receipt: &Lice
          this crate. Checkpoint 3b was deferred at launch (2026-07-02) -- review this specific \
          transaction and receipt now to close it out."
     );
+}
+
+/// Append one JSONL row to the CRA barter-transaction log
+/// (`BRIEF-software-distribution-substrate.md` §8 — required from the first real
+/// sale; a crypto payment is a CRA barter transaction, recorded at CAD fair-market
+/// value at settlement time). Schema matches that BRIEF's own example exactly:
+/// `date`, `sku` (`<product_id>@<edition>`), `license_tier`, `crypto_received`,
+/// `polygon_tx`, `spot_rate_cad`, `cad_equivalent`.
+///
+/// Only called from the fresh-confirmation path in `resolve_license`, never the
+/// receipt-cache-replay path — a cached replay is not a new sale and must not be
+/// logged twice.
+///
+/// **Known simplification**: `spot_rate_cad` is a placeholder (`AppState::
+/// usdc_cad_spot_rate`, configurable via `USDC_CAD_SPOT_RATE`, no live FX feed is
+/// wired into this crate). Sourcing a real rate at settlement time is future work,
+/// plausibly a `project-bookkeeping` integration per that BRIEF's own §9
+/// cross-cluster dependency table — not decided here.
+fn append_tx_log(
+    tx_log_path: &std::path::Path,
+    receipt: &LicenseReceipt,
+    edition: &str,
+    license_tier: &str,
+    spot_rate_cad: f64,
+) {
+    let usd = receipt.price_usdc as f64 / 1_000_000.0;
+    let cad_equivalent = usd * spot_rate_cad;
+    let row = json!({
+        "date": receipt.confirmed_at,
+        "sku": format!("{}@{}", receipt.product_id, edition),
+        "license_tier": license_tier,
+        "crypto_received": format!("{usd:.2} USDC"),
+        "polygon_tx": receipt.tx_hash,
+        "spot_rate_cad": format!("{spot_rate_cad:.2}"),
+        "cad_equivalent": format!("{cad_equivalent:.2}"),
+    });
+    if let Some(parent) = tx_log_path.parent() {
+        let _ = fs::create_dir_all(parent);
+    }
+    if let Ok(mut line) = serde_json::to_string(&row) {
+        line.push('\n');
+        use std::io::Write;
+        match fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(tx_log_path)
+        {
+            Ok(mut file) => {
+                if let Err(e) = file.write_all(line.as_bytes()) {
+                    tracing::warn!("tx-log append failed: {e}");
+                }
+            }
+            Err(e) => tracing::warn!("tx-log open failed: {e}"),
+        }
+    }
 }
 
 /// Convert a dollars-denominated USDC amount (as reported by `tool-wallet check`'s
@@ -448,9 +521,10 @@ async fn resolve_license(state: &AppState, tx_hash: &str) -> LicenseOutcome {
                 .unwrap_or(0);
 
             let price_units = price_units_from_check_json(&check_json);
-            let product_id = load_catalog(&state.catalog_path)
-                .ok()
-                .and_then(|c| match_license_product_id(&c, price_units))
+            let catalog = load_catalog(&state.catalog_path).ok();
+            let product_id = catalog
+                .as_ref()
+                .and_then(|c| match_license_product_id(c, price_units))
                 .unwrap_or_else(|| format!("unknown-{price_units}"));
 
             let license_key = generate_license_key(&product_id, tx_hash, &customer_ref);
@@ -476,6 +550,21 @@ async fn resolve_license(state: &AppState, tx_hash: &str) -> LicenseOutcome {
             }
 
             flag_if_first_live_transaction(&state.receipts_dir, &receipt);
+
+            // Phase 5: CRA barter-transaction log — only on a genuinely fresh
+            // confirmation (this branch), never a receipt-cache replay.
+            if let Some(installer) = catalog
+                .as_ref()
+                .and_then(|c| c.installers.iter().find(|i| i.id == product_id))
+            {
+                append_tx_log(
+                    &state.tx_log_path,
+                    &receipt,
+                    &installer.edition,
+                    installer.license_tier.label(),
+                    state.usdc_cad_spot_rate,
+                );
+            }
 
             LicenseOutcome::Confirmed {
                 license_key,
@@ -1002,6 +1091,14 @@ async fn main() -> Result<()> {
     if signing_key.is_none() {
         tracing::warn!("SIGNING_KEY_SECRET not set — /order/:tx_hash/download will return 503");
     }
+    let tx_log_path = PathBuf::from(
+        std::env::var("TX_LOG_PATH")
+            .unwrap_or_else(|_| "/var/lib/local-software/tx-log.jsonl".into()),
+    );
+    let usdc_cad_spot_rate = std::env::var("USDC_CAD_SPOT_RATE")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(1.37);
 
     let state = Arc::new(AppState {
         catalog_path,
@@ -1014,6 +1111,8 @@ async fn main() -> Result<()> {
         polygon_rpc_url,
         tool_wallet_bin,
         signing_key,
+        tx_log_path,
+        usdc_cad_spot_rate,
     });
 
     let app = Router::new()
@@ -1150,6 +1249,8 @@ esac
             polygon_rpc_url: "https://rpc.invalid".into(),
             tool_wallet_bin,
             signing_key: Some(test_signing_key()),
+            tx_log_path: scratch.join("tx-log.jsonl"),
+            usdc_cad_spot_rate: 1.37,
         })
     }
 
@@ -1208,6 +1309,8 @@ esac
             polygon_rpc_url: "https://rpc.invalid".into(),
             tool_wallet_bin: "tool-wallet".into(),
             signing_key: Some(test_signing_key()),
+            tx_log_path: scratch.join("tx-log.jsonl"),
+            usdc_cad_spot_rate: 1.37,
         })
     }
 
@@ -1378,6 +1481,13 @@ esac
         assert_eq!(body["license_key"], "aaaaaaaa-bbbbbbbb-cccccccc-dddddddd");
         assert_eq!(body["customer_ref"], "0xcaffee");
 
+        // Phase 5: a receipt-cache replay is NOT a new sale — must not append a
+        // tx-log row (only the fresh-confirmation path does).
+        assert!(
+            !state.tx_log_path.exists(),
+            "receipt-cache replay must not write to the tx log"
+        );
+
         let _ = fs::remove_dir_all(&scratch);
     }
 
@@ -1411,6 +1521,19 @@ esac
             serde_json::from_str(&fs::read_to_string(&rpath).unwrap()).unwrap();
         assert_eq!(written.product_id, "os-console");
         assert_eq!(written.price_usdc, 1_000_000); // micro-USDC, not dollars
+
+        // Phase 5: a fresh confirmation must append exactly one correctly-shaped
+        // tx-log.jsonl row (the CRA barter-transaction record).
+        let log_contents = fs::read_to_string(&state.tx_log_path).unwrap();
+        let lines: Vec<&str> = log_contents.lines().collect();
+        assert_eq!(lines.len(), 1, "exactly one row for one fresh confirmation");
+        let row: Value = serde_json::from_str(lines[0]).unwrap();
+        assert_eq!(row["sku"], "os-console@2026.05.144");
+        assert_eq!(row["license_tier"], "PointSav Commercial");
+        assert_eq!(row["crypto_received"], "1.00 USDC");
+        assert_eq!(row["polygon_tx"], tx);
+        assert_eq!(row["spot_rate_cad"], "1.37");
+        assert_eq!(row["cad_equivalent"], "1.37");
 
         let _ = fs::remove_dir_all(&scratch);
     }
