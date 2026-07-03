@@ -218,29 +218,33 @@ pub fn render_key_plans(state: &AppState) -> String {
         }
     };
 
+    // key-plans.dtcg.json nests entities three levels deep — category (e.g.
+    // "key-plan") -> subcategory (e.g. "private-office") -> size variant
+    // (e.g. "small"), each variant carrying $type/$value. Walk to any depth
+    // and collect every node that actually has a $value, rather than
+    // assuming a fixed depth.
+    let mut leaves: Vec<(&str, &Value)> = Vec::new();
+    collect_kp_leaves(bim, &mut leaves);
+    leaves.sort_by_key(|(slug, _)| *slug);
+
     let mut cards = String::new();
-    for (_cat, cat_val) in bim {
-        if let Some(entities) = cat_val.as_object() {
-            let mut slugs: Vec<&String> = entities.keys().collect();
-            slugs.sort();
-            for slug in slugs {
-                let entity = &entities[slug];
-                let val = entity.get("$value").cloned().unwrap_or(Value::Null);
-                let display_name = val
-                    .get("display_name")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or(slug);
-                let internal_code = val
-                    .get("internal_code")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("—");
-                let category = val.get("category").and_then(|v| v.as_str()).unwrap_or("—");
-                let area_sf = val.get("area_sf").and_then(|v| v.as_u64()).unwrap_or(0);
+    for (slug, entity) in leaves {
+        let val = entity.get("$value").cloned().unwrap_or(Value::Null);
+        let display_name = val
+            .get("display_name")
+            .and_then(|v| v.as_str())
+            .unwrap_or(slug);
+        let internal_code = val
+            .get("internal_code")
+            .and_then(|v| v.as_str())
+            .unwrap_or("—");
+        let category = val.get("category").and_then(|v| v.as_str()).unwrap_or("—");
+        let area_sf = val.get("area_sf").and_then(|v| v.as_u64()).unwrap_or(0);
 
-                let svg = super::svg::render_kp_zone_svg_from_value(&val);
+        let svg = super::svg::render_kp_zone_svg_from_value(&val);
 
-                cards.push_str(&format!(
-                    r#"<div class="bim-kp-card">
+        cards.push_str(&format!(
+            r#"<div class="bim-kp-card">
   <div class="bim-kp-svg">{svg}</div>
   <div class="bim-kp-info">
     <div class="bim-kp-name">{display_name}</div>
@@ -248,14 +252,12 @@ pub fn render_key_plans(state: &AppState) -> String {
     <div class="bim-kp-area">{area_sf} SF</div>
   </div>
 </div>"#,
-                    display_name = esc(display_name),
-                    internal_code = esc(internal_code),
-                    category = esc(category),
-                    area_sf = area_sf,
-                    svg = svg,
-                ));
-            }
-        }
+            display_name = esc(display_name),
+            internal_code = esc(internal_code),
+            category = esc(category),
+            area_sf = area_sf,
+            svg = svg,
+        ));
     }
 
     format!(
@@ -389,6 +391,23 @@ fn render_category_cards(state: &AppState) -> String {
         ));
     }
     out
+}
+
+/// Recursively walk a DTCG object collecting every node that carries a
+/// `$value` field, regardless of nesting depth — key-plans.dtcg.json nests
+/// three levels deep (category -> subcategory -> size variant); other files
+/// nest two. `slug` is set to the object key one level above the leaf.
+fn collect_kp_leaves<'a>(obj: &'a serde_json::Map<String, Value>, out: &mut Vec<(&'a str, &'a Value)>) {
+    for (key, val) in obj {
+        if key == "$description" {
+            continue;
+        }
+        if val.get("$value").is_some() {
+            out.push((key.as_str(), val));
+        } else if let Some(child) = val.as_object() {
+            collect_kp_leaves(child, out);
+        }
+    }
 }
 
 fn count_entities_in_file(state: &AppState, category: &str) -> usize {
