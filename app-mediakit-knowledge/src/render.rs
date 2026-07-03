@@ -311,7 +311,9 @@ fn render_slides_blocks(
             html.push_str(
                 "<button class=\"sd-prev\" aria-label=\"Previous slide\" aria-disabled=\"true\">←</button>",
             );
-            html.push_str(&format!("<span class=\"sd-progress\">1 / {slide_count}</span>"));
+            html.push_str(&format!(
+                "<span class=\"sd-progress\">1 / {slide_count}</span>"
+            ));
             html.push_str("<button class=\"sd-next\" aria-label=\"Next slide\">→</button>");
             html.push_str("<button class=\"sd-fullscreen\" aria-label=\"Fullscreen\">⛶</button>");
             html.push_str("</div>\n<div class=\"slide-deck__viewport\">\n");

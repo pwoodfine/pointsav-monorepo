@@ -53,4 +53,3 @@ fn panic(_info: &core::panic::PanicInfo) -> ! {
         core::hint::spin_loop();
     }
 }
-

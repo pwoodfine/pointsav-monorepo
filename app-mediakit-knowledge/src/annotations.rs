@@ -37,9 +37,7 @@ pub struct AnnotationFile {
 }
 
 pub fn annotations_file_path(content_dir: &Path, slug: &str) -> PathBuf {
-    content_dir
-        .join("annotations")
-        .join(format!("{slug}.yaml"))
+    content_dir.join("annotations").join(format!("{slug}.yaml"))
 }
 
 pub fn load_annotations(content_dir: &Path, slug: &str) -> AnnotationFile {
@@ -60,8 +58,7 @@ pub fn save_annotations(
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)?;
     }
-    let yaml = serde_yaml::to_string(file)
-        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+    let yaml = serde_yaml::to_string(file).map_err(std::io::Error::other)?;
     std::fs::write(&path, yaml)
 }
 
