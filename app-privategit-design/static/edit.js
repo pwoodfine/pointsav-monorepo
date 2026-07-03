@@ -2,8 +2,8 @@
 // SYS-ADR-10: operator reviews diff in textarea before confirming save.
 (function () {
   var parts = location.pathname.split('/');
-  var slug = parts[2], tab = parts[3];
-  if (!slug || !tab) return;
+  var section = parts[1], slug = parts[2], tab = parts[3];
+  if (!section || !slug || !tab) return;
 
   var content = document.querySelector('.content');
   if (!content) return;
@@ -32,7 +32,7 @@
       sessionStorage.setItem('design_edit_token', token);
     }
 
-    var res = await fetch('/vault/elements/' + slug + '/' + tab + '/raw');
+    var res = await fetch('/vault/' + section + '/' + slug + '/' + tab + '/raw');
     if (!res.ok) { alert('Could not load raw content: ' + res.status); return; }
     rawMarkdown = await res.text();
     originalHTML = content.innerHTML;
@@ -73,7 +73,7 @@
     var token = sessionStorage.getItem('design_edit_token');
     var body  = textarea.value;
 
-    var res = await fetch('/vault/elements/' + slug + '/' + tab, {
+    var res = await fetch('/vault/' + section + '/' + slug + '/' + tab, {
       method: 'PUT',
       headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'text/markdown; charset=utf-8' },
       body: body,

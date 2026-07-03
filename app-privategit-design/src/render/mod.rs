@@ -15,15 +15,18 @@ pub fn render_markdown(md: &str) -> String {
 pub fn render_nav(
     env: &Environment<'static>,
     nav: &HashMap<String, Vec<String>>,
-    sections: &[&str],
+    sections: &[(&str, &str)],
     active_section: &str,
     active_slug: &str,
 ) -> String {
+    let section_names: Vec<&str> = sections.iter().map(|(s, _)| *s).collect();
+    let default_tabs: HashMap<&str, &str> = sections.iter().copied().collect();
     env.get_template("nav.html")
         .expect("nav.html missing")
         .render(context! {
             nav => nav,
-            sections => sections,
+            sections => section_names,
+            default_tabs => default_tabs,
             active_section => active_section,
             active_slug => active_slug,
         })

@@ -1,4 +1,4 @@
-use crate::{render, schema, state::AppState, vault};
+use crate::{render, schema, state::AppState, tokens_gallery, vault};
 use axum::{
     body::Body,
     extract::{Path, State},
@@ -21,32 +21,61 @@ pub async fn index(State(state): State<AppState>) -> Html<String> {
     ))
 }
 
-pub async fn element_redirect(Path(slug): Path<String>, State(state): State<AppState>) -> Response {
+pub async fn tokens_gallery_page(State(state): State<AppState>) -> Html<String> {
+    let tiers = tokens_gallery::load_and_flatten(&state.vault);
+    let body = state
+        .env
+        .get_template("tokens.html")
+        .expect("tokens.html missing")
+        .render(minijinja::context! { tiers => tiers })
+        .expect("render tokens.html failed");
+
+    let nav_html = render::render_nav(&state.env, &state.nav, vault::SECTIONS, "", "");
+    Html(render::shell(
+        &state.env,
+        "Tokens — PointSav Design System",
+        &nav_html,
+        "",
+        "Tokens",
+        &body,
+    ))
+}
+
+pub async fn item_redirect(
+    Path((section, slug)): Path<(String, String)>,
+    State(state): State<AppState>,
+) -> Response {
     if slug.contains("..") || slug.contains('/') {
         return (StatusCode::BAD_REQUEST, "invalid").into_response();
     }
-    let tabs = vault::discover_tabs(&state.vault, "elements", &slug);
+    if !vault::is_known_section(&section) {
+        return (StatusCode::NOT_FOUND, "unknown section").into_response();
+    }
+    let tabs = vault::discover_tabs(&state.vault, &section, &slug);
     let first = tabs
         .into_iter()
         .next()
-        .unwrap_or_else(|| "overview".to_string());
-    Redirect::permanent(&format!("/elements/{}/{}", slug, first)).into_response()
+        .unwrap_or_else(|| vault::default_tab(&section).to_string());
+    Redirect::permanent(&format!("/{}/{}/{}", section, slug, first)).into_response()
 }
 
-pub async fn element_tab(
-    Path((slug, tab)): Path<(String, String)>,
+pub async fn item_tab(
+    Path((section, slug, tab)): Path<(String, String, String)>,
     State(state): State<AppState>,
 ) -> Response {
     if slug.contains("..") || slug.contains('/') || tab.contains("..") || tab.contains('/') {
         return (StatusCode::BAD_REQUEST, "invalid").into_response();
     }
-    let tabs = vault::discover_tabs(&state.vault, "elements", &slug);
+    if !vault::is_known_section(&section) {
+        return (StatusCode::NOT_FOUND, "unknown section").into_response();
+    }
+    let tabs = vault::discover_tabs(&state.vault, &section, &slug);
     if tabs.is_empty() {
-        return (StatusCode::NOT_FOUND, "element not found").into_response();
+        return (StatusCode::NOT_FOUND, "item not found").into_response();
     }
     let md_path = state
         .vault
-        .join("elements")
+        .join(&section)
         .join(&slug)
         .join(format!("{}.md", tab));
     let raw = match fs::read_to_string(&md_path) {
@@ -58,8 +87,8 @@ pub async fn element_tab(
     let schema_type = schema::detect(&frontmatter);
     let content = schema::render(schema_type, &frontmatter, &body);
 
-    let nav_html = render::render_nav(&state.env, &state.nav, vault::SECTIONS, "elements", &slug);
-    let tab_bar = render::render_tab_bar(&state.env, "elements", &slug, &tabs, &tab);
+    let nav_html = render::render_nav(&state.env, &state.nav, vault::SECTIONS, &section, &slug);
+    let tab_bar = render::render_tab_bar(&state.env, &section, &slug, &tabs, &tab);
     let label = vault::to_title(&slug);
 
     Html(render::shell(
