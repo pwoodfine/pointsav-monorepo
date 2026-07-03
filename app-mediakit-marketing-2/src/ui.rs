@@ -378,7 +378,8 @@ impl Tenant {
                 // before this is treated as final.
                 label: "Company and product disclosure",
                 label_es: "Divulgación de la empresa y del producto",
-                body: "**Corporate structure.** PointSav Digital Systems is a trade name of \
+                body: "**Corporate structure.** PointSav Digital Systems (\u{201c}PointSav\u{201d}) \
+                    is a trade name of \
                     Woodfine Capital Projects Inc. (\u{201c}Woodfine\u{201d}). PointSav does not \
                     itself offer, sell, or solicit any security. Any securities offering \
                     associated with Woodfine\u{2019}s real-property direct-hold solutions is made \
@@ -416,7 +417,8 @@ impl Tenant {
                     Disclaimer governs.",
                 // Real human translation, ported verbatim from the retired
                 // page.es.yaml prose section — not machine-translated here.
-                body_es: "**Estructura corporativa.** PointSav Digital Systems es un nombre \
+                body_es: "**Estructura corporativa.** PointSav Digital Systems \
+                    (\u{201c}PointSav\u{201d}) es un nombre \
                     comercial de Woodfine Capital Projects Inc. (\u{201c}Woodfine\u{201d}). \
                     PointSav no ofrece, vende ni solicita por sí mismo valor alguno. Toda oferta \
                     de valores asociada a las soluciones inmobiliarias de tenencia directa de \
