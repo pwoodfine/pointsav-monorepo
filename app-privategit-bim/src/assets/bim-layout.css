@@ -297,6 +297,29 @@ h1, h2 {
   font-weight: 600;
 }
 
+/* Sidebar-specific link treatment — accent-left-border on hover/active,
+   matching the wiki's convention, instead of a solid-fill background.
+   Scoped to .bim-side-nav rather than the shared .bim-nav-link base rule,
+   since that class is also reused for breadcrumbs, category cards, and
+   research-index items, which should keep their own treatments. */
+.bim-side-nav .bim-nav-link {
+  border-left: 2px solid transparent;
+  border-radius: 0;
+  padding-left: 0.5rem;
+  margin-left: -0.5rem;
+}
+
+.bim-side-nav .bim-nav-link:hover {
+  background: transparent;
+  color: var(--bim-accent, #164679);
+  border-left-color: var(--bim-border-strong, #9CA3AF);
+}
+
+.bim-side-nav .bim-nav-link.active {
+  background: var(--bim-accent-subtle, #E8EFF7);
+  border-left-color: var(--bim-accent, #164679);
+}
+
 .bim-main {
   flex: 1;
   padding: 2rem;
@@ -433,30 +456,29 @@ h1, h2 {
 }
 
 .bim-category-card {
-  display: block;
-  padding: 1.5rem;
-  border: 1px solid #E6E7E8;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--bim-border, #E6E7E8);
+  border-left: 3px solid var(--bim-accent, #164679);
+  border-radius: var(--bim-radius-md, 4px);
+  background: var(--bim-bg-page, #fff);
   text-decoration: none;
   color: inherit;
   transition: border-color 0.12s, box-shadow 0.12s;
 }
 
 .bim-category-card:hover {
-  border-color: #164679;
-  box-shadow: 0 2px 8px rgba(22, 70, 121, 0.12);
+  border-color: var(--bim-border-strong, #9CA3AF);
+  border-left-color: var(--bim-accent, #164679);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
 }
 
 .bim-category-card-name {
-  font-size: 1rem;
+  font-size: 0.9375rem;
   font-weight: 600;
-  margin-bottom: 0.375rem;
-  color: #164679;
-}
-
-.bim-category-card-desc {
-  font-size: 0.8125rem;
-  color: var(--bim-fg-secondary, #374151);
-  margin-bottom: 0.5rem;
+  color: var(--bim-fg, #111827);
 }
 
 .bim-category-card-count {

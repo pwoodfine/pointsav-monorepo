@@ -15,8 +15,8 @@ cds-table-cell {
 /* BIM tag chip */
 .bim-tag {
   display: inline-block;
-  background: #dde7f1;
-  color: #164679;
+  background: var(--bim-accent-subtle, #dde7f1);
+  color: var(--bim-accent, #164679);
   font-size: 0.6875rem;
   font-weight: 500;
   padding: 0.125em 0.5em;
@@ -33,10 +33,12 @@ cds-side-nav-menu-item a.bim-nav-link {
   width: 100%;
 }
 
-/* Active link indicator in sidebar */
+/* Active link indicator in sidebar (set client-side by bim.js's SPA
+   navigation, alongside the server-rendered .active class used on the
+   initial page load — keep both in sync with the same tokens). */
 [aria-current="page"] {
-  border-left: 3px solid #164679;
-  background: rgba(22, 70, 121, 0.08);
+  border-left: 3px solid var(--bim-accent, #164679);
+  background: var(--bim-accent-subtle, rgba(22, 70, 121, 0.08));
 }
 
 /* Carbon button overrides for bim-nav context */
@@ -87,6 +89,16 @@ cds-side-nav-menu-item a.bim-nav-link {
 .bim-kp-card[data-category="civic"] .bim-kp-svg { background: #f5e9eb; }
 .bim-kp-card[data-category="corporate-office"] .bim-kp-svg { background: #e8f1f8; }
 
+/* Same category accents, desaturated/darkened for dark mode — the light
+   pastel fills above would clash badly on a dark canvas. */
+:root[data-theme="dark"] .bim-kp-card[data-category="private-office"] .bim-kp-svg { background: #1c2634; }
+:root[data-theme="dark"] .bim-kp-card[data-category="medical"] .bim-kp-svg { background: #1a2b24; }
+:root[data-theme="dark"] .bim-kp-card[data-category="business"] .bim-kp-svg { background: #241f2f; }
+:root[data-theme="dark"] .bim-kp-card[data-category="laboratory"] .bim-kp-svg { background: #2c2417; }
+:root[data-theme="dark"] .bim-kp-card[data-category="academic"] .bim-kp-svg { background: #17281f; }
+:root[data-theme="dark"] .bim-kp-card[data-category="civic"] .bim-kp-svg { background: #2b1f23; }
+:root[data-theme="dark"] .bim-kp-card[data-category="corporate-office"] .bim-kp-svg { background: #1a2732; }
+
 /* Notification inline */
 .bim-save-notification {
   margin-top: 1rem;
@@ -110,18 +122,19 @@ cds-side-nav-menu-item a.bim-nav-link {
 }
 .bim-prop-table th,
 .bim-token-table th {
-  background: #F7F9FA;
+  background: var(--bim-bg-subtle, #F7F9FA);
   text-align: left;
   padding: 0.5rem 0.75rem;
   font-weight: 600;
-  border-bottom: 2px solid #dde;
-  color: #333;
+  border-bottom: 2px solid var(--bim-border, #dde);
+  color: var(--bim-fg, #333);
 }
 .bim-prop-table td,
 .bim-token-table td {
   padding: 0.375rem 0.75rem;
-  border-bottom: 1px solid #e8e8e8;
+  border-bottom: 1px solid var(--bim-border, #e8e8e8);
   vertical-align: middle;
+  color: var(--bim-fg-secondary, #374151);
 }
 .bim-prop-key label {
   color: #555;
