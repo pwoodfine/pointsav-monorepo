@@ -97,7 +97,7 @@ impl ContentIndex {
             .documents()
             .filter(|d| d.category.as_deref() == Some(category))
             .collect();
-        docs.sort_by(|a, b| a.title.to_lowercase().cmp(&b.title.to_lowercase()));
+        docs.sort_by_key(|a| a.title.to_lowercase());
         docs
     }
 

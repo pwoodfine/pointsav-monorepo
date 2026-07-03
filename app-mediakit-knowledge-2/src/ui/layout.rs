@@ -123,7 +123,7 @@ pub fn utility_bar(tenant: Tenant) -> Markup {
 }
 
 /// Sticky white header: logo · search · controls.
-pub fn header(tenant: Tenant, lang: &str, query: &str) -> Markup {
+pub fn header(tenant: Tenant, _lang: &str, query: &str) -> Markup {
     html! {
         header."k-header" role="banner" {
             div."k-header__inner" {
@@ -709,6 +709,7 @@ fn compliance_band(tenant: Tenant, important_info: Option<&str>) -> Markup {
 
 /// The full document as one balanced tree. `cats` drives the sidebar nav;
 /// `disclaimer` is the Important Information band content (None → tenant default).
+#[allow(clippy::too_many_arguments)]
 pub fn page(
     tenant: Tenant,
     lang: &str,
