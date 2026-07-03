@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: FSL-1.1-ALv2
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 //! The shared chrome: the persistent header/footer/page frame every
 //! `app-mediakit-*` instance renders inside, plus the page render entry point.
 //!

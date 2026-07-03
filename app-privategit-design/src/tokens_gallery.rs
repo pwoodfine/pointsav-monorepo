@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 // P0.2 — visual token gallery. Flattens dtcg-bundle.json's primitive/semantic/component
 // tiers into renderable entries: color tokens get a swatch + contrast ratio, everything
 // else gets a plain name/value row.

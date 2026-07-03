@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 // Phase H2b — Two seL4 threads + IPC gate.
 //
 // Rootserver creates one Endpoint and two TCBs (counter + receiver),

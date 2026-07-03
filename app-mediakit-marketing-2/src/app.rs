@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: FSL-1.1-ALv2
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 //! Application state and axum Router. P0 mounted `/healthz` and
 //! `/static/*path`; P1 added the content pipeline; P3 wired real chrome;
 //! P4 added SEO/discovery; P5 adds the MCP JSON-RPC surface + review queue

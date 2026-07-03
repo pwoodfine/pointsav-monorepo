@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 //! `ssh-keygen -Y verify` wrapper for witness-record signatures.
 //!
 //! Per `~/Foundry/CLAUDE.md` §3 + `apprenticeship-substrate.md` §5:

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 // Phase H8 — HTTP GET to 10.0.2.2:9080/healthz via raw TCP over VirtIO-net.
 //
 // QEMU user-mode networking (SLiRP) sends an ARP request before delivering

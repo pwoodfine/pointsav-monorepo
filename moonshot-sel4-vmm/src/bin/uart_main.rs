@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 // Phase H3 — PL011 UART MMIO direct write.
 //
 // Demonstrates seL4 device-untyped → frame mapping:

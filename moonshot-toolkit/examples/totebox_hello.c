@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 /*
  * totebox_hello.c — os-totebox Phase H1 seL4 rootserver, hello milestone.
  *

@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 """refilter-dpo.py — Retroactively apply corpus_gate rules to historical DPO pairs.
 
 The 1,952 pairs in data/training-corpus/feedback/ predate the corpus_gate

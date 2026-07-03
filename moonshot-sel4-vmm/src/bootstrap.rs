@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 // seL4 kernel object invocation helpers for the rootserver bootstrap path.
 //
 // All functions issue seL4_Call against kernel-object caps (TCB, Untyped, etc.)

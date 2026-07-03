@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 //! system-core — substrate primitives for The Capability Ledger Substrate.
 //!
 //! Implements [`Capability`] per Doctrine claim #33 and [`WitnessRecord`]

@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 # On-demand Yo-Yo #1 stop with optional drain + snapshot.
 #
 # Under normal operation the Doorman idle monitor stops the VM automatically

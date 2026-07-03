@@ -216,3 +216,17 @@ break the convention and have to rename files later.
 `/srv/foundry/deployments/cluster-totebox-corporate-1/inputs/README.md`.*
 *Convention authored by Jennifer Woodfine; documented here for
 Task Claude to follow.*
+
+<!-- BEGIN: factory-release-engineering license-section -->
+## License
+
+This repository contains code under multiple licenses. See the `LICENSE` file in the root of this repository for the canonical multi-license notice, which is authoritative. Each source file carries an SPDX-License-Identifier header identifying the license applicable to that file.
+
+Copyright (c) 2026 Woodfine Capital Projects Inc.. All rights not expressly granted by the applicable licenses are reserved.
+
+## Licencia
+
+Este repositorio contiene código bajo múltiples licencias. Véase el archivo `LICENSE` en la raíz del repositorio para el aviso canónico de múltiples licencias, el cual es la versión autoritativa. Cada archivo fuente incluye un encabezado SPDX-License-Identifier que identifica la licencia aplicable a ese archivo.
+
+Copyright (c) 2026 Woodfine Capital Projects Inc.. Se reservan todos los derechos no concedidos expresamente por las licencias aplicables.
+<!-- END: factory-release-engineering license-section -->

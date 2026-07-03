@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: FSL-1.1-ALv2
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 //! DTCG design-token loading.
 //!
 //! Components reference only token custom properties (`var(--…)`), never

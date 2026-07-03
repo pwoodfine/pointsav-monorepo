@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 # activate-foundation.sh — operator/Command activation of the foundation fixes.
 #
 # The foundation CODE is committed on cluster/project-totebox (Commits 1-4). This

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: FSL-1.1-ALv2
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 //! Content pipeline — mounts, frontmatter, walk/index, and rendering.
 //!
 //! Markdown files in a Git tree are the source of truth; the `ContentIndex`

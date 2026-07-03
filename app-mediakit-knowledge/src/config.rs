@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: FSL-1.1-ALv2
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 //! Runtime configuration — parsed from an instance `knowledge.toml`.
 //!
 //! The schema is the contract the three live instances depend on

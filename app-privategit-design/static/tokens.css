@@ -1,3 +1,8 @@
+/*
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ * SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+ */
+
 /* Carbon Design System tokens — --cds-* custom properties (D6).
    Consuming rules use var(--cds-*); future themes swap this file only. */
 :root {

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 //! Named glyph vocabulary (Phase C-1). Centralizing these stops literals from
 //! scattering across cartridges and keeps the iconography consistent. Rounded
 //! chrome is for human surfaces; square chrome for machine-of-record surfaces

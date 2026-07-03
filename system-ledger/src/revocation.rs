@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 //! Revoked-capability set. O(1) membership via `HashSet`; audit
 //! detail in a sidecar `HashMap`.
 //!

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 // Phase H7 — VirtIO-net virtqueue DMA + raw Ethernet/ARP/ICMP frame transmission.
 //
 // Builds on Phase H6: device found at slot 31 (0x0a003e00), DRIVER_OK accepted.

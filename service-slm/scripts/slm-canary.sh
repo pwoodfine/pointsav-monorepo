@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 # slm-canary.sh — combined hourly SLM canary: perf/throttle gate + drain health.
 #
 # Runs perf-bench-llama-server.sh then health-check-drain.sh, tees a timestamped

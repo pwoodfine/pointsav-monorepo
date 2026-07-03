@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 //! Entity resolution (ER) — a surface-form matcher that proposes candidate merges so the
 //! same real-world entity collapses onto one canonical id (the audit measured the Woodfine
 //! Capital Projects org fragmented 5-6 ways and persons split across modules).

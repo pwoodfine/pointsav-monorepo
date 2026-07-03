@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 //! moonshot-parser — span-based source tokenizer.
 //!
 //! Replaces tree-sitter and the hand-rolled JavaScript regex tokenizer in

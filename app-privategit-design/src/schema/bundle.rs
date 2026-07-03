@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 // DESIGN-BUNDLE renderer — ratified 2026-06-20 (namespace component.document.legal.*).
 // Renders a single vault-internal bundle-typed element (frontmatter + body).
 // For directory-mounted bundles (e.g. the editorial style-guide bundle), see

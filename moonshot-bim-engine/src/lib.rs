@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 //! moonshot-bim-engine — IFC (ISO 16739) STEP-file structural parser.
 //!
 //! Replaces the structural-parse role of web-ifc (MPL) and xeokit (commercial) — the

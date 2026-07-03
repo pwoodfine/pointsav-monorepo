@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 """corpus-manifest.py — Zero-loss audit record for the SFT training corpus.
 
 Walk both source trees (engineering/ and apprenticeship/) and record, for

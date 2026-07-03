@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 // DESIGN-BUNDLE directory mounts — list, serve, and zip-download an entire
 // externally-owned directory (canonical-source-with-downstream-mount, DOCTRINE §IV.e).
 // The source directory is never copied; `state.bundle_mounts` only holds a path.

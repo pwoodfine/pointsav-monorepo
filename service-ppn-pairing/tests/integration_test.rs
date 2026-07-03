@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 //! Integration tests for the PPN node-join ceremony.
 //!
 //! Each test spawns the ppn-pairing-server binary against an isolated tempdir

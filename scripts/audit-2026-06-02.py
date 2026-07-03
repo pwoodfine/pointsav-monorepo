@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 """
 Browser-in-the-loop audit — home.woodfinegroup.com + home.pointsav.com
 Leapfrog 2030 design + accessibility audit data collection.

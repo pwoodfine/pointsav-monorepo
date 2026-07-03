@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 # eval-adapter.sh — Eval gate for a trained LoRA adapter (§13 item 5).
 #
 # Runs a pass@5 quality check against the held-out eval set before

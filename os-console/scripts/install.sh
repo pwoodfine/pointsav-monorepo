@@ -1,4 +1,7 @@
 #!/bin/bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 # install.sh — install os-console on macOS 10.13 Intel or Linux x86_64
 #
 # What this script does:

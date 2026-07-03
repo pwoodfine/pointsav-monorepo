@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: FSL-1.1-ALv2
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 //! Per-wiki data loaded from the content repo root at startup:
 //! `categories.yaml` (the canonical category nav — id, display name, order) and
 //! `redirects.yaml` (Hugo-style `from → to` 301s). Both are optional; missing or

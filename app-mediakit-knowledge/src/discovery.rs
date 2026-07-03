@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: FSL-1.1-ALv2
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 //! Discovery surfaces built from the content index: `robots.txt`, `sitemap.xml`,
 //! Atom + JSON feeds (recently edited), and `llms.txt` (a machine-readable index
 //! for AI agents). All absolute URLs use the site's `canonical_url`.

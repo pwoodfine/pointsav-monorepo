@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 // P2 — dark mode toggle. Initial theme is set inline in <head> (before paint, avoids
 // flash-of-wrong-theme); this just wires the button to flip + persist the choice.
 (function () {

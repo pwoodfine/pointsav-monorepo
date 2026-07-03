@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 // DoormanOlmo adapter — relays to local OLMo via Doorman /v1/chat/completions.
 // Uses HTTP chunked streaming; Doorman speaks OpenAI-compatible SSE format.
 

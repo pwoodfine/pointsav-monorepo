@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: FSL-1.1-ALv2
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 //! Content walk + slug index.
 //!
 //! At startup the engine walks every mount, parses each Markdown file's

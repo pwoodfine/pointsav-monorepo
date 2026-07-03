@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 use minijinja::Environment;
 use moonshot_index::InvertedIndex;
 use std::{collections::HashMap, path::PathBuf, sync::Arc};

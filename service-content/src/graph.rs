@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 use anyhow::{anyhow, Result};
 use lbug::{Connection, Database, LogicalType, SystemConfig, Value};
 use serde::{Deserialize, Serialize};

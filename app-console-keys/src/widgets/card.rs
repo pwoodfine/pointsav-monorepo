@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 //! Card + padding helpers (Phase C-1). Consistent chrome so every cartridge
 //! gets the same air: rounded cards for human surfaces, square blocks for
 //! machine-of-record surfaces (ledgers, audit), and an inner-padding rect helper

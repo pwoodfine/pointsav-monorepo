@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 """export-sft.py — Build the supervised fine-tuning (SFT) corpus from the
 apprenticeship shadow tuples' senior-authored gold diffs, and/or from the
 engineering edit tuples' committed diffs.

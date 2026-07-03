@@ -1,9 +1,13 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 # LEGACY — Envelope A (axum/tokio std HTTP server).
 # Superseded by service-fs (Envelope B, seL4 bare-metal unikernel, Phase 3).
 # Retained for reference. Remove when Envelope B is confirmed stable in production.
 # NOT a workspace member — compile standalone only if needed.
 
 [package]
+license = "AGPL-3.0-or-later"
 name = "service-fs-legacy"
 version = "1.0.1"
 edition = "2021"

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: FSL-1.1-ALv2
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 // app-mediakit-marketing-2 — mobile drawer toggle.
 // Progressive enhancement: the drawer is pre-rendered HTML (works
 // no-JS-degraded per app.css's `html:not(.js) .m-drawer { display: none }`);
