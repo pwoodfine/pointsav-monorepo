@@ -60,7 +60,6 @@
   src: url('fonts/jetbrains-mono-700.woff2') format('woff2');
 }
 
->>>>>>> 737ac253 (app-privategit-design: Phase 1 foundation integrity — reconcile tokens.css/portal.css/edit.js/ai.js color+font drift to ratified DTCG primitives (was serving Carbon's actual hex values + dead unloaded IBM Plex fonts), self-host Inter+JetBrains Mono, expand token scale (13-step spacing, radius scale, elevation, icon tokens), fix favicon to real asset, add Lucide-sourced chrome icon set (search/close/copy/sun/moon))
 :root {
   /* Semantic color — mapped from dtcg-vault/themes/pointsav-brand.json */
   --cds-background: #ffffff;        /* surface-base       -> color.white */
