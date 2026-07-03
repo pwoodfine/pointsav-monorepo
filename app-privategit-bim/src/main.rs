@@ -28,6 +28,7 @@ async fn main() {
         // Full-page routes
         .route("/", get(routes::home::home_handler))
         .route("/about", get(routes::about::about_handler))
+        .route("/disclaimers", get(routes::disclaimers::disclaimers_handler))
         .route("/tokens", get(routes::tokens::tokens_index_handler))
         .route(
             "/tokens/{name}",

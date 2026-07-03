@@ -1,5 +1,6 @@
 pub mod about;
 pub mod api;
+pub mod disclaimers;
 pub mod editor;
 pub mod furniture;
 pub mod home;

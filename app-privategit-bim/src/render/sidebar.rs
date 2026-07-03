@@ -1,3 +1,4 @@
+use crate::content::Section;
 use crate::state::AppState;
 
 fn nav_link(href: &str, active_path: &str, label: &str) -> String {
@@ -18,25 +19,67 @@ fn nav_group(heading: &str, links: &str) -> String {
     )
 }
 
+/// One `<details>` section of the four-section category tree (Taxonomy /
+/// Objects / Compositions / Context). Open by default — a catalog shows its
+/// inventory rather than hiding it behind a collapsed accordion — but SSR
+/// forces `open` on whichever section contains the active page regardless,
+/// so a future collapsed-by-default flip stays correct.
+fn nav_section(section: Section, active_path: &str, state: &AppState) -> String {
+    let members: Vec<_> = state
+        .categories
+        .iter()
+        .filter(|cat| cat.section == section)
+        .collect();
+    let count = members.len();
+    let contains_active = members
+        .iter()
+        .any(|cat| active_path == format!("/tokens/{}", cat.slug));
+    let summary_class = if contains_active {
+        "bim-nav-section__summary bim-nav-section__summary--active"
+    } else {
+        "bim-nav-section__summary"
+    };
+
+    let mut links = String::new();
+    for cat in &members {
+        let href = format!("/tokens/{}", cat.slug);
+        links.push_str(&nav_link(&href, active_path, &cat.display_name));
+    }
+
+    format!(
+        r#"<details class="bim-nav-section" open>
+  <summary class="{summary_class}">
+    <span class="bim-nav-section__label">{label}</span>
+    <span class="bim-nav-section__count">{count}</span>
+    <svg class="bim-nav-section__chevron" aria-hidden="true" viewBox="0 0 10 10" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M2.5 1.5L7 5L2.5 8.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"></path>
+    </svg>
+  </summary>
+  <div class="bim-nav-section__links">
+    {links}
+  </div>
+</details>"#,
+        label = section.label(),
+    )
+}
+
 pub fn render_sidebar(active_path: &str, state: &AppState) -> String {
-    let overview = nav_group(
+    let top_cluster = nav_group(
         "Overview",
         &format!(
             "{}{}{}",
-            nav_link("/", active_path, "What are BIM Objects?"),
+            nav_link("/", active_path, "Overview"),
             nav_link("/tokens", active_path, "Browse All BIM Objects"),
-            nav_link("/about", active_path, "About BIM Objects"),
+            nav_link("/about", active_path, "About"),
         ),
     );
 
-    let mut category_links = String::new();
-    for cat in state.categories.iter() {
-        let href = format!("/tokens/{}", cat.slug);
-        category_links.push_str(&nav_link(&href, active_path, &cat.display_name));
+    let mut sections = String::new();
+    for section in Section::all() {
+        sections.push_str(&nav_section(section, active_path, state));
     }
-    let objects = nav_group("BIM Objects", &category_links);
 
-    let more = nav_group(
+    let bottom_cluster = nav_group(
         "More",
         &format!(
             "{}{}{}",
@@ -46,18 +89,11 @@ pub fn render_sidebar(active_path: &str, state: &AppState) -> String {
         ),
     );
 
-    // The utility bar's Woodfine-network links are hidden below 768px along
-    // with the rest of the utility bar (see bim-layout.css); this group
-    // repeats them inside the mobile drawer so they're still reachable.
-    // Hidden above 768px via CSS — .bim-nav-group--mobile-only.
-    let network = r#"<div class="bim-nav-group bim-nav-group--mobile-only">
-  <p class="bim-nav-group__heading">Woodfine Network</p>
-  <a href="https://woodfinegroup.com" class="bim-nav-link">Woodfine Capital Projects</a>
-  <a href="https://corporate.woodfinegroup.com" class="bim-nav-link" target="_blank" rel="noopener">Corporate</a>
-  <a href="https://projects.woodfinegroup.com" class="bim-nav-link" target="_blank" rel="noopener">Projects</a>
-  <a href="https://github.com/pointsav" class="bim-nav-link" target="_blank" rel="noopener">GitHub</a>
-</div>"#
-        .to_string();
-
-    format!("{overview}{objects}{more}{network}")
+    format!(
+        r#"{top_cluster}
+<div class="bim-nav-divider" aria-hidden="true"></div>
+{sections}
+<div class="bim-nav-divider" aria-hidden="true"></div>
+{bottom_cluster}"#
+    )
 }

@@ -1,71 +1,36 @@
-/* fonts.css — exact match to home.woodfinegroup.com's brand typography.
-   Font files + @font-face pattern vendored from app-mediakit-knowledge's
-   self-hosted copies of the same Google Fonts home.woodfinegroup.com loads
-   (Oswald, Nunito Sans, Roboto Slab) — see
-   pointsav-design-system/tokens/theme-woodfine-wcp.css for the canonical
-   token source this file matches. */
+/* fonts.css — Adobe Spectrum docs-chrome grammar, RD.7 §6.1's Geist Sans /
+   Geist Mono / Source Serif 4 typography spine.
 
-@font-face {
-  font-family: 'Oswald';
-  font-style: normal;
-  font-weight: 400 700;
-  font-display: swap;
-  src: url('/static/fonts/Oswald-400-normal-latin-ext.woff2') format('woff2');
-  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
-}
-@font-face {
-  font-family: 'Oswald';
-  font-style: normal;
-  font-weight: 400 700;
-  font-display: swap;
-  src: url('/static/fonts/Oswald-400-normal-latin.woff2') format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-
-@font-face {
-  font-family: 'Nunito Sans';
-  font-style: normal;
-  font-weight: 400 700;
-  font-display: swap;
-  src: url('/static/fonts/Nunito-Sans-400-700-normal-latin-ext.woff2') format('woff2');
-  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
-}
-@font-face {
-  font-family: 'Nunito Sans';
-  font-style: normal;
-  font-weight: 400 700;
-  font-display: swap;
-  src: url('/static/fonts/Nunito-Sans-400-700-normal-latin.woff2') format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-
-@font-face {
-  font-family: 'Roboto Slab';
-  font-style: normal;
-  font-weight: 400 700;
-  font-display: swap;
-  src: url('/static/fonts/Roboto-Slab-400-600-normal-latin-ext.woff2') format('woff2');
-  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
-}
-@font-face {
-  font-family: 'Roboto Slab';
-  font-style: normal;
-  font-weight: 400 700;
-  font-display: swap;
-  src: url('/static/fonts/Roboto-Slab-400-600-normal-latin.woff2') format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
+   KNOWN GAP: this workspace does not yet have self-hosted Geist Sans, Geist
+   Mono, or Source Serif 4 woff2 files (verified 2026-07-03 — no matches
+   anywhere on the workspace filesystem, and this environment has no way to
+   fetch/subset the actual font binaries). Rather than silently degrade to a
+   CDN (breaking this product's offline-first/self-hosted precedent, the same
+   one the removed Oswald/Nunito/Roboto Slab @font-face blocks followed) or
+   fabricate @font-face rules pointing at files that don't exist, this file
+   uses close, well-supported SYSTEM font stacks that approximate each
+   typeface's character until real font files can be sourced and vendored
+   the same way Oswald/Nunito/Roboto Slab were. Follow-up: self-host actual
+   Geist Sans/Mono (OFL 1.1, github.com/vercel/geist-font) and Source Serif 4
+   (OFL 1.1, Google Fonts) subsets, then swap the stacks below for real
+   @font-face declarations — no other file needs to change when that happens. */
 
 :root {
-  /* Display / condensed — nav labels, headings, kickers (matches --display) */
-  --bim-font-display: 'Oswald', 'Trade Gothic LT Std', 'Barlow Condensed', 'Helvetica Neue', Arial, sans-serif;
-  /* Sans — UI chrome, body copy, footer (matches --sans) */
-  --bim-font-sans: 'Nunito Sans', 'Avenir LT Std', 'Avenir Next', 'Mulish', -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
-  /* Serif — used sparingly for long-form prose, matching --serif */
-  --bim-font-serif: 'Roboto Slab', 'Caecilia LT Std', 'Zilla Slab', Georgia, serif;
-  /* No equivalent in home.woodfinegroup.com's stack (it has no code/IFC-class
-     display need) — a neutral system stack for IFC entity names, JSON, etc. */
-  --bim-font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  /* Display / serif — h1/h2 + hero only. Source Serif 4 is a humanist
+     transitional serif; until self-hosted, approximate with the closest
+     widely-available serif stack rather than default to sans everywhere. */
+  --bim-font-display: 'Source Serif 4', 'Source Serif Pro', Georgia, 'Times New Roman', serif;
+  /* Sans — UI chrome, body copy. Geist Sans is a grotesque geometric sans
+     close to the system-ui/Segoe UI Variable lineage; that's also its own
+     documented fallback chain, so the approximation is close by design. */
+  --bim-font-sans: 'Geist', 'Geist Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI Variable', 'Segoe UI', Helvetica, Arial, sans-serif;
+  /* Serif prose fallback — kept distinct from --bim-font-display for any
+     future long-form body use; same approximation as display for now. */
+  --bim-font-serif: 'Source Serif 4', 'Source Serif Pro', Georgia, 'Times New Roman', serif;
+  /* Mono — GUIDs, chip labels, codes, JSON, sidebar counts, standards line.
+     Geist Mono's own documented fallback chain is SFMono/Menlo/Consolas,
+     so this stack is accurate even without the custom font loaded. */
+  --bim-font-mono: 'Geist Mono', 'GeistMono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
 }
 
 body {

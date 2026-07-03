@@ -15,6 +15,7 @@ pub struct AppState {
     pub categories: Arc<Vec<CategoryMeta>>,
     pub about_page: Arc<PageContent>,
     pub home_page: Arc<PageContent>,
+    pub disclaimers_page: Arc<PageContent>,
     pub events_tx: broadcast::Sender<String>,
 }
 
@@ -26,11 +27,13 @@ impl AppState {
         let research_count = count_md_files(&config.vault_dir.join("research"));
 
         let site_content_dir = config.library_dir.join("site-content");
-        let categories = content::load_categories(&site_content_dir);
+        let categories = content::load_categories(&tokens, &site_content_dir);
         let about_page = content::load_page(&site_content_dir, "about")
             .ok_or("site-content/pages/about.md not found")?;
         let home_page = content::load_page(&site_content_dir, "home")
             .ok_or("site-content/pages/home.md not found")?;
+        let disclaimers_page = content::load_page(&site_content_dir, "disclaimers")
+            .ok_or("site-content/pages/disclaimers.md not found")?;
 
         let (events_tx, _) = broadcast::channel::<String>(64);
         Ok(Self {
@@ -42,6 +45,7 @@ impl AppState {
             categories: Arc::new(categories),
             about_page: Arc::new(about_page),
             home_page: Arc::new(home_page),
+            disclaimers_page: Arc::new(disclaimers_page),
             events_tx,
         })
     }

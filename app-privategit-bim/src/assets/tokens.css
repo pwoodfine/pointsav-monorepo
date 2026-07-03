@@ -1,50 +1,54 @@
-/* tokens.css — exact match to home.woodfinegroup.com's brand tokens.
-   Values copied 1:1 from pointsav-design-system/tokens/theme-woodfine-wcp.css
-   ("Extracted from Woodfine Home v7_AI1.html", 2026-05-05) — the canonical
-   source for Woodfine's actual home-site brand, as opposed to the earlier
-   BB.14 AEC-differentiated palette this replaces. See
-   BRIEF-app-privategit-bim.md for the decision record. */
+/* tokens.css — Adobe Spectrum docs-chrome grammar, Woodfine drafting-blue
+   accent, AEC-differentiated identity. Replaces the 2026-07-02 exact-match
+   to home.woodfinegroup.com's brand tokens: this catalog now deliberately
+   diverges from home.woodfinegroup.com's own Oswald/Nunito Sans/navy system
+   (which itself was a wiki-adjacent redesign choice, per BRIEF-app-privategit-bim.md)
+   in favour of the researched Spectrum-chrome + AEC-marker direction —
+   see .agent/sub-agent-results/RD.7-visual-direction-synthesis-2026-07-03.md
+   for the full decision record and rationale (color-collision analysis,
+   14/15 bankers'-distinguishability score, single-accent-discipline rule). */
 
 :root {
-  --bim-accent:           #164679;  /* = --wf-blue */
-  --bim-accent-hover:     #0F2E54;  /* derived — home stack has no separate hover shade */
-  --bim-accent-active:    #0A1F3D;  /* derived */
-  --bim-accent-subtle:    #E8EFF7;  /* = --wf-blue-tint */
+  /* #1A4480 drafting-document blue — confirmed per RD.7 §1, not adjusted.
+     Sole interactive accent on the site: buttons, active-nav border, focus
+     rings, link text, chip accents, hero SVG stroke. Never IBM Carbon's
+     #0f62fe — single-accent discipline is itself part of the distinguishing
+     signature against design.pointsav.com's two-blue Carbon system. */
+  --bim-accent:           #1A4480;
+  --bim-accent-hover:     #133360;
+  --bim-accent-active:    #0F2848;
+  --bim-accent-subtle:    #E8EEF8;
 
-  --bim-fg:               #111827;  /* = --ink */
-  --bim-fg-secondary:     #374151;  /* = --ink-2 */
-  --bim-fg-muted:         #6B7280;  /* = --ink-3 */
-  --bim-fg-faint:         #9CA3AF;  /* = --ink-4 */
+  --bim-fg:               #101828;
+  --bim-fg-secondary:     #344054;
+  --bim-fg-muted:         #667085;
+  --bim-fg-faint:         #98A2B3;
 
-  --bim-border:           #E6E7E8;  /* = --rule */
-  --bim-border-subtle:    rgba(17, 24, 39, 0.05);  /* no home equivalent; derived from --ink */
-  --bim-border-strong:    #9CA3AF;  /* = --rule-strong */
+  --bim-border:           #D0D5DD;
+  --bim-border-subtle:    #E5E7EB;
+  --bim-border-strong:    #98A2B3;
 
-  --bim-bg-page:          #FFFFFF;
-  --bim-bg-sidebar:       #F7F9FA;  /* = --paper-2 */
-  --bim-bg-subtle:        #F7F9FA;  /* = --paper-2 */
-  --bim-bg-tertiary:      #E6E7E8;  /* = --paper-3 */
+  --bim-bg-page:          #FAFBFC;
+  --bim-bg-surface:       #FFFFFF;
+  --bim-bg-sidebar:       #EFEFEF;
+  --bim-bg-subtle:        #EFEFEF;
+  --bim-bg-panel:         #E8E8E8;  /* tab bar / preview-frame header band */
+  --bim-bg-tertiary:      #E8E8E8;
+  --bim-bg-code:          #1A1A1A; /* dark in both themes */
+  --bim-nav-hover-bg:     #E5E9EF;
 
-  /* Topbar (blue institutional) — hardcoded, NOT derived from --bim-accent:
-     the topbar/footer are permanently-dark chrome regardless of theme, so
-     --bim-accent itself is free to shift lighter in dark mode for text
-     contrast (see :root[data-theme="dark"] below) without dragging the
-     topbar's fill along with it. */
-  --bim-topbar-bg:        #164679;
-  --bim-topbar-fg:        #FFFFFF;
-  --bim-topbar-fg-muted:  rgba(255, 255, 255, 0.65);
-  --bim-topbar-height:    48px;
-  --bim-utility-height:   32px;
-  --bim-header-height:    64px;
-  --bim-header-stack:     calc(var(--bim-utility-height) + var(--bim-header-height));
+  --bim-header-height:    48px;
+  --bim-header-stack:     var(--bim-header-height);
+  --bim-sidebar-width:    272px;
 
-  --bim-radius-sm: 2px;
-  --bim-radius-md: 2px;
+  --bim-radius-none: 0;
+  --bim-radius-sm:   4px;   /* chips, badges, inputs, tabs (top corners) */
+  --bim-radius-md:   6px;   /* buttons, cards/panels on grids */
+  --bim-radius-lg:   8px;   /* preview frames, hero SVG panel, modals */
 
   /* AEC semantic status colors — from woodfine-media-assets/css/theme-woodfine.css,
      brand-governed (Woodfine Color Matrix). For regulation/compliance status display.
-     Kept as-is: not part of home.woodfinegroup.com's stack (no compliance-status UI
-     there), but already brand-governed and unrelated to the visual-direction change. */
+     Kept as-is per RD.7 §6.2: unrelated to the visual-direction change. */
   --bim-safe:      #54924E;  /* IDS pass */
   --bim-safe-bg:   #ECFDF3;
   --bim-warning:   #B54708;  /* regulation warning */
@@ -62,26 +66,32 @@
 :root[data-theme="light"] { color-scheme: light; }
 :root[data-theme="dark"]  { color-scheme: dark; }
 
-/* Dark mode — overrides only the surfaces that actually render light and
-   must flip. Topbar/footer are already permanently-dark chrome in both
-   themes and are intentionally NOT overridden here. */
+/* Dark mode — desaturated instrument-navy (promoted from the pre-existing
+   preview-frame-only palette to a full page palette per RD.7 §6.2), not the
+   prior near-black wiki-era palette. Reads as "technical instrument" and
+   stays distinguishable from design.pointsav.com's #161616 Carbon dark.
+   Footer and code blocks remain permanently dark, un-toggled, in both
+   themes (unchanged convention). */
 :root[data-theme="dark"] {
-  --bim-accent:           #6FA8DC;  /* lightened for AA text contrast on dark surfaces */
-  --bim-accent-hover:     #8CBAE3;
-  --bim-accent-active:    #ABCCEA;
-  --bim-accent-subtle:    rgba(111, 168, 220, 0.16);
+  --bim-accent:           #5E9BDE;
+  --bim-accent-hover:     #7FB0E8;
+  --bim-accent-active:    #A3C6EF;
+  --bim-accent-subtle:    rgba(94, 155, 222, 0.16);
 
-  --bim-fg:               #F3F4F6;
-  --bim-fg-secondary:     #D1D5DB;
-  --bim-fg-muted:         #9CA3AF;
-  --bim-fg-faint:         #6B7280;
+  --bim-fg:               #E8EDF5;
+  --bim-fg-secondary:     #C3CBD9;
+  --bim-fg-muted:         #8B96A8;
+  --bim-fg-faint:         #64718A;
 
-  --bim-border:           #2D333F;
-  --bim-border-subtle:    rgba(255, 255, 255, 0.06);
-  --bim-border-strong:    #4B5563;
+  --bim-border:           #2E3D5A;
+  --bim-border-subtle:    rgba(232, 237, 245, 0.06);
+  --bim-border-strong:    #43547A;
 
-  --bim-bg-page:          #0F1218;
-  --bim-bg-sidebar:       #171B24;
-  --bim-bg-subtle:        #171B24;
-  --bim-bg-tertiary:      #1F2430;
+  --bim-bg-page:          #1C2333;
+  --bim-bg-surface:       #242E42;
+  --bim-bg-sidebar:       #1A2030;
+  --bim-bg-subtle:        #1A2030;
+  --bim-bg-panel:         #202A3E;
+  --bim-bg-tertiary:      #202A3E;
+  --bim-nav-hover-bg:     #202839;
 }
