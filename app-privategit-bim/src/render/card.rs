@@ -78,11 +78,15 @@ pub fn render_token_page(category: &str, state: &AppState) -> String {
     let empty_psets = Vec::new();
     let property_sets = meta.map(|m| &m.property_sets).unwrap_or(&empty_psets);
 
+    let multi_group = bim.keys().filter(|k| !k.starts_with('$')).count() > 1;
     let mut entity_count = 0usize;
     let mut rows = String::new();
-    for (_cat_key, cat_val) in bim {
+    for (cat_key, cat_val) in bim {
         if let Some(entities) = cat_val.as_object() {
-            let mut slugs: Vec<&String> = entities.keys().collect();
+            let mut slugs: Vec<&String> = entities
+                .keys()
+                .filter(|k| !k.starts_with('$'))
+                .collect();
             slugs.sort();
             for slug in slugs {
                 entity_count += 1;
@@ -96,13 +100,18 @@ pub fn render_token_page(category: &str, state: &AppState) -> String {
                     .and_then(|v| v.get("ifc_class"))
                     .and_then(|v| v.as_str())
                     .unwrap_or("—");
+                let display_slug = if multi_group {
+                    format!("{cat_key}/{slug}")
+                } else {
+                    slug.clone()
+                };
                 rows.push_str(&format!(
                     r#"<tr>
   <td><code>{slug}</code></td>
   <td><code>{ifc_class}</code></td>
   <td>{description}</td>
 </tr>"#,
-                    slug = esc(slug),
+                    slug = esc(&display_slug),
                     ifc_class = esc(ifc_class),
                     description = esc(description),
                 ));
@@ -133,6 +142,23 @@ pub fn render_token_page(category: &str, state: &AppState) -> String {
 
     let dtcg_json = serde_json::to_string_pretty(file_val).unwrap_or_default();
 
+    let uniclass_chip = if uniclass == "—" {
+        String::new()
+    } else {
+        format!(
+            r#"<span class="bim-chip bim-chip--accent">UNICLASS <strong>{}</strong></span>"#,
+            esc(uniclass)
+        )
+    };
+    let uniclass_row = if uniclass == "—" {
+        String::new()
+    } else {
+        format!(
+            "<tr><th>Uniclass 2015</th><td>{}</td></tr>",
+            esc(uniclass)
+        )
+    };
+
     format!(
         r#"<div class="bim-category-page">
   <div class="bim-breadcrumbs">
@@ -142,8 +168,7 @@ pub fn render_token_page(category: &str, state: &AppState) -> String {
   <h1>{display_name}</h1>
   <div class="bim-chip-row">
     <span class="bim-chip">IFC <code>{ifc_anchor}</code></span>
-    <span class="bim-chip bim-chip--accent">UNICLASS <strong>{uniclass}</strong></span>
-    <span class="bim-chip bim-chip--muted">REGULATORY OVERLAYS <strong>0 registered</strong></span>
+    {uniclass_chip}
   </div>
 
   <details class="bim-spec-card" open>
@@ -153,8 +178,7 @@ pub fn render_token_page(category: &str, state: &AppState) -> String {
       <p class="bim-elements"><code>{elements}</code></p>
       <table class="bim-detail-table">
         <tr><th>IFC entity</th><td><code>{ifc_anchor}</code></td></tr>
-        <tr><th>Uniclass 2015</th><td>{uniclass}</td></tr>
-        <tr><th>bSDD URI</th><td class="bim-fg-muted">pending</td></tr>
+        {uniclass_row}
         <tr><th>IFC hierarchy</th><td class="bim-ifc-hierarchy"><code>{ifc_hierarchy}</code></td></tr>
       </table>
       <h2>Applicable property sets</h2>
@@ -165,7 +189,7 @@ pub fn render_token_page(category: &str, state: &AppState) -> String {
   <details class="bim-spec-card" open>
     <summary>BIM Objects ({entity_count})</summary>
     <div class="bim-spec-card__body">
-      <table class="bim-token-table">
+      <table class="bim-table-wrap bim-token-table">
         <thead>
           <tr>
             <th>Token slug</th>
@@ -195,7 +219,8 @@ pub fn render_token_page(category: &str, state: &AppState) -> String {
         intro_html = intro_html,
         ifc_anchor = esc(ifc_anchor),
         elements = esc(elements),
-        uniclass = esc(uniclass),
+        uniclass_chip = uniclass_chip,
+        uniclass_row = uniclass_row,
         ifc_hierarchy = esc(ifc_hierarchy),
         pset_block = pset_block,
         entity_count = entity_count,
@@ -329,11 +354,23 @@ pub fn render_research_index(state: &AppState) -> String {
             .collect();
         names.sort();
         for slug in &names {
+            let title = std::fs::read_to_string(research_dir.join(format!("{slug}.md")))
+                .ok()
+                .and_then(|content| {
+                    content
+                        .lines()
+                        .find_map(|l| l.strip_prefix("# ").map(|t| t.trim().to_string()))
+                })
+                .unwrap_or_else(|| slug.replace('-', " "));
             items.push_str(&format!(
                 r#"<div class="bim-research-item">
-  <a href="/research/{slug}" data-path="/research/{slug}" class="bim-nav-link">{slug}</a>
+  <a href="/research/{slug}" data-path="/research/{slug}" class="bim-nav-link">
+    <span class="bim-research-item__title">{title}</span>
+    <span class="bim-research-item__slug">/research/{slug}</span>
+  </a>
 </div>"#,
                 slug = esc(slug),
+                title = esc(&title),
             ));
         }
     }
@@ -419,6 +456,7 @@ fn count_entities_in_file(state: &AppState, category: &str) -> usize {
     };
     bim.values()
         .filter_map(|v| v.as_object())
-        .flat_map(|o| o.values())
+        .flat_map(|o| o.iter())
+        .filter(|(k, _)| !k.starts_with('$'))
         .count()
 }
