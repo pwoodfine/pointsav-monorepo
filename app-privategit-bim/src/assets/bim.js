@@ -85,6 +85,27 @@ document.addEventListener('click', (e) => {
   }
 });
 
+// ── Theme toggle ──────────────────────────────────────────────────────────
+
+function syncThemeControls(theme) {
+  document.querySelectorAll('.bim-theme-toggle').forEach((btn) => {
+    btn.setAttribute('aria-pressed', theme === 'dark' ? 'true' : 'false');
+    btn.setAttribute('aria-label', theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme');
+  });
+}
+
+document.addEventListener('click', (e) => {
+  const toggle = e.target.closest('.bim-theme-toggle');
+  if (!toggle || toggle.disabled) return;
+  const current = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+  const next = current === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  try { localStorage.setItem('bim-theme', next); } catch (_) {}
+  syncThemeControls(next);
+});
+
+syncThemeControls(document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light');
+
 // ── SSE hot-reload ──────────────────────────────────────────────────────────
 
 let sseRetries = 0;
