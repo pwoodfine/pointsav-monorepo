@@ -583,9 +583,17 @@ const FIXTURES: &[Fixture] = &[
         headers: NO_HDRS,
         body: None,
         normalize: Normalize::MaskJson(VOLATILE_LICENSE),
+        // Phase 1 catalog rebuild (BRIEF-software-hyperscaler-audit.md Licensing
+        // Corrections): `apache`/`fsl` no longer exist as catalog ids — every os-*
+        // product now carries its own `license_tier`/`price_usdc` fields directly,
+        // and ALL of them ship at price_usdc: 0 during the active BETA gate (see
+        // `Installer::price_usdc` doc comment in main.rs). A $1.00 test payment no
+        // longer matches any installer on the NEW crate either — this is a second,
+        // deliberate, approved divergence from the OLD crate's still-live
+        // apache/fsl pricing, not a regression.
         expect: Expect::PricingFix {
             old_product: "unknown-1000000",
-            new_product: "apache",
+            new_product: "unknown-1000000",
         },
     },
     Fixture {
@@ -596,9 +604,10 @@ const FIXTURES: &[Fixture] = &[
         headers: NO_HDRS,
         body: None,
         normalize: Normalize::MaskJson(VOLATILE_LICENSE),
+        // See the 1usd fixture's comment above — same rationale for the $19 tier.
         expect: Expect::PricingFix {
             old_product: "unknown-19000000",
-            new_product: "fsl",
+            new_product: "unknown-19000000",
         },
     },
     Fixture {
@@ -1027,6 +1036,12 @@ fn fetch_products(port: u16, cache: &mut HashMap<u16, Value>) -> Result<Value, S
 /// Reduce a rendered catalog page to a presence map of the entries the SAME
 /// service reports via `/v1/products`. This is the "diff the data, not the
 /// bytes" mode for the P3 dynamic `/software` page.
+///
+/// Rebuilt for the Phase 1 catalog rebuild (BRIEF-software-hyperscaler-audit.md
+/// Licensing Corrections): `v1_products` now emits a single unified `installers`
+/// array (no more separate `licenses` key) — every entry carries its own
+/// `license_tier`/`price_usdc` directly. `price_usdc == 0` is the active BETA gate,
+/// not "this entry is a different kind of thing."
 fn catalog_data_body(body: &[u8], products: &Value) -> Value {
     let html = String::from_utf8_lossy(body);
     let mut entries = Vec::new();
@@ -1039,33 +1054,19 @@ fn catalog_data_body(body: &[u8], products: &Value) -> Value {
     {
         let id = i.get("id").and_then(|v| v.as_str()).unwrap_or_default();
         let name = i.get("name").and_then(|v| v.as_str()).unwrap_or_default();
-        entries.push(json!({
+        let units = i.get("price_usdc").and_then(|v| v.as_u64()).unwrap_or(0);
+        let tier = i.get("license_tier").and_then(|v| v.as_str()).unwrap_or("");
+        let mut entry = json!({
             "kind": "installer",
             "id": id,
             "name": name,
-            "id_present": html.contains(id),
-            "name_present": html.contains(name),
-        }));
-    }
-    for l in products
-        .get("licenses")
-        .and_then(|v| v.as_array())
-        .into_iter()
-        .flatten()
-    {
-        let id = l.get("id").and_then(|v| v.as_str()).unwrap_or_default();
-        let name = l.get("name").and_then(|v| v.as_str()).unwrap_or_default();
-        let units = l.get("price_usdc").and_then(|v| v.as_u64()).unwrap_or(0);
-        let mut entry = json!({
-            "kind": "license",
-            "id": id,
-            "name": name,
+            "license_tier": tier,
             "price_usdc": units,
             "id_present": html.contains(id),
             "name_present": html.contains(name),
         });
         if units > 0 {
-            // The dynamic page renders paid tiers as "$X.YZ" (catalog.rs).
+            // The dynamic page renders a lifted-BETA (paid) product as "$X.YZ" (catalog.rs).
             let display = format!("${:.2}", units as f64 / 1_000_000.0);
             entry["price_display"] = Value::String(display.clone());
             entry["price_present"] = Value::Bool(html.contains(&display));
