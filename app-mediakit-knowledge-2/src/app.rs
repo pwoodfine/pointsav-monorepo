@@ -150,7 +150,7 @@ fn nav_cats(state: &AppState) -> Vec<(String, String)> {
     // Fallback: knowledge.toml categories, else discovered.
     let mut cats: Vec<(String, String)> = Vec::new();
     if state.config.site.categories.is_empty() {
-        for (slug, _) in &counts {
+        for slug in counts.keys() {
             cats.push((slug.clone(), humanize(slug)));
         }
     } else {
@@ -384,7 +384,7 @@ async fn special_all_pages(State(state): State<AppState>) -> Response {
             )
         })
         .collect();
-    items.sort_by(|a, b| a.1.to_lowercase().cmp(&b.1.to_lowercase()));
+    items.sort_by_key(|a| a.1.to_lowercase());
     let body = ui::special_list("Index of record", "All records", &items);
     let head = ui::doc_head(
         "Index of record",
