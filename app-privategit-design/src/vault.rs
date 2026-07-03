@@ -41,7 +41,6 @@ pub fn discover_component_groups(vault: &Path, slugs: &[String]) -> Vec<(String,
             "components" => String::new(),
             "map" => "Also used on gis.woodfinegroup.com".to_string(),
             "wiki" => "Also used by the wiki engine".to_string(),
-            "bim" => "Also used by the BIM product family".to_string(),
             other => format!("Also used by {}", to_title(other)),
         }
     }
