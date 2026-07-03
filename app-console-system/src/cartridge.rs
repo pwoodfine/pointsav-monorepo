@@ -308,15 +308,20 @@ impl SystemCartridge {
                     action: "REVOKE",
                 });
                 self.revoke_flash = 20; // ~320ms at 16ms tick
-                // Compute cascade: caps that lose their basis when this one is revoked.
+                                        // Compute cascade: caps that lose their basis when this one is revoked.
                 let cascade = Self::cascade_for(idx)
                     .into_iter()
-                    .filter(|&ci| compute_verdict(&self.caps[ci].cap, &self.ledger) != CapVerdict::Revoked)
+                    .filter(|&ci| {
+                        compute_verdict(&self.caps[ci].cap, &self.ledger) != CapVerdict::Revoked
+                    })
                     .collect::<Vec<_>>();
                 if cascade.is_empty() {
                     self.feedback = Some(format!("{DENY} Revoked: {label}"));
                 } else {
-                    self.feedback = Some(format!("{DENY} Revoked: {label} — cascade pending ({} dependent)", cascade.len()));
+                    self.feedback = Some(format!(
+                        "{DENY} Revoked: {label} — cascade pending ({} dependent)",
+                        cascade.len()
+                    ));
                     self.cascade_queue = cascade;
                     self.cascade_timer = 12;
                 }
@@ -418,7 +423,8 @@ impl SystemCartridge {
         );
 
         let flash_active = self.revoke_flash > 0;
-        let cascade_pending: std::collections::HashSet<usize> = self.cascade_queue.iter().copied().collect();
+        let cascade_pending: std::collections::HashSet<usize> =
+            self.cascade_queue.iter().copied().collect();
         let items: Vec<ListItem> = self
             .caps
             .iter()
@@ -427,7 +433,13 @@ impl SystemCartridge {
                 let verdict = compute_verdict(&entry.cap, &self.ledger);
                 let is_sel = i == self.graph_selected;
                 let is_cascade = cascade_pending.contains(&i);
-                let sel_mark = if is_sel { MARKER } else if is_cascade { "⟲" } else { " " };
+                let sel_mark = if is_sel {
+                    MARKER
+                } else if is_cascade {
+                    "⟲"
+                } else {
+                    " "
+                };
                 let ct = cap_type_label(&entry.cap.cap_type);
                 let rights = format!("{:<20}", rights_label(&entry.cap.rights));
                 let expiry = expiry_label(entry.cap.expiry_t);
@@ -454,10 +466,7 @@ impl SystemCartridge {
                     Span::styled(format!("{ct}  "), Style::default().fg(Color::White)),
                     Span::styled(rights, Style::default().fg(self.muted_color())),
                     Span::styled(expiry, Style::default().fg(self.muted_color())),
-                    Span::styled(
-                        format!("{v_glyph} {v_label}"),
-                        Style::default().fg(v_color),
-                    ),
+                    Span::styled(format!("{v_glyph} {v_label}"), Style::default().fg(v_color)),
                 ]);
 
                 if is_sel {
@@ -583,10 +592,7 @@ impl SystemCartridge {
                                 .add_modifier(Modifier::BOLD),
                         ),
                         Span::styled(
-                            format!(
-                                "  {:<28}",
-                                format!("{}@{}", req.username, req.tenant)
-                            ),
+                            format!("  {:<28}", format!("{}@{}", req.username, req.tenant)),
                             Style::default().fg(Color::White),
                         ),
                         Span::styled(ts.to_string(), Style::default().fg(self.muted_color())),
@@ -632,7 +638,11 @@ impl SystemCartridge {
             };
             Line::from(Span::styled(msg.clone(), Style::default().fg(color)))
         } else if !self.pending.is_empty() {
-            let fp_hint = if self.show_fingerprint { "[?] hide fp  " } else { "[?] show fp  " };
+            let fp_hint = if self.show_fingerprint {
+                "[?] hide fp  "
+            } else {
+                "[?] show fp  "
+            };
             Line::from(vec![
                 Span::styled("[Enter] approve  ", Style::default().fg(self.muted_color())),
                 Span::styled("[D] deny  ", Style::default().fg(self.muted_color())),
@@ -762,7 +772,8 @@ impl Cartridge for SystemCartridge {
                 self.cascade_queue.remove(0);
                 let cap_hash = self.caps[cascade_idx].cap.hash();
                 let label = self.caps[cascade_idx].label.to_string();
-                if compute_verdict(&self.caps[cascade_idx].cap, &self.ledger) != CapVerdict::Revoked {
+                if compute_verdict(&self.caps[cascade_idx].cap, &self.ledger) != CapVerdict::Revoked
+                {
                     let height = self.ledger_log.len() as u64 + 2;
                     let _ = self.ledger.apply_revocation(RevocationEvent {
                         capability_hash: cap_hash,
@@ -932,8 +943,8 @@ impl Cartridge for SystemCartridge {
                     }
                     KeyCode::Down | KeyCode::Char('j') => {
                         if !self.pending.is_empty() {
-                            self.topo_selected = (self.topo_selected + 1)
-                                .min(self.pending.len().saturating_sub(1));
+                            self.topo_selected =
+                                (self.topo_selected + 1).min(self.pending.len().saturating_sub(1));
                         }
                         return CartridgeAction::Consumed;
                     }

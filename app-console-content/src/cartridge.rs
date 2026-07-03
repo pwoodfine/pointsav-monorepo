@@ -2,10 +2,10 @@ use std::sync::mpsc;
 use std::thread;
 use std::time::Instant;
 
-use app_console_keys::{IntentArgs, IntentId, IntentScope, IntentSpec, MouseAffordance};
 use app_console_keys::motion::{self, Anim};
 use app_console_keys::session::SessionState;
 use app_console_keys::{Cartridge, CartridgeAction, FKey};
+use app_console_keys::{IntentArgs, IntentId, IntentScope, IntentSpec, MouseAffordance};
 use crossterm::event::{Event, KeyCode, KeyModifiers};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
@@ -416,7 +416,8 @@ impl ContentCartridge {
 
     fn render_submitting(frame: &mut Frame, area: Rect, elapsed_ms: u64, truecolor: bool) {
         let t = motion::pulse(elapsed_ms, 2800);
-        let ring = PATIENCE_RING[((t * PATIENCE_RING.len() as f32) as usize).min(PATIENCE_RING.len() - 1)];
+        let ring =
+            PATIENCE_RING[((t * PATIENCE_RING.len() as f32) as usize).min(PATIENCE_RING.len() - 1)];
         let border_color = if truecolor {
             let v = 80 + (t * 175.0) as u8;
             Color::Rgb(0, v, v)
@@ -475,7 +476,9 @@ impl ContentCartridge {
             let v = base + (pop_t * (bright - base) as f32) as u8;
             Style::default().fg(Color::Rgb(0, v, 60))
         } else if born_ms < 200 {
-            Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)
+            Style::default()
+                .fg(Color::Green)
+                .add_modifier(Modifier::BOLD)
         } else {
             Style::default().fg(Color::Green)
         };
@@ -488,7 +491,11 @@ impl ContentCartridge {
 
         let chunks = Layout::default()
             .direction(Direction::Vertical)
-            .constraints([Constraint::Length(1), Constraint::Fill(1), Constraint::Length(1)])
+            .constraints([
+                Constraint::Length(1),
+                Constraint::Fill(1),
+                Constraint::Length(1),
+            ])
             .split(inner);
 
         // Info line
@@ -545,7 +552,10 @@ impl ContentCartridge {
         // Egress-witness strip — shows which Doorman tier reviewed this draft.
         frame.render_widget(
             Paragraph::new(Line::from(vec![
-                Span::styled("  ⬡ Witnessed by Doorman · Local · ", Style::default().fg(Color::DarkGray)),
+                Span::styled(
+                    "  ⬡ Witnessed by Doorman · Local · ",
+                    Style::default().fg(Color::DarkGray),
+                ),
                 Span::styled(witness_at, Style::default().fg(Color::Cyan)),
             ])),
             chunks[2],
@@ -1098,7 +1108,11 @@ impl ContentCartridge {
                     let cert = self.tls_cert_pem.clone();
                     thread::spawn(move || {
                         let _ = proofreader::post_verdict(
-                            &rid, &tenant, "accept", &endpoint, cert.as_deref(),
+                            &rid,
+                            &tenant,
+                            "accept",
+                            &endpoint,
+                            cert.as_deref(),
                         );
                     });
                 }
@@ -1112,7 +1126,11 @@ impl ContentCartridge {
                     let cert = self.tls_cert_pem.clone();
                     thread::spawn(move || {
                         let _ = proofreader::post_verdict(
-                            &rid, &tenant, "reject", &endpoint, cert.as_deref(),
+                            &rid,
+                            &tenant,
+                            "reject",
+                            &endpoint,
+                            cert.as_deref(),
                         );
                     });
                 }
@@ -1736,7 +1754,13 @@ impl Cartridge for ContentCartridge {
                 scroll,
                 born_at,
                 witness_at,
-            } => Cmd::Results(response.clone(), original.clone(), *scroll, born_at.elapsed().as_millis() as u64, witness_at.clone()),
+            } => Cmd::Results(
+                response.clone(),
+                original.clone(),
+                *scroll,
+                born_at.elapsed().as_millis() as u64,
+                witness_at.clone(),
+            ),
             ContentState::DraftingNew {
                 title,
                 buffer,
@@ -1791,9 +1815,16 @@ impl Cartridge for ContentCartridge {
             Cmd::Submitting(elapsed_ms) => {
                 Self::render_submitting(frame, render_area, elapsed_ms, self.truecolor)
             }
-            Cmd::Results(resp, orig, sc, born_ms, wit) => {
-                Self::render_results(frame, render_area, &resp, &orig, sc, born_ms, self.truecolor, &wit)
-            }
+            Cmd::Results(resp, orig, sc, born_ms, wit) => Self::render_results(
+                frame,
+                render_area,
+                &resp,
+                &orig,
+                sc,
+                born_ms,
+                self.truecolor,
+                &wit,
+            ),
             Cmd::Drafting(t, buf, done, err, sc) => {
                 Self::render_drafting(frame, render_area, &t, &buf, done, err.as_deref(), sc)
             }
@@ -2018,8 +2049,12 @@ impl Cartridge for ContentCartridge {
             }
             "content.pick_protocol" => {
                 if let ContentState::Input { protocol_idx } = self.state {
-                    let saved: Vec<String> =
-                        self.textarea.lines().iter().map(|s| s.to_string()).collect();
+                    let saved: Vec<String> = self
+                        .textarea
+                        .lines()
+                        .iter()
+                        .map(|s| s.to_string())
+                        .collect();
                     self.state = ContentState::PickProtocol {
                         saved_text: saved,
                         selected: protocol_idx,
@@ -2032,7 +2067,6 @@ impl Cartridge for ContentCartridge {
             _ => CartridgeAction::None,
         }
     }
-
 }
 
 #[cfg(test)]

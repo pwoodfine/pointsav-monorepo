@@ -31,11 +31,7 @@ static TMPCTR: AtomicU64 = AtomicU64::new(0);
 
 fn tmpdir() -> PathBuf {
     let n = TMPCTR.fetch_add(1, Ordering::SeqCst);
-    let dir = std::env::temp_dir().join(format!(
-        "svc-input-e2e-{}-{}",
-        std::process::id(),
-        n
-    ));
+    let dir = std::env::temp_dir().join(format!("svc-input-e2e-{}-{}", std::process::id(), n));
     std::fs::create_dir_all(&dir).unwrap();
     dir
 }
@@ -72,14 +68,9 @@ async fn document_ingest_persists_to_service_fs_and_reads_back() {
     let fs_root = tmpdir();
 
     // ── service-fs: real HTTP server on ephemeral localhost port ──────
-    let fs_ledger =
-        service_fs::posix_tile_open(&fs_root, module_id, None::<&Path>).unwrap();
-    let fs_audit_ledger = service_fs::posix_tile_open(
-        fs_root.join(module_id),
-        "audit-log",
-        None::<&Path>,
-    )
-    .unwrap();
+    let fs_ledger = service_fs::posix_tile_open(&fs_root, module_id, None::<&Path>).unwrap();
+    let fs_audit_ledger =
+        service_fs::posix_tile_open(fs_root.join(module_id), "audit-log", None::<&Path>).unwrap();
     let fs_state = Arc::new(service_fs::AppState {
         module_id: module_id.to_string(),
         ledger: fs_ledger,

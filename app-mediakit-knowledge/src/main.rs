@@ -191,7 +191,12 @@ async fn main() -> Result<()> {
                     toml_cats
                 } else {
                     std::env::var("SITE_CATEGORIES")
-                        .map(|v| v.split(',').map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect())
+                        .map(|v| {
+                            v.split(',')
+                                .map(|s| s.trim().to_string())
+                                .filter(|s| !s.is_empty())
+                                .collect()
+                        })
                         .unwrap_or_default()
                 };
                 (
@@ -218,7 +223,12 @@ async fn main() -> Result<()> {
                     )
                 })?;
                 let legacy_site_categories = std::env::var("SITE_CATEGORIES")
-                    .map(|v| v.split(',').map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect())
+                    .map(|v| {
+                        v.split(',')
+                            .map(|s| s.trim().to_string())
+                            .filter(|s| !s.is_empty())
+                            .collect()
+                    })
                     .unwrap_or_default();
                 (
                     cd,
