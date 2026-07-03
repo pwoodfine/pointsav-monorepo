@@ -8,6 +8,14 @@ pub struct Config {
     /// DESIGN-BUNDLE mounts: bundle name -> canonical source directory owned by
     /// another archive (mounted read-only for serving + /download; never copied).
     pub bundle_mounts: HashMap<String, PathBuf>,
+    /// minijinja template directory. Defaults to CARGO_MANIFEST_DIR/templates for
+    /// local dev convenience — that default is a compile-time path baked into the
+    /// binary and does NOT exist once the binary is copied to another machine
+    /// (found 2026-07-03: caused a production crash-loop on foundry-prod,
+    /// "nav.html missing", since the binary is built on the workspace VM but
+    /// runs on a separate deploy target). Production deploys MUST set
+    /// DESIGN_TEMPLATES_DIR explicitly.
+    pub templates_dir: PathBuf,
 }
 
 impl Config {
@@ -37,6 +45,10 @@ impl Config {
             ),
         );
 
+        let templates_dir = PathBuf::from(env::var("DESIGN_TEMPLATES_DIR").unwrap_or_else(|_| {
+            concat!(env!("CARGO_MANIFEST_DIR"), "/templates").to_string()
+        }));
+
         Config {
             vault,
             bind: env::var("DESIGN_BIND").unwrap_or_else(|_| "127.0.0.1:9094".to_string()),
@@ -44,6 +56,7 @@ impl Config {
                 .unwrap_or_else(|_| "http://127.0.0.1:9092".to_string()),
             tenant: env::var("DESIGN_TENANT").unwrap_or_else(|_| "pointsav".to_string()),
             bundle_mounts,
+            templates_dir,
         }
     }
 }
