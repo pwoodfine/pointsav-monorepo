@@ -1,5 +1,5 @@
 /* ============================================================================
- * app-mediakit-knowledge-2 · Chrome behavior · P2 (winner: "Slate" + grafts)
+ * app-mediakit-knowledge · Chrome behavior · P2 (winner: "Slate" + grafts)
  * ----------------------------------------------------------------------------
  * Vanilla JS, no framework. Progressive enhancement: the chrome is fully
  * usable without JS; this layer adds theme persistence and the mobile drawer.
