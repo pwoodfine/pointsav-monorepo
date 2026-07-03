@@ -46,5 +46,19 @@ pub fn render_sidebar(active_path: &str, state: &AppState) -> String {
         ),
     );
 
-    format!("{overview}{objects}{more}")
+    // The utility bar's Woodfine-network links are hidden below 768px along
+    // with the rest of the utility bar (see bim-layout.css); this group
+    // repeats them inside the mobile drawer so they're still reachable.
+    // Hidden above 768px via CSS — .bim-nav-group--mobile-only.
+    let network = format!(
+        r#"<div class="bim-nav-group bim-nav-group--mobile-only">
+  <p class="bim-nav-group__heading">Woodfine Network</p>
+  <a href="https://woodfinegroup.com" class="bim-nav-link">Woodfine Capital Projects</a>
+  <a href="https://corporate.woodfinegroup.com" class="bim-nav-link" target="_blank" rel="noopener">Corporate</a>
+  <a href="https://projects.woodfinegroup.com" class="bim-nav-link" target="_blank" rel="noopener">Projects</a>
+  <a href="https://github.com/pointsav" class="bim-nav-link" target="_blank" rel="noopener">GitHub</a>
+</div>"#
+    );
+
+    format!("{overview}{objects}{more}{network}")
 }
