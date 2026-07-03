@@ -175,69 +175,104 @@ impl Tenant {
             // always-visible `type: prose` home-page section (operator
             // feedback: it read as a duplicate of this same accordion).
             // Markdown-rendered; see `DisclosureSlot::body`.
+            //
+            // Hyperscaler-grade legal pass 2026-07-02 (Opus agent, hyperscaler-
+            // law-firm-counsel brief): converted the orphan numbered risk list
+            // into the same bold-label-lead paragraph pattern PointSav's body
+            // already used (one shared structural grammar across both);
+            // reconciled "offering memorandum" to the canonical term "Private
+            // Placement Memorandum" used throughout factory-release-engineering
+            // (DISCLAIMER.md, HOMEPAGE-DISCLAIMER.md — this accordion had
+            // drifted from it); added "Changes to this notice" and "Full
+            // disclaimer" closers, both genuinely absent standard clauses.
+            // body_es is a fresh translation matching every change — flagged
+            // for a native legal-translator verification pass before this is
+            // treated as final (same caveat as any AI-drafted Spanish legal
+            // text this session).
             disclosure_slots: vec![DisclosureSlot {
                 label: "Securities disclosure",
                 label_es: "Divulgación de valores",
-                body: "**Securities offering.** Securities of Woodfine-sponsored direct-hold \
-                    solutions are offered only to qualified investors pursuant to applicable \
-                    prospectus exemptions under National Instrument 45-106 — Prospectus \
-                    Exemptions. The information on this page is provided for general \
-                    informational purposes only and does not constitute an offer to sell or a \
-                    solicitation of an offer to buy any security. Prospective investors should \
-                    review the applicable offering memorandum and consult their own professional \
-                    advisors before investing.\n\n\
-                    1. Information on this page describes the firm and its activities at a high \
-                    level and is qualified in its entirety by the applicable offering memorandum \
-                    and universal governing bylaws.\n\
-                    2. Investment in real-property direct-hold solutions involves significant \
-                    risk, including possible loss of capital. Past performance is not indicative \
-                    of future results. References to structural features such as advisory fees, \
-                    transferability, and net asset value methodology describe the contractual \
-                    terms of the direct-hold solutions and are not representations as to \
-                    investment outcomes or returns.\n\n\
+                body: "**Securities offering.** Woodfine Capital Projects Inc. (\u{201c}Woodfine\u{201d}) \
+                    sponsors real-property direct-hold solutions. Interests in those solutions \
+                    are offered only to investors who qualify under an applicable prospectus \
+                    exemption — including the accredited-investor exemption under National \
+                    Instrument 45-106 — Prospectus Exemptions, and equivalent exemptions in \
+                    other applicable jurisdictions. The information on this page is provided for \
+                    general informational purposes only and does not constitute an offer to \
+                    sell, or a solicitation of an offer to buy, any security. Any offering is \
+                    made exclusively by means of the applicable Private Placement Memorandum, \
+                    which prospective investors should review, together with their own \
+                    professional advisors, before investing.\n\n\
+                    **Scope.** The information on this page describes Woodfine and its \
+                    activities at a high level and is qualified in its entirety by the \
+                    applicable Private Placement Memorandum and the governing documents of the \
+                    relevant issuer.\n\n\
+                    **Risk.** Investment in real-property direct-hold solutions involves \
+                    significant risk, including possible loss of capital. Past performance is \
+                    not indicative of future results. References to structural features such as \
+                    advisory fees, transferability, and net asset value methodology describe the \
+                    contractual terms of the direct-hold solutions and are not representations \
+                    as to investment outcomes or returns.\n\n\
                     **Forward-looking statements.** Statements that are not historical facts may \
                     constitute forward-looking information within the meaning of applicable \
                     Canadian securities laws. Such statements are subject to known and unknown \
                     risks, uncertainties and assumptions, and actual results may differ \
                     materially. Woodfine undertakes no obligation to update such statements \
                     except as required by law.\n\n\
-                    **Registration.** Woodfine and its affiliates conduct \
-                    registrable activities, where required, under the relevant categories \
+                    **Registration.** Registrable activities of Woodfine and its affiliates are \
+                    conducted, where required, under the applicable registration categories \
                     prescribed by the British Columbia Securities Commission and other Canadian \
                     securities regulators. Specific registration details are available on \
-                    request.",
+                    request.\n\n\
+                    **Changes to this notice.** Woodfine may update this notice from time to \
+                    time; the version posted on this page governs.\n\n\
+                    **Full disclaimer.** This notice supplements, and does not replace, the full \
+                    Website Disclaimer at /page/disclaimer. In the event of any conflict, the \
+                    full Website Disclaimer governs.",
                 // Real human translation, ported verbatim from the retired
                 // page.es.yaml prose section — not machine-translated here.
-                body_es: "**Oferta de valores.** Los valores de las soluciones de tenencia directa \
-                    patrocinadas por Woodfine se ofrecen únicamente a inversores calificados de \
-                    conformidad con las exenciones de prospecto aplicables bajo el Instrumento \
-                    Nacional 45-106 — Exenciones de Prospecto. La información en esta página se \
-                    proporciona únicamente con fines informativos generales y no constituye una \
-                    oferta de venta ni una solicitud de oferta de compra de ningún valor. Los \
-                    inversores potenciales deben revisar el memorando de oferta aplicable y \
-                    consultar con sus propios asesores profesionales antes de invertir.\n\n\
-                    1. La información en esta página describe la empresa y sus actividades a alto \
-                    nivel y está calificada en su totalidad por el memorando de oferta aplicable y \
-                    los estatutos universales que rigen la sociedad.\n\
-                    2. La inversión en soluciones de tenencia directa de inmuebles implica riesgos \
-                    significativos, incluida la posible pérdida de capital. El rendimiento pasado \
-                    no es indicativo de resultados futuros. Las referencias a características \
-                    estructurales como las comisiones de asesoría, la transferibilidad y la \
-                    metodología del valor liquidativo describen los términos contractuales de las \
-                    soluciones de tenencia directa y no constituyen representaciones sobre \
-                    resultados o rendimientos de la inversión.\n\n\
-                    **Declaraciones prospectivas.** Las declaraciones que no son hechos históricos \
-                    pueden constituir información prospectiva en el sentido de las leyes \
-                    canadienses aplicables en materia de valores. Tales declaraciones están \
-                    sujetas a riesgos, incertidumbres y supuestos conocidos y desconocidos, y los \
-                    resultados reales pueden diferir materialmente. Woodfine no asume ninguna \
-                    obligación de actualizar dichas declaraciones excepto cuando lo exija la \
-                    ley.\n\n\
-                    **Registro.** Woodfine y sus filiales realizan actividades \
-                    registrables, donde sea requerido, bajo las categorías relevantes prescritas \
-                    por la Comisión de Valores de la Columbia Británica y otros reguladores \
-                    canadienses de valores. Los detalles específicos de registro están \
-                    disponibles a petición.",
+                body_es: "**Oferta de valores.** Woodfine Capital Projects Inc. \
+                    (\u{201c}Woodfine\u{201d}) patrocina soluciones inmobiliarias de tenencia \
+                    directa. Las participaciones en dichas soluciones se ofrecen únicamente a \
+                    inversionistas que califiquen conforme a una exención de prospecto aplicable \
+                    —incluida la exención de inversionista acreditado prevista en el Instrumento \
+                    Nacional 45-106 — Exenciones de Prospecto— y a exenciones equivalentes en \
+                    otras jurisdicciones aplicables. La información de esta página se proporciona \
+                    únicamente con fines informativos generales y no constituye una oferta de \
+                    venta ni una solicitud de oferta de compra de valor alguno. Toda oferta se \
+                    realiza exclusivamente por medio del Memorando de Colocación Privada \
+                    aplicable, que los posibles inversionistas deben revisar, junto con sus \
+                    propios asesores profesionales, antes de invertir.\n\n\
+                    **Alcance.** La información de esta página describe a Woodfine y sus \
+                    actividades a alto nivel y queda calificada en su totalidad por el Memorando \
+                    de Colocación Privada aplicable y por los documentos constitutivos del \
+                    emisor correspondiente.\n\n\
+                    **Riesgo.** La inversión en soluciones inmobiliarias de tenencia directa \
+                    conlleva un riesgo significativo, incluida la posible pérdida de capital. El \
+                    rendimiento pasado no es indicativo de resultados futuros. Las referencias a \
+                    características estructurales tales como comisiones de asesoría, \
+                    transferibilidad y metodología de valor neto de los activos describen los \
+                    términos contractuales de las soluciones de tenencia directa y no \
+                    constituyen declaraciones sobre resultados o rendimientos de la \
+                    inversión.\n\n\
+                    **Declaraciones prospectivas.** Las declaraciones que no sean hechos \
+                    históricos pueden constituir información prospectiva en el sentido de la \
+                    legislación de valores canadiense aplicable. Dichas declaraciones están \
+                    sujetas a riesgos, incertidumbres y supuestos conocidos y desconocidos, y \
+                    los resultados reales pueden diferir sustancialmente. Woodfine no asume \
+                    obligación alguna de actualizar dichas declaraciones, salvo cuando lo exija \
+                    la ley.\n\n\
+                    **Registro.** Las actividades sujetas a registro de Woodfine y sus afiliadas \
+                    se llevan a cabo, cuando así se requiera, bajo las categorías de registro \
+                    aplicables prescritas por la British Columbia Securities Commission y otros \
+                    reguladores de valores canadienses. Los detalles específicos de registro \
+                    están disponibles a solicitud.\n\n\
+                    **Cambios a este aviso.** Woodfine podrá actualizar este aviso \
+                    periódicamente; rige la versión publicada en esta página.\n\n\
+                    **Descargo completo.** Este aviso complementa, y no sustituye, el Descargo \
+                    de responsabilidad completo del sitio web disponible en /page/disclaimer. \
+                    En caso de cualquier conflicto, prevalece el Descargo de responsabilidad \
+                    completo.",
             }],
             favicon_href: "/static/graphics/woodfine/favicon.svg",
             canonical_base: "https://home.woodfinegroup.com",
@@ -319,6 +354,28 @@ impl Tenant {
                 // mailbox to Command Session). ui.rs is a derived copy, not
                 // the source of truth — reconcile against the canonical file
                 // once it lands.
+                //
+                // Hyperscaler-grade legal pass 2026-07-02 (Opus agent, hyperscaler-
+                // law-firm-counsel brief, second review): the 4-item enumerated
+                // IP product list from the first rewrite was ITSELF the wrong
+                // pattern — a static list in an IP-ownership clause creates
+                // expressio-unius exposure (implies un-listed products, of which
+                // there are already 4+ more in the real catalog, sit outside the
+                // asserted ownership scope) and requires a maintenance edit on
+                // every product launch. Replaced with inclusive "all current and
+                // future PointSav- and Totebox-branded products" scope language,
+                // matching both the canonical HOMEPAGE-DISCLAIMER.md's own
+                // pattern and how real hyperscalers (AWS/GCP/Azure) draft this
+                // clause. Also added "Export compliance," "Changes to this
+                // notice," and "Full disclaimer" — genuinely missing standard
+                // clauses — and reconciled "offering memorandum" to the
+                // canonical term "Private Placement Memorandum." One flagged
+                // finding from that review was independently verified WRONG and
+                // discarded: it claimed no Privacy page exists — false, see
+                // `footer_nav` above and content/privacy — and was not acted on.
+                // body_es is a fresh translation matching every change —
+                // flagged for a native legal-translator verification pass
+                // before this is treated as final.
                 label: "Company and product disclosure",
                 label_es: "Divulgación de la empresa y del producto",
                 body: "**Corporate structure.** PointSav Digital Systems is a trade name of \
@@ -326,17 +383,18 @@ impl Tenant {
                     itself offer, sell, or solicit any security. Any securities offering \
                     associated with Woodfine\u{2019}s real-property direct-hold solutions is made \
                     exclusively by Woodfine, and only by means of the \
-                    applicable offering memorandum.\n\n\
+                    applicable Private Placement Memorandum.\n\n\
                     **No investment advice.** PointSav software and documentation are provided for \
                     operational, research, and development purposes. Nothing on this site \
                     constitutes investment advice or a solicitation to invest in any Woodfine \
                     partnership or direct-hold solution.\n\n\
-                    **Intellectual property.** The PointSav name, marks, wordmark, product \
-                    names (including PointSav Console OS, PointSav Workplace OS, PointSav \
-                    Network OS, and Totebox OS), software, source code, \
-                    documentation, design system, and all related materials are proprietary to \
-                    Woodfine and its subsidiaries, unless otherwise \
-                    identified as open source.\n\n\
+                    **Intellectual property.** The PointSav name, trade name, wordmark, and \
+                    marks, together with all current and future PointSav- and Totebox-branded \
+                    products, services, and offerings — and the software, source code, \
+                    documentation, design system, and all related materials — are proprietary to \
+                    Woodfine and its affiliates, except for components identified as open \
+                    source. No rights are granted except as expressly set out in a written \
+                    license or agreement.\n\n\
                     **Open source components.** Portions of the platform are made available \
                     under permissive open-source licenses identified in the accompanying \
                     repository. Use of those components is governed by their respective license \
@@ -346,37 +404,56 @@ impl Tenant {
                     representation, warranty, or commitment with respect to product \
                     functionality, availability, pricing, or roadmap. Product descriptions \
                     describe intended capabilities; actual feature availability may vary by \
-                    release and partner agreement.",
+                    release and partner agreement.\n\n\
+                    **Export compliance.** PointSav products include infrastructure and \
+                    cryptographic software that may be subject to export-control and sanctions \
+                    laws. Customers are responsible for complying with all applicable export, \
+                    re-export, and import requirements.\n\n\
+                    **Changes to this notice.** PointSav may update this notice from time to \
+                    time; the version posted on this page governs.\n\n\
+                    **Full disclaimer.** This notice supplements, and does not replace, the full \
+                    Disclaimer at /page/disclaimer. In the event of any conflict, the full \
+                    Disclaimer governs.",
                 // Real human translation, ported verbatim from the retired
                 // page.es.yaml prose section — not machine-translated here.
                 body_es: "**Estructura corporativa.** PointSav Digital Systems es un nombre \
                     comercial de Woodfine Capital Projects Inc. (\u{201c}Woodfine\u{201d}). \
-                    PointSav no ofrece, vende ni solicita por sí misma ningún valor. Toda oferta \
-                    de valores asociada a las soluciones de tenencia directa de inmuebles de \
-                    Woodfine se realiza exclusivamente a través de Woodfine, \
-                    y únicamente por medio del memorando de oferta aplicable.\n\n\
-                    **Sin asesoramiento de inversión.** El software y la documentación de PointSav \
-                    se proporcionan con fines operativos, de investigación y de desarrollo. Nada \
-                    en este sitio constituye asesoramiento de inversión ni una solicitud para \
-                    invertir en ninguna sociedad de Woodfine ni en ninguna \
-                    solución de tenencia directa.\n\n\
-                    **Propiedad intelectual.** El nombre PointSav, las marcas, el \
-                    logotipo, los nombres de producto (incluidos PointSav Console OS, PointSav \
-                    Workplace OS, PointSav Network OS y Totebox OS), el \
-                    software, el código fuente, la documentación, el sistema de diseño y todos \
-                    los materiales relacionados son propiedad de Woodfine \
-                    y sus subsidiarias, salvo que se identifiquen expresamente como código \
-                    abierto.\n\n\
-                    **Componentes de código abierto.** Partes de la plataforma están \
-                    disponibles bajo licencias de código abierto permisivas identificadas en el \
+                    PointSav no ofrece, vende ni solicita por sí mismo valor alguno. Toda oferta \
+                    de valores asociada a las soluciones inmobiliarias de tenencia directa de \
+                    Woodfine se realiza exclusivamente por parte de Woodfine, y únicamente por \
+                    medio del Memorando de Colocación Privada aplicable.\n\n\
+                    **Sin asesoría de inversión.** El software y la documentación de PointSav se \
+                    proporcionan con fines operativos, de investigación y de desarrollo. Nada en \
+                    este sitio constituye asesoría de inversión ni una solicitud para invertir \
+                    en ninguna sociedad o solución de tenencia directa de Woodfine.\n\n\
+                    **Propiedad intelectual.** El nombre, el nombre comercial, el logotipo \
+                    (wordmark) y las marcas de PointSav, junto con todos los productos, \
+                    servicios y ofertas actuales y futuros de las marcas PointSav y Totebox \
+                    —así como el software, el código fuente, la documentación, el sistema de \
+                    diseño y todos los materiales relacionados— son propiedad de Woodfine y sus \
+                    afiliadas, salvo los componentes identificados como de código abierto. No se \
+                    otorga derecho alguno salvo lo expresamente establecido en una licencia o \
+                    acuerdo por escrito.\n\n\
+                    **Componentes de código abierto.** Partes de la plataforma se ponen a \
+                    disposición bajo licencias de código abierto permisivas identificadas en el \
                     repositorio correspondiente. El uso de dichos componentes se rige por sus \
                     respectivos términos de licencia.\n\n\
-                    **Sin garantía; uso informativo.** La información en esta página se \
+                    **Sin garantía; uso informativo.** La información de esta página se \
                     proporciona únicamente con fines informativos generales y no constituye una \
-                    representación, garantía ni compromiso en relación con la funcionalidad del \
-                    producto, su disponibilidad, precio o hoja de ruta. Las descripciones de \
+                    declaración, garantía ni compromiso respecto de la funcionalidad, \
+                    disponibilidad, precio o hoja de ruta de los productos. Las descripciones de \
                     productos describen capacidades previstas; la disponibilidad real de \
-                    funciones puede variar según la versión y el acuerdo con el socio.",
+                    funciones puede variar según la versión y el acuerdo con el socio.\n\n\
+                    **Cumplimiento en materia de exportación.** Los productos de PointSav \
+                    incluyen software de infraestructura y criptográfico que puede estar sujeto \
+                    a leyes de control de exportaciones y de sanciones. Los clientes son \
+                    responsables de cumplir con todos los requisitos aplicables de exportación, \
+                    reexportación e importación.\n\n\
+                    **Cambios a este aviso.** PointSav podrá actualizar este aviso \
+                    periódicamente; rige la versión publicada en esta página.\n\n\
+                    **Descargo completo.** Este aviso complementa, y no sustituye, el Descargo \
+                    de responsabilidad completo disponible en /page/disclaimer. En caso de \
+                    cualquier conflicto, prevalece el Descargo de responsabilidad completo.",
             }],
             favicon_href: "/static/graphics/pointsav/favicon.svg",
             canonical_base: "https://home.pointsav.com",
