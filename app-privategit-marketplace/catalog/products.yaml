@@ -68,7 +68,7 @@ installers:
     edition: "2026.05.142"
     platform: "Linux server"
     size_mb: 156
-    path: os-interface/2026.05.142
+    path: os-orchestration/2026.05.142
     license_tier: fsl
     price_usdc: 0
 
