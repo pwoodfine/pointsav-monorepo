@@ -48,8 +48,37 @@ struct AppState {
 }
 
 // ── Catalog types ─────────────────────────────────────────────────────────────
+//
+// Rebuilt per `BRIEF-software-hyperscaler-audit.md`'s Licensing Corrections section
+// (factory-release-engineering/LICENSE-MATRIX.md is authoritative). The prior
+// `licenses:` list conflated two unrelated things — two license *terms* (mislabeled
+// "Apache 2.0"/"FSL") and five unrelated free *products* — with an `installers:` list
+// that was already correctly modeled. Each os-* product has exactly ONE fixed tier
+// (not a customer choice), so the fix is additive fields on `Installer`, not a new
+// products/terms-with-references model.
 
-#[derive(Debug, Serialize, Deserialize)]
+/// The two ratified commercial tiers (factory-release-engineering/LICENSE-MATRIX.md).
+/// `Commercial` conveys Apache-2.0-equivalent rights over an AGPL-3.0-or-later source
+/// (a separate PointSav-Commercial grant on the compiled binary, NOT "Apache 2.0" —
+/// that earlier catalog label was factually wrong). `Fsl` is FSL-1.1-ALv2 as-is.
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+enum LicenseTier {
+    Commercial,
+    Fsl,
+}
+
+impl LicenseTier {
+    /// Display label — "PointSav Commercial", never "Apache 2.0".
+    fn label(self) -> &'static str {
+        match self {
+            LicenseTier::Commercial => "PointSav Commercial",
+            LicenseTier::Fsl => "FSL",
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 struct Installer {
     id: String,
     name: String,
@@ -58,21 +87,29 @@ struct Installer {
     platform: String,
     size_mb: u64,
     path: String,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-struct License {
-    id: String,
-    name: String,
-    description: String,
-    module_tag: String,
+    /// Ratified tier label — always set correctly regardless of BETA status; this is
+    /// legal/display metadata, not a payment gate. See `price_usdc` for the gate.
+    license_tier: LicenseTier,
+    /// The active price. `0` = active BETA gate (no payment/license flow triggered,
+    /// same curl-pipe-sh pattern as any other free product — no separate `beta: true`
+    /// flag needed, matching this workspace's established BETA convention). Every
+    /// product ships at `0` initially per an explicit, current operator/Command
+    /// directive (os-console, os-mediakit, and the orchestration-command binary all
+    /// carry an active "stay free during BETA" instruction in `.agent/inbox.md` as of
+    /// 2026-07-01/02, and none has been lifted yet). Flipping a specific product to
+    /// its real tier price (1_000_000 for `commercial`, 19_000_000 for `fsl`) is a
+    /// one-line data change once Command sends an explicit per-product BETA-lifted
+    /// message — not a code change.
     price_usdc: u64,
 }
 
+// `deny_unknown_fields`: a stray legacy `licenses:` key (from a pre-migration
+// products.yaml) must fail to parse loudly (500 on every catalog-backed route),
+// not silently produce an empty-but-successfully-parsed catalog.
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct Catalog {
     installers: Vec<Installer>,
-    licenses: Vec<License>,
 }
 
 fn load_catalog(catalog_path: &PathBuf) -> Result<Catalog> {
@@ -232,15 +269,26 @@ fn price_units_from_check_json(check_json: &Value) -> u64 {
 /// THE FIX: compare `l.price_usdc == price_units` directly — both operands are
 /// already micro-USDC units, so no multiplication belongs on the catalog side.
 /// Full rationale: `docs/P4-PRICING-FIX.md`.
+///
+/// **Known limitation, not fixed in this phase (data-model rebuild):** now that
+/// multiple os-* products can share the same tier price (up to 4 at `commercial`/
+/// $1, up to 4 at `fsl`/$19, once BETA lifts for more than one product per tier),
+/// price alone cannot disambiguate WHICH product was purchased — `.find()` returns
+/// the first match. This is a legacy/compatibility path for the raw `/v1/license/
+/// :tx_hash` JSON endpoint only. The new `/checkout/:product_id` → `/order/:tx_hash`
+/// flow (Phase 2) carries `product_id` explicitly from the moment the customer picks
+/// a product, so it does not depend on this inference at all — this function is not
+/// the long-term mechanism, just the pre-existing one kept working during the
+/// transition.
 fn match_license_product_id(catalog: &Catalog, price_units: u64) -> Option<String> {
     catalog
-        .licenses
+        .installers
         .iter()
         // FIX: direct micro-unit equality. The OLD crate wrote `l.price_usdc *
         // 1_000_000 == price_units`, which re-applied the dollars→micro-units
         // scale to a value already in micro-units. No re-multiplication here.
-        .find(|l| l.price_usdc == price_units)
-        .map(|l| l.id.clone())
+        .find(|i| i.price_usdc == price_units)
+        .map(|i| i.id.clone())
 }
 
 /// Outcome of shelling out to `tool-wallet check`.
@@ -429,6 +477,10 @@ async fn healthz() -> Json<Value> {
 async fn v1_products(State(state): State<Arc<AppState>>) -> (StatusCode, Json<Value>) {
     match load_catalog(&state.catalog_path) {
         Ok(catalog) => {
+            // No compatibility view needed: this crate has not launched (P8 pending),
+            // so there are no external JSON-API consumers of the old `installers`/
+            // `licenses` split to protect. One unified shape, reflecting the
+            // corrected data model directly.
             let installers: Vec<Value> = catalog
                 .installers
                 .iter()
@@ -442,32 +494,16 @@ async fn v1_products(State(state): State<Arc<AppState>>) -> (StatusCode, Json<Va
                         "size_mb": i.size_mb,
                         "download_url": format!("{}/{}", state.source_base_url, i.path),
                         "manifest_url": format!("{}/{}/MANIFEST", state.source_base_url, i.path),
-                        "type": "installer",
-                        "cost": "free"
-                    })
-                })
-                .collect();
-            let licenses: Vec<Value> = catalog
-                .licenses
-                .iter()
-                .map(|l| {
-                    json!({
-                        "id": l.id,
-                        "name": l.name,
-                        "description": l.description,
-                        "module_tag": l.module_tag,
-                        "price_usdc": l.price_usdc,
-                        "type": "license",
+                        "license_tier": i.license_tier.label(),
+                        "price_usdc": i.price_usdc,
+                        "cost": if i.price_usdc == 0 { "free" } else { "paid" },
                         "payment_address": state.polygon_wallet_address,
                         "payment_chain": "polygon-pos",
                         "payment_token": "USDC"
                     })
                 })
                 .collect();
-            (
-                StatusCode::OK,
-                Json(json!({"installers": installers, "licenses": licenses})),
-            )
+            (StatusCode::OK, Json(json!({"installers": installers})))
         }
         Err(e) => {
             tracing::error!("catalog load failed: {e:#}");
@@ -719,24 +755,35 @@ mod tests {
         dir
     }
 
-    /// Minimal products.yaml with a realistic paid tier (apache = $1.00 = 1_000_000
-    /// micro-USDC), written into `dir`. Returns the catalog path.
+    /// Minimal products.yaml with a realistic paid tier (os-console = $1.00 =
+    /// 1_000_000 micro-USDC, os-mediakit = $19.00 = 19_000_000 micro-USDC), written
+    /// into `dir`. Returns the catalog path. Prices are ACTIVE (nonzero) here
+    /// deliberately, to preserve test coverage of the paid path — unlike the real
+    /// products.yaml, which ships all products at price_usdc: 0 during the current
+    /// BETA gate (see the `Installer::price_usdc` doc comment).
     fn write_catalog(dir: &std::path::Path) -> PathBuf {
         let path = dir.join("products.yaml");
         fs::write(
             &path,
-            r#"installers: []
-licenses:
-  - id: apache
-    name: Apache 2.0
-    module_tag: ""
+            r#"installers:
+  - id: os-console
+    name: PointSav Console OS
+    description: Operator Terminal Surface.
+    edition: "2026.05.144"
+    platform: "macOS · Win · Linux"
+    size_mb: 412
+    path: os-console/2026.05.144
+    license_tier: commercial
     price_usdc: 1000000
-    description: Source-readable, fully open.
-  - id: fsl
-    name: FSL
-    module_tag: ""
+  - id: os-mediakit
+    name: PointSav MediaKit OS
+    description: MediaKit Surface.
+    edition: "2026.05.142"
+    platform: "Linux server"
+    size_mb: 96
+    path: os-mediakit/2026.05.142
+    license_tier: fsl
     price_usdc: 19000000
-    description: Source-readable, non-compete.
 "#,
         )
         .unwrap();
@@ -783,8 +830,9 @@ esac
         })
     }
 
-    /// Richer products.yaml fixture for the P1–P3 tests: one installer plus a free
-    /// (BETA) license and two paid tiers — the full shape production serves.
+    /// Richer products.yaml fixture for the P1–P3 tests: one BETA/free product per
+    /// tier plus one actively-priced product — the full shape production can serve
+    /// once a BETA gate lifts, even though the real catalog ships all-zero today.
     fn write_full_catalog(dir: &std::path::Path) -> PathBuf {
         let path = dir.join("products.yaml");
         fs::write(
@@ -797,22 +845,26 @@ esac
     platform: linux-x86_64
     size_mb: 812
     path: os-mediakit/1.2.0/installer.run
-licenses:
-  - id: beta-module
-    name: Beta Module
-    description: Platform module, free during BETA.
-    module_tag: mod-beta
+    license_tier: fsl
     price_usdc: 0
-  - id: apache
-    name: Apache 2.0
-    module_tag: ""
+  - id: os-console
+    name: Console OS
+    description: Operator Terminal Surface, free during BETA.
+    edition: "1.0.0"
+    platform: linux-x86_64
+    size_mb: 300
+    path: os-console/1.0.0/installer.run
+    license_tier: commercial
+    price_usdc: 0
+  - id: os-privategit
+    name: PrivateGit OS
+    description: Independent code repository, priced tier (test fixture only).
+    edition: "1.0.0"
+    platform: linux-x86_64
+    size_mb: 150
+    path: os-privategit/1.0.0/installer.run
+    license_tier: commercial
     price_usdc: 1000000
-    description: Source-readable, fully open.
-  - id: fsl
-    name: FSL
-    module_tag: ""
-    price_usdc: 19000000
-    description: Source-readable, non-compete.
 "#,
         )
         .unwrap();
@@ -877,9 +929,9 @@ licenses:
         assert_eq!(price_units_from_amount(19.00), 19_000_000);
     }
 
-    /// THE reviewable proof: for a realistic $1.00 apache-tier payment, the OLD
+    /// THE reviewable proof: for a realistic $1.00 os-console-tier payment, the OLD
     /// formula fails to match and the NEW (fixed) formula matches. Catalog
-    /// `price_usdc` is already micro-USDC (apache = 1_000_000).
+    /// `price_usdc` is already micro-USDC (os-console = 1_000_000).
     #[test]
     fn pricing_fix_old_formula_fails_new_formula_matches() {
         let scratch = scratch_dir("pricematch");
@@ -890,13 +942,13 @@ licenses:
         assert_eq!(price_units, 1_000_000);
 
         // OLD (buggy) matcher, reproduced verbatim for the before/after proof:
-        //   l.price_usdc * 1_000_000 == price_units
-        // apache.price_usdc (1_000_000) * 1_000_000 = 1_000_000_000_000 != 1_000_000.
+        //   i.price_usdc * 1_000_000 == price_units
+        // os-console.price_usdc (1_000_000) * 1_000_000 = 1_000_000_000_000 != 1_000_000.
         let old_match: Option<String> = catalog
-            .licenses
+            .installers
             .iter()
-            .find(|l| l.price_usdc * 1_000_000 == price_units)
-            .map(|l| l.id.clone());
+            .find(|i| i.price_usdc * 1_000_000 == price_units)
+            .map(|i| i.id.clone());
         assert_eq!(
             old_match, None,
             "OLD formula must FAIL to match a real $1.00 payment (this was the bug)"
@@ -906,14 +958,14 @@ licenses:
         let new_match = match_license_product_id(&catalog, price_units);
         assert_eq!(
             new_match,
-            Some("apache".to_string()),
-            "NEW formula must match apache for a $1.00 payment"
+            Some("os-console".to_string()),
+            "NEW formula must match os-console for a $1.00 payment"
         );
 
-        // Sanity: $19.00 -> fsl under the fix as well.
+        // Sanity: $19.00 -> os-mediakit under the fix as well.
         assert_eq!(
             match_license_product_id(&catalog, price_units_from_amount(19.00)),
-            Some("fsl".to_string())
+            Some("os-mediakit".to_string())
         );
 
         let _ = fs::remove_dir_all(&scratch);
@@ -1018,10 +1070,10 @@ licenses:
 
         assert_eq!(status, StatusCode::OK);
         assert_eq!(body["status"], "confirmed");
-        // The FIX in action end-to-end: $1.00 -> 1_000_000 -> catalog "apache".
-        assert_eq!(body["product_id"], "apache");
+        // The FIX in action end-to-end: $1.00 -> 1_000_000 -> catalog "os-console".
+        assert_eq!(body["product_id"], "os-console");
         assert_eq!(body["customer_ref"], "0xcaffee");
-        let expected_key = generate_license_key("apache", tx, "0xcaffee");
+        let expected_key = generate_license_key("os-console", tx, "0xcaffee");
         assert_eq!(body["license_key"], expected_key);
 
         // A receipt must have been written to the SCRATCH dir (never /var/lib).
@@ -1033,7 +1085,7 @@ licenses:
         assert!(rpath.starts_with(&scratch));
         let written: LicenseReceipt =
             serde_json::from_str(&fs::read_to_string(&rpath).unwrap()).unwrap();
-        assert_eq!(written.product_id, "apache");
+        assert_eq!(written.product_id, "os-console");
         assert_eq!(written.price_usdc, 1_000_000); // micro-USDC, not dollars
 
         let _ = fs::remove_dir_all(&scratch);
@@ -1177,7 +1229,7 @@ licenses:
         let scratch = scratch_dir("loadcat");
         let catalog = load_catalog(&write_full_catalog(&scratch)).unwrap();
 
-        assert_eq!(catalog.installers.len(), 1);
+        assert_eq!(catalog.installers.len(), 3);
         let i = &catalog.installers[0];
         assert_eq!(i.id, "os-mediakit");
         assert_eq!(i.name, "MediaKit OS");
@@ -1185,13 +1237,16 @@ licenses:
         assert_eq!(i.platform, "linux-x86_64");
         assert_eq!(i.size_mb, 812);
         assert_eq!(i.path, "os-mediakit/1.2.0/installer.run");
+        assert_eq!(i.license_tier, LicenseTier::Fsl);
+        assert_eq!(i.price_usdc, 0); // active BETA gate
 
-        assert_eq!(catalog.licenses.len(), 3);
-        assert_eq!(catalog.licenses[0].id, "beta-module");
-        assert_eq!(catalog.licenses[0].price_usdc, 0); // BETA/free tier
-        assert_eq!(catalog.licenses[0].module_tag, "mod-beta");
-        assert_eq!(catalog.licenses[2].id, "fsl");
-        assert_eq!(catalog.licenses[2].price_usdc, 19_000_000); // micro-USDC
+        assert_eq!(catalog.installers[1].id, "os-console");
+        assert_eq!(catalog.installers[1].license_tier, LicenseTier::Commercial);
+        assert_eq!(catalog.installers[1].price_usdc, 0); // active BETA gate
+
+        assert_eq!(catalog.installers[2].id, "os-privategit");
+        assert_eq!(catalog.installers[2].license_tier, LicenseTier::Commercial);
+        assert_eq!(catalog.installers[2].price_usdc, 1_000_000); // micro-USDC
 
         let _ = fs::remove_dir_all(&scratch);
     }
@@ -1211,9 +1266,25 @@ licenses:
         fs::write(&path, "installers: [this is: not, valid yaml").unwrap();
         assert!(load_catalog(&path).is_err());
 
-        // Well-formed YAML missing a required field (`licenses`) must also fail.
-        fs::write(&path, "installers: []\n").unwrap();
+        // Well-formed YAML entirely missing the required `installers` field must
+        // also fail (an empty `installers: []` list is now valid, not an error).
+        fs::write(&path, "not_installers: []\n").unwrap();
         assert!(load_catalog(&path).is_err());
+
+        // A legacy file still carrying the retired `licenses:` key must fail to
+        // load LOUDLY (`#[serde(deny_unknown_fields)]` on `Catalog`) — not silently
+        // produce an empty-but-successfully-parsed catalog. Protects against a
+        // stale prod file surviving the Phase 1 migration undetected.
+        fs::write(
+            &path,
+            "installers: []\nlicenses:\n  - id: apache\n    price_usdc: 1000000\n",
+        )
+        .unwrap();
+        assert!(
+            load_catalog(&path).is_err(),
+            "a stray legacy licenses: key must fail to parse loudly, not silently \
+             produce an empty installers list"
+        );
 
         let _ = fs::remove_dir_all(&scratch);
     }
@@ -1232,66 +1303,56 @@ licenses:
         assert_eq!(status, StatusCode::OK);
 
         let installers = body["installers"].as_array().unwrap();
-        assert_eq!(installers.len(), 1);
-        let i = &installers[0];
-        for field in [
-            "id",
-            "name",
-            "description",
-            "edition",
-            "platform",
-            "size_mb",
-            "download_url",
-            "manifest_url",
-            "type",
-            "cost",
-        ] {
-            assert!(
-                i.get(field).is_some(),
-                "installer entry missing documented field `{field}`"
-            );
-        }
-        assert_eq!(i["id"], "os-mediakit");
-        assert_eq!(i["edition"], "1.2.0");
-        assert_eq!(i["platform"], "linux-x86_64");
-        assert_eq!(i["size_mb"], 812);
-        assert_eq!(i["type"], "installer");
-        assert_eq!(i["cost"], "free");
-        assert_eq!(
-            i["download_url"],
-            "https://example.invalid/releases/os-mediakit/1.2.0/installer.run"
-        );
-        assert_eq!(
-            i["manifest_url"],
-            "https://example.invalid/releases/os-mediakit/1.2.0/installer.run/MANIFEST"
-        );
-
-        let licenses = body["licenses"].as_array().unwrap();
-        assert_eq!(licenses.len(), 3);
-        for l in licenses {
+        assert_eq!(installers.len(), 3);
+        for i in installers {
             for field in [
                 "id",
                 "name",
                 "description",
-                "module_tag",
+                "edition",
+                "platform",
+                "size_mb",
+                "download_url",
+                "manifest_url",
+                "license_tier",
                 "price_usdc",
-                "type",
+                "cost",
                 "payment_address",
                 "payment_chain",
                 "payment_token",
             ] {
                 assert!(
-                    l.get(field).is_some(),
-                    "license entry missing documented field `{field}`"
+                    i.get(field).is_some(),
+                    "installer entry missing documented field `{field}`"
                 );
             }
-            assert_eq!(l["type"], "license");
-            assert_eq!(l["payment_address"], "0xTESTWALLET");
-            assert_eq!(l["payment_chain"], "polygon-pos");
-            assert_eq!(l["payment_token"], "USDC");
+            assert_eq!(i["payment_address"], "0xTESTWALLET");
+            assert_eq!(i["payment_chain"], "polygon-pos");
+            assert_eq!(i["payment_token"], "USDC");
         }
-        assert_eq!(licenses[1]["id"], "apache");
-        assert_eq!(licenses[1]["price_usdc"], 1_000_000); // micro-USDC passthrough
+
+        let mediakit = &installers[0];
+        assert_eq!(mediakit["id"], "os-mediakit");
+        assert_eq!(mediakit["edition"], "1.2.0");
+        assert_eq!(mediakit["platform"], "linux-x86_64");
+        assert_eq!(mediakit["size_mb"], 812);
+        assert_eq!(mediakit["license_tier"], "FSL");
+        assert_eq!(mediakit["price_usdc"], 0);
+        assert_eq!(mediakit["cost"], "free"); // active BETA gate
+        assert_eq!(
+            mediakit["download_url"],
+            "https://example.invalid/releases/os-mediakit/1.2.0/installer.run"
+        );
+        assert_eq!(
+            mediakit["manifest_url"],
+            "https://example.invalid/releases/os-mediakit/1.2.0/installer.run/MANIFEST"
+        );
+
+        let privategit = &installers[2];
+        assert_eq!(privategit["id"], "os-privategit");
+        assert_eq!(privategit["license_tier"], "PointSav Commercial");
+        assert_eq!(privategit["price_usdc"], 1_000_000); // micro-USDC passthrough
+        assert_eq!(privategit["cost"], "paid");
 
         let _ = fs::remove_dir_all(&scratch);
     }
@@ -1326,8 +1387,13 @@ licenses:
         // Catalog data actually drives the page (the drift bug this phase fixed).
         assert!(html.contains("os-mediakit"));
         assert!(html.contains("MediaKit OS"));
-        assert!(html.contains("Beta Module"));
-        assert!(html.contains("Apache 2.0"));
+        assert!(html.contains("os-console"));
+        assert!(html.contains("os-privategit"));
+        assert!(html.contains("PointSav Commercial"));
+        assert!(
+            !html.contains("Apache 2.0"),
+            "must not use the factually wrong tier label"
+        );
         assert!(html.contains("<title>Products — PointSav Software</title>"));
 
         // P2 chrome wraps the dynamic content.

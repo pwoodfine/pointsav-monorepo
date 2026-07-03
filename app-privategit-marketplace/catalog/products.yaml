@@ -9,6 +9,8 @@ installers:
     platform: "macOS · Win · Linux"
     size_mb: 412
     path: os-console/2026.05.144
+    license_tier: commercial
+    price_usdc: 0
 
   - id: os-infrastructure
     name: PointSav Infrastructure OS
@@ -17,6 +19,8 @@ installers:
     platform: "Bare-metal · any hardware"
     size_mb: 188
     path: os-infrastructure/2026.05.144
+    license_tier: fsl
+    price_usdc: 0
 
   - id: os-mediakit
     name: PointSav MediaKit OS
@@ -25,14 +29,18 @@ installers:
     platform: "Linux server"
     size_mb: 96
     path: os-mediakit/2026.05.142
+    license_tier: fsl
+    price_usdc: 0
 
   - id: os-network-admin
     name: PointSav Network OS
     description: Orchestrates VM map, private network routing, and provisioning authorisation
-    edition: "2026.05.140"
-    platform: "Linux · embedded"
-    size_mb: 124
-    path: os-network-admin/2026.05.140
+    edition: "0.1.0-beta.1"
+    platform: "Linux x86_64"
+    size_mb: 1
+    path: os-network-admin/latest/x86_64
+    license_tier: fsl
+    price_usdc: 0
 
   - id: os-privategit
     name: PointSav PrivateGit OS
@@ -41,6 +49,8 @@ installers:
     platform: "Linux server"
     size_mb: 142
     path: os-privategit/2026.05.144
+    license_tier: commercial
+    price_usdc: 0
 
   - id: os-workplace
     name: PointSav Workplace OS
@@ -49,14 +59,18 @@ installers:
     platform: "Bare-metal · appliance"
     size_mb: 286
     path: os-workplace/2026.05.144
+    license_tier: commercial
+    price_usdc: 0
 
-  - id: os-interface
-    name: Totebox Integration OS
-    description: Aggregation and active routing of Totebox Archives across the wider system
+  - id: os-orchestration
+    name: PointSav Orchestration OS
+    description: Stateless aggregation and active routing of Totebox Archives across the wider system
     edition: "2026.05.142"
     platform: "Linux server"
     size_mb: 156
     path: os-interface/2026.05.142
+    license_tier: fsl
+    price_usdc: 0
 
   - id: os-totebox
     name: Totebox OS
@@ -65,14 +79,5 @@ installers:
     platform: "Bare-metal · any hardware"
     size_mb: 118
     path: os-totebox/2026.05.144
-
-licenses:
-  - id: apache
-    name: Apache 2.0
-    price_usdc: 1000000
-    description: Source-readable, fully open; may fork, redistribute, compete.
-
-  - id: fsl
-    name: FSL
-    price_usdc: 19000000
-    description: Source-readable, non-compete restriction; converts to Apache 2.0 after two years per version.
+    license_tier: commercial
+    price_usdc: 0
