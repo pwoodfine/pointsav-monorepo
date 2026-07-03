@@ -84,6 +84,18 @@ impl LicenseTier {
             LicenseTier::Fsl => "FSL",
         }
     }
+
+    /// The ratified tier price (factory-release-engineering/LICENSE-MATRIX.md), in
+    /// micro-USDC — what a product in this tier costs once its own BETA gate lifts.
+    /// Distinct from any individual `Installer::price_usdc`, which is `0` for every
+    /// product today. Used for the `/pricing` page (Phase 4), which describes the
+    /// tier structure rather than any one product's current active price.
+    fn canonical_price_usdc(self) -> u64 {
+        match self {
+            LicenseTier::Commercial => 1_000_000,
+            LicenseTier::Fsl => 19_000_000,
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -576,9 +588,42 @@ async fn software_page(State(state): State<Arc<AppState>>) -> Response {
 }
 
 // GET /licensing — UNCHANGED. Static legal/terms document (not catalog data): keeps the
-// P1 static-file read + P2 chrome-wrap exactly as-is.
+// P1 static-file read + P2 chrome-wrap exactly as-is. Phase 4 rewrote the file's
+// CONTENT (dropping fictional wallet-connect/tax/fake-product copy) but not this
+// handler's logic.
 async fn licensing_page(State(state): State<Arc<AppState>>) -> Response {
     serve_chrome_page(&state.static_dir.join("licensing.html"))
+}
+
+// GET /pricing — Phase 4. Catalog-driven (like `software_page`), not a static file,
+// so it can never drift into fiction the way `licensing.html` had.
+async fn pricing_page(State(state): State<Arc<AppState>>) -> Response {
+    match load_catalog(&state.catalog_path) {
+        Ok(catalog) => {
+            let content = ui::pricing_markup(&catalog);
+            let body = ui::render_page(
+                SoftwareSurface::Marketplace,
+                "Pricing — PointSav Software",
+                content,
+            )
+            .into_string();
+            (
+                StatusCode::OK,
+                [(header::CONTENT_TYPE, "text/html; charset=utf-8")],
+                body,
+            )
+                .into_response()
+        }
+        Err(e) => {
+            tracing::error!("catalog load failed for /pricing: {e:#}");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                [(header::CONTENT_TYPE, "text/plain; charset=utf-8")],
+                "catalog unavailable",
+            )
+                .into_response()
+        }
+    }
 }
 
 // GET /page/disclaimer — self-contained disclaimer page (operator instruction 2026-07-02:
@@ -975,6 +1020,7 @@ async fn main() -> Result<()> {
         .route("/", get(root))
         .route("/software", get(software_page))
         .route("/licensing", get(licensing_page))
+        .route("/pricing", get(pricing_page))
         .route("/page/disclaimer", get(disclaimer_page))
         .route("/healthz", get(healthz))
         .route("/v1/products", get(v1_products))
@@ -1776,6 +1822,62 @@ esac
         // Sovereign chrome present (same page shell as /software and /licensing).
         assert!(html.contains("sw-masthead"));
         assert!(html.contains(SoftwareSurface::Marketplace.trademark_line()));
+    }
+
+    // ── Phase 4: GET /pricing ─────────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn pricing_page_renders_catalog_driven_content_with_chrome() {
+        let scratch = scratch_dir("pricing-ok");
+        let state = test_state_full(&scratch);
+        let resp = pricing_page(State(state)).await;
+        assert_eq!(resp.status(), StatusCode::OK);
+        let html = body_text(resp.into_body()).await;
+        assert!(html.contains("PointSav Commercial"));
+        assert!(html.contains("FSL"));
+        assert!(html.contains("$1.00 USDC"));
+        assert!(html.contains("$19.00 USDC"));
+        assert!(html.contains("currently free during BETA"));
+        assert!(html.contains("No tax collected"));
+        assert!(html.contains("github.com/pointsav/pointsav-monorepo"));
+        assert!(html.contains("sw-masthead"));
+        let _ = fs::remove_dir_all(&scratch);
+    }
+
+    #[tokio::test]
+    async fn pricing_page_500_when_catalog_unavailable() {
+        let scratch = scratch_dir("pricing-500");
+        let state = test_state_at(&scratch, scratch.join("no-such-products.yaml"));
+        let resp = pricing_page(State(state)).await;
+        assert_eq!(resp.status(), StatusCode::INTERNAL_SERVER_ERROR);
+        let _ = fs::remove_dir_all(&scratch);
+    }
+
+    // Regression guard: the real, committed static/licensing.html must never regress
+    // to the fictional wallet-connect/multi-chain/tax/fake-product content this
+    // phase replaced (a real prior finding, not a hypothetical). `include_str!` is
+    // compile-time and path-stable regardless of test-runner CWD.
+    #[test]
+    fn real_licensing_html_is_free_of_fictional_content() {
+        let real = include_str!("../static/licensing.html");
+        for fictional in [
+            "F*KEYS CONSOLE",
+            "Command Centre",
+            "Business Applications",
+            "BMS Bridge",
+            "Peak-Load Forecast",
+            "HST 13%",
+            "wallet-connect",
+            "auto-detected from wallet billing region",
+        ] {
+            assert!(
+                !real.contains(fictional),
+                "static/licensing.html regressed: contains fictional content `{fictional}`"
+            );
+        }
+        assert!(real.contains("PointSav Commercial"));
+        assert!(real.contains("FSL"));
+        assert!(real.contains("github.com/pointsav/pointsav-monorepo"));
     }
 
     // ── Phase 2: GET /checkout/:product_id ────────────────────────────────────
