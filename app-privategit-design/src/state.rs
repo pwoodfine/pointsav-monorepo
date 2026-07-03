@@ -19,4 +19,7 @@ pub struct AppState {
     pub env: Arc<Environment<'static>>,
     pub bundle_mounts: Arc<HashMap<String, PathBuf>>,
     pub static_dir: PathBuf,
+    /// `components/` slugs grouped by recipe.json `category` (generic vs GIS-origin vs
+    /// wiki-origin) — precomputed once at startup, same pattern as `nav`.
+    pub component_groups: Arc<Vec<(String, Vec<String>)>>,
 }

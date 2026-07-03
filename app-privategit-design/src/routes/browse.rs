@@ -11,9 +11,10 @@ use axum::{
 use std::{fs, io::Write};
 
 pub async fn index(State(state): State<AppState>) -> Html<String> {
-    let nav_html = render::render_nav(&state.env, &state.nav, vault::SECTIONS, "", "");
+    let nav_html = render::render_nav(&state.env, &state.nav, &state.component_groups, vault::SECTIONS, "", "");
 
     let mut cards = String::new();
+    let mut item_total = 0usize;
     for (section, _) in vault::SECTIONS {
         let Some(slugs) = state.nav.get(*section) else {
             continue;
@@ -21,6 +22,7 @@ pub async fn index(State(state): State<AppState>) -> Html<String> {
         if slugs.is_empty() {
             continue;
         }
+        item_total += slugs.len();
         let first = &slugs[0];
         let tab = vault::default_tab(section);
         cards.push_str(&format!(
@@ -31,10 +33,33 @@ pub async fn index(State(state): State<AppState>) -> Html<String> {
         ));
     }
 
+    let token_count: usize = tokens_gallery::load_and_flatten(&state.vault)
+        .iter()
+        .flat_map(|tier| &tier.groups)
+        .map(|group| group.entries.len())
+        .sum();
+
+    let badges = format!(
+        "<div class=\"home-badges\">\
+         <span class=\"home-badge\">{item_total} components &amp; elements</span>\
+         <span class=\"home-badge\">{token_count} tokens</span>\
+         <span class=\"home-badge home-badge--mono\">DTCG-native</span>\
+         <span class=\"home-badge home-badge--mono\">Apache-2.0 tokens &amp; bundles</span>\
+         </div>"
+    );
+
     let content = format!(
-        "<div class=\"home-body\"><h1>PointSav Design System</h1>\
-         <p>DTCG-native design tokens and components, self-hostable and machine-readable. \
-         Pick a section below, search above, or <a href=\"/bundles/tokens\">download the token bundle</a>.</p>\
+        "<div class=\"home-body\">\
+         <p class=\"home-eyebrow\">PointSav Design System</p>\
+         <h1>One governed token graph, not a components folder every team forks and drifts from.</h1>\
+         <p class=\"home-lede\">Most design systems ship a components folder — files, a Storybook, a package to \
+         install. The moment a team needs something the library doesn't have, they fork it, and the fork drifts \
+         from the source. This system ships the token graph itself: DTCG-native, self-hostable, and readable \
+         directly by the codegen agents that consume it, not just by designers.</p>\
+         <p class=\"home-lede\">Every token, every component recipe, and every research decision behind it lives \
+         in one versioned source — browse it below, or <a href=\"/bundles/tokens\">download the whole graph as a \
+         bundle</a>.</p>\
+         {badges}\
          <div class=\"home-grid\">{cards}</div></div>"
     );
 
@@ -57,7 +82,7 @@ pub async fn tokens_gallery_page(State(state): State<AppState>) -> Html<String> 
         .render(minijinja::context! { tiers => tiers })
         .expect("render tokens.html failed");
 
-    let nav_html = render::render_nav(&state.env, &state.nav, vault::SECTIONS, "", "");
+    let nav_html = render::render_nav(&state.env, &state.nav, &state.component_groups, vault::SECTIONS, "", "");
     Html(render::shell(
         &state.env,
         "Tokens — PointSav Design System",
@@ -121,7 +146,7 @@ pub async fn item_tab(
         }
     }
 
-    let nav_html = render::render_nav(&state.env, &state.nav, vault::SECTIONS, &section, &slug);
+    let nav_html = render::render_nav(&state.env, &state.nav, &state.component_groups, vault::SECTIONS, &section, &slug);
     let tab_bar = render::render_tab_bar(&state.env, &section, &slug, &tabs, &tab);
     let label = vault::to_title(&slug);
 

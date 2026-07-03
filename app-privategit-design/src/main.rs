@@ -28,6 +28,10 @@ use vault::SECTIONS;
 async fn main() {
     let cfg = Config::from_env();
     let nav = Arc::new(vault::discover_nav(&cfg.vault));
+    let component_groups = Arc::new(vault::discover_component_groups(
+        &cfg.vault,
+        nav.get("components").map(Vec::as_slice).unwrap_or(&[]),
+    ));
     let index = Arc::new(RwLock::new(InvertedIndex::new()));
 
     populate_index(&cfg.vault, &index).await;
@@ -90,6 +94,7 @@ async fn main() {
         env,
         bundle_mounts: Arc::new(cfg.bundle_mounts),
         static_dir: cfg.static_dir,
+        component_groups,
     };
 
     let app = routes::build_router(state).layer(CompressionLayer::new());
