@@ -16,6 +16,11 @@ pub struct Config {
     /// runs on a separate deploy target). Production deploys MUST set
     /// DESIGN_TEMPLATES_DIR explicitly.
     pub templates_dir: PathBuf,
+    /// Static assets (CSS/JS) served at /static/*. Same CARGO_MANIFEST_DIR-baked-path
+    /// issue as templates_dir — found 2026-07-03 as a second, silent instance of the
+    /// same bug (ServeDir 404s instead of panicking, so it didn't surface in the
+    /// initial fix's smoke test). Production deploys MUST set DESIGN_STATIC_DIR.
+    pub static_dir: PathBuf,
 }
 
 impl Config {
@@ -48,6 +53,9 @@ impl Config {
         let templates_dir = PathBuf::from(env::var("DESIGN_TEMPLATES_DIR").unwrap_or_else(|_| {
             concat!(env!("CARGO_MANIFEST_DIR"), "/templates").to_string()
         }));
+        let static_dir = PathBuf::from(env::var("DESIGN_STATIC_DIR").unwrap_or_else(|_| {
+            concat!(env!("CARGO_MANIFEST_DIR"), "/static").to_string()
+        }));
 
         Config {
             vault,
@@ -57,6 +65,7 @@ impl Config {
             tenant: env::var("DESIGN_TENANT").unwrap_or_else(|_| "pointsav".to_string()),
             bundle_mounts,
             templates_dir,
+            static_dir,
         }
     }
 }
