@@ -1,12 +1,14 @@
 use anyhow::Result;
 use axum::{
-    extract::{Path, State},
+    extract::{Path, Query, State},
     http::{header, StatusCode},
-    response::{IntoResponse, Json, Response},
+    response::{IntoResponse, Json, Redirect, Response},
     routing::{get, post},
     Router,
 };
+use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use chrono::Utc;
+use ed25519_dalek::{Signer, SigningKey};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
@@ -45,6 +47,12 @@ struct AppState {
     // `TOOL_WALLET_BIN` env var so tests can inject a JSON test-double without a
     // real Polygon RPC call. Production behaviour is unchanged.
     tool_wallet_bin: String,
+    // ── Phase 2: real download-token minting ────────────────────────────────
+    // The private counterpart to `app-privategit-source-2`'s `VERIFY_KEY_PUB` —
+    // loaded from `SIGNING_KEY_SECRET` (same hex-seed-or-file-path convention as
+    // that crate's `load_verify_key`). `None` until a production key is
+    // provisioned (a deployment-time secrets step, not decided by this code).
+    signing_key: Option<SigningKey>,
 }
 
 // ── Catalog types ─────────────────────────────────────────────────────────────
@@ -375,6 +383,153 @@ fn confirmed_response(
     )
 }
 
+// ── Result of resolving a tx_hash — shared by the JSON and HTML order endpoints ──
+//
+// Extracted from `v1_license`'s body (Phase 2) so the new `/order/:tx_hash` HTML
+// page and the existing `/v1/license/:tx_hash` JSON endpoint agree on state by
+// construction — one code path, two renderings, not two parallel state machines.
+enum LicenseOutcome {
+    Confirmed {
+        license_key: String,
+        product_id: String,
+        confirmed_at: String,
+        customer_ref: String,
+    },
+    Pending {
+        retry_after: u64,
+    },
+    NotFound,
+}
+
+async fn resolve_license(state: &AppState, tx_hash: &str) -> LicenseOutcome {
+    // 1. Check local receipt file (idempotent replay of a prior confirmation).
+    let rpath = receipt_path(&state.receipts_dir, tx_hash);
+    if rpath.exists() {
+        if let Ok(raw) = fs::read_to_string(&rpath) {
+            if let Ok(receipt) = serde_json::from_str::<LicenseReceipt>(&raw) {
+                return LicenseOutcome::Confirmed {
+                    license_key: receipt.license_key,
+                    product_id: receipt.product_id,
+                    confirmed_at: receipt.confirmed_at,
+                    customer_ref: receipt.customer_ref,
+                };
+            }
+        }
+    }
+
+    // 2. No receipt on file — verify on-chain via the tool-wallet subprocess.
+    match run_tool_wallet_check(
+        &state.tool_wallet_bin,
+        tx_hash,
+        &state.polygon_rpc_url,
+        &state.polygon_wallet_address,
+    ) {
+        WalletCheck::Confirmed(check_json) => {
+            let customer_ref = check_json
+                .get("from")
+                .and_then(|v| v.as_str())
+                .unwrap_or("unknown")
+                .to_string();
+            let block_number = check_json
+                .get("block")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(0);
+
+            let price_units = price_units_from_check_json(&check_json);
+            let product_id = load_catalog(&state.catalog_path)
+                .ok()
+                .and_then(|c| match_license_product_id(&c, price_units))
+                .unwrap_or_else(|| format!("unknown-{price_units}"));
+
+            let license_key = generate_license_key(&product_id, tx_hash, &customer_ref);
+            let confirmed_at = Utc::now().to_rfc3339();
+
+            let receipt = LicenseReceipt {
+                product_id: product_id.clone(),
+                version: "0.0.1".into(),
+                customer_ref: customer_ref.clone(),
+                price_usdc: price_units,
+                tx_hash: tx_hash.to_string(),
+                chain: "polygon-pos".into(),
+                confirmed_at: confirmed_at.clone(),
+                block_number,
+                license_key: license_key.clone(),
+            };
+
+            if let Some(parent) = rpath.parent() {
+                let _ = fs::create_dir_all(parent);
+            }
+            if let Ok(raw) = serde_json::to_string_pretty(&receipt) {
+                let _ = fs::write(&rpath, raw);
+            }
+
+            flag_if_first_live_transaction(&state.receipts_dir, &receipt);
+
+            LicenseOutcome::Confirmed {
+                license_key,
+                product_id,
+                confirmed_at,
+                customer_ref,
+            }
+        }
+        WalletCheck::Pending => LicenseOutcome::Pending { retry_after: 30 },
+        WalletCheck::NotFound => LicenseOutcome::NotFound,
+    }
+}
+
+// ── Download-token minting (Phase 2) ─────────────────────────────────────────
+//
+// Mints a real, Ed25519-signed download-auth token matching
+// `app-privategit-source-2`'s `LicensePayload` shape byte-for-byte (same field
+// names/types, same `base64url_no_pad(sig[64] || payload_json)` wire format) —
+// closes the previously-undiscovered gap where nothing in production ever
+// actually minted one. Uses the mechanism `BRIEF-software-distribution-
+// substrate.md` already specifies ("download delivery: time-limited URL"), not
+// an invented single-use/revocation scheme: `channel_expiry` is set to TODAY, so
+// the link is valid through the end of the day it was minted. A later visit to
+// `/order/:tx_hash` mints a fresh token with that day's date — no source-2
+// changes, no new persistent state.
+#[derive(Serialize)]
+struct LicensePayload {
+    product: String,
+    channel_expiry: String,
+    entitlements: Vec<String>,
+    version_floor: Option<String>,
+}
+
+/// Load the marketplace's private signing key from `SIGNING_KEY_SECRET` — same
+/// hex-seed-or-file-path convention as `app-privategit-source-2`'s
+/// `load_verify_key`, so the two crates' key-provisioning stories match.
+fn load_signing_key(val: &str) -> Option<SigningKey> {
+    let hex_str = if val.len() == 64 && val.chars().all(|c| c.is_ascii_hexdigit()) {
+        val.to_string()
+    } else {
+        fs::read_to_string(val).ok()?.trim().to_string()
+    };
+    let bytes = hex::decode(&hex_str).ok()?;
+    let arr: [u8; 32] = bytes.try_into().ok()?;
+    Some(SigningKey::from_bytes(&arr))
+}
+
+/// Mint a fresh download-auth token for `product_id`, valid through the end of
+/// today (see module doc above). The hardcoded `"linux-x86_64"` platform and
+/// single `"binary"` entitlement are known simplifications for this phase — real
+/// platform selection is bigger scope than this cleanup.
+fn mint_license_token(signing_key: &SigningKey, product_id: &str) -> String {
+    let today = Utc::now().format("%Y-%m-%d").to_string();
+    let payload = LicensePayload {
+        product: product_id.to_string(),
+        channel_expiry: today,
+        entitlements: vec!["binary".to_string()],
+        version_floor: None,
+    };
+    let payload_json = serde_json::to_string(&payload).expect("LicensePayload always serializes");
+    let sig = signing_key.sign(payload_json.as_bytes());
+    let mut bytes = sig.to_bytes().to_vec();
+    bytes.extend_from_slice(payload_json.as_bytes());
+    URL_SAFE_NO_PAD.encode(bytes)
+}
+
 // ── Handlers ──────────────────────────────────────────────────────────────────
 
 // GET / -> 302 Found redirect to /software.
@@ -516,86 +671,31 @@ async fn v1_products(State(state): State<Arc<AppState>>) -> (StatusCode, Json<Va
 }
 
 // GET /v1/license/:tx_hash — payment state machine (receipt cache → tool-wallet check).
+//
+// Phase 2: the state machine itself now lives in `resolve_license`, shared with the
+// new `/order/:tx_hash` HTML page — this handler is just the JSON rendering of that
+// shared result. Behavior/response shapes are unchanged from before the refactor.
 async fn v1_license(
     State(state): State<Arc<AppState>>,
     Path(tx_hash): Path<String>,
 ) -> (StatusCode, Json<Value>) {
     let tx_hash = tx_hash.to_lowercase();
-
-    // 1. Check local receipt file (idempotent replay of a prior confirmation).
-    let rpath = receipt_path(&state.receipts_dir, &tx_hash);
-    if rpath.exists() {
-        if let Ok(raw) = fs::read_to_string(&rpath) {
-            if let Ok(receipt) = serde_json::from_str::<LicenseReceipt>(&raw) {
-                return confirmed_response(
-                    &receipt.license_key,
-                    &receipt.product_id,
-                    &receipt.confirmed_at,
-                    &receipt.customer_ref,
-                );
-            }
-        }
-    }
-
-    // 2. No receipt on file — verify on-chain via the tool-wallet subprocess.
-    match run_tool_wallet_check(
-        &state.tool_wallet_bin,
-        &tx_hash,
-        &state.polygon_rpc_url,
-        &state.polygon_wallet_address,
-    ) {
-        WalletCheck::Confirmed(check_json) => {
-            let customer_ref = check_json
-                .get("from")
-                .and_then(|v| v.as_str())
-                .unwrap_or("unknown")
-                .to_string();
-            let block_number = check_json
-                .get("block")
-                .and_then(|v| v.as_u64())
-                .unwrap_or(0);
-
-            let price_units = price_units_from_check_json(&check_json);
-            let product_id = load_catalog(&state.catalog_path)
-                .ok()
-                .and_then(|c| match_license_product_id(&c, price_units))
-                .unwrap_or_else(|| format!("unknown-{price_units}"));
-
-            let license_key = generate_license_key(&product_id, &tx_hash, &customer_ref);
-            let confirmed_at = Utc::now().to_rfc3339();
-
-            let receipt = LicenseReceipt {
-                product_id: product_id.clone(),
-                version: "0.0.1".into(),
-                customer_ref: customer_ref.clone(),
-                price_usdc: price_units,
-                tx_hash: tx_hash.clone(),
-                chain: "polygon-pos".into(),
-                confirmed_at: confirmed_at.clone(),
-                block_number,
-                license_key: license_key.clone(),
-            };
-
-            if let Some(parent) = rpath.parent() {
-                let _ = fs::create_dir_all(parent);
-            }
-            if let Ok(raw) = serde_json::to_string_pretty(&receipt) {
-                let _ = fs::write(&rpath, raw);
-            }
-
-            flag_if_first_live_transaction(&state.receipts_dir, &receipt);
-
-            confirmed_response(&license_key, &product_id, &confirmed_at, &customer_ref)
-        }
-        WalletCheck::Pending => (
+    match resolve_license(&state, &tx_hash).await {
+        LicenseOutcome::Confirmed {
+            license_key,
+            product_id,
+            confirmed_at,
+            customer_ref,
+        } => confirmed_response(&license_key, &product_id, &confirmed_at, &customer_ref),
+        LicenseOutcome::Pending { retry_after } => (
             StatusCode::ACCEPTED,
             Json(json!({
                 "status": "pending",
-                "retry_after": 30,
+                "retry_after": retry_after,
                 "message": "Transaction not yet confirmed on Polygon. Retry in 30 seconds."
             })),
         ),
-        WalletCheck::NotFound => (
+        LicenseOutcome::NotFound => (
             StatusCode::NOT_FOUND,
             Json(json!({
                 "status": "not_found",
@@ -665,6 +765,164 @@ async fn v1_wallet_address(State(state): State<Arc<AppState>>) -> Json<Value> {
     }))
 }
 
+// ── Phase 2: checkout / order handlers ───────────────────────────────────────
+
+// GET /checkout/:product_id — invoice page for one product, one fixed price.
+async fn checkout_page(
+    State(state): State<Arc<AppState>>,
+    Path(product_id): Path<String>,
+) -> Response {
+    match load_catalog(&state.catalog_path) {
+        Ok(catalog) => match catalog.installers.iter().find(|i| i.id == product_id) {
+            Some(installer) => {
+                let content = ui::checkout_markup(installer, &state.polygon_wallet_address);
+                let body = ui::render_page(
+                    SoftwareSurface::Marketplace,
+                    &format!("Checkout — {} — PointSav Software", installer.name),
+                    content,
+                )
+                .into_string();
+                (
+                    StatusCode::OK,
+                    [(header::CONTENT_TYPE, "text/html; charset=utf-8")],
+                    body,
+                )
+                    .into_response()
+            }
+            None => (
+                StatusCode::NOT_FOUND,
+                [(header::CONTENT_TYPE, "text/plain; charset=utf-8")],
+                "product not found",
+            )
+                .into_response(),
+        },
+        Err(e) => {
+            tracing::error!("catalog load failed for /checkout: {e:#}");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                [(header::CONTENT_TYPE, "text/plain; charset=utf-8")],
+                "catalog unavailable",
+            )
+                .into_response()
+        }
+    }
+}
+
+#[derive(Deserialize)]
+struct OrderRedirectQuery {
+    product: String,
+    tx_hash: String,
+}
+
+// GET /order?product=<id>&tx_hash=<value> — the checkout form's submit target.
+// Redirects to the canonical, bookmarkable /order/:tx_hash?product=<id> so the
+// order page has one durable URL regardless of how the customer arrived at it.
+async fn order_redirect(Query(q): Query<OrderRedirectQuery>) -> Response {
+    let tx_hash = q.tx_hash.trim().to_lowercase();
+    Redirect::to(&format!("/order/{tx_hash}?product={}", q.product)).into_response()
+}
+
+#[derive(Deserialize, Default)]
+struct OrderQuery {
+    product: Option<String>,
+}
+
+// GET /order/:tx_hash — status/entitlement page. Renders whichever of the three
+// `LicenseOutcome` states `resolve_license` returns; the confirmed state shows
+// the receipt and a Download link. `?product=` (carried from checkout) is used
+// only for the not-found state's "back to checkout" link — the confirmed state
+// already knows its own product_id from the resolved receipt.
+async fn order_status_page(
+    State(state): State<Arc<AppState>>,
+    Path(tx_hash): Path<String>,
+    Query(q): Query<OrderQuery>,
+) -> Response {
+    let tx_hash = tx_hash.to_lowercase();
+    let content = match resolve_license(&state, &tx_hash).await {
+        LicenseOutcome::Confirmed {
+            license_key,
+            product_id,
+            ..
+        } => ui::order_confirmed_markup(&tx_hash, &license_key, &product_id),
+        LicenseOutcome::Pending { retry_after } => ui::order_pending_markup(&tx_hash, retry_after),
+        LicenseOutcome::NotFound => ui::order_not_found_markup(&tx_hash, q.product.as_deref()),
+    };
+    let body = ui::render_page(
+        SoftwareSurface::Marketplace,
+        "Order status — PointSav Software",
+        content,
+    )
+    .into_string();
+    (
+        StatusCode::OK,
+        [(header::CONTENT_TYPE, "text/html; charset=utf-8")],
+        body,
+    )
+        .into_response()
+}
+
+// GET /order/:tx_hash/download?product=<id> — mints a fresh download-auth token
+// (see `mint_license_token` doc comment) and redirects to the authenticated
+// app-privategit-source-2 URL. Re-resolves the tx_hash rather than trusting the
+// query param alone, so a customer can't mint a token for a product they didn't
+// actually pay for by editing the URL.
+async fn order_download(
+    State(state): State<Arc<AppState>>,
+    Path(tx_hash): Path<String>,
+    Query(q): Query<OrderQuery>,
+) -> Response {
+    let tx_hash = tx_hash.to_lowercase();
+    let product_id = match resolve_license(&state, &tx_hash).await {
+        LicenseOutcome::Confirmed { product_id, .. } => product_id,
+        _ => {
+            return (
+                StatusCode::FORBIDDEN,
+                [(header::CONTENT_TYPE, "text/plain; charset=utf-8")],
+                "payment not confirmed for this order",
+            )
+                .into_response();
+        }
+    };
+    // Defensive check: if the caller supplied ?product=, it must match the
+    // resolved receipt's product — catches a stale/copy-pasted link, doesn't
+    // trust the query param as the source of truth.
+    if let Some(claimed) = &q.product {
+        if claimed != &product_id {
+            return (
+                StatusCode::BAD_REQUEST,
+                [(header::CONTENT_TYPE, "text/plain; charset=utf-8")],
+                "product mismatch for this order",
+            )
+                .into_response();
+        }
+    }
+    let Some(signing_key) = &state.signing_key else {
+        tracing::warn!(product_id = %product_id, "order-download: SIGNING_KEY_SECRET not set");
+        return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            [(header::CONTENT_TYPE, "text/plain; charset=utf-8")],
+            "download signing not configured",
+        )
+            .into_response();
+    };
+    let edition = load_catalog(&state.catalog_path)
+        .ok()
+        .and_then(|c| {
+            c.installers
+                .iter()
+                .find(|i| i.id == product_id)
+                .map(|i| i.edition.clone())
+        })
+        .unwrap_or_else(|| "latest".to_string());
+    let token = mint_license_token(signing_key, &product_id);
+    // Platform hardcoded to linux-x86_64 — see `mint_license_token` doc comment.
+    let target = format!(
+        "{}/{}/{}/linux-x86_64?token={}",
+        state.source_base_url, product_id, edition, token
+    );
+    Redirect::to(&target).into_response()
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 #[tokio::main]
@@ -693,6 +951,12 @@ async fn main() -> Result<()> {
     let polygon_rpc_url =
         std::env::var("POLYGON_RPC_URL").unwrap_or_else(|_| "https://polygon-rpc.com".into());
     let tool_wallet_bin = std::env::var("TOOL_WALLET_BIN").unwrap_or_else(|_| "tool-wallet".into());
+    let signing_key = std::env::var("SIGNING_KEY_SECRET")
+        .ok()
+        .and_then(|path| load_signing_key(&path));
+    if signing_key.is_none() {
+        tracing::warn!("SIGNING_KEY_SECRET not set — /order/:tx_hash/download will return 503");
+    }
 
     let state = Arc::new(AppState {
         catalog_path,
@@ -704,6 +968,7 @@ async fn main() -> Result<()> {
         source_base_url,
         polygon_rpc_url,
         tool_wallet_bin,
+        signing_key,
     });
 
     let app = Router::new()
@@ -716,6 +981,10 @@ async fn main() -> Result<()> {
         .route("/v1/license/:tx_hash", get(v1_license))
         .route("/v1/claim", post(v1_claim))
         .route("/v1/wallet/address", get(v1_wallet_address))
+        .route("/checkout/:product_id", get(checkout_page))
+        .route("/order", get(order_redirect))
+        .route("/order/:tx_hash", get(order_status_page))
+        .route("/order/:tx_hash/download", get(order_download))
         .nest_service("/static", ServeDir::new(static_dir))
         .with_state(state);
 
@@ -816,6 +1085,13 @@ esac
         path
     }
 
+    /// Deterministic in-test Ed25519 signing key. Never a production key — matches
+    /// `app-privategit-source-2`'s own `test_signing_key()` seed convention so the
+    /// two crates' test fixtures could interoperate if ever cross-checked.
+    fn test_signing_key() -> SigningKey {
+        SigningKey::from_bytes(&[42u8; 32])
+    }
+
     fn test_state(scratch: &std::path::Path, tool_wallet_bin: String) -> Arc<AppState> {
         Arc::new(AppState {
             catalog_path: write_catalog(scratch),
@@ -827,6 +1103,7 @@ esac
             source_base_url: "https://example.invalid/releases".into(),
             polygon_rpc_url: "https://rpc.invalid".into(),
             tool_wallet_bin,
+            signing_key: Some(test_signing_key()),
         })
     }
 
@@ -884,6 +1161,7 @@ esac
             source_base_url: "https://example.invalid/releases".into(),
             polygon_rpc_url: "https://rpc.invalid".into(),
             tool_wallet_bin: "tool-wallet".into(),
+            signing_key: Some(test_signing_key()),
         })
     }
 
@@ -1498,6 +1776,214 @@ esac
         // Sovereign chrome present (same page shell as /software and /licensing).
         assert!(html.contains("sw-masthead"));
         assert!(html.contains(SoftwareSurface::Marketplace.trademark_line()));
+    }
+
+    // ── Phase 2: GET /checkout/:product_id ────────────────────────────────────
+
+    #[tokio::test]
+    async fn checkout_page_renders_known_product() {
+        let scratch = scratch_dir("checkout-ok");
+        let state = test_state_full(&scratch);
+        let resp = checkout_page(State(state), Path("os-privategit".to_string())).await;
+        assert_eq!(resp.status(), StatusCode::OK);
+        let html = body_text(resp.into_body()).await;
+        assert!(html.contains("PrivateGit OS"));
+        assert!(html.contains("$1.00"));
+        assert!(html.contains("0xTESTWALLET"));
+        let _ = fs::remove_dir_all(&scratch);
+    }
+
+    #[tokio::test]
+    async fn checkout_page_404_for_unknown_product() {
+        let scratch = scratch_dir("checkout-404");
+        let state = test_state_full(&scratch);
+        let resp = checkout_page(State(state), Path("no-such-product".to_string())).await;
+        assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+        let _ = fs::remove_dir_all(&scratch);
+    }
+
+    #[tokio::test]
+    async fn checkout_page_500_when_catalog_unavailable() {
+        let scratch = scratch_dir("checkout-500");
+        let state = test_state_at(&scratch, scratch.join("no-such-products.yaml"));
+        let resp = checkout_page(State(state), Path("os-console".to_string())).await;
+        assert_eq!(resp.status(), StatusCode::INTERNAL_SERVER_ERROR);
+        let _ = fs::remove_dir_all(&scratch);
+    }
+
+    // ── Phase 2: GET /order redirect ──────────────────────────────────────────
+
+    #[tokio::test]
+    async fn order_redirect_builds_canonical_url_and_lowercases_tx_hash() {
+        let resp = order_redirect(Query(OrderRedirectQuery {
+            product: "os-console".to_string(),
+            tx_hash: "0xABCDEF".to_string(),
+        }))
+        .await;
+        // axum's Redirect::to emits 303 See Other (matches the / -> /software note above).
+        assert_eq!(resp.status(), StatusCode::SEE_OTHER);
+        assert_eq!(
+            resp.headers().get(header::LOCATION).unwrap(),
+            "/order/0xabcdef?product=os-console"
+        );
+    }
+
+    // ── Phase 2: GET /order/:tx_hash status page ──────────────────────────────
+
+    #[tokio::test]
+    async fn order_status_page_confirmed_shows_receipt_and_download_link() {
+        let scratch = scratch_dir("order-confirmed");
+        let double = write_tool_wallet_double(&scratch);
+        let state = test_state(&scratch, double.to_string_lossy().into_owned());
+        let resp = order_status_page(
+            State(state),
+            Path("0xconfirmedpayment01".to_string()),
+            Query(OrderQuery::default()),
+        )
+        .await;
+        assert_eq!(resp.status(), StatusCode::OK);
+        let html = body_text(resp.into_body()).await;
+        assert!(html.contains("Confirmed"));
+        // A $1.00 payment matches os-console in this test's write_catalog fixture.
+        assert!(html.contains("os-console"));
+        assert!(html.contains("href=\"/order/0xconfirmedpayment01/download?product=os-console\""));
+        let _ = fs::remove_dir_all(&scratch);
+    }
+
+    #[tokio::test]
+    async fn order_status_page_pending_shows_retry_hint() {
+        let scratch = scratch_dir("order-pending");
+        let double = write_tool_wallet_double(&scratch);
+        let state = test_state(&scratch, double.to_string_lossy().into_owned());
+        let resp = order_status_page(
+            State(state),
+            Path("0xpendingtx01".to_string()),
+            Query(OrderQuery::default()),
+        )
+        .await;
+        assert_eq!(resp.status(), StatusCode::OK);
+        let html = body_text(resp.into_body()).await;
+        assert!(html.contains("Pending"));
+        let _ = fs::remove_dir_all(&scratch);
+    }
+
+    #[tokio::test]
+    async fn order_status_page_not_found_links_back_to_checkout() {
+        let scratch = scratch_dir("order-notfound");
+        let double = write_tool_wallet_double(&scratch);
+        let state = test_state(&scratch, double.to_string_lossy().into_owned());
+        let resp = order_status_page(
+            State(state),
+            Path("0xunknowntx01".to_string()),
+            Query(OrderQuery {
+                product: Some("os-console".to_string()),
+            }),
+        )
+        .await;
+        assert_eq!(resp.status(), StatusCode::OK);
+        let html = body_text(resp.into_body()).await;
+        assert!(html.contains("Not found"));
+        assert!(html.contains("href=\"/checkout/os-console\""));
+        let _ = fs::remove_dir_all(&scratch);
+    }
+
+    // ── Phase 2: GET /order/:tx_hash/download — real token minting ───────────
+
+    #[tokio::test]
+    async fn order_download_confirmed_mints_token_and_redirects() {
+        let scratch = scratch_dir("order-download-ok");
+        let double = write_tool_wallet_double(&scratch);
+        let state = test_state(&scratch, double.to_string_lossy().into_owned());
+        let resp = order_download(
+            State(state.clone()),
+            Path("0xconfirmedpayment01".to_string()),
+            Query(OrderQuery::default()),
+        )
+        .await;
+        assert_eq!(resp.status(), StatusCode::SEE_OTHER);
+        let location = resp
+            .headers()
+            .get(header::LOCATION)
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .to_string();
+        assert!(location.starts_with(
+            "https://example.invalid/releases/os-console/2026.05.144/linux-x86_64?token="
+        ));
+
+        // The minted token must actually verify against the signing key's public
+        // counterpart, matching app-privategit-source-2's exact wire format
+        // (base64url_no_pad(sig[64] || payload_json)).
+        use ed25519_dalek::Verifier;
+        let token = location.split("token=").nth(1).unwrap();
+        let bytes = URL_SAFE_NO_PAD.decode(token).unwrap();
+        let (sig_bytes, payload_bytes) = bytes.split_at(64);
+        let sig = ed25519_dalek::Signature::from_bytes(sig_bytes.try_into().unwrap());
+        let vk = test_signing_key().verifying_key();
+        assert!(vk.verify(payload_bytes, &sig).is_ok());
+        let payload: Value = serde_json::from_slice(payload_bytes).unwrap();
+        assert_eq!(payload["product"], "os-console");
+        assert_eq!(
+            payload["channel_expiry"],
+            Utc::now().format("%Y-%m-%d").to_string()
+        );
+        assert_eq!(payload["entitlements"], json!(["binary"]));
+
+        let _ = fs::remove_dir_all(&scratch);
+    }
+
+    #[tokio::test]
+    async fn order_download_403_when_not_confirmed() {
+        let scratch = scratch_dir("order-download-403");
+        let double = write_tool_wallet_double(&scratch);
+        let state = test_state(&scratch, double.to_string_lossy().into_owned());
+        let resp = order_download(
+            State(state),
+            Path("0xpendingtx01".to_string()),
+            Query(OrderQuery::default()),
+        )
+        .await;
+        assert_eq!(resp.status(), StatusCode::FORBIDDEN);
+        let _ = fs::remove_dir_all(&scratch);
+    }
+
+    #[tokio::test]
+    async fn order_download_400_on_product_mismatch() {
+        let scratch = scratch_dir("order-download-mismatch");
+        let double = write_tool_wallet_double(&scratch);
+        let state = test_state(&scratch, double.to_string_lossy().into_owned());
+        // 0xconfirmedpayment01 is a $1.00 payment -> resolves to os-console; claiming
+        // os-mediakit here must be rejected rather than trusted.
+        let resp = order_download(
+            State(state),
+            Path("0xconfirmedpayment01".to_string()),
+            Query(OrderQuery {
+                product: Some("os-mediakit".to_string()),
+            }),
+        )
+        .await;
+        assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+        let _ = fs::remove_dir_all(&scratch);
+    }
+
+    #[tokio::test]
+    async fn order_download_503_when_signing_key_unconfigured() {
+        let scratch = scratch_dir("order-download-503");
+        let double = write_tool_wallet_double(&scratch);
+        let base_state = test_state(&scratch, double.to_string_lossy().into_owned());
+        let state = Arc::new(AppState {
+            signing_key: None,
+            ..(*base_state).clone()
+        });
+        let resp = order_download(
+            State(state),
+            Path("0xconfirmedpayment01".to_string()),
+            Query(OrderQuery::default()),
+        )
+        .await;
+        assert_eq!(resp.status(), StatusCode::SERVICE_UNAVAILABLE);
+        let _ = fs::remove_dir_all(&scratch);
     }
 
     // ── P1: /healthz + / redirect ─────────────────────────────────────────────
