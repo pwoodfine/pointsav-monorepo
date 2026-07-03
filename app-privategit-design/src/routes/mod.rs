@@ -13,7 +13,7 @@ use axum::{
 use tower_http::services::ServeDir;
 
 pub fn build_router(state: AppState) -> Router {
-    let static_dir = concat!(env!("CARGO_MANIFEST_DIR"), "/static");
+    let static_dir = state.static_dir.clone();
 
     Router::new()
         .route("/healthz", get(healthz))

@@ -15,4 +15,5 @@ pub struct AppState {
     pub edit_token: Arc<String>,
     pub env: Arc<Environment<'static>>,
     pub bundle_mounts: Arc<HashMap<String, PathBuf>>,
+    pub static_dir: PathBuf,
 }
