@@ -1,6 +1,7 @@
 /* PointSav Design System portal layout (D6/D7).
    Depends on tokens.css for --cds-* custom properties. */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:focus-visible { outline: 2px solid var(--cds-focus); outline-offset: 2px; }
 body {
   font-family: 'IBM Plex Sans', system-ui, sans-serif;
   font-size: 16px; line-height: 1.5;
@@ -14,6 +15,7 @@ header {
   flex-shrink: 0; position: sticky; top: 0; z-index: 100;
 }
 header a { color: #fff; text-decoration: none; font-size: 0.875rem; font-weight: 600; letter-spacing: 0.01em; }
+.header-tokens-link { margin-left: auto; font-weight: 400 !important; }
 .layout { display: flex; flex: 1; overflow: hidden; }
 .sidebar {
   width: 256px; flex-shrink: 0;
@@ -59,7 +61,7 @@ header a { color: #fff; text-decoration: none; font-size: 0.875rem; font-weight:
 .content p { margin-bottom: 1rem; }
 .content ul, .content ol { padding-left: 1.5rem; margin-bottom: 1rem; }
 .content li { margin-bottom: 0.25rem; }
-.content table { border-collapse: collapse; width: 100%; margin-bottom: 1.5rem; font-size: 0.875rem; }
+.content table { display: block; overflow-x: auto; border-collapse: collapse; width: 100%; margin-bottom: 1.5rem; font-size: 0.875rem; }
 .content th { background: var(--cds-layer); text-align: left; padding: 0.5rem 0.75rem; font-weight: 600; border-bottom: 2px solid var(--cds-border-subtle); }
 .content td { padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--cds-border-subtle); vertical-align: top; }
 .content code { font-family: 'IBM Plex Mono', monospace; font-size: 0.875em; background: var(--cds-layer); padding: 0.1em 0.3em; border-radius: 2px; }
@@ -90,6 +92,25 @@ header a { color: #fff; text-decoration: none; font-size: 0.875rem; font-weight:
 .schema-meta dt { color: var(--cds-text-secondary); font-weight: 600; }
 .schema-meta dd { color: var(--cds-text-primary); }
 .schema-reserved { color: var(--cds-text-tertiary); font-style: italic; }
+
+/* Visual token gallery (P0.2) */
+.tg-tier { margin-bottom: 2.5rem; }
+.tg-tier h2 { font-size: 1.5rem; font-weight: 400; margin-bottom: 1rem; }
+.tg-group { margin-bottom: 1.5rem; }
+.tg-group h3 { font-size: 1rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--cds-text-secondary); }
+.tg-entries { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 0.75rem; }
+.tg-entry {
+  border: 1px solid var(--cds-border-subtle); border-radius: 4px;
+  padding: 0.75rem; display: flex; flex-direction: column; gap: 0.25rem;
+}
+.tg-swatch { display: block; width: 100%; height: 40px; border-radius: 4px; border: 1px solid var(--cds-border-subtle); margin-bottom: 0.25rem; }
+.tg-name {
+  font-family: 'IBM Plex Mono', monospace; font-size: 0.75rem;
+  color: var(--cds-link-primary); cursor: pointer; word-break: break-all;
+}
+.tg-value { font-family: 'IBM Plex Mono', monospace; font-size: 0.75rem; color: var(--cds-text-secondary); }
+.tg-contrast { font-size: 0.6875rem; color: var(--cds-text-tertiary); }
+.tg-desc { font-size: 0.75rem; color: var(--cds-text-tertiary); margin-top: 0.25rem; }
 
 /* Mobile drawer toggle (D7, injected by drawer.js) */
 .drawer-toggle {

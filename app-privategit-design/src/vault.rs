@@ -1,10 +1,32 @@
 use std::{collections::HashMap, fs, path::Path};
 
-pub const SECTIONS: &[&str] = &["elements"];
+/// (section, default/landing tab) — components land on `usage`, not `overview`,
+/// since components have no overview.md (usage/style/code/accessibility.md instead).
+pub const SECTIONS: &[(&str, &str)] = &[
+    ("elements", "overview"),
+    ("components", "usage"),
+    ("guidelines", "overview"),
+    ("developing", "overview"),
+    ("designing", "overview"),
+    ("about", "overview"),
+    ("research", "overview"),
+];
+
+pub fn default_tab(section: &str) -> &'static str {
+    SECTIONS
+        .iter()
+        .find(|(s, _)| *s == section)
+        .map(|(_, t)| *t)
+        .unwrap_or("overview")
+}
+
+pub fn is_known_section(section: &str) -> bool {
+    SECTIONS.iter().any(|(s, _)| *s == section)
+}
 
 pub fn discover_nav(vault: &Path) -> HashMap<String, Vec<String>> {
     let mut nav = HashMap::new();
-    for section in SECTIONS {
+    for (section, _) in SECTIONS {
         let dir = vault.join(section);
         if let Ok(entries) = fs::read_dir(&dir) {
             let mut slugs: Vec<String> = entries
@@ -26,6 +48,7 @@ pub fn discover_tabs(vault: &Path, section: &str, slug: &str) -> Vec<String> {
     let Ok(entries) = fs::read_dir(&dir) else {
         return Vec::new();
     };
+    let landing = default_tab(section);
     let mut tabs: Vec<String> = entries
         .filter_map(|e| e.ok())
         .filter(|e| e.file_type().map(|t| t.is_file()).unwrap_or(false))
@@ -39,9 +62,9 @@ pub fn discover_tabs(vault: &Path, section: &str, slug: &str) -> Vec<String> {
         })
         .collect();
     tabs.sort();
-    if let Some(pos) = tabs.iter().position(|t| t == "overview") {
+    if let Some(pos) = tabs.iter().position(|t| t == landing) {
         tabs.remove(pos);
-        tabs.insert(0, "overview".to_string());
+        tabs.insert(0, landing.to_string());
     }
     tabs
 }

@@ -1,0 +1,23 @@
+<div class="tokens-gallery">
+{% for tier in tiers %}
+<section class="tg-tier">
+<h2>{{ tier.name | to_title }}</h2>
+{% for group in tier.groups %}
+<div class="tg-group">
+<h3>{{ group.name | to_title }}</h3>
+<div class="tg-entries">
+{% for e in group.entries %}
+<div class="tg-entry">
+{% if e.kind == "color" %}<span class="tg-swatch" style="background:{{ e.value }}"></span>{% endif %}
+<code class="tg-name" data-copy="{{ e.css_var }}" title="Click to copy {{ e.css_var }}">{{ e.path }}</code>
+<span class="tg-value">{{ e.value }}</span>
+{% if e.contrast_vs_white %}<span class="tg-contrast">{{ e.contrast_vs_white }} vs white</span>{% endif %}
+{% if e.description %}<p class="tg-desc">{{ e.description }}</p>{% endif %}
+</div>
+{% endfor %}
+</div>
+</div>
+{% endfor %}
+</section>
+{% endfor %}
+</div>

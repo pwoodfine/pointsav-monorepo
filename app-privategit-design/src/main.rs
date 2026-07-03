@@ -4,6 +4,7 @@ mod render;
 mod routes;
 mod schema;
 mod state;
+mod tokens_gallery;
 mod vault;
 
 use minijinja::{path_loader, Environment};
@@ -27,11 +28,13 @@ async fn main() {
 
     populate_index(&cfg.vault, &index).await;
 
+    let item_count: usize = nav.values().map(|v| v.len()).sum();
     eprintln!(
-        "app-privategit-design v{}: vault={:?} elements={} indexed={}",
+        "app-privategit-design v{}: vault={:?} sections={} items={} indexed={}",
         env!("CARGO_PKG_VERSION"),
         cfg.vault,
-        nav.get("elements").map(|v| v.len()).unwrap_or(0),
+        nav.len(),
+        item_count,
         index.read().await.len(),
     );
 
@@ -131,7 +134,7 @@ fn generate_token() -> String {
 
 async fn populate_index(vault: &Path, index: &Arc<RwLock<InvertedIndex>>) {
     let mut idx = index.write().await;
-    for section in SECTIONS {
+    for (section, _) in SECTIONS {
         let sec_dir = vault.join(section);
         let Ok(entries) = std::fs::read_dir(&sec_dir) else {
             continue;
