@@ -23,6 +23,7 @@
 //! importing it, to avoid a circular or cross-crate dependency at build time.
 
 mod characterize;
+mod fsl_clock;
 
 use std::collections::{BTreeMap, HashSet};
 use std::path::{Path, PathBuf};
@@ -38,6 +39,13 @@ fn main() {
         }
         return;
     }
+    if subcommand == Some("fsl-clock") {
+        if let Err(e) = fsl_clock::run(&args[2..]) {
+            eprintln!("[-] FATAL: {e}");
+            std::process::exit(1);
+        }
+        return;
+    }
     let paths: Vec<PathBuf> = if subcommand == Some("check-content") {
         args[2..].iter().map(PathBuf::from).collect()
     } else if args.len() > 1 && subcommand != Some("check-content") {
@@ -47,6 +55,7 @@ fn main() {
         eprintln!("Usage: cargo xtask check-content <path1> [path2] ...");
         eprintln!("       cargo xtask <path1> [path2] ...");
         eprintln!("       cargo xtask characterize …  (characterization harness)");
+        eprintln!("       cargo xtask fsl-clock <products.yaml>  (FSL conversion clock)");
         std::process::exit(2);
     };
 

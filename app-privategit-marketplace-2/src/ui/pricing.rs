@@ -116,6 +116,7 @@ mod tests {
                     path: "os-console/1.0".into(),
                     license_tier: LicenseTier::Commercial,
                     price_usdc: 0,
+                    fsl_conversion_date: None,
                 },
                 Installer {
                     id: "os-privategit".into(),
@@ -127,6 +128,7 @@ mod tests {
                     path: "os-privategit/1.0".into(),
                     license_tier: LicenseTier::Commercial,
                     price_usdc: 0,
+                    fsl_conversion_date: None,
                 },
                 Installer {
                     id: "os-mediakit".into(),
@@ -138,6 +140,7 @@ mod tests {
                     path: "os-mediakit/1.0".into(),
                     license_tier: LicenseTier::Fsl,
                     price_usdc: 0,
+                    fsl_conversion_date: None,
                 },
             ],
         }

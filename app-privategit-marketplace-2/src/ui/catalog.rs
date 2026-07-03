@@ -261,6 +261,7 @@ mod tests {
                     path: "os-mediakit/1.2.0/installer.run".into(),
                     license_tier: LicenseTier::Fsl,
                     price_usdc: 0, // active BETA gate
+                    fsl_conversion_date: None,
                 },
                 Installer {
                     id: "os-privategit".into(),
@@ -272,6 +273,7 @@ mod tests {
                     path: "os-privategit/1.0.0/installer.run".into(),
                     license_tier: LicenseTier::Commercial,
                     price_usdc: 19_000_000, // BETA lifted, test fixture only ($19)
+                    fsl_conversion_date: None,
                 },
             ],
         }

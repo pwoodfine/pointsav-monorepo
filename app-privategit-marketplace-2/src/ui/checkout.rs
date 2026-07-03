@@ -85,6 +85,7 @@ mod tests {
             path: "os-console/2026.05.144".into(),
             license_tier: LicenseTier::Commercial,
             price_usdc: 1_000_000,
+            fsl_conversion_date: None,
         }
     }
 
