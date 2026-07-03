@@ -187,14 +187,38 @@ document.querySelectorAll('[data-sw-clip]').forEach(function(btn){
 /// Render the full product catalog as body content for the `/software` page.
 ///
 /// Iterates the loaded [`crate::Catalog`] (the same struct `v1_products` serves) — one
-/// unified list of os-* products now, partitioned only by whether BETA is still active
-/// (`price_usdc == 0`) or lifted for that specific product. The returned [`Markup`] is
-/// meant to be wrapped by `layout::render_page`, which supplies the Sovereign Editorial
-/// masthead + footer chrome. Nav/catalog grouping by license tier (not this free/paid
-/// split) is Phase 3's concern, not this function's.
+/// unified list of os-* products now, grouped by **license tier** (Phase 3 — corrects
+/// the free/paid-only grouping this function used before Phase 3 landed). Each
+/// product still renders its own BETA-free-vs-paid state individually (see
+/// `free_product_card`/`paid_product_card`) — the section boundary is now the
+/// ratified tier, matching the pricing page's own PointSav Commercial/FSL split and
+/// staying meaningful once real pricing mixes with still-BETA products. The
+/// returned [`Markup`] is meant to be wrapped by `layout::render_page`, which
+/// supplies the Sovereign Editorial masthead + footer chrome.
 pub fn catalog_markup(catalog: &crate::Catalog, source_base_url: &str) -> Markup {
-    let (free_products, paid_products): (Vec<_>, Vec<_>) =
-        catalog.installers.iter().partition(|i| i.price_usdc == 0);
+    let (commercial, fsl): (Vec<_>, Vec<_>) = catalog
+        .installers
+        .iter()
+        .partition(|i| i.license_tier == LicenseTier::Commercial);
+
+    let tier_section = |id: &'static str, heading: &'static str, products: &[&crate::Installer]| {
+        html! {
+            @if !products.is_empty() {
+                section."sw-cat-section" id=(id) {
+                    h2."sw-cat-section__h" { (heading) }
+                    div."sw-cat-grid" {
+                        @for i in products {
+                            @if i.price_usdc == 0 {
+                                (free_product_card(i, source_base_url))
+                            } @else {
+                                (paid_product_card(i))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    };
 
     html! {
         (catalog_style())
@@ -202,32 +226,13 @@ pub fn catalog_markup(catalog: &crate::Catalog, source_base_url: &str) -> Markup
             h1."sw-cat-intro" { "Products" }
             p."sw-cat-lede" {
                 "Buy it once. Run it anywhere. Own it forever. No subscription, no cloud \
-                 dependency, no kill switch. This catalog is rendered directly from the \
+                 dependency, no kill switch. Buying your first component here is also your \
+                 key to the rest of the stack. This catalog is rendered directly from the \
                  release catalog\u{2014}what you see here is exactly what the download \
                  API serves."
             }
-
-            @if !free_products.is_empty() {
-                section."sw-cat-section" id="downloads" {
-                    h2."sw-cat-section__h" { "Operating systems \u{2014} BETA (free)" }
-                    div."sw-cat-grid" {
-                        @for i in &free_products {
-                            (free_product_card(i, source_base_url))
-                        }
-                    }
-                }
-            }
-
-            @if !paid_products.is_empty() {
-                section."sw-cat-section" id="licensing" {
-                    h2."sw-cat-section__h" { "Operating systems \u{2014} licensed" }
-                    div."sw-cat-grid" {
-                        @for i in &paid_products {
-                            (paid_product_card(i))
-                        }
-                    }
-                }
-            }
+            (tier_section("commercial", "PointSav Commercial", &commercial))
+            (tier_section("fsl", "FSL", &fsl))
         }
         (clipboard_script())
     }
@@ -299,9 +304,12 @@ mod tests {
             !html.contains("Apache 2.0"),
             "must not use the factually wrong tier label"
         );
-        // Each populated group renders its section.
-        assert!(html.contains("Operating systems \u{2014} BETA (free)"));
-        assert!(html.contains("Operating systems \u{2014} licensed"));
+        // Each populated tier renders its own section (Phase 3: grouped by license
+        // tier, not by free/paid — os-mediakit is FSL, os-privategit is Commercial).
+        assert!(html.contains(r#"id="commercial""#));
+        assert!(html.contains(r#"id="fsl""#));
+        assert!(html.contains("<h2 class=\"sw-cat-section__h\">PointSav Commercial</h2>"));
+        assert!(html.contains("<h2 class=\"sw-cat-section__h\">FSL</h2>"));
         // Badge row shows the fields that ARE in the catalog.
         assert!(html.contains("v1.2.0"));
         assert!(html.contains("linux-x86_64"));
@@ -340,7 +348,20 @@ mod tests {
         // Page shell still renders…
         assert!(html.contains("sw-cat-intro"));
         // …but no product section.
-        assert!(!html.contains("id=\"downloads\""));
-        assert!(!html.contains("id=\"licensing\""));
+        assert!(!html.contains("id=\"commercial\""));
+        assert!(!html.contains("id=\"fsl\""));
+    }
+
+    #[test]
+    fn products_are_grouped_by_tier_not_by_prefix_family() {
+        // Regression guard for Phase 3: the catalog only ever models os-* installers
+        // (tool-wallet, app-*, soft-* never reach this struct at all — they were
+        // removed from products.yaml in Phase 1), and cards are grouped by
+        // `license_tier`, never by an id-prefix family grid.
+        let html = catalog_markup(&fixture(), BASE).into_string();
+        assert!(!html.contains("tool-wallet"));
+        assert!(!html.contains("Wallet &amp; Tools"));
+        assert!(!html.contains("Knowledge &amp; Source"));
+        assert!(!html.contains("Orchestration"));
     }
 }
