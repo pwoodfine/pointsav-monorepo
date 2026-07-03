@@ -119,6 +119,14 @@ pub fn page_shell(title: &str, active_path: &str, content: &str, state: &AppStat
       {content}
     </main>
   </div>
+  <section class="bim-disclosure" aria-label="Important information">
+    <details class="bim-disclosure__details">
+      <summary class="bim-disclosure__summary">Important Information</summary>
+      <div class="bim-disclosure__body">
+        <p>BIM Object specifications in this library are provided for reference and coordination. They are not a substitute for project-specific code review, and do not represent final regulatory approval — verify all classifications, property values, and regulatory overlays against the current code requirements in the applicable jurisdiction before construction. Platform capabilities described here, including planned regulatory-overlay and compliance-status features, are planned or intended and may change during development.</p>
+      </div>
+    </details>
+  </section>
   <footer class="bim-footer">
     <div class="bim-footer__inner">
       <div>
@@ -128,6 +136,8 @@ pub fn page_shell(title: &str, active_path: &str, content: &str, state: &AppStat
           <li>{tc} BIM Object categories &middot; {comp} components &middot; {rc} research&nbsp;entries</li>
           <li>IFC&nbsp;4.3 (ISO&nbsp;16739-1:2024) &middot; Uniclass&nbsp;2015 &middot; DTCG</li>
           <li>BIM Object data licensed <strong>Apache-2.0</strong></li>
+          <li>Platform code licensed <strong>AGPL-3.0-or-later</strong></li>
+          <li><a href="https://github.com/pointsav/pointsav-monorepo">Source (github.com/pointsav)</a></li>
         </ul>
       </div>
       <div>
@@ -139,16 +149,41 @@ pub fn page_shell(title: &str, active_path: &str, content: &str, state: &AppStat
         </ul>
       </div>
       <div>
-        <p class="bim-footer__heading">Platform</p>
+        <p class="bim-footer__heading">Network</p>
         <ul class="bim-footer__list">
-          <li>Platform code licensed <strong>AGPL-3.0-or-later</strong></li>
-          <li><a href="https://github.com/pointsav/pointsav-monorepo">Source (github.com/pointsav)</a></li>
-          <li>Powered by <strong>PointSav Digital Systems&trade;</strong></li>
-          <li><a href="https://pointsav.com">pointsav.com</a></li>
+          <li><a href="https://woodfinegroup.com">home.woodfinegroup.com</a></li>
+          <li><a href="https://corporate.woodfinegroup.com" target="_blank" rel="noopener">Corporate</a></li>
+          <li><a href="https://projects.woodfinegroup.com" target="_blank" rel="noopener">Projects</a></li>
+          <li><a href="https://github.com/pointsav" target="_blank" rel="noopener">GitHub</a></li>
         </ul>
       </div>
     </div>
     <div class="bim-footer__base">
+      <div class="bim-footer__base-row">
+        <div class="bim-footer__cities">
+          <span>Vancouver</span>
+          <span class="bim-footer__cities-sep" aria-hidden="true">|</span>
+          <span>New York</span>
+        </div>
+        <div class="bim-footer__badges">
+          <span class="bim-badge">
+            <svg class="bim-badge__glyph" aria-hidden="true" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M5 2.5h7l3 3v12a1 1 0 01-1 1H5a1 1 0 01-1-1v-14a1 1 0 011-1Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"></path>
+              <path d="M12 2.5v3h3" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"></path>
+            </svg>
+            <span class="bim-badge__text">
+              <span class="bim-badge__lead">Powered by</span>
+              <span class="bim-badge__name">PointSav Digital Systems</span>
+            </span>
+          </span>
+          <a class="bim-badge" href="https://www.apache.org/licenses/LICENSE-2.0" target="_blank" rel="noopener license">
+            <span class="bim-badge__text">
+              <span class="bim-badge__lead">BIM data licensed</span>
+              <span class="bim-badge__name">Apache-2.0</span>
+            </span>
+          </a>
+        </div>
+      </div>
       <p>Copyright &copy; 2026 Woodfine Capital Projects Inc. See LICENSE for terms. &middot; {public_url}</p>
       <p class="bim-footer__trademark">Woodfine Capital Projects&trade;, Woodfine Management Corp&trade;, PointSav Digital Systems&trade;, Totebox Orchestration&trade;, Totebox Archive&trade;, and Capability Geometry&trade; are trademarks of Woodfine Capital Projects Inc., used in Canada, the United States, Latin America, and Europe. Capability Geometry&trade; is an unregistered trademark of Woodfine Capital Projects Inc. All other trademarks are the property of their respective owners.</p>
     </div>

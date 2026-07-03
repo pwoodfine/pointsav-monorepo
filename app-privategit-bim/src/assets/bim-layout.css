@@ -885,3 +885,124 @@ h1, h2 {
   color: #6f6f6f;
   line-height: 1.5;
 }
+
+.bim-footer__base-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.bim-footer__cities {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #d4d5d7;
+}
+
+.bim-footer__cities-sep {
+  color: #5b6270;
+}
+
+.bim-footer__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.bim-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0.625rem;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: var(--bim-radius-sm, 2px);
+  color: #d4d5d7;
+  text-decoration: none;
+}
+
+a.bim-badge:hover {
+  border-color: #a8c8f8;
+  color: #a8c8f8;
+}
+
+.bim-badge__glyph {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
+
+.bim-badge__text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.bim-badge__lead {
+  font-size: 0.5625rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #8d8d8d;
+}
+
+.bim-badge__name {
+  font-size: 0.6875rem;
+  font-weight: 600;
+}
+
+/* "Important Information" disclosure band — full-width like the footer
+   (margin-left matches the sidebar width), not confined to .bim-main's
+   narrower max-width column. */
+.bim-disclosure {
+  margin-left: 16rem;
+  border-top: 1px solid var(--bim-border, #E6E7E8);
+  background: var(--bim-bg-subtle, #F7F9FA);
+}
+
+@media (max-width: 1056px) {
+  .bim-disclosure {
+    margin-left: 0;
+  }
+}
+
+.bim-disclosure__details {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
+.bim-disclosure__summary {
+  cursor: pointer;
+  padding: 1rem 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--bim-fg-secondary, #374151);
+  list-style: none;
+}
+
+.bim-disclosure__summary::-webkit-details-marker {
+  display: none;
+}
+
+.bim-disclosure__summary::before {
+  content: "\25B8  ";
+  color: var(--bim-fg-muted, #6B7280);
+}
+
+.bim-disclosure__details[open] .bim-disclosure__summary::before {
+  content: "\25BE  ";
+}
+
+.bim-disclosure__body {
+  max-width: 72ch;
+  padding-bottom: 1.5rem;
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  color: var(--bim-fg-secondary, #374151);
+}
