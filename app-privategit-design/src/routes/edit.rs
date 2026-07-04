@@ -3,7 +3,7 @@
 
 // D3 — WYSIWYG edit overlay: raw markdown GET + authenticated PUT save-back.
 
-use crate::state::AppState;
+use crate::{state::AppState, vault};
 use axum::{
     extract::{Path, State},
     http::{header, HeaderMap, StatusCode},
@@ -20,11 +20,7 @@ pub async fn get_raw(
     if bad_path(&section) || bad_path(&slug) || bad_path(&tab) {
         return (StatusCode::BAD_REQUEST, "invalid path").into_response();
     }
-    let path = state
-        .vault
-        .join(&section)
-        .join(&slug)
-        .join(format!("{}.md", tab));
+    let path = vault::content_path(&state.vault, &section, &slug, &tab);
     match fs::read_to_string(&path) {
         Ok(s) => (
             StatusCode::OK,
@@ -60,11 +56,7 @@ pub async fn put_save(
         return (StatusCode::BAD_REQUEST, "invalid path").into_response();
     }
 
-    let path = state
-        .vault
-        .join(&section)
-        .join(&slug)
-        .join(format!("{}.md", tab));
+    let path = vault::content_path(&state.vault, &section, &slug, &tab);
 
     // Confirm file already exists — no new file creation via PUT
     if !path.exists() {
