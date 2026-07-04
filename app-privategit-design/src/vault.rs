@@ -58,6 +58,38 @@ pub fn discover_component_groups(vault: &Path, slugs: &[String]) -> Vec<(String,
     ordered
 }
 
+/// Look up which `discover_component_groups` label a given slug belongs to — used by
+/// `component_meta` to show a small origin badge on the component's own page (Phase 3),
+/// not just the sidebar grouping. Returns `None` for the generic substrate group (empty
+/// label — no badge needed, same as the sidebar renders it unlabeled) or if not found.
+pub fn component_origin_label<'a>(
+    component_groups: &'a [(String, Vec<String>)],
+    slug: &str,
+) -> Option<&'a str> {
+    component_groups
+        .iter()
+        .find(|(label, slugs)| !label.is_empty() && slugs.iter().any(|s| s == slug))
+        .map(|(label, _)| label.as_str())
+}
+
+/// Human-readable "last modified" freshness for a vault file. Uses filesystem mtime, not
+/// git history — the deployed vault is a gitignored copy synced from the canonical
+/// `pointsav-design-system` repo, so git log against the running app's own vault
+/// directory would show nothing meaningful. mtime is the honest signal actually available
+/// to the running binary.
+pub fn file_freshness_label(path: &Path) -> Option<String> {
+    let modified = fs::metadata(path).ok()?.modified().ok()?;
+    let elapsed = modified.elapsed().ok()?;
+    let days = elapsed.as_secs() / 86400;
+    Some(match days {
+        0 => "Updated today".to_string(),
+        1 => "Updated yesterday".to_string(),
+        2..=13 => format!("Updated {days} days ago"),
+        14..=59 => format!("Updated {} weeks ago", days / 7),
+        _ => format!("Updated {} months ago", days / 30),
+    })
+}
+
 /// (section, default/landing tab, on-disk layout) — components land on `usage`, not
 /// `overview`, since components have no overview.md (usage/style/code/accessibility.md
 /// instead). `research`/`developing`/`designing`/`about` are `Flat`: their default tab
