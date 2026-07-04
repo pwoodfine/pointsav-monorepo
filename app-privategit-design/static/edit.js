@@ -18,8 +18,8 @@
   btn.id = 'edit-toggle';
   btn.textContent = 'Edit';
   applyStyle(btn, 'position:fixed;bottom:2rem;right:2rem;padding:0.5rem 1.25rem;'
-    + 'background:#0050e6;color:#fff;border:none;border-radius:4px;cursor:pointer;'
-    + 'font-size:0.875rem;font-weight:600;z-index:200;box-shadow:0 2px 8px rgba(0,0,0,.2)');
+    + 'background:var(--cds-interactive);color:#fff;border:none;border-radius:var(--cds-radius-md);cursor:pointer;'
+    + 'font-size:0.875rem;font-weight:600;z-index:200;box-shadow:var(--cds-elevation-2)');
   document.body.appendChild(btn);
 
   btn.addEventListener('click', function () {
@@ -46,8 +46,8 @@
     textarea = document.createElement('textarea');
     textarea.value = rawMarkdown;
     applyStyle(textarea, 'width:100%;min-height:480px;padding:1rem;resize:vertical;'
-      + 'font-family:"IBM Plex Mono",monospace;font-size:0.875rem;line-height:1.6;'
-      + 'border:2px solid #0050e6;border-radius:4px;outline:none');
+      + 'font-family:var(--cds-font-mono);font-size:0.875rem;line-height:1.6;'
+      + 'border:2px solid var(--cds-interactive);border-radius:var(--cds-radius-md);outline:none');
     content.innerHTML = '';
     content.appendChild(textarea);
     textarea.focus();
