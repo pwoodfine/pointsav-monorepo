@@ -138,6 +138,22 @@ header a { color: #fff; text-decoration: none; font-size: 0.875rem; font-weight:
 .content a { color: var(--cds-link-primary); }
 .content figure { margin: 0; display: inline-block; }
 .home-body { padding: 4rem 2rem; }
+/* Phase 5 — a single, deliberate hero entrance using the vault's own primitive.duration
+   speed-6 ("Deliberate — hero animation") + motion.ease-display ("...hero"), both
+   ratified but never wired into app CSS before now. Fires once on load, not on every
+   scroll/hover — restraint over spectacle. Fully inert under reduced motion. */
+.home-hero { opacity: 0; transform: translateY(8px); }
+@media (prefers-reduced-motion: no-preference) {
+  .home-hero {
+    animation: home-hero-in var(--cds-duration-hero) var(--cds-ease-display) forwards;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .home-hero { opacity: 1; transform: none; }
+}
+@keyframes home-hero-in {
+  to { opacity: 1; transform: translateY(0); }
+}
 .home-eyebrow {
   font-size: var(--cds-type-label); font-weight: 600; letter-spacing: 0.08em;
   text-transform: uppercase; color: var(--cds-text-secondary); margin-bottom: var(--cds-space-3);
@@ -148,6 +164,12 @@ header a { color: #fff; text-decoration: none; font-size: 0.875rem; font-weight:
 }
 .home-lede { color: var(--cds-text-secondary); margin-bottom: var(--cds-space-5); max-width: 68ch; }
 .home-lede a { color: var(--cds-link-primary); }
+/* Live palette strip — real swatches from primitive.color, not decoration. */
+.home-palette { display: flex; gap: var(--cds-space-3); margin-bottom: var(--cds-space-5); }
+.home-swatch {
+  width: 2.25rem; height: 2.25rem; border-radius: var(--cds-radius-md);
+  border: 1px solid var(--cds-border-subtle); box-shadow: var(--cds-elevation-1);
+}
 .home-badges { display: flex; flex-wrap: wrap; gap: var(--cds-space-3); margin: var(--cds-space-3) 0 var(--cds-space-7); }
 .home-badge {
   display: inline-flex; align-items: center; padding: 0.2rem 0.65rem;

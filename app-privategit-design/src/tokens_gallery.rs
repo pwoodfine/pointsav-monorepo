@@ -1,9 +1,20 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
 
-// P0.2 — visual token gallery. Flattens dtcg-bundle.json's primitive/semantic/component
+// P0.2 — visual token gallery. Flattens tokens.full.json's primitive/theme/extension
 // tiers into renderable entries: color tokens get a swatch + contrast ratio, everything
 // else gets a plain name/value row.
+//
+// Phase 5 fix (2026-07-04): this previously read `tokens/dtcg-bundle.json` — a
+// knowledge-wiki-specific additive bundle (own $description: "PointSav design system —
+// knowledge-wiki baseline... Adds knowledge-wiki primitives"), master-cosigned for that
+// product, not this substrate's own generic primitives. `sync-design-tokens.sh` explicitly
+// SKIPs dtcg-bundle.json from its canonical merge step — it was never meant to be the
+// gallery's source. The actual merged, canonical bundle
+// (`sync-design-tokens.sh`'s own output, matching what nginx serves at
+// `/tokens.full.json`) lives at `exports/tokens.full.json`. Its `primitive` tier's
+// `primary-60: #234ed8` matches the ratified PointSav blue from `primitive.json` /
+// `pointsav-brand.json` — confirming this is the correct source.
 use serde_json::Value;
 use std::path::Path;
 
@@ -30,7 +41,7 @@ pub struct TokenTier {
 }
 
 pub fn load_and_flatten(vault: &Path) -> Vec<TokenTier> {
-    let path = vault.join("tokens").join("dtcg-bundle.json");
+    let path = vault.join("exports").join("tokens.full.json");
     let Ok(raw) = std::fs::read_to_string(&path) else {
         return Vec::new();
     };
@@ -39,7 +50,7 @@ pub fn load_and_flatten(vault: &Path) -> Vec<TokenTier> {
     };
 
     let mut tiers = Vec::new();
-    for tier_name in ["primitive", "semantic", "component"] {
+    for tier_name in ["primitive", "theme", "ibm-carbon-org-chart", "org-chart-extended"] {
         let Some(Value::Object(tier_map)) = root.get(tier_name) else {
             continue;
         };

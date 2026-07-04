@@ -124,6 +124,13 @@
   --cds-elevation-2: 0 4px 12px rgba(14, 15, 18, 0.12);  /* dropdowns, popovers */
   --cds-elevation-3: 0 8px 24px rgba(14, 15, 18, 0.18);  /* modals, dialogs */
 
+  /* Motion — new (Phase 5 gap: primitive.json's motion/duration scale was ratified but
+     never wired into any app CSS). Values are the vault's own primitive.duration.speed-6
+     ("Deliberate — hero animation") and primitive.motion.ease-display
+     ("Expressive interaction — toasts, modals, hero") — literally named for this use. */
+  --cds-duration-hero: 720ms;
+  --cds-ease-display: cubic-bezier(0.4, 0.14, 0.3, 1.0);
+
   /* Icon — new (Phase 1 gap: no icon-system tokens existed at all) */
   --cds-icon-size-sm: 1rem;      /* 16px */
   --cds-icon-size-md: 1.25rem;   /* 20px */

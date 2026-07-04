@@ -41,11 +41,38 @@ pub async fn index(State(state): State<AppState>) -> Html<String> {
          <h2>Design Tokens &amp; Bundles</h2><p>Download the whole token graph</p></a>\n",
     );
 
-    let token_count: usize = tokens_gallery::load_and_flatten(&state.vault)
+    let tiers = tokens_gallery::load_and_flatten(&state.vault);
+    let token_count: usize = tiers
         .iter()
         .flat_map(|tier| &tier.groups)
         .map(|group| group.entries.len())
         .sum();
+
+    // Phase 5 — a live palette strip, not decoration: real swatches pulled from the same
+    // primitive.color group the /tokens gallery renders, not invented graphics. Picks one
+    // representative mid-tone from each named color family, in a fixed, meaningful order.
+    let palette_paths = [
+        "color.primary-60",
+        "color.positive-60",
+        "color.critical-60",
+        "color.caution-60",
+        "color.neutral-60",
+    ];
+    let all_entries: Vec<&tokens_gallery::TokenEntry> = tiers
+        .iter()
+        .flat_map(|tier| &tier.groups)
+        .flat_map(|group| &group.entries)
+        .collect();
+    let palette: String = palette_paths
+        .iter()
+        .filter_map(|p| all_entries.iter().find(|e| e.path == *p))
+        .map(|e| {
+            format!(
+                "<span class=\"home-swatch\" style=\"background:{}\" title=\"{} — {}\"></span>",
+                e.value, e.path, e.value
+            )
+        })
+        .collect();
 
     let badges = format!(
         "<div class=\"home-badges\">\
@@ -58,6 +85,7 @@ pub async fn index(State(state): State<AppState>) -> Html<String> {
 
     let content = format!(
         "<div class=\"home-body\">\
+         <div class=\"home-hero\">\
          <p class=\"home-eyebrow\">PointSav Design System</p>\
          <h1>One governed token graph, not a components folder every team forks and drifts from.</h1>\
          <p class=\"home-lede\">Most design systems ship a components folder — files, a Storybook, a package to \
@@ -67,7 +95,9 @@ pub async fn index(State(state): State<AppState>) -> Html<String> {
          <p class=\"home-lede\">Every token, every component recipe, and every research decision behind it lives \
          in one versioned source — browse it below, or <a href=\"/bundles/tokens\">download the whole graph as a \
          bundle</a>.</p>\
+         <div class=\"home-palette\" aria-hidden=\"true\">{palette}</div>\
          {badges}\
+         </div>\
          <div class=\"home-grid\">{cards}</div></div>"
     );
 
