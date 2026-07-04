@@ -1,7 +1,18 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
 
-use std::{collections::HashMap, fs, path::Path};
+use std::{collections::HashMap, fs, path::Path, path::PathBuf};
+
+/// On-disk layout for a vault section. `Nested` is `section/slug/tab.md` (elements,
+/// components, guidelines — components in particular have real multiple tabs per slug:
+/// usage/style/code/accessibility). `Flat` is `section/slug.md` directly — used by
+/// research/developing/designing/about, which predate this app's routing and were
+/// invisible to nav/search/edit until this distinction was added (2026-07-03, Phase 2).
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum Layout {
+    Nested,
+    Flat,
+}
 
 /// Group `components/` slugs by their recipe.json `category` field, so the sidebar can
 /// separate the generic design-system substrate from components contributed by other
@@ -30,6 +41,7 @@ pub fn discover_component_groups(vault: &Path, slugs: &[String]) -> Vec<(String,
             "components" => String::new(),
             "map" => "Also used on gis.woodfinegroup.com".to_string(),
             "wiki" => "Also used by the wiki engine".to_string(),
+            "bim" => "Also used by the BIM product family".to_string(),
             other => format!("Also used by {}", to_title(other)),
         }
     }
@@ -46,50 +58,86 @@ pub fn discover_component_groups(vault: &Path, slugs: &[String]) -> Vec<(String,
     ordered
 }
 
-/// (section, default/landing tab) — components land on `usage`, not `overview`,
-/// since components have no overview.md (usage/style/code/accessibility.md instead).
-pub const SECTIONS: &[(&str, &str)] = &[
-    ("elements", "overview"),
-    ("components", "usage"),
-    ("guidelines", "overview"),
-    ("developing", "overview"),
-    ("designing", "overview"),
-    ("about", "overview"),
-    ("research", "overview"),
+/// (section, default/landing tab, on-disk layout) — components land on `usage`, not
+/// `overview`, since components have no overview.md (usage/style/code/accessibility.md
+/// instead). `research`/`developing`/`designing`/`about` are `Flat`: their default tab
+/// name doubles as the one implicit tab every slug in that section resolves to.
+pub const SECTIONS: &[(&str, &str, Layout)] = &[
+    ("elements", "overview", Layout::Nested),
+    ("components", "usage", Layout::Nested),
+    ("guidelines", "overview", Layout::Nested),
+    ("developing", "overview", Layout::Flat),
+    ("designing", "overview", Layout::Flat),
+    ("about", "overview", Layout::Flat),
+    ("research", "overview", Layout::Flat),
 ];
 
 pub fn default_tab(section: &str) -> &'static str {
     SECTIONS
         .iter()
-        .find(|(s, _)| *s == section)
-        .map(|(_, t)| *t)
+        .find(|(s, _, _)| *s == section)
+        .map(|(_, t, _)| *t)
         .unwrap_or("overview")
 }
 
 pub fn is_known_section(section: &str) -> bool {
-    SECTIONS.iter().any(|(s, _)| *s == section)
+    SECTIONS.iter().any(|(s, _, _)| *s == section)
+}
+
+pub fn is_flat_section(section: &str) -> bool {
+    SECTIONS
+        .iter()
+        .any(|(s, _, l)| *s == section && *l == Layout::Flat)
+}
+
+/// The one place that knows flat sections ignore the tab segment on disk — every
+/// content-path lookup (browsing, editing, WYSIWYG save) should go through this rather
+/// than building the path inline, so the flat/nested distinction stays in one function.
+pub fn content_path(vault: &Path, section: &str, slug: &str, tab: &str) -> PathBuf {
+    if is_flat_section(section) {
+        vault.join(section).join(format!("{slug}.md"))
+    } else {
+        vault.join(section).join(slug).join(format!("{tab}.md"))
+    }
 }
 
 pub fn discover_nav(vault: &Path) -> HashMap<String, Vec<String>> {
     let mut nav = HashMap::new();
-    for (section, _) in SECTIONS {
+    for (section, _, layout) in SECTIONS {
         let dir = vault.join(section);
-        if let Ok(entries) = fs::read_dir(&dir) {
-            let mut slugs: Vec<String> = entries
-                .filter_map(|e| e.ok())
-                .filter(|e| e.file_type().map(|t| t.is_dir()).unwrap_or(false))
-                .filter_map(|e| e.file_name().into_string().ok())
-                .collect();
-            slugs.sort();
-            if !slugs.is_empty() {
-                nav.insert(section.to_string(), slugs);
-            }
+        let Ok(entries) = fs::read_dir(&dir) else {
+            continue;
+        };
+        let mut slugs: Vec<String> = entries
+            .filter_map(|e| e.ok())
+            .filter_map(|e| {
+                let ft = e.file_type().ok()?;
+                let name = e.file_name().into_string().ok()?;
+                match layout {
+                    Layout::Nested => ft.is_dir().then_some(name),
+                    Layout::Flat => (ft.is_file() && name.ends_with(".md") && !name.ends_with(".es.md"))
+                        .then(|| name[..name.len() - 3].to_string()),
+                }
+            })
+            .collect();
+        slugs.sort();
+        if !slugs.is_empty() {
+            nav.insert(section.to_string(), slugs);
         }
     }
     nav
 }
 
 pub fn discover_tabs(vault: &Path, section: &str, slug: &str) -> Vec<String> {
+    if is_flat_section(section) {
+        let file = vault.join(section).join(format!("{slug}.md"));
+        return if file.is_file() {
+            vec![default_tab(section).to_string()]
+        } else {
+            Vec::new()
+        };
+    }
+
     let dir = vault.join(section).join(slug);
     let Ok(entries) = fs::read_dir(&dir) else {
         return Vec::new();

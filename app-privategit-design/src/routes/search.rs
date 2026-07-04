@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
 
-use crate::state::AppState;
+use crate::{state::AppState, vault};
 use axum::{
     extract::{Query, State},
     http::{header, StatusCode},
@@ -94,22 +94,30 @@ fn ceil_char_boundary(s: &str, mut i: usize) -> usize {
     i
 }
 
-/// Turns an indexed doc's absolute file path (`<vault>/<section>/<slug>/<tab>.md`) into
-/// its route (`/<section>/<slug>/<tab>`). Falls back to `#` if it doesn't parse cleanly
-/// (e.g. a future indexed source outside the section/slug/tab shape).
-fn doc_url(id: &str, vault: &Path) -> String {
-    let Ok(rel) = Path::new(id).strip_prefix(vault) else {
+/// Turns an indexed doc's absolute file path into its route. Nested sections index as
+/// `<vault>/<section>/<slug>/<tab>.md` (3 components) → `/<section>/<slug>/<tab>`. Flat
+/// sections (research/developing/designing/about) index as `<vault>/<section>/<slug>.md`
+/// (2 components) → `/<section>/<slug>/<default-tab>`, since a flat slug always resolves
+/// to its section's single implicit tab. Falls back to `#` if it doesn't parse cleanly.
+fn doc_url(id: &str, vault_dir: &Path) -> String {
+    let Ok(rel) = Path::new(id).strip_prefix(vault_dir) else {
         return "#".to_string();
     };
     let parts: Vec<&str> = rel
         .components()
         .filter_map(|c| c.as_os_str().to_str())
         .collect();
-    if parts.len() != 3 {
-        return "#".to_string();
+    match parts.len() {
+        3 => {
+            let tab = parts[2].strip_suffix(".md").unwrap_or(parts[2]);
+            format!("/{}/{}/{}", parts[0], parts[1], tab)
+        }
+        2 if vault::is_flat_section(parts[0]) => {
+            let slug = parts[1].strip_suffix(".md").unwrap_or(parts[1]);
+            format!("/{}/{}/{}", parts[0], slug, vault::default_tab(parts[0]))
+        }
+        _ => "#".to_string(),
     }
-    let tab = parts[2].strip_suffix(".md").unwrap_or(parts[2]);
-    format!("/{}/{}/{}", parts[0], parts[1], tab)
 }
 
 fn json_str(s: &str) -> String {

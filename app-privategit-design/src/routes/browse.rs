@@ -15,7 +15,7 @@ pub async fn index(State(state): State<AppState>) -> Html<String> {
 
     let mut cards = String::new();
     let mut item_total = 0usize;
-    for (section, _) in vault::SECTIONS {
+    for (section, _, _) in vault::SECTIONS {
         let Some(slugs) = state.nav.get(*section) else {
             continue;
         };
@@ -128,15 +128,17 @@ pub async fn item_tab(
     if !vault::is_known_section(&section) {
         return (StatusCode::NOT_FOUND, "unknown section").into_response();
     }
+    // A flat section (research/developing/designing/about) has exactly one canonical
+    // tab per slug — reject any other tab value in the URL rather than silently serving
+    // the same content at every tab (would otherwise be a duplicate-content URL smell).
+    if vault::is_flat_section(&section) && tab != vault::default_tab(&section) {
+        return (StatusCode::NOT_FOUND, "tab not found").into_response();
+    }
     let tabs = vault::discover_tabs(&state.vault, &section, &slug);
     if tabs.is_empty() {
         return (StatusCode::NOT_FOUND, "item not found").into_response();
     }
-    let md_path = state
-        .vault
-        .join(&section)
-        .join(&slug)
-        .join(format!("{}.md", tab));
+    let md_path = vault::content_path(&state.vault, &section, &slug, &tab);
     let raw = match fs::read_to_string(&md_path) {
         Ok(s) => s,
         Err(_) => return (StatusCode::NOT_FOUND, "tab not found").into_response(),

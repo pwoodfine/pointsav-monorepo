@@ -139,39 +139,59 @@ fn generate_token() -> String {
     buf.iter().map(|b| format!("{:02x}", b)).collect()
 }
 
+fn index_markdown_file(idx: &mut InvertedIndex, path: &Path, name: &str) {
+    let Ok(content) = std::fs::read_to_string(path) else {
+        return;
+    };
+    let (fm, body) = vault::parse_frontmatter(&content);
+    let title = fm
+        .get("name")
+        .or_else(|| fm.get("title"))
+        .cloned()
+        .unwrap_or_else(|| name[..name.len() - 3].to_string());
+    idx.insert(Document {
+        id: path.to_string_lossy().to_string(),
+        title,
+        body,
+    });
+}
+
 async fn populate_index(vault: &Path, index: &Arc<RwLock<InvertedIndex>>) {
     let mut idx = index.write().await;
-    for (section, _) in SECTIONS {
+    for (section, _, layout) in SECTIONS {
         let sec_dir = vault.join(section);
         let Ok(entries) = std::fs::read_dir(&sec_dir) else {
             continue;
         };
-        for entry in entries.filter_map(|e| e.ok()) {
-            if !entry.file_type().map(|t| t.is_dir()).unwrap_or(false) {
-                continue;
-            }
-            let Ok(files) = std::fs::read_dir(entry.path()) else {
-                continue;
-            };
-            for file in files.filter_map(|e| e.ok()) {
-                let name = file.file_name().to_string_lossy().to_string();
-                if !name.ends_with(".md") || name.ends_with(".es.md") {
-                    continue;
+        match layout {
+            vault::Layout::Flat => {
+                for entry in entries.filter_map(|e| e.ok()) {
+                    let name = entry.file_name().to_string_lossy().to_string();
+                    if !entry.file_type().map(|t| t.is_file()).unwrap_or(false)
+                        || !name.ends_with(".md")
+                        || name.ends_with(".es.md")
+                    {
+                        continue;
+                    }
+                    index_markdown_file(&mut idx, &entry.path(), &name);
                 }
-                let Ok(content) = std::fs::read_to_string(file.path()) else {
-                    continue;
-                };
-                let (fm, body) = vault::parse_frontmatter(&content);
-                let title = fm
-                    .get("name")
-                    .or_else(|| fm.get("title"))
-                    .cloned()
-                    .unwrap_or_else(|| name[..name.len() - 3].to_string());
-                idx.insert(Document {
-                    id: file.path().to_string_lossy().to_string(),
-                    title,
-                    body,
-                });
+            }
+            vault::Layout::Nested => {
+                for entry in entries.filter_map(|e| e.ok()) {
+                    if !entry.file_type().map(|t| t.is_dir()).unwrap_or(false) {
+                        continue;
+                    }
+                    let Ok(files) = std::fs::read_dir(entry.path()) else {
+                        continue;
+                    };
+                    for file in files.filter_map(|e| e.ok()) {
+                        let name = file.file_name().to_string_lossy().to_string();
+                        if !name.ends_with(".md") || name.ends_with(".es.md") {
+                            continue;
+                        }
+                        index_markdown_file(&mut idx, &file.path(), &name);
+                    }
+                }
             }
         }
     }
