@@ -22,7 +22,7 @@ pub fn list_tools() -> Vec<Value> {
                 "properties": {
                     "category": {
                         "type": "string",
-                        "description": "Filter by origin: 'components' (generic substrate), 'map' (GIS-origin), 'wiki' (wiki-engine-origin), 'bim' (BIM-product-origin). Omit for all."
+                        "description": "Filter by origin: 'components' (generic substrate), 'map' (GIS-origin), 'wiki' (wiki-engine-origin). Omit for all."
                     }
                 }
             }
@@ -142,7 +142,6 @@ fn label_matches_category(label: &str, category: &str) -> bool {
         "components" => label.is_empty(),
         "map" => label.contains("gis.woodfinegroup.com"),
         "wiki" => label.contains("wiki engine"),
-        "bim" => label.contains("BIM product family"),
         other => label.to_lowercase().contains(&other.to_lowercase()),
     }
 }

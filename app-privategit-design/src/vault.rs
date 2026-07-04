@@ -41,7 +41,6 @@ pub fn discover_component_groups(vault: &Path, slugs: &[String]) -> Vec<(String,
             "components" => String::new(),
             "map" => "Also used on gis.woodfinegroup.com".to_string(),
             "wiki" => "Also used by the wiki engine".to_string(),
-            "bim" => "Also used by the BIM product family".to_string(),
             other => format!("Also used by {}", to_title(other)),
         }
     }
@@ -197,9 +196,10 @@ pub fn discover_tabs(vault: &Path, section: &str, slug: &str) -> Vec<String> {
 
 /// Slugs that are acronyms/initialisms — rendered fully uppercase rather than
 /// title-cased. Found via FABLE visual-QA pass (Phase 5, 2026-07-04): sidebar/card labels
-/// like "Bim Guid Search" and "Wiki Toc Sidebar" read as auto-title-cased file names, not
-/// curated nav, next to real prose labels.
-const ACRONYM_WORDS: &[&str] = &["bim", "gis", "guid", "toc", "3d", "rs1", "ifc"];
+/// like "Wiki Toc Sidebar" read as auto-title-cased file names, not curated nav, next to
+/// real prose labels. (bim/guid/3d/rs1/ifc removed 2026-07-04 — those were BIM-specific
+/// slugs, and BIM content no longer lives in this substrate.)
+const ACRONYM_WORDS: &[&str] = &["gis", "toc"];
 
 pub fn to_title(s: &str) -> String {
     s.split('-')
