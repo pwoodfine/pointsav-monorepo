@@ -78,6 +78,8 @@ fn main() {
         if !p.is_dir() {
             eprintln!("error: not a directory: {}", p.display());
             std::process::exit(2);
+        }
+    }
 
     let (dead_links, missing_fields, total) = check_content(&paths);
 
