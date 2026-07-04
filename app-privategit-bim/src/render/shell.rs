@@ -19,7 +19,6 @@ fn wordmark_svg(class: &str) -> String {
 }
 
 pub fn page_shell(title: &str, active_path: &str, content: &str, state: &AppState) -> String {
-    let sidebar = super::sidebar::render_sidebar(active_path, state);
     let tc = state.categories.len();
     let full_title = if title.is_empty() {
         "BIM Object Library — Woodfine".to_string()
@@ -32,8 +31,22 @@ pub fn page_shell(title: &str, active_path: &str, content: &str, state: &AppStat
     // server-side rather than trying to make Carbon's chrome theme-reactive.
     let editor_route = active_path.starts_with("/edit/");
     let wordmark = wordmark_svg("bim-header__logo");
-    let important_information =
-        crate::content::render_important_information(&state.config.library_dir.join("site-content"));
+    // Full disclosure copy inline, not a truncated summary + "read more" link
+    // — matches the pattern already proven correct on home.woodfinegroup.com
+    // and home.pointsav.com (both inline their complete disclosure text in
+    // the footer <details>, with a "Full disclaimer" pointer only at the
+    // very end for anyone who wants the standalone page). The prior
+    // 2-paragraph important-information.md summary + "Read the full
+    // disclaimer" link-out truncated real disclosure content — fixed here
+    // by reusing the same disclaimers_page sections /disclaimers renders.
+    let mut disclosure_sections = String::new();
+    for section in state.disclaimers_page.sections.iter() {
+        disclosure_sections.push_str(&format!(
+            "<h3>{}</h3>{}",
+            esc(&section.heading),
+            section.body_html,
+        ));
+    }
     let theme_toggle = if editor_route {
         String::new()
     } else {
@@ -92,7 +105,6 @@ pub fn page_shell(title: &str, active_path: &str, content: &str, state: &AppStat
 <body class="bim-body">
   <header class="bim-header">
     <div class="bim-header__inner">
-      <button class="bim-topbar__toggle" aria-label="Toggle menu" aria-expanded="false" type="button">&#9776;</button>
       <a href="/" class="bim-header__brand" aria-label="Woodfine — BIM Object Library" data-path="/">
         {wordmark}
       </a>
@@ -104,9 +116,6 @@ pub fn page_shell(title: &str, active_path: &str, content: &str, state: &AppStat
     </div>
   </header>
   <div class="bim-shell">
-    <nav class="bim-side-nav" aria-label="BIM sidebar">
-      {sidebar}
-    </nav>
     <main id="bim-main-content" class="bim-main">
       {content}
     </main>
@@ -115,8 +124,9 @@ pub fn page_shell(title: &str, active_path: &str, content: &str, state: &AppStat
     <details class="bim-disclosure__details">
       <summary class="bim-disclosure__summary">Important Information</summary>
       <div class="bim-disclosure__body">
-        {important_information}
-        <p class="bim-disclosure__more"><a href="/disclaimers" data-path="/disclaimers">Read the full disclaimer &rarr;</a></p>
+        <p class="bim-disclosure__label">BIM Object Library disclosure</p>
+        {disclosure_sections}
+        <p class="bim-disclosure__more"><a href="/disclaimers" data-path="/disclaimers">Full disclaimer &rarr;</a></p>
       </div>
     </details>
   </section>
@@ -128,8 +138,7 @@ pub fn page_shell(title: &str, active_path: &str, content: &str, state: &AppStat
           <li>Specification BIM Objects for the built environment</li>
           <li>{tc} BIM Object categories &middot; {comp} components &middot; {rc} research&nbsp;entries</li>
           <li>IFC&nbsp;4.3 (ISO&nbsp;16739-1:2024) &middot; Uniclass&nbsp;2015 &middot; DTCG</li>
-          <li>BIM Object data licensed <strong>Apache-2.0</strong></li>
-          <li>Platform code licensed <strong>AGPL-3.0-or-later</strong></li>
+          <li>BIM Object data licensed <strong>Apache-2.0</strong> &middot; platform code <strong>AGPL-3.0-or-later</strong></li>
           <li><a href="https://github.com/pointsav/pointsav-monorepo">Source (github.com/pointsav)</a></li>
         </ul>
       </div>
@@ -141,16 +150,13 @@ pub fn page_shell(title: &str, active_path: &str, content: &str, state: &AppStat
           <li><a href="/research">/research</a> &mdash; research backplane</li>
         </ul>
       </div>
-      <div>
-        <p class="bim-footer__heading">Network</p>
-        <ul class="bim-footer__list">
-          <li><a href="https://woodfinegroup.com">home.woodfinegroup.com</a></li>
-          <li><a href="https://corporate.woodfinegroup.com" target="_blank" rel="noopener">Corporate</a></li>
-          <li><a href="https://projects.woodfinegroup.com" target="_blank" rel="noopener">Projects</a></li>
-          <li><a href="https://github.com/pointsav" target="_blank" rel="noopener">GitHub</a></li>
-        </ul>
-      </div>
     </div>
+    <p class="bim-footer__family">Part of the Woodfine network:
+      <a href="https://woodfinegroup.com">home</a> &middot;
+      <a href="https://corporate.woodfinegroup.com" target="_blank" rel="noopener">Corporate</a> &middot;
+      <a href="https://projects.woodfinegroup.com" target="_blank" rel="noopener">Projects</a> &middot;
+      <a href="https://github.com/pointsav" target="_blank" rel="noopener">GitHub</a>
+    </p>
     <div class="bim-footer__base">
       <div class="bim-footer__base-row">
         <div class="bim-footer__cities">
@@ -169,23 +175,6 @@ pub fn page_shell(title: &str, active_path: &str, content: &str, state: &AppStat
               <span class="bim-badge__name">PointSav Digital Systems</span>
             </span>
           </span>
-          <a class="bim-badge" href="https://www.apache.org/licenses/LICENSE-2.0" target="_blank" rel="noopener license">
-            <span class="bim-badge__text">
-              <span class="bim-badge__lead">BIM data licensed</span>
-              <span class="bim-badge__name">Apache-2.0</span>
-            </span>
-          </a>
-          <a class="bim-badge bim-badge--license" href="https://creativecommons.org/licenses/by-nd/4.0/" target="_blank" rel="noopener license" aria-label="Editorial content licensed CC BY-ND 4.0">
-            <span class="bim-badge__cc" aria-hidden="true">
-              <img class="bim-cc-icon" src="/static/cc.svg" alt="" width="18" height="18">
-              <img class="bim-cc-icon" src="/static/cc-by.svg" alt="" width="18" height="18">
-              <img class="bim-cc-icon" src="/static/cc-nd.svg" alt="" width="18" height="18">
-            </span>
-            <span class="bim-badge__text">
-              <span class="bim-badge__lead">Editorial content</span>
-              <span class="bim-badge__name">CC BY-ND 4.0</span>
-            </span>
-          </a>
         </div>
       </div>
       <p>Copyright &copy; 2026 Woodfine Capital Projects Inc. See LICENSE for terms. &middot; {public_url}</p>
@@ -201,8 +190,7 @@ pub fn page_shell(title: &str, active_path: &str, content: &str, state: &AppStat
         theme_preload_script = theme_preload_script,
         wordmark = wordmark,
         theme_toggle = theme_toggle,
-        important_information = important_information,
-        sidebar = sidebar,
+        disclosure_sections = disclosure_sections,
         content = content,
         tc = tc,
         comp = state.components_count,

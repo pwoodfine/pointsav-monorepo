@@ -100,18 +100,6 @@ h1, h2 {
   white-space: nowrap;
 }
 
-.bim-topbar__toggle {
-  display: none;
-  background: transparent;
-  border: none;
-  color: var(--bim-fg, #101828);
-  font-size: 1.25rem;
-  line-height: 1;
-  padding: 0.5rem;
-  margin: -0.5rem 0.25rem -0.5rem -0.5rem;
-  cursor: pointer;
-}
-
 /* Theme toggle */
 .bim-theme-toggle {
   display: inline-flex;
@@ -148,115 +136,13 @@ h1, h2 {
   margin-top: var(--bim-header-stack);
 }
 
-/* Sidebar (ported from app-orchestration-bim) */
-.bim-side-nav {
-  width: var(--bim-sidebar-width, 272px);
-  flex-shrink: 0;
-  background: var(--bim-bg-sidebar, #EFEFEF);
-  border-right: 1px solid var(--bim-border, #D0D5DD);
-  padding: 1.25rem 0;
-  position: fixed;
-  top: var(--bim-header-stack);
-  bottom: 0;
-  overflow-y: auto;
-}
-
-.bim-nav-group {
-  margin-bottom: 1rem;
-  padding: 0 1rem;
-}
-
-.bim-nav-group__heading {
-  font-family: var(--bim-font-mono);
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--bim-fg-muted, #667085);
-  margin: 0 0 0.5rem;
-}
-
-.bim-nav-divider {
-  height: 1px;
-  background: var(--bim-border, #D0D5DD);
-  margin: 0.75rem 1rem;
-}
-
-/* Four-section category tree (Taxonomy / Objects / Compositions / Context).
-   Native <details> — no JS required, SSR sets `open`. All four sections
-   open by default: a catalog shows its own inventory rather than hiding it
-   behind a collapsed accordion. See RD.7 §4 for the full spec. */
-.bim-nav-section {
-  margin-bottom: 0.125rem;
-}
-
-.bim-nav-section__summary {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-  padding: 0.5rem 1rem;
-  font-family: var(--bim-font-sans);
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--bim-fg-muted, #667085);
-  cursor: pointer;
-  list-style: none;
-}
-
-.bim-nav-section__summary::-webkit-details-marker {
-  display: none;
-}
-
-.bim-nav-section__summary:hover {
-  background: var(--bim-nav-hover-bg);
-}
-
-/* The section containing the active page renders at full-strength color —
-   identifiable even when the list is scrolled or the section is collapsed. */
-.bim-nav-section__summary--active {
-  color: var(--bim-fg, #101828);
-}
-
-.bim-nav-section__label {
-  flex: 1;
-}
-
-.bim-nav-section__count {
-  font-family: var(--bim-font-mono);
-  font-size: 0.625rem;
-  font-weight: 400;
-  letter-spacing: normal;
-  text-transform: none;
-  color: var(--bim-fg-faint, #98A2B3);
-}
-
-.bim-nav-section__chevron {
-  width: 10px;
-  height: 10px;
-  flex-shrink: 0;
-  transition: transform 120ms;
-}
-
-.bim-nav-section[open] > .bim-nav-section__summary .bim-nav-section__chevron {
-  transform: rotate(90deg);
-}
-
-.bim-nav-section__links {
-  display: flex;
-  flex-direction: column;
-}
-
-.bim-side-nav .bim-nav-section__links .bim-nav-link {
-  padding-left: 1.75rem;
-  font-size: 0.8125rem;
-}
-
-.bim-side-nav .bim-nav-section__links .bim-nav-link.active {
-  padding-left: calc(1.75rem - 2px);
-}
-
+/* .bim-nav-link is a shared base treatment — reused by breadcrumbs, category
+   cards, research-index items, and the back-link below. The dedicated
+   sidebar-tree nav (.bim-side-nav, .bim-nav-section, .bim-nav-group) was
+   removed 2026-07-03: the Envelope-as-Navigation homepage diagram is now
+   the primary navigation device, and category/detail pages use a
+   breadcrumb + back-link instead of an always-open tree — see
+   BRIEF-app-privategit-bim.md's 2026-07-03 rebuild entry. */
 .bim-nav-link {
   display: block;
   padding: 0.375rem 0.5rem;
@@ -277,70 +163,36 @@ h1, h2 {
   font-weight: 600;
 }
 
-/* Sidebar-specific link treatment — a 2px left-accent border on the active
-   leaf is the ONLY surviving left-accent-bar treatment on the site (RD.7
-   §5.1) — the wiki's border-on-hover convention this used to also apply is
-   dropped; hover is now a plain background tint like the rest of the
-   Spectrum-chrome nav tree. Scoped to .bim-side-nav rather than the shared
-   .bim-nav-link base rule, since that class is also reused for breadcrumbs,
-   category cards, and research-index items, which keep their own treatments. */
-.bim-side-nav .bim-nav-link {
-  border-left: 2px solid transparent;
-  border-radius: 0;
-  padding-left: 0.5rem;
-  margin-left: -0.5rem;
-}
-
-.bim-side-nav .bim-nav-link:hover {
-  background: var(--bim-nav-hover-bg);
-  color: var(--bim-fg, #101828);
-}
-
-.bim-side-nav .bim-nav-link.active {
-  background: var(--bim-accent-subtle, #E8EEF8);
-  border-left-color: var(--bim-accent, #1A4480);
+/* Back-link on category/detail pages — the sidebar tree's replacement for
+   "how do I get back to browsing." Sits alongside the breadcrumb, not
+   instead of it: breadcrumb shows where you are, this shows how to leave. */
+.bim-back-link {
+  display: inline-block;
+  margin-bottom: 1rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
   color: var(--bim-accent, #1A4480);
+  text-decoration: none;
+}
+
+.bim-back-link:hover {
+  text-decoration: underline;
 }
 
 .bim-main {
   flex: 1;
   padding: 2rem;
-  margin-left: var(--bim-sidebar-width, 272px);
   max-width: 896px;
   min-width: 0;
+  margin: 0 auto;
 }
 
 @media (max-width: 1056px) {
-  .bim-topbar__toggle {
-    display: block;
-  }
   .bim-shell {
     flex-direction: column;
   }
-  .bim-side-nav {
-    position: fixed;
-    top: var(--bim-header-stack);
-    left: 0;
-    right: 0;
-    bottom: auto;
-    width: auto;
-    max-height: calc(100vh - var(--bim-header-stack));
-    overflow-y: auto;
-    display: none;
-    border-right: none;
-    border-bottom: 1px solid var(--bim-border, #D0D5DD);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-    z-index: 90;
-  }
-  .bim-side-nav--open {
-    display: block;
-  }
   .bim-main {
-    margin-left: 0;
     padding: 1rem;
-  }
-  .bim-nav-link {
-    padding: 0.625rem 0.5rem;
   }
 }
 
@@ -386,20 +238,24 @@ h1, h2 {
   text-decoration: underline;
 }
 
-/* Home grid */
-.bim-home h1 {
-  font-size: 2rem;
-  font-weight: 600;
-  margin-bottom: 0.5rem;
-}
-
+/* Home grid + /tokens catalog index */
 .bim-home-subtitle {
   color: var(--bim-fg-secondary, #374151);
   margin-bottom: 2rem;
 }
 
-.bim-home h2 {
-  font-size: 1.375rem;
+.bim-tokens-index h1 {
+  font-size: 1.75rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.bim-tokens-index__group {
+  margin: 2rem 0;
+}
+
+.bim-tokens-index__group h2 {
+  font-size: 1.25rem;
   font-weight: 600;
   margin: 0 0 1rem;
 }
@@ -780,13 +636,79 @@ h1, h2 {
   margin-top: 1rem;
 }
 
-/* Hero section */
-.bim-hero {
-  padding: 2rem 0 1.5rem;
-  border-bottom: 1px solid #E6E7E8;
+/* Envelope-as-Navigation homepage hero (2026-07-03 rebuild). The isometric
+   zoning-envelope diagram (see render::envelope) is the primary navigation
+   device, not a decorative graphic — each tier is a clickable hotspot
+   routed to a catalog Section. Face colors are graduated blueprint-paper
+   tints (same convention the key-plan SVGs already use), not the drafting
+   blue accent itself, so the accent stays reserved for actual interactive
+   chrome (links, buttons, focus rings) per the single-accent-discipline
+   rule already established for this site. */
+.bim-envelope {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2rem;
+  align-items: center;
+  padding: 1.5rem 0 2rem;
+  border-bottom: 1px solid var(--bim-border, #E6E7E8);
   margin-bottom: 2rem;
 }
-.bim-hero__eyebrow {
+
+.bim-envelope__diagram {
+  flex: 1 1 360px;
+  min-width: 280px;
+}
+
+.bim-envelope__frame {
+  line-height: 0;
+}
+
+.bim-envelope__svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.bim-envelope__hotspot {
+  cursor: pointer;
+}
+
+.bim-envelope__face {
+  stroke: var(--bim-fg-secondary, #344054);
+  stroke-width: 1;
+  transition: fill 120ms, stroke 120ms;
+}
+
+.bim-envelope__face--ground {
+  fill: var(--bim-bg-subtle, #F7F9FA);
+  stroke: var(--bim-border-strong, #98A2B3);
+  stroke-dasharray: 3, 2;
+}
+
+.bim-envelope__hotspot--base .bim-envelope__face--top   { fill: #EAF1E6; }
+.bim-envelope__hotspot--base .bim-envelope__face--left  { fill: #DCE7D6; }
+.bim-envelope__hotspot--base .bim-envelope__face--right { fill: #CFDDC7; }
+
+.bim-envelope__hotspot--setback .bim-envelope__face--top   { fill: #FBF3E3; }
+.bim-envelope__hotspot--setback .bim-envelope__face--left  { fill: #F3E6CC; }
+.bim-envelope__hotspot--setback .bim-envelope__face--right { fill: #EADBB8; }
+
+.bim-envelope__hotspot--tower .bim-envelope__face--top   { fill: #E7EEF6; }
+.bim-envelope__hotspot--tower .bim-envelope__face--left  { fill: #D6E2EF; }
+.bim-envelope__hotspot--tower .bim-envelope__face--right { fill: #C4D5E8; }
+
+.bim-envelope__hotspot:hover .bim-envelope__face,
+.bim-envelope__hotspot:focus-visible .bim-envelope__face {
+  stroke: var(--bim-accent, #1A4480);
+  stroke-width: 1.5;
+}
+
+.bim-envelope__panel {
+  flex: 1 1 320px;
+  min-width: 260px;
+}
+
+.bim-envelope__eyebrow {
   font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 0.08em;
@@ -794,19 +716,76 @@ h1, h2 {
   color: var(--bim-fg-muted, #6B7280);
   margin: 0 0 0.5rem;
 }
-.bim-hero__statline {
+
+.bim-envelope__statline {
   font-size: 1.5rem;
   font-weight: 600;
   color: var(--bim-fg, #111827);
   line-height: 1.3;
   margin: 0 0 1rem;
 }
-.bim-hero__lead {
+
+.bim-envelope__lead {
   font-size: 1rem;
   line-height: 1.6;
   color: var(--bim-fg-secondary, #374151);
-  max-width: 72ch;
+  max-width: 60ch;
+  margin: 0 0 1.25rem;
+}
+
+.bim-envelope__overlay-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.bim-envelope__overlay-btn {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.375rem 0.75rem;
+  border: 1px solid var(--bim-border, #D0D5DD);
+  border-radius: var(--bim-radius-md, 6px);
+  background: var(--bim-bg-surface, #fff);
+  color: var(--bim-fg-secondary, #374151);
+  cursor: pointer;
+}
+
+.bim-envelope__overlay-btn[aria-pressed="true"] {
+  border-color: var(--bim-accent, #1A4480);
+  background: var(--bim-accent-subtle, #E8EEF8);
+  color: var(--bim-accent, #1A4480);
+}
+
+.bim-envelope__legend {
+  list-style: none;
+  padding: 0;
   margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  font-size: 0.75rem;
+  color: var(--bim-fg-muted, #667085);
+}
+
+.bim-envelope__legend-swatch {
+  display: inline-block;
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 2px;
+  margin-right: 0.5rem;
+  vertical-align: -1px;
+}
+
+.bim-envelope__legend-swatch--ground  { background: var(--bim-bg-subtle, #F7F9FA); border: 1px solid var(--bim-border-strong, #98A2B3); }
+.bim-envelope__legend-swatch--base    { background: #DCE7D6; }
+.bim-envelope__legend-swatch--setback { background: #F3E6CC; }
+.bim-envelope__legend-swatch--tower   { background: #D6E2EF; }
+
+@media (max-width: 700px) {
+  .bim-envelope {
+    flex-direction: column;
+  }
 }
 
 /* Article prose sections on home page */
@@ -837,22 +816,17 @@ h1, h2 {
   margin-bottom: 0.5rem;
 }
 
-/* Footer — content, badges, trademark paragraph unchanged (RD.7 §7,
-   operator-validated). Only the sidebar-offset value moves with the
-   256px -> 272px sidebar width change. */
+/* Footer — full width from the viewport edge; no sidebar to offset around
+   since the sidebar tree was removed 2026-07-03. Simplified 2026-07-03 to
+   2 columns + a single "part of the network" line + 1 badge (was 3 columns
+   + 3 badges) per the operator's design.pointsav.com-leaner-shape note. */
 .bim-footer {
   background: #111827;
   color: #c6c6c6;
   padding: 2rem;
   margin-top: auto;
-  margin-left: var(--bim-sidebar-width, 272px);
 }
 
-@media (max-width: 1056px) {
-  .bim-footer {
-    margin-left: 0;
-  }
-}
 .bim-footer__inner {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -952,6 +926,25 @@ h1, h2 {
   gap: 0.5rem;
 }
 
+/* Single "part of the network" line replacing the old dedicated Network
+   column (design.pointsav.com's leaner footer pattern — one line, not a
+   full column, for cross-property links). */
+.bim-footer__family {
+  max-width: 1200px;
+  margin: 1.5rem auto 0;
+  font-size: 0.8125rem;
+  color: #a8adb8;
+}
+
+.bim-footer__family a {
+  color: #a8c8f8;
+  text-decoration: none;
+}
+
+.bim-footer__family a:hover {
+  text-decoration: underline;
+}
+
 .bim-badge {
   display: inline-flex;
   align-items: center;
@@ -992,19 +985,17 @@ a.bim-badge:hover {
   font-weight: 600;
 }
 
-/* "Important Information" disclosure band — full-width like the footer
-   (margin-left matches the sidebar width), not confined to .bim-main's
-   narrower max-width column. Unchanged structure (RD.7 §7). */
+/* "Important Information" disclosure band — full-width, no sidebar to
+   offset around. 2026-07-03 fixes: (1) the full disclosure copy now
+   renders inline (reusing the same sections /disclaimers shows) instead
+   of a 2-paragraph summary truncated to a "read more" link — matching the
+   pattern already correct on home.woodfinegroup.com/home.pointsav.com;
+   (2) the summary heading is now visibly larger/heavier than its own body
+   text, fixing the inverted type hierarchy the audit found (was 0.75rem
+   vs. the body's 0.8125rem). */
 .bim-disclosure {
-  margin-left: var(--bim-sidebar-width, 272px);
   border-top: 1px solid var(--bim-border, #E6E7E8);
   background: var(--bim-bg-subtle, #F7F9FA);
-}
-
-@media (max-width: 1056px) {
-  .bim-disclosure {
-    margin-left: 0;
-  }
 }
 
 .bim-disclosure__details {
@@ -1015,12 +1006,11 @@ a.bim-badge:hover {
 
 .bim-disclosure__summary {
   cursor: pointer;
-  padding: 1rem 0;
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--bim-fg-secondary, #374151);
+  padding: 1.25rem 0;
+  font-family: var(--bim-font-display);
+  font-size: 1.0625rem;
+  font-weight: 700;
+  color: var(--bim-fg, #101828);
   list-style: none;
 }
 
@@ -1037,12 +1027,32 @@ a.bim-badge:hover {
   content: "\25BE  ";
 }
 
+.bim-disclosure__label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--bim-fg-muted, #6B7280);
+  margin: -0.5rem 0 1rem;
+}
+
 .bim-disclosure__body {
   max-width: 72ch;
   padding-bottom: 1.5rem;
   font-size: 0.8125rem;
   line-height: 1.6;
   color: var(--bim-fg-secondary, #374151);
+}
+
+.bim-disclosure__body h3 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--bim-fg, #101828);
+  margin: 1.25rem 0 0.375rem;
+}
+
+.bim-disclosure__body h3:first-of-type {
+  margin-top: 0;
 }
 
 .bim-disclosure__body p {

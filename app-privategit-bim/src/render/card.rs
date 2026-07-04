@@ -1,19 +1,22 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
 
-use crate::{content, state::AppState};
+use crate::{
+    content::{self, Section},
+    state::AppState,
+};
 use serde_json::Value;
 
 use super::shell::esc;
 
+/// Homepage: the Envelope-as-Navigation hero diagram is the primary
+/// navigation device (see `render::envelope`). The prior card-grid/prose
+/// homepage content still exists as real editorial substance (`home.md`'s
+/// sections) — kept below the diagram as supporting narrative rather than
+/// dropped, since the underlying content is real research, not shell code.
 pub fn render_home(state: &AppState) -> String {
-    let cards = render_category_cards(state);
-    let category_count = state.categories.len();
+    let envelope = super::envelope::render_envelope_hero();
     let page = &state.home_page;
-    let hero_eyebrow = esc(&page.field("hero_eyebrow"));
-    // hero_statline carries an intentional literal <br>, so it's not escaped.
-    let hero_statline = page.field("hero_statline");
-    let hero_lead = esc(&page.field("hero_lead"));
 
     let mut sections = String::new();
     for (i, section) in page.sections.iter().enumerate() {
@@ -28,29 +31,47 @@ pub fn render_home(state: &AppState) -> String {
     }
 
     format!(
-        r#"<div class="bim-hero">
-  <p class="bim-hero__eyebrow">{hero_eyebrow}</p>
-  <p class="bim-hero__statline">{hero_statline}</p>
-  <p class="bim-hero__lead">{hero_lead}</p>
-  <div class="bim-chip-row">
-    <span class="bim-chip">CATEGORIES <strong>{category_count}</strong></span>
-    <span class="bim-chip">STANDARD <strong>IFC 4.3 &middot; ISO 16739-1:2024</strong></span>
-    <span class="bim-chip bim-chip--muted">FORMAT <strong>DTCG</strong></span>
-  </div>
-</div>
+        r#"{envelope}
 <hr class="bim-rule">
 <article class="bim-article">
   {sections}
 </article>
+<hr class="bim-rule">
 <div class="bim-home">
-  <h2>Categories</h2>
-  <div class="bim-category-grid">{cards}</div>
+  <p class="bim-home-subtitle"><a href="/tokens" data-path="/tokens" class="bim-nav-link">Browse the full catalog &rarr;</a></p>
 </div>"#,
     )
 }
 
+/// The real "Browse All BIM Objects" catalog index — every category grouped
+/// under the four Sections the envelope hotspots route to. This used to be
+/// a stub that silently rendered the homepage template instead (the
+/// `/tokens` dead-link bug found in the 2026-07-03 audit); it's now a
+/// distinct page with anchors (`#taxonomy`, `#objects`, `#compositions`,
+/// `#context`) matching the envelope diagram's hotspot targets.
 pub fn render_tokens_index(state: &AppState) -> String {
-    render_home(state)
+    let mut groups = String::new();
+    for section in Section::all() {
+        let cards = render_category_cards_for_section(state, section);
+        groups.push_str(&format!(
+            r#"<section id="{id}" class="bim-tokens-index__group">
+  <h2>{label}</h2>
+  <div class="bim-category-grid">{cards}</div>
+</section>"#,
+            id = section.label().to_lowercase(),
+            label = section.label(),
+            cards = cards,
+        ));
+    }
+
+    format!(
+        r#"<div class="bim-tokens-index">
+  <h1>BIM Object Catalog</h1>
+  <p class="bim-intro">Every BIM Object category, grouped by the four sections the envelope diagram on the homepage routes to.</p>
+  {groups}
+</div>"#,
+        groups = groups,
+    )
 }
 
 pub fn render_token_page(category: &str, state: &AppState) -> String {
@@ -94,10 +115,15 @@ pub fn render_token_page(category: &str, state: &AppState) -> String {
             for slug in slugs {
                 entity_count += 1;
                 let entity = &entities[slug];
+                // Explicit placeholder, not a blank cell (2026-07-03 audit:
+                // an empty <td> reads as a broken/half-populated table —
+                // "—" makes the sparseness a legible fact about the data,
+                // not something that looks like a rendering bug).
                 let description = entity
                     .get("$description")
                     .and_then(|v| v.as_str())
-                    .unwrap_or("");
+                    .filter(|s| !s.is_empty())
+                    .unwrap_or("—");
                 let ifc_class = entity
                     .get("$value")
                     .and_then(|v| v.get("ifc_class"))
@@ -167,6 +193,7 @@ pub fn render_token_page(category: &str, state: &AppState) -> String {
   <div class="bim-breadcrumbs">
     <a href="/" data-path="/" class="bim-nav-link">Home</a> / <a href="/tokens" data-path="/tokens" class="bim-nav-link">BIM Objects</a>
   </div>
+  <a class="bim-back-link" href="/tokens" data-path="/tokens">&larr; Back to overview</a>
   <p class="bim-category-page__anchor"><code>{ifc_anchor}</code></p>
   <h1>{display_name}</h1>
   <div class="bim-chip-row">
@@ -421,9 +448,9 @@ pub fn render_research_item(slug: &str, state: &AppState) -> String {
     )
 }
 
-fn render_category_cards(state: &AppState) -> String {
+fn render_category_cards_for_section(state: &AppState, section: Section) -> String {
     let mut out = String::new();
-    for cat in state.categories.iter() {
+    for cat in state.categories.iter().filter(|c| c.section == section) {
         let count = count_entities_in_file(state, &cat.slug);
         out.push_str(&format!(
             r#"<a class="bim-category-card bim-nav-link" href="/tokens/{slug}" data-path="/tokens/{slug}">

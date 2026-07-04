@@ -27,7 +27,11 @@
   --bim-fg:               #101828;
   --bim-fg-secondary:     #344054;
   --bim-fg-muted:         #667085;
-  --bim-fg-faint:         #98A2B3;
+  /* WCAG AA fix (2026-07-03 audit): #98A2B3 measured ~2.2-2.6:1 on white/
+     sidebar backgrounds, failing the 4.5:1 minimum for normal-size text
+     (header standards line, sidebar section counts). #5D6773 verified
+     5.0:1+ against both --bim-bg-surface and --bim-bg-sidebar. */
+  --bim-fg-faint:         #5D6773;
 
   --bim-border:           #D0D5DD;
   --bim-border-subtle:    #E5E7EB;
@@ -86,7 +90,9 @@
   --bim-fg:               #E8EDF5;
   --bim-fg-secondary:     #C3CBD9;
   --bim-fg-muted:         #8B96A8;
-  --bim-fg-faint:         #64718A;
+  /* WCAG AA fix, same rationale as the light-theme value above. #8E9BB2
+     verified 4.5:1+ against both --bim-bg-surface and --bim-bg-page. */
+  --bim-fg-faint:         #8E9BB2;
 
   --bim-border:           #2E3D5A;
   --bim-border-subtle:    rgba(232, 237, 245, 0.06);
