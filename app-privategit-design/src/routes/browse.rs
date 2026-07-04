@@ -14,15 +14,10 @@ use std::{fs, io::Write};
 pub async fn index(State(state): State<AppState>) -> Html<String> {
     let nav_html = render::render_nav(&state.env, &state.nav, &state.component_groups, vault::SECTIONS, "", "");
 
-    // P3 follow-up — surface Design Tokens & Bundles as a headline CTA, not a link
-    // buried in the footer or a sentence of prose. Not a vault section, so it's built
-    // here rather than driven by `vault::SECTIONS`. Placed FIRST in the grid (Phase 5
-    // FABLE review: it previously landed mid-row in an incomplete last row, an
-    // accidental-looking position for the one card meant to carry emphasis).
-    let mut cards = String::from(
-        "<a class=\"home-card home-card--cta\" href=\"/bundles/tokens\">\
-         <h2>Design Tokens &amp; Bundles</h2><p>Download the whole token graph</p></a>\n",
-    );
+    // Part C (2026-07-04): the CTA no longer renders as a grid card — a real button
+    // next to the lede reads as an action, not a wayfinding tile; the grid below is now
+    // a uniform set of true-peer sections instead of one card carrying different weight.
+    let mut cards = String::new();
     let mut item_total = 0usize;
     for (section, _, _) in vault::SECTIONS {
         let Some(slugs) = state.nav.get(*section) else {
@@ -69,36 +64,18 @@ pub async fn index(State(state): State<AppState>) -> Html<String> {
         .iter()
         .filter_map(|p| all_entries.iter().find(|e| e.path == *p))
         .collect();
+    // Part C (2026-07-04): the swatches attach directly to the token-count stat instead
+    // of forming their own row with a separate caption sentence — one visual idea, not
+    // three stacked widgets. Real values, same as before; no invented graphics.
     let palette: String = found_palette
         .iter()
         .map(|e| {
             format!(
-                "<span class=\"home-swatch\" style=\"background:{}\" title=\"{} — {}\"></span>",
-                e.value, e.path, e.value
+                "<span class=\"home-swatch\" style=\"background:{}\" title=\"{}\"></span>",
+                e.value, e.path
             )
         })
         .collect();
-    // Phase 5 FABLE review: unlabeled swatches read as decoration, not proof. Naming the
-    // families ties the strip to the badge row below as one "live token facts" unit.
-    let palette_caption = found_palette
-        .iter()
-        .map(|e| {
-            e.path
-                .rsplit_once('.')
-                .map(|(_, name)| name.split('-').next().unwrap_or(name))
-                .unwrap_or(&e.path)
-        })
-        .collect::<Vec<_>>()
-        .join(" · ");
-
-    let badges = format!(
-        "<div class=\"home-badges\">\
-         <span class=\"home-badge\">{item_total} components &amp; elements</span>\
-         <span class=\"home-badge\">{token_count} tokens</span>\
-         <span class=\"home-badge home-badge--mono\">DTCG-native</span>\
-         <span class=\"home-badge home-badge--mono\">Apache-2.0 tokens &amp; bundles</span>\
-         </div>"
-    );
 
     let content = format!(
         "<div class=\"home-body\">\
@@ -110,12 +87,17 @@ pub async fn index(State(state): State<AppState>) -> Html<String> {
          from the source. This system ships the token graph itself: DTCG-native, self-hostable, and readable \
          directly by the codegen agents that consume it, not just by designers.</p>\
          <p class=\"home-lede\">Every token, every component recipe, and every research decision behind it lives \
-         in one versioned source — browse it below, or <a href=\"/bundles/tokens\">download the whole graph as a \
-         bundle</a>.</p>\
-         <div class=\"home-token-facts\">\
-         <div class=\"home-palette\" aria-hidden=\"true\">{palette}</div>\
-         <p class=\"home-palette-caption\">Live from <code>tokens.full.json</code> — {palette_caption}</p>\
-         {badges}\
+         in one versioned source — browse it below, or <a class=\"home-cta-button\" href=\"/bundles/tokens\">download \
+         the whole graph as a bundle</a>.</p>\
+         <div class=\"home-stats\">\
+         <div class=\"home-stat\"><span class=\"home-stat-value\">{item_total}</span>\
+         <span class=\"home-stat-label\">components &amp; elements</span></div>\
+         <div class=\"home-stat\"><span class=\"home-stat-value\">{token_count}</span>\
+         <span class=\"home-stat-label\">tokens</span>\
+         <span class=\"home-stat-swatches\" aria-hidden=\"true\">{palette}</span></div>\
+         <span class=\"home-stat-tag\">DTCG-native</span>\
+         <span class=\"home-stat-tag\">Apache-2.0 tokens &amp; bundles</span>\
+         </div>\
          </div>\
          <div class=\"home-grid\">{cards}</div></div>"
     );
