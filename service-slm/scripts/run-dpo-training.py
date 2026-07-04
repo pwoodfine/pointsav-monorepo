@@ -124,15 +124,20 @@ BETA = 0.1  # DPO default. Prior 0.5 justification (empty-"[]" rejected) is obso
 # epochs on a ~1-2k example corpus.
 SFT_LEARNING_RATE = 2e-4   # was 2e-5 (full-FT default); LoRA-SFT band is 1e-4..3e-4
 SFT_NUM_EPOCHS = 2
-# R1 (BRIEF-flow-quality-audit.md, commit f85e6711, 2026-07-01): alpha/r=0.5 per Databricks
-# OLMo-3 LoRA guidance, not the 2.0 ratio LORA_R/LORA_ALPHA above use for the real DPO/SimPO
-# preference path. Kept as a separate constant pair (not a LORA_R/LORA_ALPHA overwrite) because
-# run_sft_training() below shares this module with run_training()'s real preference path, which
-# deliberately keeps r=32/alpha=64 — see the LORA_R comment above. Must match
-# run-sft-training.py's LORA_R/LORA_ALPHA exactly, since both scripts write/resume checkpoints
-# in the same production adapter directory (apprenticeship-pointsav-incremental).
+# 2026-07-04 correction (BRIEF-flow-quality-audit.md): R1's alpha/r=0.5 (commit f85e6711,
+# 2026-07-01) crashed every cycle from 2026-07-04 onward — the on-disk checkpoint
+# (apprenticeship-pointsav-incremental/checkpoint-49) was saved at r=16/alpha=32 by an
+# earlier run, so every resume attempt at alpha=8 hit assert_checkpoint_rank_compatible's
+# fail-closed guard. Realigned to alpha=32 (ratio 2.0): preserves that checkpoint's resume
+# progress, and matches current Unsloth/Raschka guidance (alpha/r >= 1.0, never below 1) —
+# the BRIEF's own corrections section had already flagged the 0.5 ratio as likely wrong.
+# Not a LORA_R/LORA_ALPHA overwrite — run_sft_training() below shares this module with
+# run_training()'s real preference path, which deliberately keeps r=32/alpha=64 — see the
+# LORA_R comment above. Must match run-sft-training.py's LORA_R/LORA_ALPHA exactly, since
+# both scripts write/resume checkpoints in the same production adapter directory
+# (apprenticeship-pointsav-incremental).
 SFT_LORA_R = 16
-SFT_LORA_ALPHA = 8
+SFT_LORA_ALPHA = 32
 
 # System message wrapped around every SFT example so the training prompt matches
 # the exact system+user shape the model conditions on at inference. Mirrors
@@ -823,7 +828,7 @@ def run_sft_training(records: list[dict], base_model: str, output_dir: str, dry_
     print(f"[sft] base model: {base_model}")
     print(f"[sft] output dir: {output_dir}")
     print(f"[sft] records:    {len(records)}")
-    print(f"[sft] LoRA r={LORA_R} alpha={LORA_ALPHA} lr={SFT_LEARNING_RATE} epochs={SFT_NUM_EPOCHS}")
+    print(f"[sft] LoRA r={SFT_LORA_R} alpha={SFT_LORA_ALPHA} lr={SFT_LEARNING_RATE} epochs={SFT_NUM_EPOCHS}")
     if max_runtime_seconds:
         print(f"[sft] runtime cap: {max_runtime_seconds}s")
 

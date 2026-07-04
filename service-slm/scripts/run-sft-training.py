@@ -97,11 +97,16 @@ def assert_checkpoint_rank_compatible(checkpoint_dir: str, expected_r: int, expe
 
 
 # LoRA hyperparameters — target_modules/dropout shared with run-dpo-training.py for
-# A/B comparability; r/alpha differ (SFT uses smaller r for L4 24GB headroom) but keep
-# the same alpha/r=0.5 ratio per BRIEF-flow-quality-audit.md R1 (Databricks OLMo-3
-# guidance: alpha/r=0.5, not the 2.0 ratio this previously had).
+# A/B comparability; r differs (SFT uses smaller r for L4 24GB headroom).
+# 2026-07-04 correction: R1's alpha/r=0.5 (commit f85e6711, 2026-07-01) crashed every
+# resume of apprenticeship-pointsav-incremental from 2026-07-04 onward — checkpoint-49
+# was saved at r=16/alpha=32 by an earlier run, incompatible with alpha=8. Realigned to
+# alpha=32 (ratio 2.0): preserves that checkpoint's resume progress, and matches current
+# Unsloth/Raschka guidance (alpha/r >= 1.0, never below 1) over the earlier Databricks-
+# derived 0.5 ratio. Must stay in lockstep with run-dpo-training.py's SFT_LORA_R/
+# SFT_LORA_ALPHA — both scripts write/resume checkpoints in the same directory.
 LORA_R = 16
-LORA_ALPHA = 8
+LORA_ALPHA = 32
 LORA_DROPOUT = 0.05
 LORA_TARGET_MODULES = ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
 MAX_LENGTH = 2048   # matches export-sft.py's own _MAX_SEGMENT_CHARS=8000 (~2000 tokens) assumption

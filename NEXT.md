@@ -4,6 +4,400 @@
 > **Scope: this archive only.** Cross-repo and workspace-level items live at `~/Foundry/NEXT.md`.
 
 Last updated: 2026-06-23
+## Hot — Tier A quality audit, drain un-pause, adapter→Tier A promotion research (2026-07-03)
+
+Full detail throughout `.agent/briefs/BRIEF-flow-quality-audit.md` (multiple dated
+entries this session). Condensed:
+
+- [x] ~~**Tier A quality-tested, code bugs found+fixed**~~ — commit `be0a3ca5`: LoRA
+  rank-mismatch guard (see section below), strengthened graph-context injection
+  framing in `router.rs` + closed a confirmed zero-test-coverage gap on that path, added
+  `SLM_LOCAL_MODEL` startup observability logging. `cargo test`: 196/196 (slm-doorman),
+  51+5/56 (slm-doorman-server). Live-tested: GLiNER extraction 4/4 correct; confirmed
+  `ask_local` still hallucinates on ungrounded entity queries (D10) — the router.rs fix
+  is committed but `local-doorman.service`'s binary hasn't been rebuilt/redeployed
+  (Stage 6 + Command scope, not done this session).
+- [x] ~~**`SLM_DRAIN_PAUSED` un-paused (operator-approved) — surfaced a real, repeatable
+  systemd bug in the process**~~ — had been `true` for 8+ days, freezing apprenticeship
+  corpus growth. First attempt (flip the `zz-foundation.conf` drop-in + restart) silently
+  did NOT take effect — confirmed via direct `/proc/<pid>/environ` read. Root cause: this
+  host's `EnvironmentFile=` (`/etc/local-doorman/local-doorman.env`) wins over a
+  textually-later drop-in `Environment=` directive at actual process spawn, even though
+  `systemctl show -p Environment` reports the opposite (textbook) resolution — the exact
+  same class of bug as the `SLM_LOCAL_MODEL` mislabel found earlier. **Fixed by editing
+  the actually-winning file directly** (`local-doorman.env`), verified live. Drain now
+  runs but correctly holds on `all Tier B nodes offline` (Tier B/yoyo-batch genuinely
+  down, not a new problem) — so real corpus growth still depends on Tier B coming back.
+  **Worth remembering generally**: any future env-var change on this specific host
+  should be verified via direct `/proc/<pid>/environ` read post-restart, not trusted from
+  `systemctl show` alone.
+- [x] ~~**`corpus-threshold.py` + `eval-adapter.sh` fixed and verified live**~~ — commits
+  `667abf9a`/`15e9b1a1`: `corpus-threshold.py` now returns a real exit code (was always
+  0); `eval-adapter.sh`'s 5 mechanical bugs fixed (wrong hardcoded base model, unnecessary
+  `~/training-venv` dependency that doesn't exist on this VM, vestigial `yq` check,
+  mislabeled `corpus_pairs` metric) and the abandoned duplicate `bin/eval-adapter.sh`
+  deleted. Verified end-to-end: generated the first-ever real holdout set (388 pairs) and
+  ran a live dry-run against the on-disk adapter — reached the pass@5 step, correctly
+  FAILed (expected, no adapter loaded into Tier A yet). Follow-up text-bug fix: commit
+  `62879862` (printed next-step said a non-existent `--lora-adapters` CLI flag).
+- [~] **Adapter→Tier A promotion path — researched, documented, NOT implemented**
+  (commit `688ff975`). Operator question: "is the adapter the whole point of Tier B, do
+  we need a smoother transition?" Answer: yes to both, and the right building blocks
+  already exist — `deploy-gate.sh`+`score-gate.sh`+`_gate-common.sh` (built by this same
+  archive on 2026-07-02, commit `e66048e5` — see the SLM-production audit section below;
+  today's session re-verified them directly, they weren't newly discovered) already
+  implement a safe, tested, production-decoupled hot-swap (scratch `llama-server` on
+  port 8090, `--lora --lora-init-without-apply` + `POST /lora-adapters`), and already
+  correctly FAILed a synthetic test adapter. **Recommended next step, not done this
+  session**: retire `eval-adapter.sh`'s own (cruder) scoring in favor of these two,
+  keeping only its registry-write role; reconcile the two different holdout-file schemas
+  (`eval-prepare.py`'s fresh 388-row `prompt`/`expected` vs. `score-gate.sh`'s stale
+  76-row `instruction`/`brief_id`/`task_type`). **Why nothing was promoted**: the one
+  real on-disk adapter (`apprenticeship-pointsav-incremental`) is trained against the
+  wrong base (`OLMo-2-1124-7B-Instruct` vs. canonical `OLMo-3-7B-Instruct`) — needs
+  retraining before any of this matters for it. Full scaffolding-completeness inventory
+  and exact next-step instructions in the BRIEF so this doesn't need re-researching.
+  [2026-07-03 totebox@claude-code]
+
+## Hot — nightly yoyo-batch cycle: automated training has been silently failing for weeks (2026-07-02)
+
+- [~] **`~/Foundry/bin/yoyo-daily-cycle.sh` Phase 6 passed `--queue-done`/`--engineering-corpus`
+  flags to `run-dpo-training.py` that have never existed** (confirmed via
+  `git log -S'"--queue-done"'` / `-S'"--engineering-corpus"'` on this repo — zero hits,
+  ever). Every substantial cycle log back to 2026-06-20 shows the identical
+  `run-dpo-training.py: error: unrecognized arguments` / `rc=2` failure — the automated
+  nightly path had never successfully triggered training in at least 2 weeks. All real
+  training progress this cycle (Runs 14-18) came from manual `test-mode.sh` invocations,
+  not this automated path — consistent with this finding, not contradicted by it.
+  Flagged high-priority + time-sensitive (msg-id
+  `command-20260702-time-sensitive-yoyo-daily-cycle-sh-phase`), ~20 min before the
+  UTC-midnight budget reset that would trigger the identical failure again.
+  **Command fixed same-day, commit `1ec3951`** (landed minutes before the reset): syncs
+  `export-sft.py` to the remote VM, runs `--source=all` to merge corpora, then calls
+  `run-dpo-training.py --corpus <dir> --mode sft`. Correctly left `run-sft-training.py`
+  (the *other* training-method path, which already had working
+  `--queue-done`/`--engineering-corpus` args) untouched. Not smoke-testable against the
+  live remote VM at fix time (stopped between cycles) — logic-verified only.
+  **Live-tested 2026-07-03T00:38Z (this archive watched it happen)**: STOCKOUT cleared on
+  attempt 3, Phase 6 ran the new code path for real — **progress, not yet success**. New,
+  more specific failure: `[export-sft] ERROR: task-type dir not found:
+  .../data/training-corpus/apprenticeship/git-commit`. Root cause found and reported
+  (msg-id `command-20260703-tonight-s-cycle-ran-your-fix-new-more-pr`): the fix's rsync
+  step still copies `data/apprenticeship/queue-done/` (flat `<brief_id>.brief.jsonl`
+  dispatch records, 4604 files) to the remote VM, but `export-sft.py`'s
+  `load_apprenticeship()` (default `--task-type=git-commit`) expects a **different,
+  per-task-type-subdirectoried source**: `data/training-corpus/apprenticeship/<task_type>/
+  shadow-*.jsonl` — confirmed real and populated locally (`.../apprenticeship/git-commit/`
+  has 2,263 files; 10 other task_type siblings exist too). The rsync source needs to
+  change from `queue-done/` to `training-corpus/apprenticeship/` (preserving its
+  subdirectory structure) — still Command-scope (`yoyo-daily-cycle.sh` is workspace-root).
+  Cycle failed cleanly otherwise — no crash, no stranded VM, no receipt written (correctly
+  didn't touch production).
+  **Watched live all night (2026-07-02/03), 6 separate stints**: 00:38Z, 01:02Z, 01:46Z,
+  02:51Z, 03:35Z, 03:58Z UTC — every single one hit the identical rsync-source error
+  (STOCKOUT accounted for most of the gaps between stints; every time the VM actually
+  came up, the failure was the same). Sent a follow-up status-check to Command
+  (msg-id `command-20260703-status-check-same-export-sft-rsync-sourc`) at the 5th
+  occurrence, no reply as of the 6th. Today's budget (7200s) is now down to ~938s — one
+  more short attempt possible tonight, otherwise resumes at the next UTC-midnight reset.
+  Cost across all 6 stockout-and-fail stints tonight: ~$0.76 total (0.140+0.125+0.126+
+  0.124+0.127+0.113, VM-on time only, no training compute — every attempt correctly
+  aborted before any GPU work began).
+  **Wrapped up watching 2026-07-03T~04:00Z**, at operator request — live monitor stopped.
+  No reply from Command on the rsync-source fix as of wrap-up.
+  **Exact patch sent 2026-07-03 (msg-id `command-20260703-exact-patch-for-the-rsync-source-bug-3-l`)**,
+  read directly from the live `~/Foundry/bin/yoyo-daily-cycle.sh` rather than inferred from
+  logs — 3 line changes, all in the Phase 6 dpo branch:
+  - **Line 543** (root cause): `_QUEUE_DONE_SRC="${FOUNDRY_ROOT}/data/apprenticeship/queue-done"`
+    → `_QUEUE_DONE_SRC="${FOUNDRY_ROOT}/data/training-corpus/apprenticeship"`.
+  - **Line 544** (local existence check, flat→recursive): `ls "${_QUEUE_DONE_SRC}"/*.brief.jsonl`
+    → `find "${_QUEUE_DONE_SRC}" -name 'shadow-*.jsonl' -print -quit | grep -q .`.
+  - **Line 570** (remote post-rsync count, same flat→recursive fix): `find
+    '${REMOTE_QUEUE_DONE}' -name '*.brief.jsonl'` → `-name 'shadow-*.jsonl'`.
+  Rsync itself (line 545-549) needs no change — already recursive, will correctly mirror
+  the per-task-type subdirectory tree once the source path is right. Asked the operator
+  how to proceed (send patch / apply directly with sign-off / keep waiting) — no response
+  in time, defaulted to sending the patch (lowest-friction, keeps the Command-scope
+  boundary intact). Next session: check `.agent/inbox.md` for a reply, or re-check
+  `/srv/foundry/data/yoyo-cycle-logs/` for a cycle reaching `Phase 6: starting SFT
+  training` (not `export-sft.py merge failed`) as the signal this is fixed.
+  **Attempted to apply the 3-line patch directly (operator sign-off given) — blocked by
+  the permission classifier**: correctly flagged the race risk of a Totebox session
+  editing a shared workspace-root file with no worktree isolation while Command might be
+  concurrently working the same file. Asked the operator how to proceed given that new
+  information; decision: revert to patch-only, don't cross the boundary. File confirmed
+  unchanged (`git status`/`git diff` clean on `bin/yoyo-daily-cycle.sh`). The patch stands
+  as sent — resolution is Command's to apply.
+  **Command applied it, commit `344ebe6`** (msg-id
+  `command-20260703-applied-rsync-source-fix-landed-commit-3`) — verified all 3 changes
+  against the live file before applying (matched exactly), also fixed two log-message
+  strings still referencing the old `*.brief.jsonl` pattern for consistency.
+  **Not yet live-verified**: checked at 2026-07-03T05:52Z — no cycle has run since the fix
+  landed (04:43Z); today's day-budget was already exhausted (6922s/7200s) from last
+  night's 6 stints, service just idling. Next real attempt is the next UTC-midnight
+  budget reset (~18h out). Replied to Command acknowledging this
+  (msg-id `command-20260703-ack-can-t-verify-tonight-today-s-budget-`).
+  **Update 2026-07-03 — confirmed live-verified, then a NEW bug found+fixed.** The
+  04:58:27Z cycle (first to run after commit `344ebe6` landed) DID reach `Phase 6:
+  starting SFT training` — the rsync-source fix works. But it immediately crashed on
+  `resume_from_checkpoint` with a LoRA rank-mismatch (`size mismatch ... torch.Size([16,
+  4096])` vs `torch.Size([32, 4096])` on all 32 layers): the checkpoint was saved at
+  r=16 (via `run-sft-training.py`'s corrected R1 hyperparams) but `run-dpo-training.py`'s
+  internal SFT-fallback path (which is what actually runs nightly — see the
+  marker-routing item below) was still hardcoded to the old r=32/alpha=64. **Fixed same
+  session** (commit `be0a3ca5`): split `SFT_LORA_R`/`SFT_LORA_ALPHA` constants, added a
+  fail-loud rank-compatibility guard at all 3 resume sites in both training scripts.
+  0/82 cycles produced an adapter that day as a result of this bug; the fix auto-deploys
+  next cycle since `yoyo-daily-cycle.sh` rsyncs the training scripts fresh from this
+  archive's `service-slm/scripts/` on every run — no Command action needed for this part.
+  **Two more structural gaps found the same day** (both Command-scope,
+  `bin/yoyo-daily-cycle.sh`): Phase 6 never actually checks corpus-threshold.py's
+  floor/quality decision before training (just checks marker-file existence — and 42
+  stale markers from 2026-05-08 mean it's been training regardless of readiness), and
+  `eval-adapter.sh` is never invoked anywhere in the cycle (confirmed via
+  `grep -c "eval-adapter"` → 0), which is the literal reason `data/adapters/registry.yaml`
+  has always been empty. Exact patch for both (Gate 6 + new Phase 6c + marker archival)
+  sent to Command (msg-id `command-20260703-exact-patch-for-yoyo-daily-cycle-sh-corp`) —
+  **not yet applied as of shutdown** (no new commit on `yoyo-daily-cycle.sh` since
+  `344ebe6`). Full detail: `.agent/briefs/BRIEF-flow-quality-audit.md`.
+  **Checked 2026-07-04**: `cycle-20260704-000945.log` reached `Phase 6: starting SFT
+  training` (rsync-source fix holds) but crashed again — a *different* rank mismatch
+  than the one F1 fixed: checkpoint-49 was saved at r=16/alpha=32, but F1's own
+  `SFT_LORA_ALPHA=8` didn't match that. F1's guard caught it correctly (fail-closed,
+  clear message, no raw crash) — fixed same day by realigning `SFT_LORA_ALPHA`
+  (both scripts) 8→32 to match the checkpoint. Live GPU re-test to confirm this holds
+  is pending — see `.agent/briefs/BRIEF-flow-quality-audit.md` 2026-07-04 entry.
+  **Still open**: whether Command applied the Gate-6/Phase-6c patch (look for a new
+  commit on `~/Foundry/bin/yoyo-daily-cycle.sh` past `344ebe6`, or a cycle log reaching
+  `Phase 6c: PASS`/`Phase 6c: FAIL`). [2026-07-02/03/04 totebox@claude-code]
+- [ ] **Live GPU re-test of the 2026-07-04 rank-alpha realignment** — `test-mode.sh` run
+  queued to confirm Phase 6 completes past the rank-mismatch point against the real
+  remote checkpoint (code fix only verified via `py_compile` so far, not a live run).
+  [2026-07-04 totebox@claude-code]
+- [x] ~~**GAP-4 mislabel — actually fixed 2026-07-04**~~ — the 2026-06-23 fix only ever
+  touched the non-authoritative `zz-foundation.conf` drop-in; `/etc/local-doorman/
+  local-doorman.env`'s `EnvironmentFile=` (which wins over `Environment=` drop-ins at
+  process spawn) still had the wrong value. Edited directly, restarted, verified via
+  `/proc/<pid>/environ` + a fresh `ask_local` call: `model=OLMo-3-7B-Instruct`.
+  [2026-07-04 totebox@claude-code]
+- [x] ~~**Resolved 2026-07-03**: the corpus-threshold/Phase-6 gate mismatch flagged
+  below is a real, un-intentional bug, not independent-by-design~~ — confirmed by
+  reading `yoyo-daily-cycle.sh`'s Phase 6 gate chain directly: it's a 5-condition
+  `if/elif` (marker exists, authorization tag, no double-spend receipt, budget>0, ML
+  libs installed) that never consults `corpus-threshold.py`'s floor decision at all.
+  Training has been attempting every night purely because stale marker files exist,
+  regardless of corpus readiness. Fix (Gate 6, exact patch) sent to Command alongside
+  the eval-adapter.sh-never-wired fix above — see that entry. [2026-07-03 totebox@claude-code]
+
+## Housekeeping — drift cleanup + NEXT.md hygiene (2026-07-02)
+
+- [x] ~~**Fixed**: `.agent/session-start.md` had 100% project-workplace content~~ — rewritten
+  with correct project-totebox mission/branch/gotchas/handoff. [2026-07-02 totebox@claude-code]
+- [x] ~~**Fixed**: `.agent/rules/brief-discipline.md` title said "project-design"~~ — corrected
+  to project-totebox (same copy-templating bug class seen in other archive clones).
+  [2026-07-02 totebox@claude-code]
+- [x] ~~**Fixed**: `.agent/briefs/README.md` Active-BRIEFs table misfiling~~ — moved
+  `BRIEF-sel4-unikernel.md` (project-console's os-console, not this archive's work) to
+  Reference; moved `BRIEF-os-totebox-ppn-build-out.md` (its own frontmatter says
+  `status: superseded`) to a new Superseded table. [2026-07-02 totebox@claude-code]
+- [x] ~~**Fixed**: `BRIEF-slm-tier-split-architecture.md` `owner:` field~~ — `project-data` →
+  `project-totebox` (pre-merge name; content itself was always correctly in-scope).
+  [2026-07-02 totebox@claude-code]
+- [x] ~~**NEXT.md self-consolidation**~~ — struck several stale duplicate checkboxes (Run 17
+  null-delta finding, P0-1/P0-2/P0-4 "(verified)" duplicates, R1 "possibly wrong" duplicate,
+  Doorman two-OLMo-instances rejected-decision item) that were already resolved elsewhere in
+  this same file but left unchecked. [2026-07-02 totebox@claude-code]
+- [ ] **Flagged, not fixed**: root `/srv/foundry/clones/project-totebox/README.md` predates this
+  archive (committed 2026-05-25, org-chart file-naming content for a different deployment) and
+  gives no os-totebox orientation. Not touched this session — rewriting a pre-existing shared
+  monorepo-root file needs its own scope decision, not a drift-cleanup side effect.
+  [2026-07-02 totebox@claude-code]
+- [ ] **Flagged, not fixed**: 7 active BRIEFs vs. this archive's own `brief-discipline.md`
+  soft cap of 5 (after moving 2 out to Reference/Superseded this session, down from 9).
+  Candidate for further consolidation in a future session — not forced here.
+  [2026-07-02 totebox@claude-code]
+
+## Hot — live flow smoke test found + fixed a real bug (2026-07-02)
+
+- [x] ~~**KoGNER entity-hint sampling picked up graph noise, degrading GLiNER extraction to
+  zero**~~ — found via an actual live end-to-end test (wrote a real test corpus document
+  into the live ingestion directory, watched it drain, confirmed the graph never got the
+  expected entities). Root cause: `service-content/src/entity_hints.rs`'s
+  `init_entity_hints()` samples up to 3 example names per classification from raw graph
+  data with no quality filter, then appends them to GLiNER's label descriptions as
+  "concrete examples." It had picked up pre-existing noise — the literal string
+  `"Person"` as a "Person" example, and phrases like `"no named person identified"`,
+  `"different location"`, `"candidate locations"` — corrupting the label semantics GLiNER
+  uses for zero-shot matching. Live-verified: a test document that GLiNER reliably
+  extracts 4 correct entities from (direct `/v1/extract` calls, twice, same text) came
+  back with **zero entities** through the real pipeline once entity_hints were included.
+  Fixed (commit `edd22edf`): `is_valid_hint_candidate()` rejects self-referential
+  label-name matches and lowercase-initial common-noun phrases, reuses
+  `entity_filter::is_noise_entity_name` for defense-in-depth; also factored the bucketing
+  logic into a pure `build_hints()` fn to fix a latent test-isolation race the new tests
+  exposed. 97/97 tests green (was 92), clippy clean. **Cannot deploy from this
+  session** — `bin/deploy-binary.sh` has an explicit Command-only scope guard, and
+  requires Stage-6-promoted HEAD first. Flagged to Command via outbox (msg-id
+  `command-20260702-stage-6-deploy-request-entity-hints-rs-f`), folded into the existing
+  157-commit Stage 6 backlog. [2026-07-02 totebox@claude-code]
+- [ ] **Note for the eventual graph-noise-cleanup pass** (already tracked elsewhere in this
+  file): the specific noise entries this bug surfaced (`"Person"`, `"no named person
+  identified"`, `"different location"`, `"candidate locations"`, similar generic-phrase
+  entries under Location/Project) are good concrete targets. This fix only stops them
+  from being used as hints going forward — it doesn't clean the existing graph.
+  [2026-07-02 totebox@claude-code]
+- [x] ~~**Left in place**: `CORPUS_smoketest_20260702.json`~~ — the test file used to
+  surface the bug above, sitting in the live `service-content/ledgers/` directory.
+  Matches existing precedent (`CORPUS_aaa_test_flow_*.json` and similar fixtures already
+  there from earlier sessions) — left rather than removed, per established practice in
+  this archive. [2026-07-02 totebox@claude-code]
+
+## Hot — SLM-production + content-quality trajectory audit (2026-07-02)
+
+Second Fable audit (9 agents) this session, distinct scope from the first. Full verdicts +
+17-item refined roadmap in `.agent/briefs/BRIEF-flow-quality-audit.md` §"SLM-production +
+content-quality trajectory audit". Condensed:
+
+- [x] ~~**NEW P0 — `/v1/draft/generate` UTF-8 panic**~~ — **fixed**, commit `9f96bafa`.
+  `truncate_at_char_boundary()` replaces the fixed-byte-offset slice; 3 new unit tests
+  (including one reproducing the exact multi-byte-at-boundary shape that panicked the old
+  code); 86/86 tests green, clippy clean. [2026-07-02 totebox@claude-code]
+- [~] **NEW P0 — signal-inflow restoration**: training corpus is ~100% static. Three
+  sub-parts, different status each:
+  - 3a. **service-input deploy**: nothing more for Totebox to do — sysadmin package already
+    sent to Command (msg-id `command-20260701-action-required-service-input-never-depl`),
+    confirmed still `status: pending` in Command's inbox as of 2026-07-02.
+  - 3b. **Engineering-capture gap — ROOT-CAUSED 2026-07-02** (corrects the prior finding
+    below). The "zero entries after 2026-06-01T18:30:00Z" claim was itself slightly wrong:
+    that timestamp belongs to `queue-done/test-shadow-001.brief.jsonl` — a synthetic test
+    fixture, not a real commit capture (confirmed by filename + compact-JSON formatting
+    that doesn't match the real emitter's output). The **actual** last genuine
+    `shadow-capture` entry is `2026-05-29T01:55:37Z` (verified via `grep` across all 872
+    `shadow-capture`-tagged files in `queue-done/`). Root cause found via git-log
+    archaeology on the **workspace** repo (`~/Foundry`, not this archive): commit
+    `dacffb1` (2026-05-29T16:31:55Z, "ops(workspace): JOURNAL artifact type, J2 citations,
+    capture-edit production swap...") replaced the 541-line `bin/capture-edit.py` — the
+    §7C Brief Queue Substrate script that wrote `task_type: "shadow-capture"` to a
+    file-backed queue, with role/scope auto-detection (master/task/root by CWD) AND
+    secret-sanitization (redacted private keys, AWS keys, API-style tokens, high-entropy
+    bearer tokens) — with a 47-line bash script (byte-identical to this archive's own
+    `service-slm/scripts/git-post-commit-hook.sh`) that POSTs directly to `/v1/shadow`
+    with `task_type: "git-commit"` and **no sanitization logic at all** (confirmed via
+    grep — zero redact/sanitize/REDACTED hits in either current hook script). Two
+    distinct findings, not one:
+    1. Whether "git-commit" is an intentional rename/simplification of "shadow-capture"
+       or an accidental loss of a distinct training-signal category is a design question
+       for whoever owns `bin/capture-edit.py` — **Command Session scope, not this
+       archive's to fix** (workspace-root file).
+    2. **Security-relevant regression, flagged separately**: the current live hook sends
+       raw, unsanitized git diffs to the Doorman on every commit across all clusters —
+       the secret-redaction logic that existed in the deleted Python script is gone.
+       This is true regardless of the task_type naming question and should be
+       prioritized independently.
+    Both flagged to Command via outbox this session — not actionable from this Totebox
+    session (the file lives at `~/Foundry/bin/capture-edit.py`).
+  - 3c. **Apprenticeship verdict wiring — done**. `service-slm/scripts/
+    list-pending-apprenticeships.py` (commit `b75d6d45`) makes the queue visible; does not
+    cast verdicts itself (human-reviewed only, per SYS-ADR-07 + model-collapse evidence).
+    Live run confirms the scale of the gap precisely: 4,604 total shadow attempts, only 10
+    ever verdicted (0.2%).
+  [2026-07-02 totebox@claude-code]
+- [~] **NEW P0 — scored promotion gate**: re-ranked from P1 to P0. Run 18's delta-count gate
+  is direction-free (proves change, not improvement) — auto-promotion is unbuildable on it.
+  **Built and committed** (`e66048e5`): `service-slm/scripts/score-gate.sh` + `_gate-common.sh`
+  (shared scratch-server infra factored out of `deploy-gate.sh`, which was refactored onto
+  it — confirmed behavior-preserving via dry-run before/after). Scores diff-parse,
+  git-apply-check, and envelope-format-compliance against the 76-row curated holdout set
+  (stratified by task_type); entity-F1 correctly reported as `"available": false` (blocked
+  on the still-unbuilt `service-gliner/eval/` P1 item) rather than faked.
+  **Live validation — logic confirmed, full run blocked by VM contention, not a scoring
+  bug**: first live attempt (12 probes) surfaced and fixed a real bug — the inherited
+  128-token probe budget truncated every diff completion before its closing fence, so
+  every "pass" was actually a truncation artifact (completion_len clustered at ~410 chars).
+  Fixed with a score-gate.sh-specific 768-token / 480s-timeout override. Second live
+  attempt (6 probes) confirmed the fix works (completions reaching 4000+ chars) and that
+  the scoring logic itself is sound — the one probe that completed inside the timeout
+  scored non-degenerately (envelope-format passed, diff-parse correctly failed, a
+  believable mixed result). The other 5/6 probes returned empty at exactly the timeout
+  boundary — this VM's CPU contention (production Tier A queue) exceeded even the bumped
+  480s window. **Not yet obtained**: a full clean multi-probe live run — needs either a
+  quieter CPU window or the P1 "sanctioned full-run mode" infra pulled forward. Not
+  claiming a pass or fail on the Run 18 adapter from this round — only that the instrument
+  itself is now built correctly and partially proven live. [2026-07-02 totebox@claude-code]
+- [ ] **binary-targets.yaml audit (Command broadcast, actioned but with a real gap)**:
+  this archive has no `.agent/binary-targets.yaml` yet. Nothing added/changed a `[[bin]]`
+  target this session, so the shutdown-checklist trigger didn't fire — but the archive's
+  existing services (`service-content`, others) have never been inventoried against the
+  schema. Needs its own pass: `bin/binary-registry-report.sh --archive project-totebox`
+  first, then create the file per `conventions/soft-distribution-pipeline.md` §3.
+  [2026-07-02 totebox@claude-code]
+- [ ] **NEW P1 — context-assembler v2**: verified the entire existing P1 DataGraph roadmap
+  (edges, ER, embeddings, spans) is write-side only — `format_entity_block` (http.rs:700-719)
+  and Doorman's `GraphContextClient` both render a flat name/classification/role/location/
+  contact block, never edges/confidence/source_doc/temporal order. Completing P1 as speced
+  today changes generated content **zero**. [2026-07-02 totebox@claude-code]
+- [ ] **Sequencing correction**: entity resolution before/with co-occurrence edges (was:
+  edges Stage 1, ER later) — DEG-RAG evidence says edges on fragmented duplicate nodes degrade
+  generation. [2026-07-02 totebox@claude-code]
+- [ ] **R1 re-sequenced**: run AFTER the scored gate, not before/first — a direction-free gate
+  can't rank two passing adapters. [2026-07-02 totebox@claude-code]
+- [x] ~~**Corrected**: proofreader is fully live~~ — verified via `journalctl -u
+  local-proofreader.service` (real completed request, `degraded=[]`). Earlier session
+  background (drawn from a stale README) was wrong; corrected in the BRIEF.
+  [2026-07-02 totebox@claude-code]
+- [x] ~~**Corrected**: `corpus-threshold.py --force` daily-bypass claim (from the first Fable
+  audit) is now stale~~ — `local-corpus-threshold.timer` is masked; live path
+  (`yoyo-daily-cycle.sh:429`) passes no `--force`. New real defect found instead:
+  `corpus-threshold.py:91` schema misread zeroes all 1,410 engineering rows.
+  [2026-07-02 totebox@claude-code]
+- [x] ~~**Outbox to project-console**~~ — sent, msg-id `command-20260702-proofreader-corrections-live-pipeline-st`.
+  [2026-07-02 totebox@claude-code]
+- [x] ~~**Note to Command Session**~~ — sent, msg-id `command-20260702-stale-doc-infrastructure-local-proofread`.
+  [2026-07-02 totebox@claude-code]
+- [ ] **Operator decision needed**: Loop B's self-rewarding OLMo-judge design conflicts with
+  model-collapse evidence under SYS-ADR-07 (no external judge can curate) — needs a BRIEF-level
+  amendment, not a footnote. Also: from-base-each-cycle vs. incremental `--resume` (the nightly
+  cycle already does the latter) is an unresolved conflict, not a lockable default.
+  [2026-07-02 totebox@claude-code]
+
+## Hot — 100x roadmap Phase 1 implementation (2026-07-01, in progress)
+
+- [x] ~~**P0-4 DONE + DEPLOYED + LIVE-VALIDATED**~~ — `service-content/src/graph.rs` MERGE now
+  coalesces role/location/contact_vector (new non-empty wins, empty preserves existing) and
+  source_doc (first-write-wins). Commit `b3ae1936`. 3 new unit tests + 83/83 suite green,
+  clippy clean. Rebuilt release binary, backed up old `/usr/local/bin/service-content`,
+  restarted `local-content.service`, confirmed healthy. **Live HTTP smoke test via the real
+  `/v1/graph/mutate` + `/v1/graph/context` API confirms the fix**: wrote an entity with
+  role_vector+location_vector, re-mutated with null vectors (simulating a GLiNER re-mention),
+  read back — both vectors survived (would have been blanked to null before this fix). Test
+  entity lives in isolated `module_id=test-p0-4`, does not affect real data.
+  [2026-07-01 totebox@claude-code]
+- [x] ~~**P0-1 (deploy-gate.sh rewrite) DONE + VALIDATED**~~ — commits `bfc165fe`, `a0f75826`.
+  Scratch-server scale-toggle protocol replaces the broken PEFT-directory-path approach. 3
+  bugs found+fixed while validating (missing `requests` in conversion venv, `/lora-adapters`
+  readiness race extended 60s→180s, missing `--no-jinja` crashed the scratch server). Validated
+  zero-GPU-cost against the real Run 17 adapter (14/20 delta, honest FAIL for that undertrained
+  adapter) before spending GPU on Run 18. [2026-07-01/02 totebox@claude-code]
+- [x] ~~**P0-2 (trainer config) DONE + VALIDATED**~~ — commit `b133383d`. eval_strategy
+  steps→epoch, save_steps 5→25, eval split capped ~64 rows, packing=True, MAX_LENGTH 512→2048,
+  fail-closed truncation pre-check added. Live-confirmed in Run 18: checkpoint-94 vs prior
+  checkpoint-21 (~4.5x more optimizer steps in the same capped window).
+  [2026-07-01/02 totebox@claude-code]
+- [x] ~~**Run 18 — combined validation**~~ — **FIRST-EVER REAL PASS**: 16/20 probes non-trivial
+  delta (threshold 15), 4/20 null (all the same known terse-prompt base-model pattern, not
+  adapter-related). `passed:true` in `/srv/foundry/data/adapters/deploy-gate-result.json`. Full
+  writeup: `.agent/briefs/BRIEF-flow-quality-audit.md` §"Phase 1 implementation". Delayed ~35min
+  mid-run by the production nightly cycle legitimately holding the VM lock — waited it out
+  rather than force a collision (lock worked as designed). [2026-07-02 totebox@claude-code]
+- [ ] **R1 (LoRA alpha/r ratio) experiment** — now unblocked, gate is trustworthy. Compare
+  `r=16/alpha=8` (0.5 ratio) against `alpha>=r` per current literature. [2026-07-02 totebox@claude-code]
+- [ ] **P5 promotion decision** — deliberately NOT made. Smoke-scale PASS proves pipeline
+  correctness, not production readiness. Needs a larger/uncapped run + explicit operator
+  sign-off before any `--lora-scaled` activation. [2026-07-02 totebox@claude-code]
+- [ ] **P1 roadmap items** (full detail in BRIEF) — not yet implemented, next session's scope
+  pending operator go-ahead per item. [2026-07-02 totebox@claude-code]
+
+Last updated: 2026-07-02
 
 ---
 
