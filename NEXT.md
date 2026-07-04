@@ -4,6 +4,47 @@
 > **Scope: this archive only.** Cross-repo and workspace-level items live at `~/Foundry/NEXT.md`.
 
 Last updated: 2026-06-23
+## Hot — full Tier A/B live test, gate-script hardening, 4 carry-forwards closed (2026-07-04)
+
+Full detail throughout `.agent/briefs/BRIEF-flow-quality-audit.md` (multiple dated entries this
+session — search "2026-07-04"). Condensed:
+
+- [x] ~~**Rank-mismatch crash fixed + live-verified**~~ — `SFT_LORA_ALPHA` realigned 8→32 in both
+  training scripts to match the on-disk checkpoint (`apprenticeship-pointsav-incremental/
+  checkpoint-49`, saved at r=16/alpha=32) and current alpha≥r LoRA guidance. Confirmed against a
+  real nightly-cycle stint: training resumed cleanly, completed with `rc=0`, wrote the first
+  receipt since 2026-07-03. Commit `53b25c3b` + result `34fc9511`.
+- [x] ~~**GAP-4 model mislabel — actually fixed this time**~~ — 2026-06-23's fix only touched the
+  non-authoritative `zz-foundation.conf` drop-in; the real culprit was
+  `/etc/local-doorman/local-doorman.env`'s `EnvironmentFile=` (wins over `Environment=` drop-ins at
+  process spawn on this host). Edited directly, restarted, verified via `/proc/<pid>/environ`.
+- [x] ~~**Quality-gated the retrained adapter**~~ — both `deploy-gate.sh` (10/20 delta, 4 of the
+  10 nulls were host-contention empties) and `score-gate.sh` (0% format-compliance) FAIL — expected
+  and not alarming, this adapter has only completed ~7% of one epoch so far.
+- [x] ~~**Gate scripts hardened**~~ (commit `4631ad7b`) — `deploy-gate.sh` now separates
+  `both_empty_count` (contention) from genuine `null_count` (real no-op); `_gate-common.sh` warns
+  (non-blocking) on high host load before either gate starts; `score-gate.sh` now appends every
+  gate attempt (pass or fail) to `data/adapters/registry.yaml`, reusing `eval-adapter.sh`'s existing
+  schema. `score-gate.sh`'s missing executable bit (committed as `100644`, should be `100755`) also
+  fixed.
+- [x] ~~**queue_poison root-caused**~~ — 2,767 files (not 656 — that reading was already stale).
+  22.5% instant-poisoned by the 16 KiB oversized-payload gate (legitimate large diffs); 77.5%
+  retry-exhausted (5 attempts) against a mostly-down Tier B, likely compounded by an "optimistic
+  health" window that reopens on every `local-doorman.service` restart. Command-scope fix
+  (raise `SLM_QUEUE_MAX_PAYLOAD_BYTES`; investigate the restart/retry-window interaction); not
+  fixed this session — production dispatch logic shared by 7+ archives.
+- [x] ~~**Holdout-schema reconciliation**~~ — `score-gate.sh` was stuck on the stale 76-row
+  `data/corpus/eval/holdout.jsonl`; `eval-adapter.sh` was already using the fresh 388-row
+  `holdout-v1.jsonl`. `score-gate.sh` now defaults to the same fresh file; both schemas still
+  supported. Caught and fixed a self-introduced bug in the same pass: the new registry-write had no
+  `--dry-run` guard and had polluted the registry with fake scores — fixed, registry cleaned.
+- [x] ~~**`eval-adapter.sh` soft-deprecated**~~ — header comment added pointing to `score-gate.sh`
+  (now equal-or-better on every axis); not deleted, since `activate-foundation.sh`/`eval-prepare.sh`/
+  `lora-update.sh` still reference it in comments.
+- [x] ~~**D10 status re-confirmed**~~ — F2 fix (`be0a3ca5`) is 184 commits behind `origin/main`,
+  unpromoted; live binary predates the fix by 3+ days. Still broken in production, still
+  Command-scope, no new action needed beyond existing Stage 6 tracking.
+
 ## Hot — Tier A quality audit, drain un-pause, adapter→Tier A promotion research (2026-07-03)
 
 Full detail throughout `.agent/briefs/BRIEF-flow-quality-audit.md` (multiple dated

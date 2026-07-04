@@ -4,6 +4,25 @@
 
 # eval-adapter.sh — Eval gate for a trained LoRA adapter (§13 item 5).
 #
+# SOFT-DEPRECATED 2026-07-04 (BRIEF-flow-quality-audit.md P1 reconciliation):
+# score-gate.sh (same directory) now covers everything this script does and
+# more — real scratch-server hot-swap probing (this script never adopted
+# that), stricter diff-parse/git-apply-check/envelope-format scoring (this
+# script's own "pass@5" is a cruder diff-marker grep), AND registry-write
+# (added to score-gate.sh 2026-07-04, previously this script's one unique
+# value). Both scripts now default to the same held-out set
+# (data/training-corpus/eval/holdout-v1.jsonl) and both append to
+# data/adapters/registry.yaml — be aware the `eval_pass_at5` field means a
+# different thing depending on which script wrote a given entry (this
+# script's diff-marker pass rate vs. score-gate.sh's diff-parse rate); check
+# each entry's `notes` field to tell them apart.
+#
+# NOT deleted — still referenced from other scripts' comments
+# (activate-foundation.sh, eval-prepare.sh, lora-update.sh) and no live
+# systemd unit or automated cycle invokes it, so removing it is a separate,
+# deliberate cleanup pass, not bundled into this reconciliation. Prefer
+# score-gate.sh for new work.
+#
 # Runs a pass@5 quality check against the held-out eval set before
 # registering the adapter in data/adapters/registry.yaml. A failing
 # adapter is logged but NOT registered; the system continues running
