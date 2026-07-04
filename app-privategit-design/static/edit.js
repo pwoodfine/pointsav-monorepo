@@ -11,20 +11,42 @@
   var content = document.querySelector('.content');
   if (!content) return;
 
-  var editing = false, originalHTML = '', rawMarkdown = '', saveBtn, textarea;
+  var editing = false, originalHTML = '', rawMarkdown = '', saveBtn, textarea, btn;
 
-  // Inject floating edit toggle button
-  var btn = document.createElement('button');
-  btn.id = 'edit-toggle';
-  btn.textContent = 'Edit';
-  applyStyle(btn, 'position:fixed;bottom:2rem;right:2rem;padding:0.5rem 1.25rem;'
-    + 'background:var(--cds-interactive);color:#fff;border:none;border-radius:var(--cds-radius-md);cursor:pointer;'
-    + 'font-size:0.875rem;font-weight:600;z-index:200;box-shadow:var(--cds-elevation-2)');
-  document.body.appendChild(btn);
+  // Operator feedback: this button was showing to every public visitor on every
+  // page, unconditionally — clicking it with no token just threw a confusing
+  // native prompt() asking for a secret they have no way to get. Only inject the
+  // visible button once this browser session has already authenticated once;
+  // first-time entry is via a keyboard shortcut instead of public UI chrome.
+  function injectButton() {
+    if (btn) return;
+    btn = document.createElement('button');
+    btn.id = 'edit-toggle';
+    btn.textContent = 'Edit';
+    applyStyle(btn, 'position:fixed;bottom:2rem;right:2rem;padding:0.5rem 1.25rem;'
+      + 'background:var(--cds-interactive);color:#fff;border:none;border-radius:var(--cds-radius-md);cursor:pointer;'
+      + 'font-size:0.875rem;font-weight:600;z-index:200;box-shadow:var(--cds-elevation-2)');
+    document.body.appendChild(btn);
+    btn.addEventListener('click', function () {
+      if (!editing) enterEdit();
+      else cancelEdit();
+    });
+  }
 
-  btn.addEventListener('click', function () {
+  if (sessionStorage.getItem('design_edit_token')) injectButton();
+
+  // Operator-only entry point: Cmd/Ctrl+Shift+E prompts for the token (once
+  // accepted, the button appears for the rest of this browser session).
+  document.addEventListener('keydown', function (e) {
+    if (!(e.shiftKey && (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'e')) return;
+    e.preventDefault();
+    if (!sessionStorage.getItem('design_edit_token')) {
+      var token = prompt('Edit token (printed to server log at startup):');
+      if (!token) return;
+      sessionStorage.setItem('design_edit_token', token);
+    }
+    injectButton();
     if (!editing) enterEdit();
-    else cancelEdit();
   });
 
   async function enterEdit() {

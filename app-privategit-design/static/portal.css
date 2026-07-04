@@ -37,13 +37,11 @@ header {
   flex-shrink: 0; position: sticky; top: 0; z-index: 100;
 }
 header a { color: #fff; text-decoration: none; font-size: 0.875rem; font-weight: 600; letter-spacing: 0.01em; display: flex; align-items: center; height: 100%; }
-/* Phase 5 FABLE review fix: both nav links previously carried margin-left:auto
-   individually, which splits flex free-space between EACH auto margin rather than
-   pushing the pair to the edge as one group — "Adoption floats at ~60% width, huge
-   void after search bar". One auto margin on the wrapping nav fixes it. */
-.header-nav-links { margin-left: auto; display: flex; align-items: center; gap: var(--cds-space-5); }
-.header-nav-links a { font-weight: 400; }
-.header-search-wrap { position: relative; flex: 1; max-width: 320px; margin-left: 2rem; }
+/* Header simplified to logo + search + theme toggle only (operator feedback:
+   "Adoption"/"Tokens" as global nav links didn't make sense — both are already
+   reachable from the home page, sidebar, and footer). Search now anchors to the
+   right via margin-left:auto instead of sitting after removed nav links. */
+.header-search-wrap { position: relative; flex: 0 1 320px; max-width: 320px; margin-left: auto; }
 .header-search-icon {
   position: absolute; left: 0.6rem; top: 50%; transform: translateY(-50%);
   width: var(--cds-icon-size-sm); height: var(--cds-icon-size-sm);
@@ -320,7 +318,11 @@ header a { color: #fff; text-decoration: none; font-size: 0.875rem; font-weight:
 .ds-footer {
   background: var(--cds-footer-bg); color: var(--cds-footer-ink);
   border-top: var(--cds-footer-rule);
-  padding: var(--cds-footer-pad-y) var(--cds-footer-gutter);
+  /* Extra bottom clearance: the floating Edit/Save/Ask-AI buttons are
+     position:fixed at bottom:2rem, so scrolled-to-bottom footer content
+     (the "Powered by PrivateGit" badge) would otherwise sit directly under
+     them — verified via screenshot, not assumed. */
+  padding: var(--cds-footer-pad-y) var(--cds-footer-gutter) calc(var(--cds-footer-pad-y) + 3rem);
   flex-shrink: 0;
 }
 .ds-footer__cols { display: flex; gap: 3rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
@@ -337,11 +339,30 @@ header a { color: #fff; text-decoration: none; font-size: 0.875rem; font-weight:
 .ds-footer__family a { color: var(--cds-footer-link); text-decoration: none; }
 .ds-footer__family a:hover { text-decoration: underline; }
 .ds-footer__base {
-  display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.5rem;
+  display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0.75rem;
   padding-top: 1rem; border-top: var(--cds-footer-rule);
 }
+.ds-footer__meta { display: flex; flex-direction: column; gap: 0.125rem; }
 .ds-footer__legal, .ds-footer__build { font-size: var(--cds-footer-legal-size); color: var(--cds-footer-ink-muted); }
 .ds-footer__live { color: #0e6027; }
+/* "Powered by PrivateGit" badge — matches documentation.pointsav.com's .k-badge
+   pattern (icon + two-line "lead"/"name" text) for cross-site family consistency. */
+.ds-badge {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  padding: 0.35rem 0.6rem; border: 1px solid var(--cds-border-subtle);
+  border-radius: var(--cds-radius-sm); background: var(--cds-layer);
+  color: var(--cds-text-secondary); text-decoration: none; line-height: 1.05;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+.ds-badge:hover { border-color: var(--cds-interactive); color: var(--cds-interactive); }
+.ds-badge__glyph { display: inline-flex; color: currentColor; flex-shrink: 0; }
+.ds-badge__text { display: inline-flex; flex-direction: column; gap: 1px; }
+.ds-badge__lead {
+  font-size: 0.5625rem; text-transform: uppercase; letter-spacing: 0.04em;
+  color: var(--cds-text-tertiary);
+}
+.ds-badge:hover .ds-badge__lead { color: inherit; }
+.ds-badge__name { font-size: var(--cds-type-label); font-weight: 600; color: inherit; }
 
 /* Mobile responsive layout — single breakpoint (D7, P1.5) */
 @media (max-width: 768px) {
