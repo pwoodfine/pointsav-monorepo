@@ -9,13 +9,15 @@ use serde_json::Value;
 
 use super::shell::esc;
 
-/// Homepage: the Envelope-as-Navigation hero diagram is the primary
-/// navigation device (see `render::envelope`). The prior card-grid/prose
-/// homepage content still exists as real editorial substance (`home.md`'s
-/// sections) — kept below the diagram as supporting narrative rather than
-/// dropped, since the underlying content is real research, not shell code.
+/// Homepage: "Anatomy of a Key Plan" (see `render::hero`) is the primary
+/// hero and navigation device — a real, already-shipped catalog entry
+/// (PO-1) shown with its real attached data, not an invented diagram. The
+/// prior card-grid/prose homepage content still exists as real editorial
+/// substance (`home.md`'s sections) — kept below the hero as supporting
+/// narrative rather than dropped, since the underlying content is real
+/// research, not shell code.
 pub fn render_home(state: &AppState) -> String {
-    let envelope = super::envelope::render_envelope_hero();
+    let hero = super::hero::render_hero(state);
     let page = &state.home_page;
 
     let mut sections = String::new();
@@ -31,7 +33,7 @@ pub fn render_home(state: &AppState) -> String {
     }
 
     format!(
-        r#"{envelope}
+        r#"{hero}
 <hr class="bim-rule">
 <article class="bim-article">
   {sections}
@@ -44,11 +46,11 @@ pub fn render_home(state: &AppState) -> String {
 }
 
 /// The real "Browse All BIM Objects" catalog index — every category grouped
-/// under the four Sections the envelope hotspots route to. This used to be
+/// under the four Sections the hero's callouts route to. This used to be
 /// a stub that silently rendered the homepage template instead (the
 /// `/tokens` dead-link bug found in the 2026-07-03 audit); it's now a
 /// distinct page with anchors (`#taxonomy`, `#objects`, `#compositions`,
-/// `#context`) matching the envelope diagram's hotspot targets.
+/// `#context`) matching the hero's real-fact hotspot targets.
 pub fn render_tokens_index(state: &AppState) -> String {
     let mut groups = String::new();
     for section in Section::all() {
@@ -67,7 +69,7 @@ pub fn render_tokens_index(state: &AppState) -> String {
     format!(
         r#"<div class="bim-tokens-index">
   <h1>BIM Object Catalog</h1>
-  <p class="bim-intro">Every BIM Object category, grouped by the four sections the envelope diagram on the homepage routes to.</p>
+  <p class="bim-intro">Every BIM Object category, grouped by the four sections the homepage's Key Plan example routes to.</p>
   {groups}
 </div>"#,
         groups = groups,
@@ -193,7 +195,6 @@ pub fn render_token_page(category: &str, state: &AppState) -> String {
   <div class="bim-breadcrumbs">
     <a href="/" data-path="/" class="bim-nav-link">Home</a> / <a href="/tokens" data-path="/tokens" class="bim-nav-link">BIM Objects</a>
   </div>
-  <a class="bim-back-link" href="/tokens" data-path="/tokens">&larr; Back to overview</a>
   <p class="bim-category-page__anchor"><code>{ifc_anchor}</code></p>
   <h1>{display_name}</h1>
   <div class="bim-chip-row">

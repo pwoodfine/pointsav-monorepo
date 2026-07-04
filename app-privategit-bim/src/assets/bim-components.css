@@ -194,6 +194,13 @@ cds-side-nav-menu-item a.bim-nav-link {
   color: var(--bim-accent, #164679);
   font-weight: 700;
 }
+/* IFC class names/codes (e.g. "IfcSpatialElement") must keep their real
+   mixed case — the chip's uppercase transform was making "IFC
+   IfcSpatialElement" render as "IFC IFCSPATIALELEMENT," an unreadable,
+   doubled-looking mash-up (2026-07-04 audit finding). */
+.bim-chip code {
+  text-transform: none;
+}
 .bim-chip--accent {
   background: #fff;
   border-color: var(--bim-accent, #164679);
