@@ -14,8 +14,6 @@ pub fn origin_badge(component_groups: &[(String, Vec<String>)], slug: &str) -> O
         "GIS-origin component"
     } else if label.contains("wiki engine") {
         "Wiki-origin component"
-    } else if label.contains("BIM product family") {
-        "BIM-origin component"
     } else {
         return None;
     };
