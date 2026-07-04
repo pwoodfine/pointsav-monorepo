@@ -3,28 +3,27 @@
  * SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
  */
 
-/* tokens.css — Adobe Spectrum docs-chrome grammar, Woodfine drafting-blue
-   accent, AEC-differentiated identity. Replaces the 2026-07-02 exact-match
-   to home.woodfinegroup.com's brand tokens: this catalog now deliberately
-   diverges from home.woodfinegroup.com's own Oswald/Nunito Sans/navy system
-   (which itself was a wiki-adjacent redesign choice, per BRIEF-app-privategit-bim.md)
-   in favour of the researched Spectrum-chrome + AEC-marker direction —
-   see .agent/sub-agent-results/RD.7-visual-direction-synthesis-2026-07-03.md
-   for the full decision record and rationale (color-collision analysis,
-   14/15 bankers'-distinguishability score, single-accent-discipline rule). */
+/* tokens.css — family continuity with home.woodfinegroup.com (2026-07-04).
+   Reverses the 2026-07-03 RD.7 Spectrum-chrome decision (drafting-blue
+   #1A4480, deliberate differentiation-by-color from the rest of the
+   Woodfine/PointSav network) per explicit operator direction: this catalog
+   should read as part of the same family, not a deliberately different
+   product. Values below are copied directly from home.woodfinegroup.com's
+   live tokens.css (its --m-navy-700/--m-navy-600/--m-navy-100/--m-ink-900/
+   --m-grey-50/--m-grey-200 primitives), not approximated. Differentiation
+   now comes from real content grounding (the "Anatomy of a Key Plan" hero)
+   rather than a different palette — see BRIEF-app-privategit-bim.md. */
 
 :root {
-  /* #1A4480 drafting-document blue — confirmed per RD.7 §1, not adjusted.
+  /* #164679 — home.woodfinegroup.com's real brand navy (--m-navy-700).
      Sole interactive accent on the site: buttons, active-nav border, focus
-     rings, link text, chip accents, hero SVG stroke. Never IBM Carbon's
-     #0f62fe — single-accent discipline is itself part of the distinguishing
-     signature against design.pointsav.com's two-blue Carbon system. */
-  --bim-accent:           #1A4480;
-  --bim-accent-hover:     #133360;
-  --bim-accent-active:    #0F2848;
-  --bim-accent-subtle:    #E8EEF8;
+     rings, link text, chip accents. */
+  --bim-accent:           #164679;
+  --bim-accent-hover:     #1D5795;  /* home.woodfinegroup.com's --m-navy-600, its own hover/active value */
+  --bim-accent-active:    #10365C;  /* home.woodfinegroup.com's --m-navy-800 */
+  --bim-accent-subtle:    #E8EEF5;  /* home.woodfinegroup.com's --m-navy-100, selected/active row tint */
 
-  --bim-fg:               #101828;
+  --bim-fg:               #111827;  /* home.woodfinegroup.com's --m-ink-900 */
   --bim-fg-secondary:     #344054;
   --bim-fg-muted:         #667085;
   /* WCAG AA fix (2026-07-03 audit): #98A2B3 measured ~2.2-2.6:1 on white/
@@ -37,10 +36,10 @@
   --bim-border-subtle:    #E5E7EB;
   --bim-border-strong:    #98A2B3;
 
-  --bim-bg-page:          #FAFBFC;
+  --bim-bg-page:          #F7F9FA;  /* home.woodfinegroup.com's --m-grey-50 */
   --bim-bg-surface:       #FFFFFF;
-  --bim-bg-sidebar:       #EFEFEF;
-  --bim-bg-subtle:        #EFEFEF;
+  --bim-bg-sidebar:       #E6E7E8;  /* home.woodfinegroup.com's --m-grey-200 */
+  --bim-bg-subtle:        #E6E7E8;
   --bim-bg-panel:         #E8E8E8;  /* tab bar / preview-frame header band */
   --bim-bg-tertiary:      #E8E8E8;
   --bim-bg-code:          #1A1A1A; /* dark in both themes */
