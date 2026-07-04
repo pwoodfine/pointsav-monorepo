@@ -2,7 +2,7 @@ use anyhow::Result;
 use axum::{
     body::Body,
     extract::{ConnectInfo, Path, Query, State},
-    http::{header, HeaderMap, StatusCode},
+    http::{header, HeaderMap, HeaderName, HeaderValue, StatusCode},
     response::{IntoResponse, Json, Redirect, Response},
     routing::{get, post},
     Router,
@@ -20,6 +20,13 @@ use std::{
 };
 use tokio::fs::File;
 use tokio_util::io::ReaderStream;
+use tower_http::set_header::SetResponseHeaderLayer;
+
+// Security headers applied to every response. No Content-Security-Policy here —
+// this server returns only JSON and binary/file downloads, never HTML, so CSP has
+// no meaningful surface; X-Content-Type-Options matters most, to stop a served
+// binary from being MIME-sniffed and executed in a browser context.
+const HSTS_VALUE: &str = "max-age=63072000; includeSubDomains";
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
@@ -637,6 +644,22 @@ async fn main() -> Result<()> {
             "/admin/reload-revocation-list",
             post(reload_revocation_list),
         )
+        .layer(SetResponseHeaderLayer::overriding(
+            HeaderName::from_static("strict-transport-security"),
+            HeaderValue::from_static(HSTS_VALUE),
+        ))
+        .layer(SetResponseHeaderLayer::overriding(
+            HeaderName::from_static("x-content-type-options"),
+            HeaderValue::from_static("nosniff"),
+        ))
+        .layer(SetResponseHeaderLayer::overriding(
+            HeaderName::from_static("x-frame-options"),
+            HeaderValue::from_static("DENY"),
+        ))
+        .layer(SetResponseHeaderLayer::overriding(
+            HeaderName::from_static("referrer-policy"),
+            HeaderValue::from_static("strict-origin-when-cross-origin"),
+        ))
         .with_state(state);
 
     tracing::info!("app-privategit-source listening on {bind_addr}");

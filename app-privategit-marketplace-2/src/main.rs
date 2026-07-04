@@ -1,7 +1,7 @@
 use anyhow::Result;
 use axum::{
     extract::{Path, Query, State},
-    http::{header, StatusCode},
+    http::{header, HeaderName, HeaderValue, StatusCode},
     response::{IntoResponse, Json, Redirect, Response},
     routing::{get, post},
     Router,
@@ -14,6 +14,19 @@ use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::{fs, path::PathBuf, process::Command, sync::Arc};
 use tower_http::services::ServeDir;
+use tower_http::set_header::SetResponseHeaderLayer;
+
+// Security headers applied to every response. CSP allows 'unsafe-inline' for
+// script-src/style-src because this crate's own architecture serves CSS and a
+// couple of small interactive scripts (SHA256 verification fetch, install-command
+// copy) as inline <style>/<script> blocks rather than external assets (see
+// ui::layout::head, ui::product_detail, ui::catalog) — there are no nonces or
+// hashes wired through the render pipeline to tighten this further, and no
+// external CDN/font dependency that would need its own allowance.
+const HSTS_VALUE: &str = "max-age=63072000; includeSubDomains";
+const CSP_VALUE: &str = "default-src 'self'; script-src 'self' 'unsafe-inline'; \
+    style-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; \
+    base-uri 'self'";
 
 mod ui;
 use ui::SoftwareSurface;
@@ -1234,6 +1247,26 @@ async fn main() -> Result<()> {
         .route("/order/:tx_hash", get(order_status_page))
         .route("/order/:tx_hash/download", get(order_download))
         .nest_service("/static", ServeDir::new(static_dir))
+        .layer(SetResponseHeaderLayer::overriding(
+            HeaderName::from_static("strict-transport-security"),
+            HeaderValue::from_static(HSTS_VALUE),
+        ))
+        .layer(SetResponseHeaderLayer::overriding(
+            HeaderName::from_static("x-content-type-options"),
+            HeaderValue::from_static("nosniff"),
+        ))
+        .layer(SetResponseHeaderLayer::overriding(
+            HeaderName::from_static("x-frame-options"),
+            HeaderValue::from_static("DENY"),
+        ))
+        .layer(SetResponseHeaderLayer::overriding(
+            HeaderName::from_static("referrer-policy"),
+            HeaderValue::from_static("strict-origin-when-cross-origin"),
+        ))
+        .layer(SetResponseHeaderLayer::overriding(
+            HeaderName::from_static("content-security-policy"),
+            HeaderValue::from_static(CSP_VALUE),
+        ))
         .with_state(state);
 
     tracing::info!("app-privategit-marketplace-2 listening on {bind_addr}");
