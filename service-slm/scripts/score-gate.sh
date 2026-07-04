@@ -96,6 +96,10 @@ PROBES=20
 PASS_RATE_THRESHOLD="0.8"
 DRY_RUN=0
 RESULT_FILE="${RESULT_FILE:-${FOUNDRY_ROOT}/data/adapters/score-gate-result.json}"
+# Archive-scoped, matching eval-adapter.sh's REGISTRY exactly — NOT the same
+# directory as RESULT_FILE above, which is workspace-shared, not archive-local.
+ARCHIVE_ROOT="${ARCHIVE_ROOT:-${FOUNDRY_ROOT}/clones/project-totebox}"
+REGISTRY="${REGISTRY:-${ARCHIVE_ROOT}/data/adapters/registry.yaml}"
 
 # ── Argument parse ────────────────────────────────────────────────────────────
 
@@ -346,11 +350,12 @@ log ""
 log "=== Aggregating results ==="
 
 python3 - "${_ROW_RESULTS_FILE}" "${PASS_RATE_THRESHOLD}" "${_SAMPLE_COUNT}" \
-         "${ADAPTER_PATH}" "${RESULT_FILE}" "${ENDPOINT}" <<'PYEOF'
-import json, sys
+         "${ADAPTER_PATH}" "${RESULT_FILE}" "${ENDPOINT}" "${REGISTRY}" "${_CANONICAL_BASE}" <<'PYEOF'
+import json, sys, os
 from datetime import datetime, timezone
 
-rows_file, pass_rate_threshold, probes_run, adapter_path, result_file, endpoint = sys.argv[1:7]
+(rows_file, pass_rate_threshold, probes_run, adapter_path, result_file, endpoint,
+ registry_path, canonical_base) = sys.argv[1:9]
 pass_rate_threshold = float(pass_rate_threshold)
 probes_run = int(probes_run)
 
@@ -400,8 +405,44 @@ result = {
 with open(result_file, "w") as f:
     json.dump(result, f, indent=2)
 
+# Record this gate attempt in the archive's adapter registry — reuses
+# eval-adapter.sh's existing flat-list schema verbatim (name/adapter_dir/
+# base_model/eval_pass_at5/promoted/notes) rather than inventing a new one or
+# the incompatible map-keyed adapter-hub crate schema; that reconciliation is
+# a separate, already-tracked P1 item, not done here. Written regardless of
+# pass/fail — a FAIL is still a real, worth-recording data point.
+import yaml
+
+os.makedirs(os.path.dirname(registry_path), exist_ok=True)
+if os.path.exists(registry_path):
+    with open(registry_path) as rf:
+        reg = yaml.safe_load(rf) or {}
+else:
+    reg = {}
+
+adapters = reg.get("adapters") or []
+adapter_name = os.path.basename(adapter_path.rstrip("/"))
+
+registry_entry = {
+    "name": adapter_name,
+    "adapter_dir": adapter_path,
+    "base_model": canonical_base,
+    "eval_pass_at5": round(diff_parse_rate, 3),
+    "promoted": recommend_promotion,
+    "notes": (
+        f"registered by score-gate.sh — diff_parse={round(diff_parse_rate, 3)} "
+        f"git_apply={round(git_apply_rate, 3)} envelope={round(envelope_rate, 3)}"
+    ),
+}
+adapters.append(registry_entry)
+reg["adapters"] = adapters
+
+with open(registry_path, "w") as rf:
+    yaml.safe_dump(reg, rf, default_flow_style=False, sort_keys=False)
+
 print(json.dumps({k: v for k, v in result.items() if k != "rows"}, indent=2))
 print(f"\n({n} per-row results also written to {result_file})", file=sys.stderr)
+print(f"Registered {adapter_name} in {registry_path} (promoted={recommend_promotion})", file=sys.stderr)
 
 sys.exit(0 if recommend_promotion else 1)
 PYEOF

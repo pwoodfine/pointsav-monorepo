@@ -191,6 +191,7 @@ log "=== Phase 4: delta computation ==="
 
 _DELTA_COUNT=0
 _NULL_COUNT=0
+_BOTH_EMPTY_COUNT=0
 _PROBES_RUN="${_EFFECTIVE_PROBES}"
 
 _i=0
@@ -199,10 +200,13 @@ while [[ "${_i}" -lt "${_EFFECTIVE_PROBES}" ]]; do
     _adpt="${ADAPTER_OUTPUTS[${_i}]:-}"
 
     # Non-trivial delta: outputs differ after stripping whitespace.
-    # Both empty counts as null delta (adapter may not have responded).
+    # Both empty counts as null delta (adapter may not have responded) but is
+    # tracked separately too — it usually means inference failed/timed out
+    # under host contention, not that the adapter is a genuine no-op.
     if [[ -z "${_base}" && -z "${_adpt}" ]]; then
         log "  probe $((${_i}+1)): NULL (both empty — inference failed)"
         _NULL_COUNT=$((_NULL_COUNT + 1))
+        _BOTH_EMPTY_COUNT=$((_BOTH_EMPTY_COUNT + 1))
     elif [[ "${_base}" == "${_adpt}" ]]; then
         log "  probe $((${_i}+1)): NULL DELTA (identical output)"
         _NULL_COUNT=$((_NULL_COUNT + 1))
@@ -217,7 +221,7 @@ log ""
 log "=== Results ==="
 log "  probes_run:   ${_PROBES_RUN}"
 log "  delta_count:  ${_DELTA_COUNT} (non-trivial base vs adapter difference)"
-log "  null_count:   ${_NULL_COUNT} (adapter output identical to base)"
+log "  null_count:   ${_NULL_COUNT} (adapter output identical to base, of which ${_BOTH_EMPTY_COUNT} both-empty/inference-failed — see both_empty_count)"
 log "  pass_threshold: >= ${PASS_THRESHOLD} deltas required"
 log "  fail_threshold: >= ${FAIL_THRESHOLD} null deltas = FAIL"
 
@@ -262,6 +266,7 @@ result = {
     "probes_run": ${_PROBES_RUN},
     "delta_count": ${_DELTA_COUNT},
     "null_count": ${_NULL_COUNT},
+    "both_empty_count": ${_BOTH_EMPTY_COUNT},
     "timestamp": "${_TS}",
     "protocol": "scratch-scale-toggle",
     "adapter_path": "${ADAPTER_PATH}",
