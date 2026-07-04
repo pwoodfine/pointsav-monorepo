@@ -209,6 +209,21 @@ header a { color: #fff; text-decoration: none; font-size: 0.875rem; font-weight:
 /* Visual token gallery (P0.2) */
 .tg-tier { margin-bottom: 2.5rem; }
 .tg-tier h2 { font-size: 1.5rem; font-weight: 400; margin-bottom: 1rem; }
+/* Phase 4 — /adoption page (browse.rs::adoption_page). */
+.adoption-lede { max-width: 65ch; color: var(--cds-text-secondary); margin-bottom: 2rem; }
+.adoption-group {
+  border: 1px solid var(--cds-border-subtle); border-radius: var(--cds-radius-md);
+  padding: 1.25rem 1.5rem; margin-bottom: 1.25rem; background: var(--cds-layer);
+}
+.adoption-group--home { border-color: var(--cds-interactive); }
+.adoption-group h2 { font-size: 1.125rem; font-weight: 600; margin-bottom: 0.25rem; }
+.adoption-count { font-size: 0.875rem; color: var(--cds-text-secondary); margin-bottom: 0.75rem; }
+.adoption-desc { font-size: 0.875rem; color: var(--cds-text-secondary); }
+.adoption-slugs { display: flex; flex-wrap: wrap; gap: 0.5rem; list-style: none; padding: 0; margin: 0; }
+.adoption-slugs li a {
+  display: inline-block; padding: 0.25rem 0.625rem; border-radius: var(--cds-radius-sm);
+  background: var(--cds-selected-background); color: var(--cds-selected-text); font-size: 0.8125rem;
+}
 .tg-group { margin-bottom: 1.5rem; }
 .tg-group h3 { font-size: 1rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--cds-text-secondary); }
 .tg-entries { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 0.75rem; }
