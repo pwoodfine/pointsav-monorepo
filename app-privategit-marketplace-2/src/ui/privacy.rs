@@ -11,6 +11,8 @@
 
 use maud::{html, Markup};
 
+use super::surface::SoftwareSurface;
+
 /// The full self-contained privacy page (`GET /page/privacy`).
 pub fn privacy_markup() -> Markup {
     html! {
@@ -69,12 +71,7 @@ pub fn privacy_markup() -> Markup {
             hr;
 
             p."sw-legal__copyright" { "\u{00a9} 2026 Woodfine Capital Projects Inc. All rights reserved." }
-            p."sw-legal__trademark" {
-                "PointSav Digital Systems\u{2122}, Totebox Orchestration\u{2122}, and "
-                "Totebox Archive\u{2122} are trademarks of Woodfine Capital Projects Inc., "
-                "used in Canada, the United States, Latin America, and Europe. All other "
-                "trademarks are the property of their respective owners."
-            }
+            p."sw-legal__trademark" { (SoftwareSurface::Marketplace.trademark_line()) }
         }
     }
 }
