@@ -23,6 +23,7 @@
 //! importing it, to avoid a circular or cross-crate dependency at build time.
 
 mod characterize;
+mod deposit;
 mod fsl_clock;
 
 use std::collections::{BTreeMap, HashSet};
@@ -46,6 +47,13 @@ fn main() {
         }
         return;
     }
+    if subcommand == Some("deposit") {
+        if let Err(e) = deposit::run(&args[2..]) {
+            eprintln!("[-] FATAL: {e}");
+            std::process::exit(1);
+        }
+        return;
+    }
     let paths: Vec<PathBuf> = if subcommand == Some("check-content") {
         args[2..].iter().map(PathBuf::from).collect()
     } else if args.len() > 1 && subcommand != Some("check-content") {
@@ -56,6 +64,7 @@ fn main() {
         eprintln!("       cargo xtask <path1> [path2] ...");
         eprintln!("       cargo xtask characterize …  (characterization harness)");
         eprintln!("       cargo xtask fsl-clock <products.yaml>  (FSL conversion clock)");
+        eprintln!("       cargo xtask deposit …       (release binary + manifest deposit)");
         std::process::exit(2);
     };
 
@@ -69,8 +78,6 @@ fn main() {
         if !p.is_dir() {
             eprintln!("error: not a directory: {}", p.display());
             std::process::exit(2);
-        }
-    }
 
     let (dead_links, missing_fields, total) = check_content(&paths);
 
