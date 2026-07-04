@@ -67,25 +67,26 @@ window.addEventListener('popstate', () => {
   navigate(location.pathname);
 });
 
-// ── Mobile nav toggle ────────────────────────────────────────────────────────
-
-function closeMobileNav() {
-  document.querySelector('.bim-side-nav')?.classList.remove('bim-side-nav--open');
-  document.querySelector('.bim-topbar__toggle')?.setAttribute('aria-expanded', 'false');
-}
+// ── Envelope jurisdiction-overlay toggle ────────────────────────────────────
+// Homepage envelope diagram: switches which pre-rendered overlay-state frame
+// is visible (municipal / +provincial / +accessibility). Each frame is a
+// complete SVG (render::envelope generates one per state) rather than one
+// shared SVG with toggled sub-groups, since the tiers' shapes genuinely
+// differ between states, not just their visibility.
 
 document.addEventListener('click', (e) => {
-  const toggle = e.target.closest('.bim-topbar__toggle');
-  if (toggle) {
-    const nav = document.querySelector('.bim-side-nav');
-    const isOpen = nav?.classList.toggle('bim-side-nav--open');
-    toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-    return;
-  }
-  // Close the mobile drawer whenever a nav link is followed.
-  if (e.target.closest('.bim-side-nav [data-path], .bim-side-nav .bim-nav-link')) {
-    closeMobileNav();
-  }
+  const btn = e.target.closest('.bim-envelope__overlay-btn');
+  if (!btn) return;
+  const key = btn.dataset.overlayTarget;
+  const envelope = btn.closest('.bim-envelope');
+  if (!envelope) return;
+  envelope.setAttribute('data-active-overlay', key);
+  envelope.querySelectorAll('.bim-envelope__frame').forEach((frame) => {
+    frame.hidden = frame.dataset.overlay !== key;
+  });
+  envelope.querySelectorAll('.bim-envelope__overlay-btn').forEach((b) => {
+    b.setAttribute('aria-pressed', b === btn ? 'true' : 'false');
+  });
 });
 
 // ── Theme toggle ──────────────────────────────────────────────────────────

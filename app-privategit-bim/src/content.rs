@@ -277,24 +277,21 @@ pub struct PageSection {
 }
 
 pub struct PageContent {
-    pub fields: HashMap<String, String>,
     pub sections: Vec<PageSection>,
 }
 
-impl PageContent {
-    pub fn field(&self, key: &str) -> String {
-        self.fields.get(key).cloned().unwrap_or_default()
-    }
-}
-
-/// Load a `site-content/pages/<name>.md` file: frontmatter scalars plus a
-/// body split on `## ` headings into (heading, rendered-html) sections.
+/// Load a `site-content/pages/<name>.md` file: a body split on `## `
+/// headings into (heading, rendered-html) sections. Any frontmatter
+/// scalars are parsed and discarded — the last reader of per-field
+/// frontmatter (the pre-2026-07-03 hero eyebrow/statline/lead) was removed
+/// when the homepage became the Envelope-as-Navigation diagram; this file's
+/// own frontmatter fields are unused now, not an error.
 pub fn load_page(site_content_dir: &Path, name: &str) -> Option<PageContent> {
     let path = site_content_dir.join("pages").join(format!("{name}.md"));
     let raw = fs::read_to_string(&path)
         .map_err(|e| eprintln!("warn: failed to read page {path:?}: {e}"))
         .ok()?;
-    let (fields, body) = parse_frontmatter(&raw);
+    let (_fields, body) = parse_frontmatter(&raw);
 
     let mut sections = Vec::new();
     let mut current_heading: Option<String> = None;
@@ -321,26 +318,6 @@ pub fn load_page(site_content_dir: &Path, name: &str) -> Option<PageContent> {
         });
     }
 
-    Some(PageContent { fields, sections })
+    Some(PageContent { sections })
 }
 
-/// Renders `site-content/pages/important-information.md` for the footer
-/// disclosure band. Read at request time rather than required at startup
-/// (unlike about/home/disclaimers) — this is compliance-sensitive text that
-/// counsel may edit independently of a release, and a temporary read
-/// failure should degrade to a safe default rather than take the whole
-/// site down. Mirrors the fallback pattern in the reference wiki engine
-/// (app-mediakit-knowledge's compliance_band()).
-pub fn render_important_information(site_content_dir: &Path) -> String {
-    let path = site_content_dir.join("pages").join("important-information.md");
-    match fs::read_to_string(&path) {
-        Ok(raw) => render_markdown(raw.trim()),
-        Err(_) => render_markdown(
-            "This site presents records maintained by Woodfine Capital Projects Inc. \
-             The information is provided for general information only and does not \
-             constitute an offer, solicitation, or professional advice. Statements \
-             regarding planned or intended future capabilities are forward-looking and \
-             subject to change without notice.",
-        ),
-    }
-}
