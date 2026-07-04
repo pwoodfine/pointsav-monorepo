@@ -40,15 +40,26 @@
 # boolean (secondary quality signal, not a correctness signal). Adjustable via
 # --pass-rate; not load-bearing product policy, just this script's default.
 #
-# Held-out set: /srv/foundry/data/corpus/eval/holdout.jsonl (76 rows, each with
-# an `instruction` field built the same way export-sft.py's build_instruction()
-# builds training prompts — apprenticeship shadow-brief body + scope +
-# acceptance_test). Stratified sample by task_type when the requested probe
-# count is smaller than the full set.
+# Held-out set: defaults to eval-prepare.py's fresh output
+# (data/training-corpus/eval/holdout-v1.jsonl, 388 rows, `prompt`/`expected`
+# schema — `prompt` is already fully formatted). Reconciled 2026-07-04: this
+# script previously defaulted to the older, stale
+# data/corpus/eval/holdout.jsonl (76 rows, `instruction`/`brief_id`/`task_type`
+# schema, built the same way export-sft.py's build_instruction() builds
+# training prompts) — both schemas are still supported (pass --holdout to use
+# the old file), since `expected`/`output` were never read by the scoring
+# logic below anyway (diff-parse/git-apply-check/envelope-format all operate
+# on the model's own completion alone, no ground-truth comparison needed).
+# Stratified sample by task_type when present and the requested probe count
+# is smaller than the full set; the new schema carries no task_type, so rows
+# fall into one bucket and sampling is a deterministic first-N instead —
+# still reproducible, just not stratified.
 #
 # Prompt format: matches run-sft-training.py's format_alpaca_prompt() exactly
 # ("### Instruction:\n{instruction}\n\n### Response:\n") — the model was
-# trained on this template; anything else is an unfair probe.
+# trained on this template; anything else is an unfair probe. The new
+# schema's `prompt` field is already in this exact format; the old schema's
+# `instruction` field gets wrapped in the template at probe-generation time.
 #
 # Usage:
 #   score-gate.sh --adapter-path <path> [--holdout <jsonl>] [--probes N]
@@ -91,7 +102,9 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/_gate-common.sh"
 
 ADAPTER_PATH=""
 BASE_MODEL="${SLM_GATE_BASE_MODEL:-}"
-HOLDOUT="${SLM_GATE_HOLDOUT:-${FOUNDRY_ROOT}/data/corpus/eval/holdout.jsonl}"
+# Workspace-shared path (not archive-local) — matches where eval-prepare.py
+# actually writes it, confirmed via `find` before wiring this default.
+HOLDOUT="${SLM_GATE_HOLDOUT:-${FOUNDRY_ROOT}/data/training-corpus/eval/holdout-v1.jsonl}"
 PROBES=20
 PASS_RATE_THRESHOLD="0.8"
 DRY_RUN=0
@@ -206,28 +219,35 @@ _ROW_RESULTS_FILE="$(mktemp /tmp/score-gate-rows-XXXXXX.jsonl)"
 
 _i=0
 while [[ "${_i}" -lt "${_SAMPLE_COUNT}" ]]; do
-    _instruction="$(python3 -c "
+    # New schema (prompt/expected) carries an already-formatted `prompt`; old
+    # schema (instruction/input/output/task_type/brief_id) needs the template
+    # applied here. Read all four possible fields in one call; bash below
+    # picks whichever the row actually has.
+    _row_fields="$(python3 -c "
 import json
 rows = json.load(open('${_SAMPLE_FILE}'))
-print(json.dumps(rows[${_i}].get('instruction', '')))
+row = rows[${_i}]
+print(json.dumps({
+    'prompt': row.get('prompt', ''),
+    'instruction': row.get('instruction', ''),
+    'brief_id': row.get('brief_id', '?'),
+    'task_type': row.get('task_type', '?'),
+}))
 ")"
-    _brief_id="$(python3 -c "
-import json
-rows = json.load(open('${_SAMPLE_FILE}'))
-print(rows[${_i}].get('brief_id', '?'))
-")"
-    _task_type="$(python3 -c "
-import json
-rows = json.load(open('${_SAMPLE_FILE}'))
-print(rows[${_i}].get('task_type', '?'))
-")"
+    _prompt_field="$(python3 -c "import json,sys; print(json.loads(sys.argv[1])['prompt'])" "${_row_fields}")"
+    _brief_id="$(python3 -c "import json,sys; print(json.loads(sys.argv[1])['brief_id'])" "${_row_fields}")"
+    _task_type="$(python3 -c "import json,sys; print(json.loads(sys.argv[1])['task_type'])" "${_row_fields}")"
 
-    _instruction_text="$(python3 -c "import json,sys; print(json.loads(sys.argv[1]))" "${_instruction}")"
-    _prompt="### Instruction:
+    if [[ -n "${_prompt_field}" ]]; then
+        _prompt="${_prompt_field}"
+    else
+        _instruction_text="$(python3 -c "import json,sys; print(json.loads(sys.argv[1])['instruction'])" "${_row_fields}")"
+        _prompt="### Instruction:
 ${_instruction_text}
 
 ### Response:
 "
+    fi
 
     log "  probe $((_i+1))/${_SAMPLE_COUNT} [${_task_type}] ${_brief_id}"
 
@@ -350,14 +370,16 @@ log ""
 log "=== Aggregating results ==="
 
 python3 - "${_ROW_RESULTS_FILE}" "${PASS_RATE_THRESHOLD}" "${_SAMPLE_COUNT}" \
-         "${ADAPTER_PATH}" "${RESULT_FILE}" "${ENDPOINT}" "${REGISTRY}" "${_CANONICAL_BASE}" <<'PYEOF'
+         "${ADAPTER_PATH}" "${RESULT_FILE}" "${ENDPOINT}" "${REGISTRY}" "${_CANONICAL_BASE}" \
+         "${DRY_RUN}" <<'PYEOF'
 import json, sys, os
 from datetime import datetime, timezone
 
 (rows_file, pass_rate_threshold, probes_run, adapter_path, result_file, endpoint,
- registry_path, canonical_base) = sys.argv[1:9]
+ registry_path, canonical_base, dry_run) = sys.argv[1:10]
 pass_rate_threshold = float(pass_rate_threshold)
 probes_run = int(probes_run)
+dry_run = dry_run == "1"
 
 rows = []
 with open(rows_file) as f:
@@ -410,39 +432,46 @@ with open(result_file, "w") as f:
 # base_model/eval_pass_at5/promoted/notes) rather than inventing a new one or
 # the incompatible map-keyed adapter-hub crate schema; that reconciliation is
 # a separate, already-tracked P1 item, not done here. Written regardless of
-# pass/fail — a FAIL is still a real, worth-recording data point.
-import yaml
-
-os.makedirs(os.path.dirname(registry_path), exist_ok=True)
-if os.path.exists(registry_path):
-    with open(registry_path) as rf:
-        reg = yaml.safe_load(rf) or {}
+# pass/fail — a FAIL is still a real, worth-recording data point. Skipped
+# entirely in --dry-run: no real inference happened, so there is nothing
+# genuine to record (dry-run's placeholder completion would otherwise
+# pollute the registry with fake scores, as it did before this guard).
+if dry_run:
+    print("(dry-run — registry not updated)", file=sys.stderr)
 else:
-    reg = {}
+    import yaml
 
-adapters = reg.get("adapters") or []
-adapter_name = os.path.basename(adapter_path.rstrip("/"))
+    os.makedirs(os.path.dirname(registry_path), exist_ok=True)
+    if os.path.exists(registry_path):
+        with open(registry_path) as rf:
+            reg = yaml.safe_load(rf) or {}
+    else:
+        reg = {}
 
-registry_entry = {
-    "name": adapter_name,
-    "adapter_dir": adapter_path,
-    "base_model": canonical_base,
-    "eval_pass_at5": round(diff_parse_rate, 3),
-    "promoted": recommend_promotion,
-    "notes": (
-        f"registered by score-gate.sh — diff_parse={round(diff_parse_rate, 3)} "
-        f"git_apply={round(git_apply_rate, 3)} envelope={round(envelope_rate, 3)}"
-    ),
-}
-adapters.append(registry_entry)
-reg["adapters"] = adapters
+    adapters = reg.get("adapters") or []
+    adapter_name = os.path.basename(adapter_path.rstrip("/"))
 
-with open(registry_path, "w") as rf:
-    yaml.safe_dump(reg, rf, default_flow_style=False, sort_keys=False)
+    registry_entry = {
+        "name": adapter_name,
+        "adapter_dir": adapter_path,
+        "base_model": canonical_base,
+        "eval_pass_at5": round(diff_parse_rate, 3),
+        "promoted": recommend_promotion,
+        "notes": (
+            f"registered by score-gate.sh — diff_parse={round(diff_parse_rate, 3)} "
+            f"git_apply={round(git_apply_rate, 3)} envelope={round(envelope_rate, 3)}"
+        ),
+    }
+    adapters.append(registry_entry)
+    reg["adapters"] = adapters
+
+    with open(registry_path, "w") as rf:
+        yaml.safe_dump(reg, rf, default_flow_style=False, sort_keys=False)
+
+    print(f"Registered {adapter_name} in {registry_path} (promoted={recommend_promotion})", file=sys.stderr)
 
 print(json.dumps({k: v for k, v in result.items() if k != "rows"}, indent=2))
 print(f"\n({n} per-row results also written to {result_file})", file=sys.stderr)
-print(f"Registered {adapter_name} in {registry_path} (promoted={recommend_promotion})", file=sys.stderr)
 
 sys.exit(0 if recommend_promotion else 1)
 PYEOF
