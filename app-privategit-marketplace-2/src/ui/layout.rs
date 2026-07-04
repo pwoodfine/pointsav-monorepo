@@ -409,16 +409,17 @@ mod tests {
             assert!(page.contains(c), "missing footer city {c}");
         }
 
-        // All six canonical TRADEMARK.md marks present (regression guard, 2026-07-02):
-        // project-knowledge flagged this crate's trademark line as using a superseded
-        // 3-mark PointSav-only subset that omitted half the canonical marks.
+        // All seven canonical TRADEMARK.md marks present (regression guard,
+        // corrected 2026-07-04 — the prior version of this test asserted six
+        // fabricated marks that TRADEMARK.md never actually contained).
         for mark in [
-            "Woodfine Capital Projects\u{2122}",
-            "MCorp\u{2122}",
-            "PointSav Digital Systems\u{2122}",
-            "Totebox Orchestration\u{2122}",
-            "Totebox Archive\u{2122}",
-            "Capability Geometry\u{2122}",
+            "PointSav\u{2122}",
+            "Foundry\u{2122}",
+            "ToteboxOS\u{2122}",
+            "ConsoleOS\u{2122}",
+            "OrchestrationOS\u{2122}",
+            "WorkplaceOS\u{2122}",
+            "WoodfineGroup\u{2122}",
         ] {
             assert!(page.contains(mark), "missing canonical mark {mark}");
         }

@@ -72,23 +72,26 @@ impl SoftwareSurface {
         }
     }
 
-    /// Verbatim trademark line — full canonical `TRADEMARK.md` mark list (all six
-    /// marks), not the shorter PointSav-brand-only subset this crate used until
-    /// 2026-07-02. **Correction:** flagged by project-knowledge (relayed via
-    /// Command, msg-id `command-20260702-important-information-footer-structure-w`)
-    /// — the shorter subset omits `Woodfine Capital Projects™`, `MCorp™`, and
-    /// `Capability Geometry™`, all of which are canonical marks per the current
-    /// `TRADEMARK.md`. The `app-mediakit-marketing-2` sibling made the identical
-    /// correction the same day ("an earlier per-brand shorter-subset design for
-    /// PointSav was superseded") — this crate follows suit. Do not paraphrase or
-    /// shorten again without checking `TRADEMARK.md` first; it has changed once
-    /// already this program.
+    /// Verbatim trademark line — the actual canonical mark list from `TRADEMARK.md`
+    /// (repo root): `PointSav™`, `Foundry™`, `ToteboxOS™`, `ConsoleOS™`,
+    /// `OrchestrationOS™`, `WorkplaceOS™`, `WoodfineGroup™`. **Correction, 2026-07-04
+    /// live-site audit:** a 2026-07-02 change here (msg-id
+    /// `command-20260702-important-information-footer-structure-w`) replaced the
+    /// original PointSav-only subset with a *different* six-mark set
+    /// ("Woodfine Capital Projects™, MCorp™, PointSav Digital Systems™, Totebox
+    /// Orchestration™, Totebox Archive™, Capability Geometry™") that its own doc
+    /// comment claimed was "per the current TRADEMARK.md" — `git log -- TRADEMARK.md`
+    /// shows that file has never contained any of those six strings. Several of them
+    /// read as internal Foundry-workspace session/architecture vocabulary (see
+    /// `AGENT.md` §11), not product trademarks. This restores the line to what
+    /// `TRADEMARK.md` actually says. Do not paraphrase or shorten again without
+    /// reading `TRADEMARK.md` directly — a claimed citation is not a substitute for
+    /// checking the file.
     pub fn trademark_line(self) -> &'static str {
-        "Woodfine Capital Projects\u{2122}, MCorp\u{2122}, PointSav Digital Systems\u{2122}, \
-         Totebox Orchestration\u{2122}, Totebox Archive\u{2122}, and Capability Geometry\u{2122} \
-         are trademarks of Woodfine Capital Projects Inc., used in Canada, the United States, \
-         Latin America, and Europe. All other trademarks are the property of their respective \
-         owners."
+        "PointSav\u{2122}, Foundry\u{2122}, ToteboxOS\u{2122}, ConsoleOS\u{2122}, \
+         OrchestrationOS\u{2122}, WorkplaceOS\u{2122}, and WoodfineGroup\u{2122} \
+         are trademarks of Woodfine Capital Projects Inc. and Woodfine Management Corp. \
+         All other trademarks are the property of their respective owners."
     }
 
     /// Copyright holder — the parent company, for every surface.
