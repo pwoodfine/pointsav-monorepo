@@ -33,6 +33,7 @@ pub fn build_router(state: AppState) -> Router {
         .route("/vault/:section/:slug/:tab/raw", get(edit::get_raw))
         .route("/vault/:section/:slug/:tab", put(edit::put_save))
         .route("/ai/session", post(ai::post_session))
+        .route("/mcp", post(crate::mcp::mcp_handler))
         .nest_service("/static", ServeDir::new(static_dir))
         .with_state(state)
 }
