@@ -42,13 +42,6 @@ pub async fn index(State(state): State<AppState>) -> Html<String> {
             vault::to_title(section),
         ));
     }
-    // P3 follow-up — surface Design Tokens & Bundles as a headline CTA, not a link
-    // buried in the footer or a sentence of prose. Not a vault section, so it's added
-    // here rather than driven by `vault::SECTIONS`.
-    cards.push_str(
-        "<a class=\"home-card home-card--cta\" href=\"/bundles/tokens\">\
-         <h2>Design Tokens &amp; Bundles</h2><p>Download the whole token graph</p></a>\n",
-    );
 
     let tiers = tokens_gallery::load_and_flatten(&state.vault);
     let token_count: usize = tiers
