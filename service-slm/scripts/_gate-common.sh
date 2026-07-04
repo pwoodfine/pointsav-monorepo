@@ -114,6 +114,18 @@ gate_common_init() {
         exit 3
     fi
 
+    # ── Host-contention pre-flight (non-blocking) ─────────────────────────────
+    # Production Tier A (llama-server :8080) competes for CPU with this script's
+    # scratch server + probes. A busy host doesn't invalidate the run, but it can
+    # produce empty/timed-out probes or inflated generation times that look like
+    # an adapter-quality finding when it's actually contention. Warn, don't abort.
+    _gc_load1="$(cut -d' ' -f1 /proc/loadavg 2>/dev/null || echo "?")"
+    if [[ "${_gc_load1}" != "?" ]] && [[ "${_gc_load1%.*}" -ge 4 ]] 2>/dev/null; then
+        log "WARNING: host load average ${_gc_load1} — production Tier A may be busy;"
+        log "         probe timing/empty-result rates in this run may reflect contention,"
+        log "         not adapter quality. Re-run when the host is quieter for a clean read."
+    fi
+
     # ── GGUF conversion (CPU-only, no GPU) ────────────────────────────────────
     _ADAPTER_GGUF="${ADAPTER_PATH%/}.gguf"
 
