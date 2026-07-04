@@ -6,6 +6,10 @@
 /* PointSav Design System portal layout (D6/D7).
    Depends on tokens.css for --cds-* custom properties. */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+/* <html> is the browser's actual root scrolling context — locking <body> alone
+   left <html> free to grow to fit body's content, which defeats the point of
+   locking body's height at all. Both need the same constraint. */
+html { height: 100%; overflow: hidden; }
 :focus-visible { outline: 2px solid var(--cds-focus); outline-offset: 2px; }
 .skip-link {
   position: absolute; top: -100%; left: 0; z-index: 1000;
@@ -29,10 +33,17 @@ body {
   font-size: 16px; line-height: 1.5;
   color: var(--cds-text-primary);
   background: var(--cds-background);
-  display: flex; flex-direction: column; min-height: 100vh;
+  display: flex; flex-direction: column;
+  /* Root cause of the sidebar/content-height mismatch: min-height alone lets the
+     page grow past the viewport to fit whichever column is taller, so .layout's
+     overflow:hidden and .sidebar/.main's overflow-y:auto below never actually
+     activate — recurs on every content-light page as the sidebar grows. A hard
+     height locks the box so the two columns become genuinely independent scroll
+     panes. min-height kept as a fallback for browsers without dvh support. */
+  min-height: 100vh; height: 100dvh; overflow: hidden;
 }
 header {
-  height: 48px; background: var(--cds-background-brand); color: #fff;
+  height: var(--cds-header-height); background: var(--cds-background-brand); color: #fff;
   display: flex; align-items: center; padding: 0 1.5rem;
   flex-shrink: 0; position: sticky; top: 0; z-index: 100;
 }
@@ -73,7 +84,10 @@ header a { color: #fff; text-decoration: none; font-size: 0.875rem; font-weight:
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
   overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
 }
-.layout { display: flex; flex: 1; overflow: hidden; }
+/* min-height:0 overrides the flex-item default of min-height:auto, which
+   otherwise lets a flex child refuse to shrink below its content's natural
+   height — the actual reason html/body's overflow:hidden lock didn't hold. */
+.layout { display: flex; flex: 1; min-height: 0; overflow: hidden; }
 .sidebar {
   width: 256px; flex-shrink: 0;
   background: var(--cds-sidebar-bg);
@@ -103,7 +117,7 @@ header a { color: #fff; text-decoration: none; font-size: 0.875rem; font-weight:
   background: var(--cds-selected-background);
   color: var(--cds-selected-text); font-weight: 600;
 }
-.main { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
+.main { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; }
 .tab-bar {
   display: flex; border-bottom: 1px solid var(--cds-border-subtle);
   background: var(--cds-background); flex-shrink: 0; padding: 0 2rem;
@@ -161,38 +175,51 @@ header a { color: #fff; text-decoration: none; font-size: 0.875rem; font-weight:
   font-size: var(--cds-type-label); font-weight: 600; letter-spacing: 0.08em;
   text-transform: uppercase; color: var(--cds-text-secondary); margin-bottom: var(--cds-space-3);
 }
+/* Weight 700 (not the old 500) now that Inter 700 is self-hosted — every other
+   heading-weight element on the page converges on 600, so nothing previously read as
+   genuinely "the boldest thing on the page." Font-size now consumes --cds-type-display
+   instead of a duplicate literal clamp(). */
 .home-body h1 {
-  font-size: clamp(1.75rem, 1.3rem + 1.8vw, 2.5rem); font-weight: 500; line-height: 1.2;
+  font-size: var(--cds-type-display); font-weight: 700; line-height: 1.2;
   max-width: 22ch; margin-bottom: var(--cds-space-6);
 }
 .home-lede { color: var(--cds-text-secondary); margin-bottom: var(--cds-space-5); max-width: 68ch; }
 .home-lede a { color: var(--cds-link-primary); }
-/* Live palette strip + badges as one bound "live token facts" unit (Phase 5 FABLE
-   review: unlabeled swatches floating between a paragraph and a pill row read as
-   decoration or broken images — a shared container + caption converts it into proof). */
-.home-token-facts {
-  padding: var(--cds-space-4) var(--cds-space-5); border: 1px solid var(--cds-border-subtle);
-  border-radius: var(--cds-radius-md); background: var(--cds-layer);
-  margin-bottom: var(--cds-space-7); display: inline-block;
+/* Part C (2026-07-04): the CTA is a real button, not a grid card competing with
+   wayfinding tiles — solid fill reads as an action, inline with the lede that names it.
+   Selector specificity (0,2,1) deliberately beats both `.content a` and `.home-lede a`
+   (each 0,1,1) — the exact invisible-blue-on-blue bug the earlier .home-card h2 fix
+   already caught once this session, recurring here since the button sits inside a
+   .home-lede paragraph. */
+.home-lede a.home-cta-button {
+  display: inline-flex; align-items: center; margin-left: 0.25rem;
+  padding: 0.2rem 0.75rem; border-radius: var(--cds-radius-md);
+  background: var(--cds-interactive); color: #fff; text-decoration: none;
+  font-weight: 600; white-space: nowrap;
 }
-.home-palette { display: flex; gap: var(--cds-space-3); margin-bottom: var(--cds-space-3); }
-.home-swatch {
-  width: 2.25rem; height: 2.25rem; border-radius: var(--cds-radius-md);
-  border: 1px solid var(--cds-border-subtle); box-shadow: var(--cds-elevation-1);
+.home-lede a.home-cta-button:hover { background: var(--cds-interactive-hover); }
+/* One unboxed stat row replaces the four separately-boxed widgets this page previously
+   stacked (a bordered "token facts" card, a palette row, a caption sentence, a pill
+   row) — density drops, the same information stays. Swatches attach directly to the
+   token-count stat instead of forming their own row. */
+.home-stats {
+  display: flex; flex-wrap: wrap; align-items: baseline; column-gap: var(--cds-space-8);
+  row-gap: var(--cds-space-4); margin-bottom: var(--cds-space-8);
 }
-.home-palette-caption {
-  font-family: var(--cds-font-mono); font-size: var(--cds-type-label);
-  color: var(--cds-text-secondary); letter-spacing: 0.01em;
+.home-stat { display: flex; flex-direction: column; }
+.home-stat-value { font-size: var(--cds-type-heading); font-weight: 700; color: var(--cds-text-primary); line-height: 1.1; }
+.home-stat-label { font-size: var(--cds-type-label); color: var(--cds-text-secondary); }
+.home-stat-swatches { display: inline-flex; gap: 0.25rem; margin-top: var(--cds-space-2); }
+.home-stat-swatches .home-swatch {
+  width: 0.75rem; height: 0.75rem; border-radius: var(--cds-radius-sm);
+  border: 1px solid var(--cds-border-subtle);
 }
-.home-palette-caption code { color: var(--cds-text-primary); }
-.home-badges { display: flex; flex-wrap: wrap; gap: var(--cds-space-3); margin-top: var(--cds-space-3); }
-.home-badge {
-  display: inline-flex; align-items: center; padding: 0.2rem 0.65rem;
-  font-size: var(--cds-type-label); font-weight: 600; letter-spacing: 0.02em;
-  color: var(--cds-text-secondary); background: var(--cds-layer);
-  border: 1px solid var(--cds-border-subtle); border-radius: 99px;
+.home-stat-tag {
+  font-size: var(--cds-type-label); color: var(--cds-text-tertiary);
+  align-self: flex-end; padding-bottom: 0.2rem;
 }
-.home-badge--mono { font-family: var(--cds-font-mono); letter-spacing: 0.04em; }
+/* The generic card grid is now a uniform set of true peers — no CTA card carrying
+   different visual weight, no incomplete-last-row emphasis problem. */
 .home-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--cds-space-5); max-width: 860px; }
 .home-card {
   display: block; padding: var(--cds-space-5); border: 1px solid var(--cds-border-subtle);
@@ -205,12 +232,6 @@ header a { color: #fff; text-decoration: none; font-size: 0.875rem; font-weight:
    instead of dark ink — nine blue titles read as a link list, not a card system. */
 .home-card h2 { font-size: var(--cds-type-body-lg); font-weight: 600; margin-bottom: var(--cds-space-2); color: var(--cds-text-primary); }
 .home-card p { font-size: var(--cds-type-body-sm); color: var(--cds-text-tertiary); margin: 0; }
-.home-card--cta {
-  border-color: var(--cds-interactive); border-width: 1px;
-  background: var(--cds-selected-background);
-}
-.home-card--cta h2 { color: var(--cds-selected-text); }
-.home-card--cta:hover { border-color: var(--cds-selected-text); }
 
 /* Schema badge + metadata panel (D2) */
 .schema-badge {
@@ -227,15 +248,19 @@ header a { color: #fff; text-decoration: none; font-size: 0.875rem; font-weight:
   display: inline-block; padding: 0.125rem 0.5rem;
   font-size: var(--cds-type-label); font-weight: 600; letter-spacing: 0.04em;
   text-transform: uppercase; border-radius: var(--cds-radius-sm);
-  background: #fff5e8; color: #a56400;
+  background: var(--cds-caution-bg); color: var(--cds-caution-text);
 }
 .component-freshness-badge {
   font-size: var(--cds-type-label); color: var(--cds-text-secondary);
 }
+/* Part D (2026-07-04): these four previously hardcoded raw hex, bypassing --cds-*
+   entirely — --bundle's #f2e8ff/#6929c4 violet traced to no primitive family at all
+   (an invented color, the exact doctrine violation Phase 1 fixed once already for the
+   main palette). Replaced with a tinted primary pairing instead of inventing a new hue. */
 .schema-badge--component { background: var(--cds-selected-background); color: var(--cds-selected-text); }
-.schema-badge--token { background: #defbe6; color: #0e6027; }
-.schema-badge--research { background: #fff5e8; color: #a56400; }
-.schema-badge--bundle { background: #f2e8ff; color: #6929c4; }
+.schema-badge--token { background: var(--cds-positive-bg); color: var(--cds-positive-text); }
+.schema-badge--research { background: var(--cds-caution-bg); color: var(--cds-caution-text); }
+.schema-badge--bundle { background: var(--cds-surface-tint); color: var(--cds-selected-text); }
 .schema-meta {
   display: grid; grid-template-columns: 8rem 1fr; gap: 0.375rem 1rem;
   margin-bottom: 1.5rem; font-size: 0.875rem;
@@ -344,7 +369,7 @@ header a { color: #fff; text-decoration: none; font-size: 0.875rem; font-weight:
 }
 .ds-footer__meta { display: flex; flex-direction: column; gap: 0.125rem; }
 .ds-footer__legal, .ds-footer__build { font-size: var(--cds-footer-legal-size); color: var(--cds-footer-ink-muted); }
-.ds-footer__live { color: #0e6027; }
+.ds-footer__live { color: var(--cds-positive-text); }
 /* "Powered by PrivateGit" badge — matches documentation.pointsav.com's .k-badge
    pattern (icon + two-line "lead"/"name" text) for cross-site family consistency. */
 .ds-badge {
