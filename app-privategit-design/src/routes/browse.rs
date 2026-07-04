@@ -8,6 +8,7 @@ use axum::{
     http::{header, StatusCode},
     response::{Html, IntoResponse, Redirect, Response},
 };
+use serde::Serialize;
 use std::{fs, io::Write};
 
 pub async fn index(State(state): State<AppState>) -> Html<String> {
@@ -96,6 +97,58 @@ pub async fn tokens_gallery_page(State(state): State<AppState>) -> Html<String> 
         &nav_html,
         "",
         "Tokens",
+        &body,
+    ))
+}
+
+#[derive(Serialize)]
+struct AdoptionGroup {
+    consumer: String,
+    count: usize,
+    slugs: Vec<String>,
+}
+
+/// Phase 4 — a real, verifiable "who uses this" view, not an invented usage metric.
+/// Reuses the same `recipe.json` `category` field `discover_component_groups` already
+/// computes for the sidebar grouping (Phase 2) and the per-component origin badge
+/// (Phase 3) — this is the third and final consumer of that one authored fact.
+pub async fn adoption_page(State(state): State<AppState>) -> Html<String> {
+    let generic_count = state
+        .component_groups
+        .iter()
+        .find(|(label, _)| label.is_empty())
+        .map(|(_, slugs)| slugs.len())
+        .unwrap_or(0);
+
+    let consumers: Vec<AdoptionGroup> = state
+        .component_groups
+        .iter()
+        .filter(|(label, _)| !label.is_empty())
+        .map(|(label, slugs)| AdoptionGroup {
+            consumer: label
+                .strip_prefix("Also used on ")
+                .or_else(|| label.strip_prefix("Also used by "))
+                .unwrap_or(label)
+                .to_string(),
+            count: slugs.len(),
+            slugs: slugs.clone(),
+        })
+        .collect();
+
+    let body = state
+        .env
+        .get_template("adoption.html")
+        .expect("adoption.html missing")
+        .render(minijinja::context! { generic_count => generic_count, consumers => consumers })
+        .expect("render adoption.html failed");
+
+    let nav_html = render::render_nav(&state.env, &state.nav, &state.component_groups, vault::SECTIONS, "", "");
+    Html(render::shell(
+        &state.env,
+        "Adoption — PointSav Design System",
+        &nav_html,
+        "",
+        "Adoption",
         &body,
     ))
 }

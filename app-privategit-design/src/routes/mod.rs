@@ -22,6 +22,7 @@ pub fn build_router(state: AppState) -> Router {
         .route("/healthz", get(healthz))
         .route("/", get(browse::index))
         .route("/tokens", get(browse::tokens_gallery_page))
+        .route("/adoption", get(browse::adoption_page))
         .route("/elements/:slug/download", get(browse::bundle_download))
         .route("/:section/:slug", get(browse::item_redirect))
         .route("/:section/:slug/:tab", get(browse::item_tab))
