@@ -195,9 +195,18 @@ pub fn discover_tabs(vault: &Path, section: &str, slug: &str) -> Vec<String> {
     tabs
 }
 
+/// Slugs that are acronyms/initialisms — rendered fully uppercase rather than
+/// title-cased. Found via FABLE visual-QA pass (Phase 5, 2026-07-04): sidebar/card labels
+/// like "Bim Guid Search" and "Wiki Toc Sidebar" read as auto-title-cased file names, not
+/// curated nav, next to real prose labels.
+const ACRONYM_WORDS: &[&str] = &["bim", "gis", "guid", "toc", "3d", "rs1", "ifc"];
+
 pub fn to_title(s: &str) -> String {
     s.split('-')
         .map(|w| {
+            if ACRONYM_WORDS.contains(&w.to_lowercase().as_str()) {
+                return w.to_uppercase();
+            }
             let mut c = w.chars();
             match c.next() {
                 None => String::new(),

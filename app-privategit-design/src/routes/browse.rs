@@ -14,7 +14,15 @@ use std::{fs, io::Write};
 pub async fn index(State(state): State<AppState>) -> Html<String> {
     let nav_html = render::render_nav(&state.env, &state.nav, &state.component_groups, vault::SECTIONS, "", "");
 
-    let mut cards = String::new();
+    // P3 follow-up — surface Design Tokens & Bundles as a headline CTA, not a link
+    // buried in the footer or a sentence of prose. Not a vault section, so it's built
+    // here rather than driven by `vault::SECTIONS`. Placed FIRST in the grid (Phase 5
+    // FABLE review: it previously landed mid-row in an incomplete last row, an
+    // accidental-looking position for the one card meant to carry emphasis).
+    let mut cards = String::from(
+        "<a class=\"home-card home-card--cta\" href=\"/bundles/tokens\">\
+         <h2>Design Tokens &amp; Bundles</h2><p>Download the whole token graph</p></a>\n",
+    );
     let mut item_total = 0usize;
     for (section, _, _) in vault::SECTIONS {
         let Some(slugs) = state.nav.get(*section) else {
@@ -26,20 +34,14 @@ pub async fn index(State(state): State<AppState>) -> Html<String> {
         item_total += slugs.len();
         let first = &slugs[0];
         let tab = vault::default_tab(section);
+        let n = slugs.len();
+        let noun = if n == 1 { "item" } else { "items" };
         cards.push_str(&format!(
             "<a class=\"home-card\" href=\"/{section}/{first}/{tab}\">\
-             <h2>{}</h2><p>{} items</p></a>\n",
+             <h2>{}</h2><p>{n} {noun}</p></a>\n",
             vault::to_title(section),
-            slugs.len()
         ));
     }
-    // P3 follow-up — surface Design Tokens & Bundles as a headline CTA, not a link
-    // buried in the footer or a sentence of prose. Not a vault section, so it's added
-    // here rather than driven by `vault::SECTIONS`.
-    cards.push_str(
-        "<a class=\"home-card home-card--cta\" href=\"/bundles/tokens\">\
-         <h2>Design Tokens &amp; Bundles</h2><p>Download the whole token graph</p></a>\n",
-    );
 
     let tiers = tokens_gallery::load_and_flatten(&state.vault);
     let token_count: usize = tiers
@@ -63,9 +65,12 @@ pub async fn index(State(state): State<AppState>) -> Html<String> {
         .flat_map(|tier| &tier.groups)
         .flat_map(|group| &group.entries)
         .collect();
-    let palette: String = palette_paths
+    let found_palette: Vec<&&tokens_gallery::TokenEntry> = palette_paths
         .iter()
         .filter_map(|p| all_entries.iter().find(|e| e.path == *p))
+        .collect();
+    let palette: String = found_palette
+        .iter()
         .map(|e| {
             format!(
                 "<span class=\"home-swatch\" style=\"background:{}\" title=\"{} — {}\"></span>",
@@ -73,6 +78,18 @@ pub async fn index(State(state): State<AppState>) -> Html<String> {
             )
         })
         .collect();
+    // Phase 5 FABLE review: unlabeled swatches read as decoration, not proof. Naming the
+    // families ties the strip to the badge row below as one "live token facts" unit.
+    let palette_caption = found_palette
+        .iter()
+        .map(|e| {
+            e.path
+                .rsplit_once('.')
+                .map(|(_, name)| name.split('-').next().unwrap_or(name))
+                .unwrap_or(&e.path)
+        })
+        .collect::<Vec<_>>()
+        .join(" · ");
 
     let badges = format!(
         "<div class=\"home-badges\">\
@@ -86,8 +103,8 @@ pub async fn index(State(state): State<AppState>) -> Html<String> {
     let content = format!(
         "<div class=\"home-body\">\
          <div class=\"home-hero\">\
-         <p class=\"home-eyebrow\">PointSav Design System</p>\
-         <h1>One governed token graph, not a components folder every team forks and drifts from.</h1>\
+         <p class=\"home-eyebrow\">Token documentation &amp; component library</p>\
+         <h1>One governed token graph, not a components folder every team forks and drifts&nbsp;from.</h1>\
          <p class=\"home-lede\">Most design systems ship a components folder — files, a Storybook, a package to \
          install. The moment a team needs something the library doesn't have, they fork it, and the fork drifts \
          from the source. This system ships the token graph itself: DTCG-native, self-hostable, and readable \
@@ -95,7 +112,9 @@ pub async fn index(State(state): State<AppState>) -> Html<String> {
          <p class=\"home-lede\">Every token, every component recipe, and every research decision behind it lives \
          in one versioned source — browse it below, or <a href=\"/bundles/tokens\">download the whole graph as a \
          bundle</a>.</p>\
+         <div class=\"home-token-facts\">\
          <div class=\"home-palette\" aria-hidden=\"true\">{palette}</div>\
+         <p class=\"home-palette-caption\">Live from <code>tokens.full.json</code> — {palette_caption}</p>\
          {badges}\
          </div>\
          <div class=\"home-grid\">{cards}</div></div>"
