@@ -5,79 +5,19 @@ installers:
   - id: os-console
     name: PointSav Console OS
     description: Hosted application (Type II) — graphical terminal on existing OS
-    edition: "2026.05.144"
+    edition: "0.2.4"
     platform: "macOS · Win · Linux"
     size_mb: 412
-    path: os-console/2026.05.144
+    path: os-console/0.2.4
     license_tier: commercial
-    price_usdc: 0
-
-  - id: os-infrastructure
-    name: PointSav Infrastructure OS
-    description: Lightweight universal hypervisor for infrastructure-node provisioning
-    edition: "2026.05.144"
-    platform: "Bare-metal · any hardware"
-    size_mb: 188
-    path: os-infrastructure/2026.05.144
-    license_tier: fsl
-    price_usdc: 0
-
-  - id: os-mediakit
-    name: PointSav MediaKit OS
-    description: High-performance JeOS for corporate disclosure and digital marketing surfaces
-    edition: "2026.05.142"
-    platform: "Linux server"
-    size_mb: 96
-    path: os-mediakit/2026.05.142
-    license_tier: fsl
     price_usdc: 0
 
   - id: os-network-admin
     name: PointSav Network OS
     description: Orchestrates VM map, private network routing, and provisioning authorisation
-    edition: "0.1.0-beta.1"
+    edition: "beta"
     platform: "Linux x86_64"
     size_mb: 1
-    path: os-network-admin/latest/x86_64
+    path: os-network-admin/beta
     license_tier: fsl
-    price_usdc: 0
-
-  - id: os-privategit
-    name: PointSav PrivateGit OS
-    description: Independent code repository and version control system
-    edition: "2026.05.144"
-    platform: "Linux server"
-    size_mb: 142
-    path: os-privategit/2026.05.144
-    license_tier: commercial
-    price_usdc: 0
-
-  - id: os-workplace
-    name: PointSav Workplace OS
-    description: Bare-metal installation on trusted hardware (Type I) — boots to Console OS
-    edition: "2026.05.144"
-    platform: "Bare-metal · appliance"
-    size_mb: 286
-    path: os-workplace/2026.05.144
-    license_tier: commercial
-    price_usdc: 0
-
-  - id: os-orchestration
-    name: PointSav Orchestration OS
-    description: Stateless aggregation and active routing of Totebox Archives across the wider system
-    edition: "2026.05.142"
-    platform: "Linux server"
-    size_mb: 156
-    path: os-orchestration/2026.05.142
-    license_tier: fsl
-    price_usdc: 0
-
-  - id: os-totebox
-    name: Totebox OS
-    description: Hardware-agnostic micro-kernel foundation for data segregation across Toteboxes
-    edition: "2026.05.144"
-    platform: "Bare-metal · any hardware"
-    size_mb: 118
-    path: os-totebox/2026.05.144
-    license_tier: commercial
     price_usdc: 0
