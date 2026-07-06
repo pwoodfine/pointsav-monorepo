@@ -104,7 +104,6 @@ pub trait GraphStore: Send + Sync {
     fn delete_entity(&self, module_id: &str, entity_name: &str) -> Result<()>;
     /// Write typed directed edges between existing Entity nodes. Idempotent
     /// (checks existence before CREATE). Returns the number of edges written.
-    #[allow(dead_code)]
     fn upsert_edges(&self, module_id: &str, edges: &[RelatedToEdge]) -> Result<usize>;
     /// Count alias records in entity_aliases. Used by /healthz + tests.
     #[allow(dead_code)]
@@ -112,7 +111,6 @@ pub trait GraphStore: Send + Sync {
     /// Transitive closure query: returns entities reachable from any initial
     /// match via up to `hops` RelatedTo edges. Deduplicates the result.
     /// `hops` is clamped to 1..=4 to bound query cost.
-    #[allow(dead_code)]
     fn query_context_transitive(
         &self,
         module_id: &str,
@@ -120,6 +118,17 @@ pub trait GraphStore: Send + Sync {
         limit: usize,
         hops: usize,
     ) -> Result<Vec<GraphEntity>>;
+    /// Return every `RelatedTo` edge whose src AND tgt are both in
+    /// `entity_names` (case-insensitive) — the induced subgraph over an
+    /// already-fetched entity set. Used to surface relation data alongside
+    /// `query_context`/`query_context_transitive` results: those methods
+    /// return entity *nodes* only; `upsert_edges` writes relation data that
+    /// was, until now, never read back (2026-07-06 ontology audit finding).
+    fn query_edges_among(
+        &self,
+        module_id: &str,
+        entity_names: &[String],
+    ) -> Result<Vec<RelatedToEdge>>;
     /// Return entities whose `created_at` is >= `since` (ISO 8601 string, e.g.
     /// "2026-06-29T00:00:00Z"). Used by GET /v1/graph/delta for federation delta sync.
     /// String comparison works because dates are stored in YYYY-MM-DDThh:mm:ssZ format.
@@ -815,6 +824,66 @@ impl GraphStore for LbugGraphStore {
         Ok(out)
     }
 
+    fn query_edges_among(
+        &self,
+        module_id: &str,
+        entity_names: &[String],
+    ) -> Result<Vec<RelatedToEdge>> {
+        if entity_names.is_empty() {
+            return Ok(Vec::new());
+        }
+        let conn = self.conn()?;
+        // One outgoing-edges lookup per entity (mirrors the per-seed loop in
+        // query_context_transitive above — lbug's query params are scalar,
+        // not list-valued, so there's no single IN-list query to prepare).
+        // Bounded by entity_names.len(), which callers already cap (the same
+        // limit*3 bound query_context/query_context_transitive use).
+        let mut stmt = conn
+            .prepare(
+                "MATCH (src:Entity)-[r:RelatedTo]->(tgt:Entity) \
+                 WHERE src.id = $src_id \
+                 RETURN src.entity_name, tgt.entity_name, r.relation_type",
+            )
+            .map_err(|e| anyhow!("prepare query_edges_among: {}", e))?;
+
+        let wanted: std::collections::HashSet<String> =
+            entity_names.iter().map(|n| n.to_lowercase()).collect();
+        let mut out = Vec::new();
+        let mut seen_edges: std::collections::HashSet<(String, String, String)> =
+            std::collections::HashSet::new();
+
+        for name in entity_names {
+            let src_id = format!("{}__{}", module_id, normalize_entity_key(name));
+            let result = conn
+                .execute(&mut stmt, vec![("src_id", Value::String(src_id))])
+                .map_err(|e| anyhow!("execute query_edges_among: {}", e))?;
+            for row in result {
+                let null_val = Value::Null(LogicalType::String);
+                let src_name = val_to_string(row.first().unwrap_or(&null_val));
+                let tgt_name = val_to_string(row.get(1).unwrap_or(&null_val));
+                let relation_type = val_to_string(row.get(2).unwrap_or(&null_val));
+                if src_name.is_empty() || tgt_name.is_empty() {
+                    continue;
+                }
+                // Only surface edges whose target is also in the requested set —
+                // this is the induced subgraph over entity_names, not every edge
+                // leaving each entity.
+                if !wanted.contains(&tgt_name.to_lowercase()) {
+                    continue;
+                }
+                let key = (src_name.clone(), tgt_name.clone(), relation_type.clone());
+                if seen_edges.insert(key) {
+                    out.push(RelatedToEdge {
+                        src_entity_name: src_name,
+                        tgt_entity_name: tgt_name,
+                        relation_type,
+                    });
+                }
+            }
+        }
+        Ok(out)
+    }
+
     fn query_entities_since(
         &self,
         module_id: &str,
@@ -1085,6 +1154,68 @@ mod tests {
             .upsert_edges("edgetest", &edges)
             .expect("upsert_edges idempotent");
         assert_eq!(n2, 0, "second call should find edge exists and write 0");
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// DB-backed: `query_edges_among` surfaces the edge `upsert_edges` wrote —
+    /// this is the read-back path that was missing entirely before the
+    /// 2026-07-06 ontology audit (edges were write-only).
+    #[test]
+    fn query_edges_among_returns_written_edge() {
+        let dir = std::env::temp_dir().join(format!("sc-edges-among-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let store = LbugGraphStore::new(dir.to_str().unwrap()).expect("open temp lbug store");
+        store.init_schema().expect("init_schema");
+
+        let entities = vec![
+            company("PointSav Digital Systems"),
+            company("Woodfine Capital Projects"),
+            person("Jennifer Woodfine"),
+        ];
+        store
+            .upsert_entities("edgeamong", &entities)
+            .expect("upsert entities");
+        store
+            .upsert_edges(
+                "edgeamong",
+                &[RelatedToEdge {
+                    src_entity_name: "PointSav Digital Systems".into(),
+                    tgt_entity_name: "Woodfine Capital Projects".into(),
+                    relation_type: "subsidiary_of".into(),
+                }],
+            )
+            .expect("upsert_edges");
+
+        // Both endpoints present — edge is returned.
+        let edges = store
+            .query_edges_among(
+                "edgeamong",
+                &[
+                    "PointSav Digital Systems".to_string(),
+                    "Woodfine Capital Projects".to_string(),
+                ],
+            )
+            .expect("query_edges_among");
+        assert_eq!(edges.len(), 1);
+        assert_eq!(edges[0].relation_type, "subsidiary_of");
+
+        // Only one endpoint present (Jennifer Woodfine has no edges at all) —
+        // the PointSav->Woodfine edge must NOT appear, since its target isn't
+        // in the requested set (induced-subgraph semantics).
+        let edges_partial = store
+            .query_edges_among(
+                "edgeamong",
+                &[
+                    "PointSav Digital Systems".to_string(),
+                    "Jennifer Woodfine".to_string(),
+                ],
+            )
+            .expect("query_edges_among");
+        assert!(
+            edges_partial.is_empty(),
+            "edge to an entity outside the requested set must not be returned"
+        );
 
         let _ = std::fs::remove_dir_all(&dir);
     }
