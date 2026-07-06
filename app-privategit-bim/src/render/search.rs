@@ -120,7 +120,10 @@ pub fn render_search_results(query: &str, state: &AppState) -> String {
     let trimmed = query.trim();
     if trimmed.is_empty() {
         return r#"<div class="bim-search-page">
-  <h1>Search</h1>
+  <header class="bim-cat-pagehead">
+    <span class="bim-cat-kicker">Catalog search</span>
+    <h1>Search</h1>
+  </header>
   <p class="bim-empty">Enter a search term above — categories, entity slugs, IFC classes, and research articles are all searched.</p>
 </div>"#
             .to_string();
@@ -270,8 +273,11 @@ pub fn render_search_results(query: &str, state: &AppState) -> String {
 
     format!(
         r#"<div class="bim-search-page">
-  <h1>Search results</h1>
-  <p class="bim-search-page__meta">{count} {result_word} for &ldquo;{q}&rdquo;</p>
+  <header class="bim-cat-pagehead">
+    <span class="bim-cat-kicker">Catalog search</span>
+    <h1>Search results</h1>
+    <p class="bim-cat-pagehead__lede">{count} {result_word} for &ldquo;{q}&rdquo;</p>
+  </header>
   <div class="bim-search-results">{results_html}</div>
 </div>"#,
         count = count,

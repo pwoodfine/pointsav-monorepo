@@ -9,42 +9,6 @@ use serde_json::Value;
 
 use super::shell::esc;
 
-/// Homepage: "Anatomy of a Key Plan" (see `render::hero`) is the primary
-/// hero and navigation device — a real, already-shipped catalog entry
-/// (PO-1) shown with its real attached data, not an invented diagram. The
-/// prior card-grid/prose homepage content still exists as real editorial
-/// substance (`home.md`'s sections) — kept below the hero as supporting
-/// narrative rather than dropped, since the underlying content is real
-/// research, not shell code.
-pub fn render_home(state: &AppState) -> String {
-    let hero = super::hero::render_hero(state);
-    let page = &state.home_page;
-
-    let mut sections = String::new();
-    for (i, section) in page.sections.iter().enumerate() {
-        if i > 0 {
-            sections.push_str(r#"<hr class="bim-rule">"#);
-        }
-        sections.push_str(&format!(
-            "<section><h2>{}</h2>{}</section>",
-            esc(&section.heading),
-            section.body_html,
-        ));
-    }
-
-    format!(
-        r#"{hero}
-<hr class="bim-rule">
-<article class="bim-article">
-  {sections}
-</article>
-<hr class="bim-rule">
-<div class="bim-home">
-  <p class="bim-home-subtitle"><a href="/tokens" data-path="/tokens" class="bim-nav-link">Browse the full catalog &rarr;</a></p>
-</div>"#,
-    )
-}
-
 /// The real "Browse All BIM Objects" catalog index — every category grouped
 /// under the four Sections the hero's callouts route to. This used to be
 /// a stub that silently rendered the homepage template instead (the
@@ -53,14 +17,18 @@ pub fn render_home(state: &AppState) -> String {
 /// `#context`) matching the hero's real-fact hotspot targets.
 pub fn render_tokens_index(state: &AppState) -> String {
     let mut groups = String::new();
-    for section in Section::all() {
+    for (i, section) in Section::all().into_iter().enumerate() {
         let cards = render_category_cards_for_section(state, section);
         groups.push_str(&format!(
             r#"<section id="{id}" class="bim-tokens-index__group">
-  <h2>{label}</h2>
+  <div class="bim-tokens-sechead">
+    <span class="bim-tokens-secnum">{num:02}</span>
+    <h2>{label}</h2>
+  </div>
   <div class="bim-category-grid">{cards}</div>
 </section>"#,
             id = section.label().to_lowercase(),
+            num = i + 1,
             label = section.label(),
             cards = cards,
         ));
@@ -68,8 +36,11 @@ pub fn render_tokens_index(state: &AppState) -> String {
 
     format!(
         r#"<div class="bim-tokens-index">
-  <h1>BIM Object Catalog</h1>
-  <p class="bim-intro">Every BIM Object category, grouped by the four sections the homepage's Key Plan example routes to.</p>
+  <header class="bim-cat-pagehead">
+    <span class="bim-cat-kicker">BIM Object registry · full taxonomy</span>
+    <h1>BIM Object Catalog</h1>
+    <p class="bim-cat-pagehead__lede">Every BIM Object category, grouped by the four sections the homepage's Key Plan example routes to.</p>
+  </header>
   {groups}
 </div>"#,
         groups = groups,
@@ -177,7 +148,7 @@ pub fn render_token_page(category: &str, state: &AppState) -> String {
         String::new()
     } else {
         format!(
-            r#"<span class="bim-chip bim-chip--accent">UNICLASS <strong>{}</strong></span>"#,
+            r#"<span class="bim-cat-chip bim-cat-chip--pr"><span class="bim-cat-chip__lv">Uniclass</span>{}</span>"#,
             esc(uniclass)
         )
     };
@@ -195,19 +166,21 @@ pub fn render_token_page(category: &str, state: &AppState) -> String {
   <div class="bim-breadcrumbs">
     <a href="/" data-path="/" class="bim-nav-link">Home</a> / <a href="/tokens" data-path="/tokens" class="bim-nav-link">BIM Objects</a>
   </div>
-  <p class="bim-category-page__anchor"><code>{ifc_anchor}</code></p>
-  <h1>{display_name}</h1>
-  <div class="bim-chip-row">
-    <span class="bim-chip">IFC <code>{ifc_anchor}</code></span>
-    {uniclass_chip}
-  </div>
+  <header class="bim-cat-pagehead">
+    <span class="bim-cat-kicker">IFC 4.3 · Uniclass 2015</span>
+    <h1>{display_name}</h1>
+    <div class="bim-chip-row">
+      <span class="bim-cat-chip bim-cat-chip--plain"><span class="bim-cat-chip__lv">IFC</span><code>{ifc_anchor}</code></span>
+      {uniclass_chip}
+    </div>
+  </header>
 
   <details class="bim-spec-card" open>
     <summary>Specification</summary>
     <div class="bim-spec-card__body">
       <div class="bim-intro">{intro_html}</div>
       <p class="bim-elements"><code>{elements}</code></p>
-      <table class="bim-detail-table">
+      <table class="bim-cat-spectable bim-detail-spectable">
         <tr><th>IFC entity</th><td><code>{ifc_anchor}</code></td></tr>
         {uniclass_row}
         <tr><th>IFC hierarchy</th><td class="bim-ifc-hierarchy"><code>{ifc_hierarchy}</code></td></tr>
@@ -260,122 +233,6 @@ pub fn render_token_page(category: &str, state: &AppState) -> String {
     )
 }
 
-pub fn render_key_plans(state: &AppState) -> String {
-    // Phase 4 will fill in SVG zone diagrams; stub for compile
-    let Some(file_val) = state.tokens.get("key-plans") else {
-        return r#"<div class="bim-empty"><p>key-plans.dtcg.json not found in library.</p></div>"#
-            .into();
-    };
-    let bim = match file_val.get("bim").and_then(|v| v.as_object()) {
-        Some(b) => b,
-        None => {
-            return r#"<div class="bim-empty"><p>No bim root in key-plans.dtcg.json.</p></div>"#
-                .into()
-        }
-    };
-
-    // key-plans.dtcg.json nests entities three levels deep — category (e.g.
-    // "key-plan") -> subcategory (e.g. "private-office") -> size variant
-    // (e.g. "small"), each variant carrying $type/$value. Walk to any depth
-    // and collect every node that actually has a $value, rather than
-    // assuming a fixed depth.
-    let mut leaves: Vec<(&str, &Value)> = Vec::new();
-    collect_kp_leaves(bim, &mut leaves);
-    leaves.sort_by_key(|(slug, _)| *slug);
-
-    let mut cards = String::new();
-    for (slug, entity) in leaves {
-        let val = entity.get("$value").cloned().unwrap_or(Value::Null);
-        let display_name = val
-            .get("display_name")
-            .and_then(|v| v.as_str())
-            .unwrap_or(slug);
-        let internal_code = val
-            .get("internal_code")
-            .and_then(|v| v.as_str())
-            .unwrap_or("—");
-        let category = val.get("category").and_then(|v| v.as_str()).unwrap_or("—");
-        let area_sf = val.get("area_sf").and_then(|v| v.as_u64()).unwrap_or(0);
-
-        let svg = super::svg::render_kp_zone_svg_from_value(&val);
-        let no_furniture_note = if val.get("zone1_depth_m").and_then(|v| v.as_f64()).is_none() {
-            r#"<div class="bim-kp-note">Floor-scale plan &mdash; no zone/furniture layout modeled at this program level</div>"#
-        } else {
-            ""
-        };
-
-        cards.push_str(&format!(
-            r#"<div class="bim-kp-card">
-  <div class="bim-kp-svg">{svg}</div>
-  <div class="bim-kp-info">
-    <div class="bim-kp-name">{display_name}</div>
-    <div class="bim-kp-meta"><span class="bim-tag">{internal_code}</span> <span class="bim-cat">{category}</span></div>
-    <div class="bim-kp-area">{area_sf} SF</div>
-    {no_furniture_note}
-  </div>
-</div>"#,
-            display_name = esc(display_name),
-            internal_code = esc(internal_code),
-            category = esc(category),
-            area_sf = area_sf,
-            svg = svg,
-            no_furniture_note = no_furniture_note,
-        ));
-    }
-
-    format!(
-        r#"<div class="bim-key-plans">
-  <h1>Key Plans</h1>
-  <p class="bim-intro">Key Plans are the smallest BIM Object unit — spatial programs defined by three-zone cross-section and furniture arrangement.</p>
-  <div class="bim-kp-grid">
-    {cards}
-  </div>
-</div>"#,
-        cards = cards,
-    )
-}
-
-pub fn render_furniture(state: &AppState) -> String {
-    let components_dir = state.config.library_dir.join("blocks").join("furniture");
-    let mut items = String::new();
-    if let Ok(rd) = std::fs::read_dir(&components_dir) {
-        let mut names: Vec<String> = rd
-            .filter_map(|e| e.ok())
-            .filter(|e| e.path().extension().and_then(|s| s.to_str()) == Some("ifc"))
-            .filter_map(|e| {
-                e.path()
-                    .file_name()
-                    .and_then(|s| s.to_str())
-                    .map(|s| s.to_string())
-            })
-            .collect();
-        names.sort();
-        for name in &names {
-            items.push_str(&format!(
-                r#"<div class="bim-furniture-item">
-  <span class="bim-furniture-name">{name}</span>
-  <a class="cds-btn cds-btn--ghost" href="/furniture/download/{name}">Download IFC</a>
-</div>"#,
-                name = esc(name),
-            ));
-        }
-    }
-
-    format!(
-        r#"<div class="bim-furniture">
-  <h1>Furniture Library</h1>
-  <p class="bim-intro">IFC furniture components for use in Key Plan BIM Objects.</p>
-  <div class="bim-furniture-actions">
-    <a class="cds-btn cds-btn--primary" href="/furniture/download/bundle.zip">Download All (ZIP)</a>
-  </div>
-  <div class="bim-furniture-list">
-    {items}
-  </div>
-</div>"#,
-        items = items,
-    )
-}
-
 pub fn render_research_index(state: &AppState) -> String {
     let research_dir = state.config.vault_dir.join("research");
     let mut items = String::new();
@@ -416,7 +273,14 @@ pub fn render_research_index(state: &AppState) -> String {
         items = r#"<p class="bim-empty">No research documents found.</p>"#.into();
     }
     format!(
-        r#"<div class="bim-research"><h1>Research</h1><div class="bim-research-list">{items}</div></div>"#,
+        r#"<div class="bim-research">
+  <header class="bim-cat-pagehead">
+    <span class="bim-cat-kicker">Research backplane</span>
+    <h1>Research</h1>
+    <p class="bim-cat-pagehead__lede">Background notes and working documents behind the BIM Object Library's classifications and methodology.</p>
+  </header>
+  <div class="bim-research-list">{items}</div>
+</div>"#,
         items = items,
     )
 }
@@ -471,7 +335,10 @@ fn render_category_cards_for_section(state: &AppState, section: Section) -> Stri
 /// `$value` field, regardless of nesting depth — key-plans.dtcg.json nests
 /// three levels deep (category -> subcategory -> size variant); other files
 /// nest two. `slug` is set to the object key one level above the leaf.
-fn collect_kp_leaves<'a>(obj: &'a serde_json::Map<String, Value>, out: &mut Vec<(&'a str, &'a Value)>) {
+pub(crate) fn collect_kp_leaves<'a>(
+    obj: &'a serde_json::Map<String, Value>,
+    out: &mut Vec<(&'a str, &'a Value)>,
+) {
     for (key, val) in obj {
         if key == "$description" {
             continue;
