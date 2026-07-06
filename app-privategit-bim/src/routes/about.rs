@@ -19,7 +19,10 @@ pub async fn about_handler(State(state): State<AppState>) -> Html<String> {
         r#"<div class="bim-breadcrumbs">
   <a href="/" data-path="/" class="bim-nav-link">Home</a>
 </div>
-<h1>About BIM Objects</h1>
+<header class="bim-cat-pagehead">
+  <span class="bim-cat-kicker">About the catalog</span>
+  <h1>About BIM Objects</h1>
+</header>
 <article class="bim-article">
   {sections}
 </article>"#,

@@ -24,3 +24,6 @@ jsonschema    = "0.20"
 notify        = "6"
 tokio-stream  = { version = "0.1", features = ["sync"] }
 futures-util  = "0.3"
+
+[dev-dependencies]
+tower = { version = "0.5", features = ["util"] }
