@@ -30,6 +30,14 @@ use tracing::{debug, warn};
 const GRAPH_CIRCUIT_THRESHOLD: u32 = 3;
 /// Seconds the circuit stays open before the next probe attempt.
 const GRAPH_CIRCUIT_OPEN_SECS: u64 = 120;
+/// Multi-hop depth requested from `service-content`'s `/v1/graph/context`.
+/// `service-content` already supports this (`query_context_transitive`,
+/// clamped 1-4 hops server-side) — the Doorman just never asked for it
+/// before, implicitly requesting `hops=0` (seed entities only, no
+/// relation-following). One hop is a low-risk default: it broadens context
+/// to directly-related entities without the response-size growth of deeper
+/// traversal.
+const DEFAULT_CONTEXT_HOPS: usize = 1;
 
 /// One entity row returned by the `service-content` graph API.
 #[derive(Debug, Deserialize)]
@@ -125,6 +133,7 @@ impl GraphContextClient {
                 ("q", query),
                 ("module_id", module_id),
                 ("limit", &limit.to_string()),
+                ("hops", &DEFAULT_CONTEXT_HOPS.to_string()),
             ])
             .send()
             .await;
