@@ -18,7 +18,7 @@ use std::time::Duration;
 
 use crate::config_http::config_routes;
 use crate::entity_filter;
-use crate::graph::{GraphEntity, GraphStore};
+use crate::graph::{GraphEntity, GraphStore, RelatedToEdge};
 use crate::pairing::{InterfaceAuditLog, NonceCache, PairingKeypair, PairingRecord, PairingStore};
 
 // ── shared server state ───────────────────────────────────────────────────────
@@ -87,6 +87,21 @@ pub struct ContextQuery {
 
 fn default_limit() -> usize {
     20
+}
+
+/// Query params for GET /v1/graph/edges — the induced-subgraph edge lookup.
+/// Kept as a separate endpoint (rather than folding edges into
+/// `/v1/graph/context`'s response) so the existing bare-`Vec<GraphEntity>`
+/// array response of that endpoint stays wire-compatible for its other
+/// consumer archives; callers that want relation data fetch it here as a
+/// second call.
+#[derive(Debug, Deserialize)]
+pub struct EdgesQuery {
+    pub module_id: String,
+    /// Comma-separated entity names — the node set to compute the induced
+    /// subgraph over. Typically the `entity_name`s from a prior
+    /// `/v1/graph/context` response.
+    pub entities: String,
 }
 
 /// Query params for GET /v1/graph/delta
@@ -232,6 +247,28 @@ async fn graph_context(
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
 }
 
+/// The induced subgraph of `RelatedTo` edges over a caller-supplied entity
+/// set — typically the entities a prior `/v1/graph/context` call returned.
+/// Surfaces relation data that `upsert_edges` writes but `/v1/graph/context`
+/// itself never has (2026-07-06 ontology audit finding: edges were
+/// write-only until this endpoint).
+async fn graph_edges(
+    State(state): State<Arc<HttpState>>,
+    Query(params): Query<EdgesQuery>,
+) -> Result<Json<Vec<RelatedToEdge>>, (StatusCode, String)> {
+    let names: Vec<String> = params
+        .entities
+        .split(',')
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .collect();
+    state
+        .graph
+        .query_edges_among(&params.module_id, &names)
+        .map(Json)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
+}
+
 async fn graph_mutate(
     State(state): State<Arc<HttpState>>,
     Json(body): Json<MutateRequest>,
@@ -268,8 +305,19 @@ async fn draft_generate(
 
     let entity_count = entities.len();
 
-    // 2. Package entities into a structured prompt (≤2 000 tokens ≈ 8 000 chars).
-    let entity_block = format_entity_block(&entities);
+    // 1b. Fetch the induced subgraph of edges among these entities — relation
+    // data `upsert_edges` writes but, until now, nothing ever read back.
+    // Non-fatal: a query failure here degrades to entity-only rendering
+    // rather than failing the whole draft request.
+    let names: Vec<String> = entities.iter().map(|e| e.entity_name.clone()).collect();
+    let edges = state
+        .graph
+        .query_edges_among(&body.module_id, &names)
+        .unwrap_or_default();
+
+    // 2. Package entities + relationships into a structured prompt (≤2 000
+    // tokens ≈ 8 000 chars).
+    let entity_block = format_entity_block(&entities, &edges);
 
     let system_prompt = "You are a knowledge graph analyst for a real estate property \
         management archive. Given a list of extracted entities from the Totebox Archive, \
@@ -715,12 +763,31 @@ fn truncate_at_char_boundary(s: &str, max_bytes: usize) -> &str {
     &s[..end]
 }
 
-fn format_entity_block(entities: &[GraphEntity]) -> String {
-    if entities.is_empty() {
+/// Retrieval-stage guardrail: entities below this confidence are excluded
+/// from rendered context entirely (narration and citation both), not just
+/// down-weighted. Deliberately well below the write-path grounding floors
+/// already in effect (0.65 for OLMo-grounded, 0.75 for GLiNER, 0.9 for
+/// taxonomy-seeded) — this is a safety net against genuinely low-quality
+/// data reaching a consumer, not a routine filter; under normal operation
+/// almost nothing should be excluded by it.
+///
+/// Deliberately does NOT also require `source_doc` to be present: taxonomy-
+/// seeded entities (guides, archetypes, domains) are legitimately sourceless
+/// but trustworthy — excluding them would break rendering for entities that
+/// were never extraction output in the first place. `source_doc` is still
+/// rendered as a citation when present.
+const MIN_RENDER_CONFIDENCE: f64 = 0.5;
+
+fn format_entity_block(entities: &[GraphEntity], edges: &[RelatedToEdge]) -> String {
+    let rendered: Vec<&GraphEntity> = entities
+        .iter()
+        .filter(|e| e.confidence >= MIN_RENDER_CONFIDENCE)
+        .collect();
+    if rendered.is_empty() {
         return "(no entities found in graph)".to_string();
     }
     let mut out = String::from("## Extracted Entities\n\n");
-    for e in entities {
+    for e in &rendered {
         out.push_str(&format!("- **{}** ({})", e.entity_name, e.classification));
         if let Some(r) = &e.role_vector {
             out.push_str(&format!("; role: {r}"));
@@ -731,7 +798,20 @@ fn format_entity_block(entities: &[GraphEntity]) -> String {
         if let Some(c) = &e.contact_vector {
             out.push_str(&format!("; contact: {c}"));
         }
+        out.push_str(&format!("; confidence: {:.2}", e.confidence));
+        if let Some(src) = &e.source_doc {
+            out.push_str(&format!("; source: {src}"));
+        }
         out.push('\n');
+    }
+    if !edges.is_empty() {
+        out.push_str("\n## Relationships\n\n");
+        for edge in edges {
+            out.push_str(&format!(
+                "- {} --[{}]--> {}\n",
+                edge.src_entity_name, edge.relation_type, edge.tgt_entity_name
+            ));
+        }
     }
     out
 }
@@ -955,6 +1035,7 @@ pub async fn run_server(
     let app = Router::new()
         .route("/healthz", get(healthz))
         .route("/v1/graph/context", get(graph_context))
+        .route("/v1/graph/edges", get(graph_edges))
         .route("/v1/graph/delta", get(graph_delta))
         .route("/v1/graph/cleanup", get(graph_cleanup))
         .route("/v1/graph/enrich", post(graph_enrich))
@@ -1011,5 +1092,78 @@ mod tests {
     fn truncate_at_char_boundary_exact_ascii_boundary() {
         let s = "a".repeat(100);
         assert_eq!(truncate_at_char_boundary(&s, 50).len(), 50);
+    }
+
+    fn entity(name: &str, confidence: f64, source_doc: Option<&str>) -> GraphEntity {
+        GraphEntity {
+            entity_name: name.to_string(),
+            classification: "Company".to_string(),
+            role_vector: None,
+            location_vector: None,
+            contact_vector: None,
+            module_id: "test".to_string(),
+            confidence,
+            source_doc: source_doc.map(str::to_string),
+        }
+    }
+
+    #[test]
+    fn format_entity_block_empty_when_no_entities() {
+        assert_eq!(format_entity_block(&[], &[]), "(no entities found in graph)");
+    }
+
+    #[test]
+    fn format_entity_block_renders_confidence_and_source_doc() {
+        let entities = vec![entity("Woodfine Capital Projects", 0.9, Some("DOC_1"))];
+        let block = format_entity_block(&entities, &[]);
+        assert!(block.contains("Woodfine Capital Projects"));
+        assert!(block.contains("confidence: 0.90"));
+        assert!(block.contains("source: DOC_1"));
+    }
+
+    #[test]
+    fn format_entity_block_filters_low_confidence_entities() {
+        // Below MIN_RENDER_CONFIDENCE (0.5) — must not appear in rendered output at all,
+        // not just be down-weighted. The one high-confidence entity still renders.
+        let entities = vec![
+            entity("Untrusted Noise Entity", 0.2, None),
+            entity("PointSav Digital Systems", 0.9, None),
+        ];
+        let block = format_entity_block(&entities, &[]);
+        assert!(!block.contains("Untrusted Noise Entity"));
+        assert!(block.contains("PointSav Digital Systems"));
+    }
+
+    #[test]
+    fn format_entity_block_all_entities_below_threshold_returns_empty_message() {
+        let entities = vec![entity("Untrusted", 0.1, None)];
+        assert_eq!(
+            format_entity_block(&entities, &[]),
+            "(no entities found in graph)"
+        );
+    }
+
+    #[test]
+    fn format_entity_block_renders_relationships_section() {
+        let entities = vec![
+            entity("PointSav Digital Systems", 0.9, None),
+            entity("Woodfine Capital Projects", 0.9, None),
+        ];
+        let edges = vec![RelatedToEdge {
+            src_entity_name: "PointSav Digital Systems".to_string(),
+            tgt_entity_name: "Woodfine Capital Projects".to_string(),
+            relation_type: "subsidiary_of".to_string(),
+        }];
+        let block = format_entity_block(&entities, &edges);
+        assert!(block.contains("## Relationships"));
+        assert!(block.contains(
+            "PointSav Digital Systems --[subsidiary_of]--> Woodfine Capital Projects"
+        ));
+    }
+
+    #[test]
+    fn format_entity_block_no_relationships_section_when_no_edges() {
+        let entities = vec![entity("Solo Entity", 0.9, None)];
+        assert!(!format_entity_block(&entities, &[]).contains("## Relationships"));
     }
 }
