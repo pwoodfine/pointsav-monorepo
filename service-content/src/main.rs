@@ -178,6 +178,10 @@ fn main() -> NotifyResult<()> {
     // back to the compile-time ALLOWED_CLASSIFICATIONS if the CSV is absent.
     entity_filter::init_ontology_classifications(&ontology_dir);
 
+    // Closed relation-type vocabulary (subject/object class constraints for
+    // RelatedTo edges). Fail-open if absent — see init_relation_ontology doc.
+    entity_filter::init_relation_ontology(&ontology_dir);
+
     // ── Startup taxonomy load ─────────────────────────────────────────────────
     match taxonomy::load_taxonomy_from_dir(&ontology_dir) {
         Ok(bundle) => {
@@ -393,6 +397,16 @@ fn main() -> NotifyResult<()> {
                 // 3. Write source-grounded relation triples to RelatedTo
                 if !tier_a_rels.is_empty() {
                     use crate::graph::RelatedToEdge;
+                    // name (lowercased) -> classification, for the closed relation-type
+                    // vocabulary check below.
+                    let entity_classes: std::collections::HashMap<String, String> = tier_a_ents
+                        .iter()
+                        .filter_map(|e| {
+                            let name = e.get("entity_name")?.as_str()?.to_lowercase();
+                            let cls = e.get("classification")?.as_str()?.to_string();
+                            Some((name, cls))
+                        })
+                        .collect();
                     let edges: Vec<RelatedToEdge> = tier_a_rels
                         .iter()
                         .filter_map(|r| {
@@ -400,17 +414,30 @@ fn main() -> NotifyResult<()> {
                             let pred = r.get("predicate")?.as_str()?;
                             let obj = r.get("object")?.as_str()?;
                             // Source-grounding: both endpoints must appear verbatim in corpus
-                            if corpus_lower.contains(&subj.to_lowercase())
-                                && corpus_lower.contains(&obj.to_lowercase())
+                            if !corpus_lower.contains(&subj.to_lowercase())
+                                || !corpus_lower.contains(&obj.to_lowercase())
                             {
-                                Some(RelatedToEdge {
-                                    src_entity_name: subj.to_string(),
-                                    tgt_entity_name: obj.to_string(),
-                                    relation_type: pred.to_string(),
-                                })
-                            } else {
-                                None
+                                return None;
                             }
+                            // Closed relation-type vocabulary (ontology/relation_types.csv):
+                            // reject edges whose predicate + endpoint classes don't match a
+                            // known rule. Fail-open when either endpoint's class is unknown
+                            // (not present in this batch's extracted entities) or the
+                            // predicate isn't yet in the vocabulary — see
+                            // entity_filter::validate_relation_edge doc comment.
+                            if let (Some(sc), Some(oc)) = (
+                                entity_classes.get(&subj.to_lowercase()),
+                                entity_classes.get(&obj.to_lowercase()),
+                            ) {
+                                if !entity_filter::validate_relation_edge(pred, sc, oc) {
+                                    return None;
+                                }
+                            }
+                            Some(RelatedToEdge {
+                                src_entity_name: subj.to_string(),
+                                tgt_entity_name: obj.to_string(),
+                                relation_type: pred.to_string(),
+                            })
                         })
                         .collect();
                     if !edges.is_empty() {
@@ -434,6 +461,16 @@ fn main() -> NotifyResult<()> {
                 // 3. Write source-grounded relation triples to RelatedTo
                 if !tier_a_rels.is_empty() {
                     use crate::graph::RelatedToEdge;
+                    // name (lowercased) -> classification, for the closed relation-type
+                    // vocabulary check below.
+                    let entity_classes: std::collections::HashMap<String, String> = tier_a_ents
+                        .iter()
+                        .filter_map(|e| {
+                            let name = e.get("entity_name")?.as_str()?.to_lowercase();
+                            let cls = e.get("classification")?.as_str()?.to_string();
+                            Some((name, cls))
+                        })
+                        .collect();
                     let edges: Vec<RelatedToEdge> = tier_a_rels
                         .iter()
                         .filter_map(|r| {
@@ -441,17 +478,30 @@ fn main() -> NotifyResult<()> {
                             let pred = r.get("predicate")?.as_str()?;
                             let obj = r.get("object")?.as_str()?;
                             // Source-grounding: both endpoints must appear verbatim in corpus
-                            if corpus_lower.contains(&subj.to_lowercase())
-                                && corpus_lower.contains(&obj.to_lowercase())
+                            if !corpus_lower.contains(&subj.to_lowercase())
+                                || !corpus_lower.contains(&obj.to_lowercase())
                             {
-                                Some(RelatedToEdge {
-                                    src_entity_name: subj.to_string(),
-                                    tgt_entity_name: obj.to_string(),
-                                    relation_type: pred.to_string(),
-                                })
-                            } else {
-                                None
+                                return None;
                             }
+                            // Closed relation-type vocabulary (ontology/relation_types.csv):
+                            // reject edges whose predicate + endpoint classes don't match a
+                            // known rule. Fail-open when either endpoint's class is unknown
+                            // (not present in this batch's extracted entities) or the
+                            // predicate isn't yet in the vocabulary — see
+                            // entity_filter::validate_relation_edge doc comment.
+                            if let (Some(sc), Some(oc)) = (
+                                entity_classes.get(&subj.to_lowercase()),
+                                entity_classes.get(&obj.to_lowercase()),
+                            ) {
+                                if !entity_filter::validate_relation_edge(pred, sc, oc) {
+                                    return None;
+                                }
+                            }
+                            Some(RelatedToEdge {
+                                src_entity_name: subj.to_string(),
+                                tgt_entity_name: obj.to_string(),
+                                relation_type: pred.to_string(),
+                            })
                         })
                         .collect();
                     if !edges.is_empty() {
