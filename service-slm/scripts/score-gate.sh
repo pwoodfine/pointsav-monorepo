@@ -109,8 +109,8 @@ PROBES=20
 PASS_RATE_THRESHOLD="0.8"
 DRY_RUN=0
 RESULT_FILE="${RESULT_FILE:-${FOUNDRY_ROOT}/data/adapters/score-gate-result.json}"
-# Archive-scoped, matching eval-adapter.sh's REGISTRY exactly — NOT the same
-# directory as RESULT_FILE above, which is workspace-shared, not archive-local.
+# Archive-scoped — NOT the same directory as RESULT_FILE above, which is
+# workspace-shared, not archive-local.
 ARCHIVE_ROOT="${ARCHIVE_ROOT:-${FOUNDRY_ROOT}/clones/project-totebox}"
 REGISTRY="${REGISTRY:-${ARCHIVE_ROOT}/data/adapters/registry.yaml}"
 
@@ -427,15 +427,15 @@ result = {
 with open(result_file, "w") as f:
     json.dump(result, f, indent=2)
 
-# Record this gate attempt in the archive's adapter registry — reuses
-# eval-adapter.sh's existing flat-list schema verbatim (name/adapter_dir/
-# base_model/eval_pass_at5/promoted/notes) rather than inventing a new one or
-# the incompatible map-keyed adapter-hub crate schema; that reconciliation is
-# a separate, already-tracked P1 item, not done here. Written regardless of
-# pass/fail — a FAIL is still a real, worth-recording data point. Skipped
-# entirely in --dry-run: no real inference happened, so there is nothing
-# genuine to record (dry-run's placeholder completion would otherwise
-# pollute the registry with fake scores, as it did before this guard).
+# Record this gate attempt in the archive's adapter registry — a flat-list
+# schema (name/adapter_dir/base_model/version/trained_on/corpus_pairs/
+# eval_pass_at5/promoted/notes), not the incompatible map-keyed adapter-hub
+# crate schema; that reconciliation is a separate, already-tracked P1 item,
+# not done here. Written regardless of pass/fail — a FAIL is still a real,
+# worth-recording data point. Skipped entirely in --dry-run: no real
+# inference happened, so there is nothing genuine to record (dry-run's
+# placeholder completion would otherwise pollute the registry with fake
+# scores, as it did before this guard).
 if dry_run:
     print("(dry-run — registry not updated)", file=sys.stderr)
 else:
@@ -451,10 +451,29 @@ else:
     adapters = reg.get("adapters") or []
     adapter_name = os.path.basename(adapter_path.rstrip("/"))
 
+    # Schema reconciliation (2026-07-06 completion plan, Phase 3): this script
+    # previously wrote a narrower schema (name/adapter_dir/base_model/
+    # eval_pass_at5/promoted/notes) than the now-retired eval-adapter.sh's
+    # (which also had version/trained_on/corpus_pairs) — no adapter had ever
+    # been registered with the richer schema. version is a registry-wide
+    # max+1 (not per-name), matching that retired script's own scheme
+    # exactly. trained_on/corpus_pairs use the same crude proxies it did
+    # (today's date; a file count in the adapter directory) — deliberately
+    # not a precision improvement, just schema parity.
+    version = max((a.get("version", 0) for a in adapters), default=0) + 1
+    trained_on = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    try:
+        corpus_pairs = len(os.listdir(adapter_path))
+    except OSError:
+        corpus_pairs = 0
+
     registry_entry = {
         "name": adapter_name,
+        "version": version,
         "adapter_dir": adapter_path,
         "base_model": canonical_base,
+        "trained_on": trained_on,
+        "corpus_pairs": corpus_pairs,
         "eval_pass_at5": round(diff_parse_rate, 3),
         "promoted": recommend_promotion,
         "notes": (

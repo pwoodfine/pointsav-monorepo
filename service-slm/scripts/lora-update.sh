@@ -16,7 +16,8 @@
 #      (the trainer VM's lora-training.service consumes the marker)
 #   6. Poll for adapter artifact (data/lora/<id>/) — up to 4h
 #   7. Pull adapter back to workspace VM
-#   8. eval-adapter.sh — score against held-out set
+#   8. score-gate.sh — score against held-out set (+ capability-drift-gate.sh
+#      for capability-regression check)
 #   9. If eval passes: append entry to data/adapters/registry.yaml
 #  10. NOTAM the result; outbox to Command for promotion decision
 #
@@ -148,7 +149,8 @@ log "     gcloud compute scp --recurse \\"
 log "       ${TRAINER_INSTANCE}:/data/weights/adapters/${ADAPTER_ID} \\"
 log "       ${FOUNDRY_ROOT}/data/lora/ --zone=${TRAINER_ZONE}"
 log "  6. Eval:"
-log "     ${SCRIPT_DIR}/eval-adapter.sh ${FOUNDRY_ROOT}/data/lora/${ADAPTER_ID}"
+log "     ${SCRIPT_DIR}/score-gate.sh --adapter-path ${FOUNDRY_ROOT}/data/lora/${ADAPTER_ID}"
+log "     ${SCRIPT_DIR}/capability-drift-gate.sh --adapter-path ${FOUNDRY_ROOT}/data/lora/${ADAPTER_ID}"
 log "  7. Stop Yo-Yo trainer:"
 log "     bash ${SCRIPT_DIR}/stop-yoyo.sh --instance=${TRAINER_INSTANCE} --zone=${TRAINER_ZONE}"
 log ""
