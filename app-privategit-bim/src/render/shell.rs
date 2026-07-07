@@ -120,7 +120,7 @@ pub fn page_shell(title: &str, active_path: &str, content: &str, state: &AppStat
           <li>{tc} BIM Object categories &middot; {comp} components &middot; {rc} research&nbsp;entries</li>
           <li>IFC&nbsp;4.3 (ISO&nbsp;16739-1:2024) &middot; Uniclass&nbsp;2015 &middot; DTCG</li>
           <li>BIM Object data licensed <strong>Apache-2.0</strong> &middot; platform code <strong>AGPL-3.0-or-later</strong></li>
-          <li><a href="https://github.com/pointsav/pointsav-monorepo">Source (github.com/pointsav)</a></li>
+          <li><a href="https://github.com/pointsav/pointsav-monorepo">Platform source code (github.com/pointsav)</a></li>
         </ul>
       </div>
       <div>
@@ -131,13 +131,16 @@ pub fn page_shell(title: &str, active_path: &str, content: &str, state: &AppStat
           <li><a href="/research">/research</a> &mdash; research backplane</li>
         </ul>
       </div>
+      <div>
+        <p class="bim-footer__heading">Woodfine network</p>
+        <ul class="bim-footer__list">
+          <li><a href="https://woodfinegroup.com">Woodfine Capital Projects</a></li>
+          <li><a href="https://corporate.woodfinegroup.com" target="_blank" rel="noopener">Corporate</a></li>
+          <li><a href="https://projects.woodfinegroup.com" target="_blank" rel="noopener">Projects</a></li>
+          <li><a href="https://github.com/woodfine/woodfine-bim-library" target="_blank" rel="noopener">GitHub</a></li>
+        </ul>
+      </div>
     </div>
-    <p class="bim-footer__family">Part of the Woodfine network:
-      <a href="https://woodfinegroup.com">home</a> &middot;
-      <a href="https://corporate.woodfinegroup.com" target="_blank" rel="noopener">Corporate</a> &middot;
-      <a href="https://projects.woodfinegroup.com" target="_blank" rel="noopener">Projects</a> &middot;
-      <a href="https://github.com/pointsav" target="_blank" rel="noopener">GitHub</a>
-    </p>
     <div class="bim-footer__base">
       <div class="bim-footer__base-row">
         <div class="bim-footer__cities">
@@ -158,8 +161,8 @@ pub fn page_shell(title: &str, active_path: &str, content: &str, state: &AppStat
           </span>
         </div>
       </div>
-      <p>Copyright &copy; 2026 Woodfine Capital Projects Inc. See LICENSE for terms. &middot; {public_url}</p>
-      <p class="bim-footer__disclaimer">Provided for reference and coordination only — not a substitute for code review. See <a href="/disclaimers" data-path="/disclaimers">Important Information</a>.</p>
+      <p>Copyright &copy; 2026 Woodfine Capital Projects Inc. See LICENSE for terms.</p>
+      <p class="bim-footer__disclaimer">Provided for reference and coordination only — not a substitute for code review.</p>
       <p class="bim-footer__trademark">Woodfine Capital Projects&trade;, Woodfine Management Corp&trade;, PointSav Digital Systems&trade;, Totebox Orchestration&trade;, Totebox Archive&trade;, and Capability Geometry&trade; are trademarks of Woodfine Capital Projects Inc., used in Canada, the United States, Latin America, and Europe. Capability Geometry&trade; is an unregistered trademark of Woodfine Capital Projects Inc. All other trademarks are the property of their respective owners.</p>
     </div>
   </footer>
@@ -175,7 +178,6 @@ pub fn page_shell(title: &str, active_path: &str, content: &str, state: &AppStat
         tc = tc,
         comp = state.components_count,
         rc = state.research_count,
-        public_url = esc(&state.config.public_url),
     )
 }
 
