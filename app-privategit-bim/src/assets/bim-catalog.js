@@ -261,8 +261,11 @@
   }
 
   function compositionDetail(c) {
+    // "Data Box" per the architects' own sketch-note label for this exact
+    // size/area summary panel (DISCOVERY_MCorp_Sketches_Key Plans_Business_Notes.pdf,
+    // e.g. "DATA BOX B (SMALL)").
     const area = c.area_sf
-      ? '<div class="bim-cat-areabox"><span class="bim-cat-areabox__n">' + esc(c.area_sf) + '<small> SF</small></span>' +
+      ? '<div class="bim-cat-areabox"><span class="bim-cat-areabox__kicker">Data Box</span><span class="bim-cat-areabox__n">' + esc(c.area_sf) + '<small> SF</small></span>' +
         '<span class="bim-cat-areabox__l">Net leasable area' + (c.area_m2 ? ' · ' + esc(c.area_m2) + ' m²' : '') + '</span></div>'
       : '';
     const svg = c.svg ? '<div class="bim-cat-preview" data-category="' + esc(c.category) + '">' + c.svg + '</div>' : '';

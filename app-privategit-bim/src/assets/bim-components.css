@@ -668,12 +668,23 @@ table.bim-detail-spectable th {
 }
 .bim-cat-areabox {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
   gap: 0.75rem;
   padding: 0.9375rem 1rem;
   border: 1px solid var(--bim-border, #E6E7E8);
   border-left: 3px solid var(--bim-accent, #164679);
   background: var(--bim-bg-subtle, #EEF1F5);
+}
+/* "Data Box" kicker — real architect sketch-note terminology for this
+   sizing/area summary panel, not a generic label. */
+.bim-cat-areabox__kicker {
+  flex-basis: 100%;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--bim-fg-muted, #6B7280);
 }
 .bim-cat-areabox__n {
   font-family: var(--bim-font-mono);

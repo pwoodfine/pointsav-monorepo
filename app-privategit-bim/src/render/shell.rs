@@ -6,9 +6,9 @@ use crate::state::AppState;
 pub fn page_shell(title: &str, active_path: &str, content: &str, state: &AppState) -> String {
     let tc = state.categories.len();
     let full_title = if title.is_empty() {
-        "BIM Object Library — Woodfine".to_string()
+        "Woodfine BIM Library".to_string()
     } else {
-        format!("{} — BIM Object Library", esc(title))
+        format!("{} — Woodfine BIM Library", esc(title))
     };
 
     // /edit/* embeds real Carbon Web Components (<cds-content-switcher> etc.)
@@ -89,7 +89,7 @@ pub fn page_shell(title: &str, active_path: &str, content: &str, state: &AppStat
 <body class="bim-body">
   <header class="bim-header">
     <div class="bim-header__inner">
-      <a href="/" class="bim-header__brand" aria-label="Woodfine — BIM Object Library" data-path="/">BIM Object Library</a>
+      <a href="/" class="bim-header__brand" aria-label="Woodfine — BIM Library" data-path="/">BIM Library</a>
       <div class="bim-header__right">
         <span class="bim-header__standards">IFC 4.3 &middot; ISO 16739-1:2024 &middot; DTCG</span>
         {theme_toggle}
@@ -105,7 +105,7 @@ pub fn page_shell(title: &str, active_path: &str, content: &str, state: &AppStat
     <details class="bim-disclosure__details">
       <summary class="bim-disclosure__summary">Important Information</summary>
       <div class="bim-disclosure__body">
-        <p class="bim-disclosure__label">BIM Object Library disclosure</p>
+        <p class="bim-disclosure__label">BIM Library disclosure</p>
         {disclosure_sections}
         <p class="bim-disclosure__more"><a href="/disclaimers" data-path="/disclaimers">Full disclaimer &rarr;</a></p>
       </div>
@@ -114,7 +114,7 @@ pub fn page_shell(title: &str, active_path: &str, content: &str, state: &AppStat
   <footer class="bim-footer">
     <div class="bim-footer__inner">
       <div>
-        <p class="bim-footer__heading">Woodfine BIM Object Library</p>
+        <p class="bim-footer__heading">Woodfine BIM Library</p>
         <ul class="bim-footer__list">
           <li>Specification BIM Objects for the built environment</li>
           <li>{tc} BIM Object categories &middot; {comp} components &middot; {rc} research&nbsp;entries</li>
