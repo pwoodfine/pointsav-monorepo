@@ -333,6 +333,36 @@ html:not(.js) .m-drawer-scrim {
   margin: 0;
 }
 
+/* Progressive disclosure for long content-card grids (2026-07-07 mobile
+   redesign) — the "show all N" reveal button. Ships `hidden` in the
+   server-rendered HTML (see card_grid() in ui.rs) and stays that way with
+   no JS: nothing is ever hidden and this dead button never appears, so the
+   page degrades to "everything visible," never to "content missing."
+   app.js un-hides it only on narrow viewports (<700px, matching the icon
+   strip's own breakpoint) and wires the reveal click. Desktop/tablet keep
+   every card visible via the grid's existing fluid columns — nothing here
+   ever runs there. */
+.m-card-grid__more {
+  grid-column: 1 / -1;
+  justify-self: center;
+  margin-top: var(--m-space-2);
+  padding: 0.7em 1.6em;
+  border: 1px solid var(--m-border-strong);
+  border-radius: var(--m-radius-control);
+  background: var(--m-card-bg);
+  color: var(--m-ink);
+  font-family: var(--m-font-sans);
+  font-size: var(--m-text-sm);
+  font-weight: var(--m-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: var(--m-label-tracking);
+  cursor: pointer;
+}
+.m-card-grid__more:hover,
+.m-card-grid__more:focus-visible {
+  background: var(--m-surface-section);
+}
+
 /* Cross-site handoff card (e.g. Woodfine's "Digital Systems" card pointing
    at home.pointsav.com, or PointSav's "Real Property Infrastructure" card
    pointing at home.woodfinegroup.com) — deliberately NOT styled like the
@@ -395,10 +425,23 @@ html:not(.js) .m-drawer-scrim {
 
 /* Button-style card row (pure-navigation grids — Manifest / BIM Library /
    Location Intelligence, Source / Documentation / Software). Compact,
-   accent-filled, centered — visually distinct from the content cards above. */
+   accent-filled, centered — visually distinct from the content cards above.
+
+   Column count fixed 2026-07-07 (operator-approved): `auto-fit,
+   minmax(160px,1fr)` produced a 2-and-1 orphan wrap across the entire
+   375-547px band (measured live) — the exact same failure class already
+   fixed for the icon strip. Same fix: only ever 1 column (mobile) or
+   --m-button-count columns (desktop, the real card count, set inline per-
+   render in ui.rs) — no in-between count, so no algorithmic orphan is
+   possible. */
 .m-card-grid--buttons {
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  grid-template-columns: repeat(var(--m-button-cols, 1), 1fr);
   gap: var(--m-space-3);
+}
+@media (min-width: 700px) {
+  .m-card-grid--buttons {
+    --m-button-cols: var(--m-button-count);
+  }
 }
 .m-card--button {
   background: var(--m-button-card-bg);
@@ -406,9 +449,11 @@ html:not(.js) .m-drawer-scrim {
   border-radius: var(--m-button-card-radius);
   padding: var(--m-button-card-pad);
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   text-align: center;
+  gap: var(--m-space-1);
   transition: background var(--m-dur-base) var(--m-ease-standard);
 }
 .m-card--button:hover,
@@ -427,6 +472,16 @@ html:not(.js) .m-drawer-scrim {
 }
 .m-card--button .m-card__link-glyph {
   color: var(--m-button-card-ink);
+}
+/* Editorial caption (2026-07-07, operator-selected over no-caption) — one
+   short line under the label. Body text already renders for any card via
+   card_grid()'s shared body rendering; this just styles it for the
+   filled-accent button context (needs its own contrast, not the plain-card
+   --m-ink-secondary). */
+.m-card--button .m-card__body {
+  font-size: var(--m-text-2xs, 0.6875rem);
+  color: var(--m-button-card-ink);
+  opacity: 0.85;
 }
 .m-card__github-icon {
   display: block;
@@ -470,16 +525,42 @@ html:not(.js) .m-drawer-scrim {
     --m-icon-strip-cols: var(--m-icon-count);
   }
 }
+/* Icon-beside-caption layout (2026-07-07 mobile redesign, operator-selected
+   over icon-on-top): icon and a visible title+descriptor sit side by side,
+   at both the 1-column mobile stack and the N-column desktop row — same
+   item markup at every breakpoint, only the grid's own column count
+   changes (see --m-icon-strip-cols above). */
 .m-icon-strip__item {
   display: flex;
-  justify-content: center;
+  align-items: center;
+  gap: var(--m-icon-strip-text-gap);
+  text-align: left;
 }
-.m-icon-strip__item img {
+.m-icon-strip__img {
   display: block;
-  width: 100%;
-  max-width: var(--m-icon-strip-size);
+  flex-shrink: 0;
+  width: var(--m-icon-strip-size);
   height: auto;
   aspect-ratio: 1;
+}
+.m-icon-strip__text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--m-space-1);
+  min-width: 0;
+}
+.m-icon-strip__title {
+  margin: 0;
+  font-family: var(--m-font-sans);
+  font-weight: var(--m-weight-bold);
+  font-size: 1rem;
+  color: var(--m-ink);
+}
+.m-icon-strip__body {
+  margin: 0;
+  font-size: var(--m-text-sm);
+  line-height: var(--m-lh-body);
+  color: var(--m-ink-secondary);
 }
 /* Hairline rhythm between stacked mobile items (FABLE audit 2026-07-02) —
    gives the 1-column stack visual separation without new layout logic;
@@ -575,6 +656,12 @@ html:not(.js) .m-drawer-scrim {
   max-width: var(--m-container-max);
   margin-inline: auto;
   display: flex;
+  /* Operator-confirmed fix, 2026-07-07: Site and Network were already
+     side-by-side at every width (contrary to an initial assumption they
+     stacked on mobile) — the real problem was both columns clustering at
+     the left edge with unused space on the right, at mobile AND desktop.
+     One rule serves both breakpoints; no wrap/stacking logic needed. */
+  justify-content: space-between;
   gap: var(--m-footer-col-gap);
   padding-bottom: var(--m-space-8);
 }

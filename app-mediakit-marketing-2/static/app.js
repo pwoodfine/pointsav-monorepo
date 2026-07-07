@@ -83,3 +83,33 @@
     reopenAfterPrint = [];
   });
 })();
+
+// Progressive disclosure for long content-card grids (2026-07-07 mobile
+// redesign) -- collapses cards beyond the first 4 on narrow viewports,
+// revealed by the "Show all N" button. Separate IIFE from the drawer above
+// so it never depends on drawer/scrim elements existing. Only ever runs
+// below 700px (matching the icon strip's own breakpoint): at 700px+ the
+// grid's existing fluid columns already show every card, so nothing here
+// should touch that layout. Progressive enhancement -- the button ships
+// `hidden` in the server HTML and stays that way if this never runs, so
+// without JS every card is simply visible, never missing.
+(function () {
+  if (!window.matchMedia("(max-width: 699px)").matches) return;
+
+  document.querySelectorAll("[data-m-card-grid-more]").forEach(function (button) {
+    var grid = button.closest(".m-card-grid");
+    if (!grid) return;
+    var extras = grid.querySelectorAll("[data-m-card-extra]");
+    if (!extras.length) return;
+    extras.forEach(function (card) {
+      card.hidden = true;
+    });
+    button.hidden = false;
+    button.addEventListener("click", function () {
+      extras.forEach(function (card) {
+        card.hidden = false;
+      });
+      button.remove();
+    });
+  });
+})();

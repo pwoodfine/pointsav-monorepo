@@ -65,10 +65,18 @@ pub enum Section {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IconTile {
     pub src: String,
-    /// The label is rendered as vector text baked into the SVG itself (it's
-    /// a graphic, not semantic HTML) — `alt` must repeat it verbatim so
-    /// screen readers get the same information sighted users do.
+    /// Also rendered as the tile's visible title (2026-07-07 mobile
+    /// redesign — the icon strip previously had no visible text at all,
+    /// `alt` was the only place this label existed). The `<img>` itself is
+    /// now `alt=""`/`aria-hidden` since the visible title already carries
+    /// the same information — screen readers would otherwise announce it
+    /// twice.
     pub alt: String,
+    /// Optional one-line descriptor shown beneath the visible title.
+    /// Absent means the tile renders title-only (no layout requirement to
+    /// supply one for every icon).
+    #[serde(default)]
+    pub body: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

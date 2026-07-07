@@ -705,16 +705,37 @@ fn card_grid(columns: u8, cards: &[crate::content::Card], style: Option<&str>) -
     } else {
         "m-card-grid"
     };
+    // `--m-button-count` (the real card count, not the manifest's `columns`
+    // hint) drives the button row's own 1-col/N-col fix — see
+    // .m-card-grid--buttons in app.css. Only set for the buttons style;
+    // the plain informational grid doesn't need it (its fluid auto-fit
+    // columns were never the orphan-prone kind).
+    let grid_style = if is_buttons {
+        format!("--m-grid-cols: {columns}; --m-button-count: {}", cards.len())
+    } else {
+        format!("--m-grid-cols: {columns}")
+    };
+    // Progressive disclosure (2026-07-07 mobile redesign): only the plain
+    // informational grid ever needs this — button rows are short
+    // navigation lists, never long enough to warrant collapsing. Ships
+    // fully visible with a `hidden` reveal button; app.js only activates
+    // it below 700px, and only ever hides cards beyond the first 4 that
+    // AREN'T a cross-site linked card (Digital Systems / Real Property
+    // Infrastructure stay visible unconditionally — they're navigation to
+    // the sibling site, not informational content to defer).
+    const VISIBLE_COUNT: usize = 4;
+    let collapsible = !is_buttons && cards.len() > VISIBLE_COUNT;
     html! {
-        section class=(grid_class) style={ "--m-grid-cols: " (columns) } {
-            @for card in cards {
+        section class=(grid_class) style=(grid_style) {
+            @for (i, card) in cards.iter().enumerate() {
                 @let linked = card.href.is_some();
                 @let card_class = match (is_buttons, linked) {
                     (true, _) => "m-card m-card--button",
                     (false, true) => "m-card m-card--linked",
                     (false, false) => "m-card",
                 };
-                div class=(card_class) {
+                @let is_extra = collapsible && i >= VISIBLE_COUNT && !linked;
+                div class=(card_class) data-m-card-extra[is_extra] {
                     @if linked && !is_buttons {
                         // Cross-site handoff kicker — see .m-card--linked in
                         // app.css for why this card is styled to stand out
@@ -739,6 +760,11 @@ fn card_grid(columns: u8, cards: &[crate::content::Card], style: Option<&str>) -
                     }
                 }
             }
+            @if collapsible {
+                button type="button" class="m-card-grid__more" data-m-card-grid-more hidden {
+                    "Show all " (cards.len()) " terms"
+                }
+            }
         }
     }
 }
@@ -754,8 +780,19 @@ fn icon_strip(icons: &[crate::content::IconTile]) -> Markup {
             // icons has no clean 2-column split). See app.css for detail.
             div.m-icon-strip__inner style={ "--m-icon-count: " (icons.len()) } {
                 @for icon in icons {
+                    // Icon-beside-caption layout (2026-07-07 mobile redesign,
+                    // operator-selected over icon-on-top): the title is now
+                    // real visible text, not just invisible alt text, so the
+                    // image itself becomes decorative (empty alt) to avoid a
+                    // screen reader announcing the same label twice.
                     div.m-icon-strip__item {
-                        img src=(icon.src) alt=(icon.alt) loading="lazy" width="200" height="200";
+                        img.m-icon-strip__img src=(icon.src) alt="" aria-hidden="true" loading="lazy" width="200" height="200";
+                        div.m-icon-strip__text {
+                            h3.m-icon-strip__title { (icon.alt) }
+                            @if let Some(body) = &icon.body {
+                                p.m-icon-strip__body { (body) }
+                            }
+                        }
                     }
                 }
             }
@@ -1042,6 +1079,57 @@ sections:
     }
 
     #[test]
+    fn card_grid_collapses_beyond_four_but_never_the_linked_card() {
+        let mut cards: Vec<crate::content::Card> = (1..=7)
+            .map(|i| crate::content::Card {
+                title: format!("Term {i}"),
+                body: Some("Body.".to_string()),
+                href: None,
+            })
+            .collect();
+        cards.push(crate::content::Card {
+            title: "Digital Systems".to_string(),
+            body: Some("Cross-site.".to_string()),
+            href: Some("https://home.pointsav.com".to_string()),
+        });
+        let html = card_grid(4, &cards, None).into_string();
+        // Reveal button present, ships hidden (no-JS-safe default).
+        assert!(html.contains("data-m-card-grid-more"));
+        assert!(html.contains("Show all 8 terms"));
+        // Exactly 3 cards marked extra (Terms 5-7) — the linked 8th card,
+        // despite being past the visible-count threshold, is never marked.
+        assert_eq!(html.matches("data-m-card-extra").count(), 3);
+    }
+
+    #[test]
+    fn card_grid_does_not_collapse_at_or_under_four_cards() {
+        let cards: Vec<crate::content::Card> = (1..=4)
+            .map(|i| crate::content::Card {
+                title: format!("Term {i}"),
+                body: None,
+                href: None,
+            })
+            .collect();
+        let html = card_grid(4, &cards, None).into_string();
+        assert!(!html.contains("data-m-card-grid-more"));
+        assert!(!html.contains("data-m-card-extra"));
+    }
+
+    #[test]
+    fn button_style_cards_never_collapse_regardless_of_count() {
+        let cards: Vec<crate::content::Card> = (1..=6)
+            .map(|i| crate::content::Card {
+                title: format!("Button {i}"),
+                body: None,
+                href: Some("https://example.com".to_string()),
+            })
+            .collect();
+        let html = card_grid(6, &cards, Some("buttons")).into_string();
+        assert!(!html.contains("data-m-card-grid-more"));
+        assert!(html.contains("--m-button-count: 6"));
+    }
+
+    #[test]
     fn button_style_cards_get_button_class() {
         let cards = vec![crate::content::Card {
             title: "Manifest".to_string(),
@@ -1090,13 +1178,31 @@ sections:
     }
 
     #[test]
-    fn icon_strip_renders_alt_text_from_content() {
+    fn icon_strip_renders_visible_title_and_decorative_image() {
         let icons = vec![crate::content::IconTile {
             src: "/static/graphics/woodfine/class-1.svg".to_string(),
             alt: "Professional Centres".to_string(),
+            body: Some("Test descriptor.".to_string()),
         }];
         let html = icon_strip(&icons).into_string();
-        assert!(html.contains(r#"alt="Professional Centres""#));
+        // Title is now visible text (h3), not just alt — image becomes
+        // decorative (empty alt) since the visible title carries the same
+        // information, avoiding a double screen-reader announcement.
+        assert!(html.contains("Professional Centres"));
+        assert!(html.contains("Test descriptor."));
+        assert!(html.contains(r#"alt="""#));
         assert!(html.contains(r#"src="/static/graphics/woodfine/class-1.svg""#));
+    }
+
+    #[test]
+    fn icon_strip_renders_without_optional_body() {
+        let icons = vec![crate::content::IconTile {
+            src: "/static/graphics/woodfine/class-1.svg".to_string(),
+            alt: "Professional Centres".to_string(),
+            body: None,
+        }];
+        let html = icon_strip(&icons).into_string();
+        assert!(html.contains("Professional Centres"));
+        assert!(!html.contains("m-icon-strip__body"));
     }
 }
