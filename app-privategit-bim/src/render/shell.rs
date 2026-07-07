@@ -107,7 +107,7 @@ pub fn page_shell(title: &str, active_path: &str, content: &str, state: &AppStat
       <div class="bim-disclosure__body">
         <p class="bim-disclosure__label">BIM Library disclosure</p>
         {disclosure_sections}
-        <p class="bim-disclosure__more"><a href="/disclaimers" data-path="/disclaimers">Full disclaimer &rarr;</a></p>
+        <p class="bim-disclosure__more"><a href="/disclaimers">Full disclaimer &rarr;</a></p>
       </div>
     </details>
   </section>
@@ -134,10 +134,11 @@ pub fn page_shell(title: &str, active_path: &str, content: &str, state: &AppStat
       <div>
         <p class="bim-footer__heading">Woodfine network</p>
         <ul class="bim-footer__list">
-          <li><a href="https://woodfinegroup.com">Woodfine Capital Projects</a></li>
+          <li><a href="https://home.woodfinegroup.com" target="_blank" rel="noopener">Woodfine Capital Projects</a></li>
           <li><a href="https://corporate.woodfinegroup.com" target="_blank" rel="noopener">Corporate</a></li>
           <li><a href="https://projects.woodfinegroup.com" target="_blank" rel="noopener">Projects</a></li>
           <li><a href="https://github.com/woodfine/woodfine-bim-library" target="_blank" rel="noopener">GitHub</a></li>
+          <li><a href="https://home.pointsav.com" target="_blank" rel="noopener">PointSav Digital Systems</a></li>
         </ul>
       </div>
     </div>
@@ -161,7 +162,7 @@ pub fn page_shell(title: &str, active_path: &str, content: &str, state: &AppStat
           </span>
         </div>
       </div>
-      <p>Copyright &copy; 2026 Woodfine Capital Projects Inc. See LICENSE for terms.</p>
+      <p>Copyright &copy; 2026 Woodfine Capital Projects Inc. See <a href="https://github.com/pointsav/pointsav-monorepo/blob/main/app-privategit-bim/LICENSE" target="_blank" rel="noopener">LICENSE</a> for terms.</p>
       <p class="bim-footer__disclaimer">Provided for reference and coordination only — not a substitute for code review.</p>
       <p class="bim-footer__trademark">Woodfine Capital Projects&trade;, Woodfine Management Corp&trade;, PointSav Digital Systems&trade;, Totebox Orchestration&trade;, Totebox Archive&trade;, and Capability Geometry&trade; are trademarks of Woodfine Capital Projects Inc., used in Canada, the United States, Latin America, and Europe. Capability Geometry&trade; is an unregistered trademark of Woodfine Capital Projects Inc. All other trademarks are the property of their respective owners.</p>
     </div>
