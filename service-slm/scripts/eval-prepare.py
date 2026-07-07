@@ -3,7 +3,7 @@
 # SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
 
 """
-eval-prepare.py — Generate the held-out eval set for eval-adapter.sh.
+eval-prepare.py — Generate the held-out eval set for score-gate.sh.
 
 Samples 10% of the SFT queue-done corpus (same source as run-sft-training.py)
 and writes Alpaca-formatted pairs to the holdout JSONL file.  These pairs are
@@ -12,8 +12,9 @@ NOT used for training; they form a stable reference for pass@5 regression checks
 Format of each output line:
   {"prompt": "### Instruction:\n...\n\n### Response:\n", "expected": "<diff>"}
 
-The `prompt` field ends BEFORE the response so eval-adapter.sh can feed it
-to llama-server and compare the model's completion against `expected`.
+The `prompt` field ends BEFORE the response so score-gate.sh (successor to
+the retired eval-adapter.sh, 2026-07-06) can feed it to llama-server and
+score the model's completion.
 
 Usage:
   python3 scripts/eval-prepare.py
@@ -73,7 +74,7 @@ def load_pairs(queue_done: str) -> list[dict]:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Generate held-out eval set for eval-adapter.sh")
+    parser = argparse.ArgumentParser(description="Generate held-out eval set for score-gate.sh")
     parser.add_argument("--queue-done", default=DEFAULT_QUEUE_DONE)
     parser.add_argument("--out", default=DEFAULT_OUT)
     parser.add_argument("--sample-frac", type=float, default=0.10,

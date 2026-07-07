@@ -61,7 +61,8 @@ cat <<EOF
    cd ${SLM}
    python3 scripts/run-sft-training.py            # base = OLMo-3-Instruct (registry), engineering corpus wired
    python3 scripts/run-dpo-training.py --mode pref --loss-type simpo   # SFT-first guard + truncation pre-check enforced
-   bash   scripts/eval-adapter.sh <adapter>       # hard gate before promotion
+   bash   scripts/score-gate.sh --adapter-path <adapter>              # hard gate before promotion
+   bash   scripts/capability-drift-gate.sh --adapter-path <adapter>   # capability-regression check
 EOF
 
 log "done — foundation code is committed; the above are the operator/Command activation steps."
