@@ -988,18 +988,30 @@ fn build_yoyo_client(
                 );
                 std::process::exit(1);
             }
-            Some(YoYoTierClient::new(
-                YoYoTierConfig {
-                    endpoint,
-                    default_model: std::env::var(env_model)
-                        .unwrap_or_else(|_| "Olmo-3-1125-32B-Think".to_string()),
-                    contract_version: slm_doorman::YOYO_CONTRACT_VERSION.to_string(),
-                    pricing: PricingConfig { yoyo_hourly_usd },
-                    zone: std::env::var("SLM_YOYO_GCP_ZONE").ok(),
-                    health_path,
-                },
-                bearer,
-            ))
+            // Persist circuit-breaker state across restarts (fixes the bug
+            // where every `systemctl restart local-doorman` reset a
+            // genuinely-open breaker back to "healthy" regardless of Tier
+            // B's real state, letting fresh batches through to a target
+            // that was still down). `SLM_CIRCUIT_STATE_PATH` overrides the
+            // default; relative paths resolve against the service's
+            // WorkingDirectory (/var/lib/local-doorman per the systemd unit).
+            let circuit_state_path = std::env::var("SLM_CIRCUIT_STATE_PATH")
+                .unwrap_or_else(|_| "circuit_breaker_state.json".to_string());
+            Some(
+                YoYoTierClient::new(
+                    YoYoTierConfig {
+                        endpoint,
+                        default_model: std::env::var(env_model)
+                            .unwrap_or_else(|_| "Olmo-3-1125-32B-Think".to_string()),
+                        contract_version: slm_doorman::YOYO_CONTRACT_VERSION.to_string(),
+                        pricing: PricingConfig { yoyo_hourly_usd },
+                        zone: std::env::var("SLM_YOYO_GCP_ZONE").ok(),
+                        health_path,
+                    },
+                    bearer,
+                )
+                .with_persistent_circuit(std::path::PathBuf::from(circuit_state_path)),
+            )
         }
         _ => None,
     }
