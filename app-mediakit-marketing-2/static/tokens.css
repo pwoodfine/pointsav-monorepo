@@ -222,18 +222,24 @@
   --m-icon-strip-bg:      var(--m-surface-section);
   --m-icon-strip-pad-y:   var(--m-space-12);
   --m-icon-strip-gap:     var(--m-space-8);
-  --m-icon-strip-size:    clamp(140px, 16vw, 280px);
+  --m-icon-strip-text-gap: var(--m-space-4);
 
-  /* Mobile-only reduction (FABLE audit 2026-07-02): measured the 1-column
-     stacked strip at 752px tall on a 375x667 phone — 113% of one full
-     viewport — for 4 non-interactive icons before any real content. Sizing
-     down + tighter spacing below the grid's own 700px column-count
-     breakpoint (app.css) cuts that to roughly 500px. This transitions
-     110px -> 140px (the desktop clamp's own floor) as viewport crosses
-     700px — growing, not shrinking, avoiding the backwards-jump mistake
-     from the reverted two-tier attempt above. Column-count logic
-     (1-col/N-col) is untouched. */
-  --m-icon-strip-size-mobile: 110px;
+  /* Icon size reduced 2026-07-07 (mobile-treatment redesign, round 3-6):
+     the icon now sits BESIDE a visible title+descriptor (icon-beside-
+     caption, operator-selected over icon-on-top) instead of being the
+     entire content of the cell — the old 140-280px was sized for an
+     icon-only cell and would crowd out the text at that scale. 88-128px
+     is proportionate to sit beside 2-4 lines of text without dominating
+     the row. Still a single monotonic clamp() — no breakpoint size jump,
+     same discipline as the original fix this replaces. */
+  --m-icon-strip-size:    clamp(88px, 9vw, 128px);
+
+  /* Mobile-only reduction, same monotonic-growth discipline as before
+     (76px -> 88px floor as viewport crosses 700px — growing, not
+     shrinking, avoiding the backwards-jump mistake a reverted two-tier
+     attempt made in 2026-07-02). Column-count logic (1-col/N-col) is
+     untouched. */
+  --m-icon-strip-size-mobile: 76px;
   --m-icon-strip-gap-mobile:  var(--m-space-6);
   --m-icon-strip-pad-y-mobile: var(--m-space-8);
 

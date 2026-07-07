@@ -17,12 +17,30 @@ sections:
     icons:
       - src: /static/graphics/woodfine/class-1.svg
         alt: Professional Centres
+        body: >-
+          Three-to-five-floor office buildings for service providers such as
+          law firms, accountants, dental practices, and medical clinics.
       - src: /static/graphics/woodfine/class-2.svg
         alt: Tech Industrial
+        body: >-
+          Storefront-and-workshop buildings for last-mile delivery and
+          hands-on trades.
       - src: /static/graphics/woodfine/class-3.svg
         alt: Retail Select
+        body: >-
+          Single-storey retail buildings for banks, pharmacies, and similar
+          everyday services.
       - src: /static/graphics/woodfine/class-4.svg
         alt: Suburban Office
+        # "medical" is operator-added, not directly sourced in the
+        # class-suburban-office.md wiki article (its own tenant list is
+        # academic/business/civic/laboratory; the closest sourced term is
+        # "healthcare-adjacent", a different word) — kept per explicit
+        # operator direction 2026-07-07. See DESIGN-RESEARCH-icon-strip-
+        # mobile.draft.md "Round 6" for the full sourcing trail.
+        body: >-
+          Six-to-nine-floor office buildings for academic, business, civic,
+          medical and laboratory tenants who need more space.
 
   - type: card-grid
     columns: 4
@@ -78,16 +96,23 @@ sections:
   # places); Manifest demoted to the footer Network column — a niche
   # transparency artifact, not a task destination either audience needs
   # single-tap.
+  # Caption text below is provisional/illustrative (operator-directed
+  # 2026-07-07), not verified against the actual destination pages' own
+  # content — see DESIGN-RESEARCH-icon-strip-mobile.draft.md "Round 7"/"8"
+  # for the full trail. Review before treating as final.
   - type: card-grid
     columns: 3
     style: buttons
     cards:
       - title: Projects
         href: https://projects.woodfinegroup.com/
+        body: Development regions and building designs
       - title: BIM Library
         href: https://bim.woodfinegroup.com/
+        body: Building objects and specifications
       - title: Location Intelligence
         href: https://gis.woodfinegroup.com/
+        body: Site-selection data and analysis
 
   # Full legal text (securities offering, forward-looking statements,
   # registration) moved 2026-07-02 into the footer's "Important information"
