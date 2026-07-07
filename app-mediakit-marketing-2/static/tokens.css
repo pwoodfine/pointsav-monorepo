@@ -224,15 +224,17 @@
   --m-icon-strip-gap:     var(--m-space-8);
   --m-icon-strip-text-gap: var(--m-space-4);
 
-  /* Icon size reduced 2026-07-07 (mobile-treatment redesign, round 3-6):
-     the icon now sits BESIDE a visible title+descriptor (icon-beside-
-     caption, operator-selected over icon-on-top) instead of being the
-     entire content of the cell — the old 140-280px was sized for an
-     icon-only cell and would crowd out the text at that scale. 88-128px
-     is proportionate to sit beside 2-4 lines of text without dominating
-     the row. Still a single monotonic clamp() — no breakpoint size jump,
-     same discipline as the original fix this replaces. */
-  --m-icon-strip-size:    clamp(88px, 9vw, 128px);
+  /* Desktop/tablet size (>=700px; the max-width:699px block below
+     overrides this value for mobile, so this is effectively a
+     desktop-only value already, unqualified here to match the existing
+     token pattern). Round 10 (2026-07-07, operator reversal): desktop
+     caption moved from beside the icon back to below it, so the icon is
+     once again the sole visual element in its own row — larger than the
+     88-128px "shares a row with text" size (round 3-6), but well short of
+     the pre-caption 140-280px (round 1-2), which had no competing text at
+     all in the cell. 112-160px balances a confident icon against the
+     visible title+descriptor now stacked underneath it. */
+  --m-icon-strip-size:    clamp(112px, 10vw, 160px);
 
   /* Mobile-only reduction, same monotonic-growth discipline as before
      (76px -> 88px floor as viewport crosses 700px — growing, not
