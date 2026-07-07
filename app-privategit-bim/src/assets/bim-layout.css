@@ -886,10 +886,6 @@ h1, h2 {
   margin: 0 0 0.5rem;
 }
 
-.bim-footer__disclaimer a {
-  color: var(--bim-accent, #164679);
-}
-
 .bim-badge__cc {
   display: inline-flex;
   align-items: center;
@@ -929,25 +925,6 @@ h1, h2 {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
-}
-
-/* Single "part of the network" line replacing the old dedicated Network
-   column (design.pointsav.com's leaner footer pattern — one line, not a
-   full column, for cross-property links). */
-.bim-footer__family {
-  max-width: 1200px;
-  margin: 1.5rem auto 0;
-  font-size: 0.8125rem;
-  color: var(--bim-fg-muted, #667085);
-}
-
-.bim-footer__family a {
-  color: var(--bim-accent, #164679);
-  text-decoration: none;
-}
-
-.bim-footer__family a:hover {
-  text-decoration: underline;
 }
 
 .bim-badge {
