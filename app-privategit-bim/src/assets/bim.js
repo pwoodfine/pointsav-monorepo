@@ -15,7 +15,15 @@ async function navigate(path) {
     const res = await fetch('/fragment' + path, {
       headers: { 'X-Fragment': '1' },
     });
-    if (!res.ok) return;
+    if (!res.ok) {
+      // Not every route has a /fragment/* counterpart (e.g. home, /about,
+      // /disclaimers, /search — only tokens/tokens-detail/research do).
+      // A missing fragment used to silently do nothing on click; fall back
+      // to a real navigation instead, same as the network-failure path
+      // below.
+      window.location.href = path;
+      return;
+    }
     const html = await res.text();
     const main = getMain();
     if (main) {
