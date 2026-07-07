@@ -3,6 +3,31 @@
   SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
 -->
 
+<section class="tokens-preamble">
+<p class="tokens-preamble-lede">A design token is a named, versioned decision — a color, a
+spacing value, a type size — stored once and referenced everywhere it's used. Change the
+token, and every consumer updates together: this site's own CSS, a Figma file, a line of
+AI-generated code.</p>
+
+<p>The <strong>primitive</strong> tier below holds the raw values — colors, type sizes,
+spacing steps. The <strong>theme</strong> tier maps those primitives to semantic roles
+(<code>interactive-primary</code>, <code>surface-elevated</code>, and so on) that components
+and pages actually consume. Nothing here is illustrative — every value shown is read directly
+from this repository's own token bundle, the same source this site's own CSS consumes.</p>
+
+<p>What this enables beyond this site:</p>
+<ul>
+<li>One source of truth across design tools and code. See
+<a href="/designing/get-started/overview">Get Started — Designing</a> for the import path.</li>
+<li>AI code generators can query tokens, components, and research directly through this
+site's <code>/mcp</code> endpoint at decode time, so generated UI matches your brand without
+re-deciding the same questions every session.</li>
+<li>A customer-owned, self-hosted vault — fork the whole graph into your own Git history,
+signed by your own key.
+<a href="/bundles/tokens/download">Download everything below as a portable bundle</a>.</li>
+</ul>
+</section>
+
 <div class="tokens-gallery">
 {% for tier in tiers %}
 <section class="tg-tier">

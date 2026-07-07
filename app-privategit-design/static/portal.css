@@ -271,6 +271,14 @@ header a { color: #fff; text-decoration: none; font-size: 0.875rem; font-weight:
 .schema-meta dd { color: var(--cds-text-primary); }
 .schema-reserved { color: var(--cds-text-tertiary); font-style: italic; }
 
+/* Design Tokens preamble (2026-07-06) — the explainer above the gallery. Reuses .content's
+   h2/p/ul/code rules; adds only spacing + a rule separating it from the gallery below, same
+   pattern as .adoption-lede. */
+.tokens-preamble { margin-bottom: 2.5rem; padding-bottom: 2rem; border-bottom: 1px solid var(--cds-border-subtle); }
+.tokens-preamble-lede { font-size: var(--cds-type-body-lg); max-width: 68ch; color: var(--cds-text-secondary); }
+.tokens-preamble ul { max-width: 68ch; }
+.tokens-preamble li { margin-bottom: 0.6rem; }
+
 /* Visual token gallery (P0.2) */
 .tg-tier { margin-bottom: 2.5rem; }
 .tg-tier h2 { font-size: 1.5rem; font-weight: 400; margin-bottom: 1rem; }
