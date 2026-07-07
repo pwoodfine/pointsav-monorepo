@@ -1,30 +1,27 @@
-<svg class="class-icon" xmlns="http://www.w3.org/2000/svg" viewBox="-5.21 20.09 155.53 155.53" aria-label="Business Administration">
-          <!-- Customer-service operator, drawn in same master style as Record Keeping &
-               Building Connectivity: filled silhouette with greyscale layering, thin
-               1.5 strokes, navy accent on the active element (mic + headset signal). -->
+<svg xmlns="http://www.w3.org/2000/svg" class="class-icon" viewBox="19.44 29.72 105.12 95.28" aria-label="Business Administration">
+          
 
-          <!-- Outlined person, faceless. Scaled 0.82 around bottom-center (72,120) so it reads smaller than the other two. -->
+          
           <g transform="translate(72,120) scale(0.82) translate(-72,-122)">
-            <!-- shoulders / torso outline -->
-            <path d="M14 122 Q14 88 50 78 L94 78 Q130 88 130 122" fill="#FFFFFF" stroke="#231F20" stroke-width="1.5" stroke-linejoin="round"></path>
-            <!-- collar accent -->
-            <path d="M58 78 L72 92 L86 78 L84 78 L72 88 L60 78 Z" fill="#B1B0B0"></path>
-            <!-- neck -->
-            <rect x="64" y="64" width="16" height="16" fill="#FFFFFF" stroke="#231F20" stroke-width="1.5"></rect>
-            <!-- head -->
-            <circle cx="72" cy="44" r="22" fill="#FFFFFF" stroke="#231F20" stroke-width="1.5"></circle>
-            <!-- headset band -->
-            <path d="M46 44 Q46 18 72 18 Q98 18 98 44" fill="none" stroke="#234ed8" stroke-width="3" stroke-linecap="round"></path>
-            <!-- ear cups -->
-            <rect x="38" y="40" width="12" height="14" rx="2" fill="#FFFFFF" stroke="#231F20" stroke-width="1.5"></rect>
-            <rect x="40.5" y="42.5" width="7" height="9" rx="1" fill="#234ed8"></rect>
-            <rect x="94" y="40" width="12" height="14" rx="2" fill="#FFFFFF" stroke="#231F20" stroke-width="1.5"></rect>
-            <rect x="96.5" y="42.5" width="7" height="9" rx="1" fill="#234ed8"></rect>
-            <!-- mic -->
-            <path d="M100 54 Q104 66 90 68" fill="none" stroke="#231F20" stroke-width="1.5" stroke-linecap="round"></path>
-            <circle cx="88" cy="68" r="3" fill="#234ed8" stroke="#231F20" stroke-width="1.5"></circle>
+            
+            <path d="M14 122 Q14 88 50 78 L94 78 Q130 88 130 122" fill="#FFFFFF" stroke="#231F20" stroke-width="1.5" stroke-linejoin="round" />
+            
+            <path d="M58 78 L72 92 L86 78 L84 78 L72 88 L60 78 Z" fill="#B1B0B0" />
+            
+            <rect x="64" y="64" width="16" height="16" fill="#FFFFFF" stroke="#231F20" stroke-width="1.5" />
+            
+            <circle cx="72" cy="44" r="22" fill="#FFFFFF" stroke="#231F20" stroke-width="1.5" />
+            
+            <path d="M46 44 Q46 18 72 18 Q98 18 98 44" fill="none" stroke="#234ed8" stroke-width="3" stroke-linecap="round" />
+            
+            <rect x="38" y="40" width="12" height="14" rx="2" fill="#FFFFFF" stroke="#231F20" stroke-width="1.5" />
+            <rect x="40.5" y="42.5" width="7" height="9" rx="1" fill="#234ed8" />
+            <rect x="94" y="40" width="12" height="14" rx="2" fill="#FFFFFF" stroke="#231F20" stroke-width="1.5" />
+            <rect x="96.5" y="42.5" width="7" height="9" rx="1" fill="#234ed8" />
+            
+            <path d="M100 54 Q104 66 90 68" fill="none" stroke="#231F20" stroke-width="1.5" stroke-linecap="round" />
+            <circle cx="88" cy="68" r="3" fill="#234ed8" stroke="#231F20" stroke-width="1.5" />
           </g>
 
-                    <!-- label (no surrounding box) -->
-          <text x="72" y="144" text-anchor="middle" font-family="'Trade Gothic LT Std Bold Condensed No. 20', 'Trade Gothic LT Std', 'TradeGothicLTStd-BdCn20', 'Trade Gothic Bold Condensed', 'Arial Narrow', 'Helvetica Condensed', sans-serif-condensed" font-size="13" font-weight="700" fill="#231F20" letter-spacing="0"><tspan x="72" dy="0">BUSINESS</tspan><tspan x="72" dy="14">ADMINISTRATION</tspan></text>
-        </svg>
+                    
+          </svg>

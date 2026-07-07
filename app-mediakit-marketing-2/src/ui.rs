@@ -780,11 +780,12 @@ fn icon_strip(icons: &[crate::content::IconTile]) -> Markup {
             // icons has no clean 2-column split). See app.css for detail.
             div.m-icon-strip__inner style={ "--m-icon-count: " (icons.len()) } {
                 @for icon in icons {
-                    // Icon-beside-caption layout (2026-07-07 mobile redesign,
-                    // operator-selected over icon-on-top): the title is now
-                    // real visible text, not just invisible alt text, so the
-                    // image itself becomes decorative (empty alt) to avoid a
-                    // screen reader announcing the same label twice.
+                    // 2026-07-07 mobile redesign, round 10 revision: caption
+                    // beside the icon on mobile (<700px), below it on
+                    // desktop/tablet (>=700px, see app.css). Either way the
+                    // title is real visible text, not just invisible alt
+                    // text, so the image itself is decorative (empty alt)
+                    // to avoid a screen reader announcing the label twice.
                     div.m-icon-strip__item {
                         img.m-icon-strip__img src=(icon.src) alt="" aria-hidden="true" loading="lazy" width="200" height="200";
                         div.m-icon-strip__text {

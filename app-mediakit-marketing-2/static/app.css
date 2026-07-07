@@ -525,16 +525,39 @@ html:not(.js) .m-drawer-scrim {
     --m-icon-strip-cols: var(--m-icon-count);
   }
 }
-/* Icon-beside-caption layout (2026-07-07 mobile redesign, operator-selected
-   over icon-on-top): icon and a visible title+descriptor sit side by side,
-   at both the 1-column mobile stack and the N-column desktop row — same
-   item markup at every breakpoint, only the grid's own column count
-   changes (see --m-icon-strip-cols above). */
+/* Mobile (<700px): icon-beside-caption, row layout (2026-07-07 mobile
+   redesign). Desktop/tablet (>=700px, round 10 reversal 2026-07-07):
+   icon-on-top, caption-below — the operator reviewed icon-beside-caption
+   live on desktop and asked for the pre-round-7 stacked treatment there
+   while keeping beside-caption for mobile. Same item markup at every
+   breakpoint (icon then caption in DOM order works for both row and
+   column flex-direction) — only this rule's flex-direction/alignment
+   changes; see the >=700px override below. */
 .m-icon-strip__item {
   display: flex;
   align-items: center;
   gap: var(--m-icon-strip-text-gap);
   text-align: left;
+}
+@media (min-width: 700px) {
+  .m-icon-strip__item {
+    /* Deliberate layout change at this breakpoint (not just a size change)
+       — unlike the reverted 2026-07-02 two-tier size hack, a visual
+       discontinuity here is expected and correct: row vs. column is a
+       different layout, not a size jump at fixed layout. */
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+  .m-icon-strip__text {
+    /* Un-stretch from the item's new column cross-axis so the caption
+       block shrinks to its own content width instead of spanning the
+       full grid column — matches the reference icon-on-top look instead
+       of a full-width left-edge-to-right-edge text block. */
+    align-items: center;
+    max-width: 32ch;
+  }
 }
 .m-icon-strip__img {
   display: block;
