@@ -900,13 +900,14 @@ h1, h2 {
   display: block;
 }
 
-/* Cities + the single remaining badge grouped tightly together (not
-   space-between across a wide row) so the lone badge doesn't read as a
-   placeholder for a missing row of three (2026-07-04 audit finding). */
+/* Cities left, badge(s) right (2026-07-06 operator decision — the badge
+   stays and is intentionally right-aligned, reversing the 2026-07-04
+   tight-grouping choice). */
 .bim-footer__base-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: space-between;
   gap: 1.25rem;
   margin-bottom: 1rem;
 }
@@ -1370,6 +1371,14 @@ a.bim-badge:hover {
 .bim-cat-res b { color: var(--bim-fg, #111827); font-weight: 600; }
 .bim-cat-hint { font-size: 0.75rem; color: var(--bim-fg-muted, #6B7280); }
 .bim-cat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(224px, 1fr)); gap: 1.125rem; }
+/* Real bug found via browser-in-the-loop screenshot review (2026-07-06):
+   `[hidden]`'s UA default (`display: none`) was being beaten by this rule's
+   own `display: grid` (author stylesheet always wins over UA styles at any
+   specificity), so both the Objects and Compositions panels rendered
+   stacked on top of each other regardless of the tab-switching JS setting
+   `.hidden` on the inactive panel. Explicit override restores correct
+   single-panel display. */
+.bim-cat-grid[hidden] { display: none; }
 .bim-cat-empty {
   grid-column: 1 / -1;
   text-align: center;
@@ -1388,6 +1397,13 @@ a.bim-badge:hover {
 @media (max-width: 600px) {
   .bim-cat-zones { grid-template-columns: 1fr; }
   .bim-cat-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+  /* Grid-item guard + let long classification chips wrap instead of forcing
+     the card column (and page) wider than the viewport at phone widths. The
+     descendant selector (0,2,0) is deliberate: it must out-specify the base
+     `.bim-cat-chip { white-space: nowrap }` in bim-components.css, which loads
+     after this file. */
+  .bim-cat-card { min-width: 0; }
+  .bim-cat-card .bim-cat-chip { white-space: normal; max-width: 100%; }
 }
 
 /* ============================================================================

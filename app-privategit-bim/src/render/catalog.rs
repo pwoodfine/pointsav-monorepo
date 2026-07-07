@@ -543,9 +543,14 @@ pub fn render_home(state: &AppState) -> String {
 
   <section class="bim-cat-def">
     <div class="bim-cat-sechead">
-      <span class="bim-cat-kicker">The classification spine</span>
+      <!-- "Taxonomy — Anatomy — Syntax" per the architects' own working
+           framing (DISCOVERY_MCorp_Sketches_Key Plans_Business_Notes.pdf,
+           "Sketch 1: Spatial Taxonomy — Anatomy — Syntax") — taxonomy
+           classifies (IFC/Uniclass), anatomy is the atom (the Object),
+           syntax is how atoms compose (the Composition). -->
+      <span class="bim-cat-kicker">Taxonomy &middot; Anatomy &middot; Syntax</span>
       <h2>An Object is an atom. A Composition is what you build from atoms.</h2>
-      <p>The distinction runs through the whole library. Held precisely, every downstream party — architect, property manager, tenant — reads the same specification the same way.</p>
+      <p>The distinction runs through the whole library: <strong>taxonomy</strong> classifies every entry (IFC&nbsp;4.3, Uniclass&nbsp;2015); <strong>anatomy</strong> is the atom itself — the BIM Object; <strong>syntax</strong> is how objects compose into a Key&nbsp;Plan. Held precisely, every downstream party — architect, property manager, tenant — reads the same specification the same way.</p>
     </div>
     <div class="bim-cat-def-grid">
       <article class="bim-cat-defcard">
@@ -803,8 +808,13 @@ fn render_composition_facets(comps: &[Value]) -> String {
                 )
             })
             .collect();
+        // "Use Case" (not "Category") per the architects' own working
+        // vocabulary — DISCOVERY_MCorp_Sketches_Key Plans_Business_Notes.pdf
+        // ("Each of the Key Plans for Small, Medium, and Large for all of the
+        // Use Cases we are examining — Business, Academic, Laboratory,
+        // Medical, and Civic").
         format!(
-            r#"<div class="bim-cat-fgrp"><div class="bim-cat-fgrp__h">Category</div>{rows}</div>"#,
+            r#"<div class="bim-cat-fgrp"><div class="bim-cat-fgrp__h">Use Case</div>{rows}</div>"#,
             rows = rows,
         )
     };
