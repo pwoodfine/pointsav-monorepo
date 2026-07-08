@@ -258,6 +258,41 @@ fn default_module_id() -> ModuleId {
     })
 }
 
+/// Fixed tenant(s) `graph_query` actually reads from, regardless of the caller's own
+/// `X-Foundry-Module-ID` (that header identifies the archive/session, not where the real
+/// DataGraph content lives). Every session's `.mcp.json` sets its own archive name as
+/// module_id — under the old per-caller-scoped design, that meant every real DataGraph
+/// query silently returned empty, since all content lives under a small fixed set of
+/// tenants regardless of which archive asks. Configurable via `DOORMAN_GRAPH_READ_TENANTS`
+/// (comma-separated); defaults to "jennifer,mathew" — merged/future-proofed even though
+/// "mathew" has no ingested content yet, so this doesn't need touching again once it does.
+fn graph_read_tenants() -> Vec<String> {
+    let raw = std::env::var("DOORMAN_GRAPH_READ_TENANTS").unwrap_or_default();
+    let tenants: Vec<String> = raw
+        .split(',')
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .collect();
+    if tenants.is_empty() {
+        vec!["jennifer".to_string(), "mathew".to_string()]
+    } else {
+        tenants
+    }
+}
+
+/// Fixed tenant `graph_mutate` actually writes to, regardless of the caller's own
+/// `X-Foundry-Module-ID`. Unlike reads, a mutation is a single fact and should not be
+/// duplicated across tenants — defaults to "jennifer" (the tenant with real content
+/// today). Configurable via `DOORMAN_GRAPH_WRITE_TENANT`.
+fn graph_write_tenant() -> String {
+    let raw = std::env::var("DOORMAN_GRAPH_WRITE_TENANT").unwrap_or_default();
+    if raw.trim().is_empty() {
+        "jennifer".to_string()
+    } else {
+        raw.trim().to_string()
+    }
+}
+
 async fn chat_completions(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
@@ -1542,18 +1577,26 @@ fn default_graph_query_limit() -> u32 {
 
 /// `POST /v1/graph/query` — proxy to service-content `/v1/graph/context`.
 ///
-/// 1. Requires `X-Foundry-Module-ID` header → 400 if absent.
+/// 1. Requires `X-Foundry-Module-ID` header → 400 if absent (still validated + audit-logged,
+///    identifies the calling archive/session — but no longer determines which tenant is
+///    actually read from, see `graph_read_tenants()`).
 /// 2. Parses `{"q": "...", "limit": N}` body.
-/// 3. Forwards to `{service_content_endpoint}/v1/graph/context?q=…&module_id=…&limit=…`.
-/// 4. Audit-logs as `event_type = "graph-query"` via `AuditCaptureEntry`.
-/// 5. Returns service-content response verbatim.
+/// 3. Queries EVERY tenant in `graph_read_tenants()` against
+///    `{service_content_endpoint}/v1/graph/context?q=…&module_id=…&limit=…`, merging results —
+///    real DataGraph content lives under a small fixed set of tenants regardless of which
+///    archive is asking; scoping the read by the caller's own module_id silently returned
+///    empty for every session before this fix.
+/// 4. Audit-logs as `event_type = "graph-query"` via `AuditCaptureEntry`, recording both the
+///    caller's own module_id and the tenant(s) actually queried.
+/// 5. Returns the merged results (truncated to `body.limit`), status 200 unless every tenant
+///    call failed (mirrors the single-tenant upstream-error behavior from before this fix).
 async fn graph_query(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
     Json(body): Json<GraphQueryBody>,
 ) -> impl IntoResponse {
-    // 1. Module-ID is mandatory.
-    let module_id = match headers
+    // 1. Module-ID is mandatory (caller identity — no longer the read scope).
+    let caller_module_id = match headers
         .get("x-foundry-module-id")
         .and_then(|v| v.to_str().ok())
     {
@@ -1570,69 +1613,96 @@ async fn graph_query(
         return err.into_response();
     }
 
-    let url = format!(
-        "{}/v1/graph/context?q={}&module_id={}&limit={}",
-        state.service_content_endpoint,
-        urlencoding_encode(&body.q),
-        urlencoding_encode(&module_id),
-        body.limit,
-    );
-
-    // 3. Forward to service-content.
+    // 3. Query every fixed read-tenant, merging results.
+    let read_tenants = graph_read_tenants();
     let client = ReqwestClient::new();
-    let sc_resp = match client.get(&url).send().await {
-        Ok(r) => r,
-        Err(_) => {
-            let err: ApiError = DoormanError::GraphProxyServiceUnavailable.into();
-            return err.into_response();
-        }
-    };
+    let mut merged: Vec<serde_json::Value> = Vec::new();
+    let mut any_success = false;
+    let mut last_status = StatusCode::BAD_GATEWAY;
 
-    let sc_status = sc_resp.status();
-    let sc_body: serde_json::Value = match sc_resp.json().await {
-        Ok(v) => v,
-        Err(_) => serde_json::Value::Array(vec![]),
-    };
+    for tenant in &read_tenants {
+        let url = format!(
+            "{}/v1/graph/context?q={}&module_id={}&limit={}",
+            state.service_content_endpoint,
+            urlencoding_encode(&body.q),
+            urlencoding_encode(tenant),
+            body.limit,
+        );
+        let sc_resp = match client.get(&url).send().await {
+            Ok(r) => r,
+            Err(_) => continue,
+        };
+        let sc_status = sc_resp.status();
+        last_status = StatusCode::from_u16(sc_status.as_u16()).unwrap_or(StatusCode::BAD_GATEWAY);
+        if !sc_status.is_success() {
+            continue;
+        }
+        any_success = true;
+        // Log a parse failure distinctly from a genuinely empty result — a malformed
+        // upstream body silently becoming [] (indistinguishable from "no matches") was
+        // a separate Phase C audit finding.
+        match sc_resp.json::<serde_json::Value>().await {
+            Ok(serde_json::Value::Array(rows)) => merged.extend(rows),
+            Ok(other) => tracing::warn!(
+                "graph_query: tenant {tenant:?} returned non-array JSON, treating as empty: {other}"
+            ),
+            Err(e) => tracing::warn!(
+                "graph_query: tenant {tenant:?} response failed to parse as JSON, treating as empty: {e}"
+            ),
+        }
+    }
+    merged.truncate(body.limit as usize);
 
     // 4. Audit-log (non-fatal — proxy succeeds even if ledger write fails).
     let entry = AuditCaptureEntry {
         entry_type: ENTRY_TYPE_AUDIT_CAPTURE.to_string(),
         audit_id: RequestId::new().to_string(),
-        module_id: slm_core::ModuleId::from_str(&module_id)
+        module_id: slm_core::ModuleId::from_str(&caller_module_id)
             .unwrap_or_else(|_| slm_core::ModuleId::from_str("unknown").unwrap()),
         event_type: "graph-query".to_string(),
         source: format!("graph-proxy:{}", body.q),
-        status: if sc_status.is_success() {
-            "ok"
-        } else {
-            "upstream-error"
-        }
-        .to_string(),
+        status: if any_success { "ok" } else { "upstream-error" }.to_string(),
         event_at: Utc::now(),
         captured_at: Utc::now(),
-        payload: serde_json::json!({ "q": body.q, "limit": body.limit, "module_id": module_id }),
+        payload: serde_json::json!({
+            "q": body.q, "limit": body.limit,
+            "caller_module_id": caller_module_id,
+            "read_tenants": read_tenants,
+        }),
         caller_request_id: None,
     };
     let _ = state.doorman.ledger().append_capture_entry(&entry);
 
-    // 5. Return service-content response.
-    let status = StatusCode::from_u16(sc_status.as_u16()).unwrap_or(StatusCode::BAD_GATEWAY);
-    (status, Json(sc_body)).into_response()
+    // 5. Return the merged result set. Only surface an error status if every
+    // tenant call failed — a partial success (e.g. mathew has no data yet) is
+    // a normal 200 with whatever rows jennifer returned.
+    let status = if any_success {
+        StatusCode::OK
+    } else {
+        last_status
+    };
+    (status, Json(serde_json::Value::Array(merged))).into_response()
 }
 
 /// `POST /v1/graph/mutate` — proxy to service-content `/v1/graph/mutate`.
 ///
-/// 1. Requires `X-Foundry-Module-ID` header → 400 if absent.
-/// 2. Forwards body verbatim to service-content.
-/// 3. Audit-logs as `event_type = "graph-mutation"` via `AuditCaptureEntry`.
+/// 1. Requires `X-Foundry-Module-ID` header → 400 if absent (caller identity, same as
+///    `graph_query` — no longer the write scope).
+/// 2. Parses the body as JSON and overwrites/injects its `module_id` field with
+///    `graph_write_tenant()`'s value before forwarding — previously the body was forwarded
+///    verbatim, so whatever (if anything) the caller happened to put in its own `module_id`
+///    field silently decided where the write landed; a mutation from `module_id=command`
+///    could land in a tenant invisible to every `jennifer`-scoped read.
+/// 3. Audit-logs as `event_type = "graph-mutation"` via `AuditCaptureEntry`, recording both
+///    the caller's own module_id and the tenant actually written to.
 /// 4. Returns service-content response verbatim.
 async fn graph_mutate(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
     body_bytes: Bytes,
 ) -> impl IntoResponse {
-    // 1. Module-ID is mandatory.
-    let module_id = match headers
+    // 1. Module-ID is mandatory (caller identity — no longer the write scope).
+    let caller_module_id = match headers
         .get("x-foundry-module-id")
         .and_then(|v| v.to_str().ok())
     {
@@ -1649,14 +1719,27 @@ async fn graph_mutate(
         return err.into_response();
     }
 
+    // 2b. Overwrite/inject module_id in the outgoing body to the fixed write tenant.
+    let write_tenant = graph_write_tenant();
+    let outgoing_body: Vec<u8> = match serde_json::from_slice::<serde_json::Value>(&body_bytes) {
+        Ok(serde_json::Value::Object(mut map)) => {
+            map.insert(
+                "module_id".to_string(),
+                serde_json::Value::String(write_tenant.clone()),
+            );
+            serde_json::to_vec(&serde_json::Value::Object(map)).unwrap_or_else(|_| body_bytes.to_vec())
+        }
+        _ => body_bytes.to_vec(),
+    };
+
     let url = format!("{}/v1/graph/mutate", state.service_content_endpoint);
 
-    // 3. Forward body to service-content.
+    // 3. Forward the (module_id-rewritten) body to service-content.
     let client = ReqwestClient::new();
     let sc_resp = match client
         .post(&url)
         .header("Content-Type", "application/json")
-        .body(body_bytes.to_vec())
+        .body(outgoing_body)
         .send()
         .await
     {
@@ -1677,7 +1760,7 @@ async fn graph_mutate(
     let entry = AuditCaptureEntry {
         entry_type: ENTRY_TYPE_AUDIT_CAPTURE.to_string(),
         audit_id: RequestId::new().to_string(),
-        module_id: slm_core::ModuleId::from_str(&module_id)
+        module_id: slm_core::ModuleId::from_str(&caller_module_id)
             .unwrap_or_else(|_| slm_core::ModuleId::from_str("unknown").unwrap()),
         event_type: "graph-mutation".to_string(),
         source: "graph-proxy".to_string(),
@@ -1689,7 +1772,7 @@ async fn graph_mutate(
         .to_string(),
         event_at: Utc::now(),
         captured_at: Utc::now(),
-        payload: serde_json::json!({ "module_id": module_id }),
+        payload: serde_json::json!({ "caller_module_id": caller_module_id, "write_tenant": write_tenant }),
         caller_request_id: None,
     };
     let _ = state.doorman.ledger().append_capture_entry(&entry);
