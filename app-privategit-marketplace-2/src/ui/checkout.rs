@@ -49,13 +49,13 @@ pub fn checkout_markup(installer: &Installer, wallet_address: &str) -> Markup {
 
 fn checkout_style() -> Markup {
     let css = r#".sw-co-wrap{max-width:640px;margin:0 auto;padding:40px 24px 64px;box-sizing:border-box;}
-.sw-co-title{margin:0 0 24px;font-family:"Playfair Display",Georgia,serif;font-size:26px;color:#111;}
+.sw-co-title{margin:0 0 24px;font-family:Georgia,"Times New Roman",serif;font-size:26px;color:#111827;}
 .sw-co-card{border:1px solid #e4e7ec;border-radius:10px;padding:24px;background:#fff;box-shadow:0 1px 2px rgba(16,24,40,.04);}
 .sw-co-id{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;color:#667085;}
-.sw-co-name{font-family:"Playfair Display",Georgia,serif;font-size:21px;margin:4px 0 4px;color:#111;}
-.sw-co-tier{font-size:12px;font-weight:600;color:#8a4b13;margin:0 0 16px;}
+.sw-co-name{font-family:Georgia,"Times New Roman",serif;font-size:21px;margin:4px 0 4px;color:#111827;}
+.sw-co-tier{font-size:12px;font-weight:600;color:#164679;margin:0 0 16px;}
 .sw-co-amount{margin:0 0 20px;}
-.sw-co-amount__val{font-size:32px;font-weight:700;font-family:"Playfair Display",Georgia,serif;color:#111;}
+.sw-co-amount__val{font-size:32px;font-weight:700;font-family:Georgia,"Times New Roman",serif;color:#111827;}
 .sw-co-amount__unit{font-size:14px;color:#667085;}
 .sw-co-wallet{margin:0 0 16px;padding:14px;border:1px dashed #d0d5dd;border-radius:8px;background:#fcfcfd;}
 .sw-co-wallet__label{display:block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#667085;margin:0 0 6px;}

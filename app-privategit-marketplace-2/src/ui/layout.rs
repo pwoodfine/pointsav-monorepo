@@ -51,7 +51,7 @@ fn chrome_style() -> Markup {
 .sw-brand{{display:flex;align-items:center;gap:10px;color:var(--sw-on-chrome);text-decoration:none;flex:0 0 auto;}}
 .sw-brand__glyph{{display:inline-flex;color:var(--sw-on-chrome);}}
 .sw-brand__lockup{{display:flex;flex-direction:column;line-height:1.05;}}
-.sw-brand__name{{font-family:"Playfair Display",Georgia,serif;font-weight:700;font-size:18px;letter-spacing:.01em;}}
+.sw-brand__name{{font-family:Georgia,"Times New Roman",serif;font-weight:700;font-size:18px;letter-spacing:.01em;}}
 .sw-brand__desc{{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--sw-on-chrome-muted);}}
 .sw-search{{flex:1 1 auto;display:flex;justify-content:center;}}
 .sw-search__form{{display:flex;width:100%;max-width:420px;background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.18);border-radius:6px;overflow:hidden;}}
@@ -77,7 +77,7 @@ fn chrome_style() -> Markup {
 .sw-footer{{background:var(--sw-footer-bg);color:var(--sw-footer-fg);width:100%;}}
 .sw-footer__inner{{max-width:1280px;margin:0 auto;padding:48px 24px 28px;box-sizing:border-box;}}
 .sw-footer__top{{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:32px;}}
-.sw-footer__brand-name{{color:var(--sw-ink);font-family:"Playfair Display",Georgia,serif;font-weight:700;font-size:18px;}}
+.sw-footer__brand-name{{color:var(--sw-ink);font-family:Georgia,"Times New Roman",serif;font-weight:700;font-size:18px;}}
 .sw-footer__tagline{{margin-top:8px;font-size:13px;max-width:30ch;color:var(--sw-footer-fg-muted);}}
 .sw-footer__col h2{{color:var(--sw-ink);font-size:12px;letter-spacing:.12em;text-transform:uppercase;margin:0 0 12px;}}
 .sw-footer__col ul{{list-style:none;margin:0;padding:0;}}
@@ -110,7 +110,7 @@ fn chrome_style() -> Markup {
 .sw-footer__copyright{{color:var(--sw-footer-fg-muted);margin:0 0 8px;}}
 .sw-footer__trademark{{margin:0;color:var(--sw-footer-fg-muted);max-width:80ch;}}
 .sw-legal{{max-width:70ch;margin:0 auto;padding:40px 24px 64px;line-height:1.65;}}
-.sw-legal h1{{font-family:"Playfair Display",Georgia,serif;font-size:32px;margin:0 0 8px;}}
+.sw-legal h1{{font-family:Georgia,"Times New Roman",serif;font-size:32px;margin:0 0 8px;}}
 .sw-legal h2{{font-size:16px;margin:28px 0 8px;}}
 .sw-legal__lede{{color:#555;margin:0 0 20px;}}
 .sw-legal hr{{border:none;border-top:1px solid #ddd;margin:32px 0 20px;}}
