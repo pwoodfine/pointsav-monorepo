@@ -17,11 +17,9 @@ use super::tokens;
 
 // ── Inline SVG glyphs (currentColor → inherit the container's ink token) ────────
 
-const GLYPH_SVG: &str = r##"<svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor" aria-hidden="true" focusable="false"><path d="M6 2h7.5L19 7.5V22H6a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1zm7 1.6V8h4.4L13 3.6zM8 12h8v1.5H8V12zm0 3.5h8V17H8v-1.5z"/></svg>"##;
-
 const SEARCH_ICON: &str = r##"<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>"##;
 
-const BURGER_ICON: &str = r##"<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>"##;
+const BADGE_GLYPH: &str = r##"<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false"><path fill="currentColor" d="M3 5.5A1.5 1.5 0 0 1 4.5 4h15A1.5 1.5 0 0 1 21 5.5v13A1.5 1.5 0 0 1 19.5 20h-15A1.5 1.5 0 0 1 3 18.5v-13zM6 8v8l3.2-2.4L6 8zm7 6.5h5V13h-5v1.5zm0-3h5V10h-5v1.5z"/></svg>"##;
 
 // ── Scoped chrome stylesheet ────────────────────────────────────────────────────
 //
@@ -45,34 +43,14 @@ fn chrome_style() -> Markup {
 --sw-ink:{ink};
 --sw-wordmark:{wordmark};
 }}
-.sw-nav-toggle{{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;}}
 .sw-masthead{{background:var(--sw-topnav-bg);color:var(--sw-on-chrome);width:100%;}}
 .sw-masthead__inner{{display:flex;align-items:center;gap:24px;height:64px;max-width:1280px;margin:0 auto;padding:0 24px;box-sizing:border-box;}}
-.sw-brand{{display:flex;align-items:center;gap:10px;color:var(--sw-on-chrome);text-decoration:none;flex:0 0 auto;}}
-.sw-brand__glyph{{display:inline-flex;color:var(--sw-on-chrome);}}
-.sw-brand__lockup{{display:flex;flex-direction:column;line-height:1.05;}}
-.sw-brand__name{{font-family:Georgia,"Times New Roman",serif;font-weight:700;font-size:18px;letter-spacing:.01em;}}
-.sw-brand__desc{{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--sw-on-chrome-muted);}}
-.sw-masthead__nav{{display:flex;align-items:center;gap:22px;flex:0 0 auto;}}
-.sw-masthead__navlink{{color:var(--sw-on-chrome);text-decoration:none;font-size:13px;font-weight:600;letter-spacing:.03em;white-space:nowrap;}}
-.sw-masthead__navlink:hover{{color:var(--sw-on-chrome-muted);}}
-.sw-search{{flex:1 1 auto;display:flex;justify-content:center;}}
-.sw-search__form{{display:flex;width:100%;max-width:420px;background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.18);border-radius:6px;overflow:hidden;}}
+.sw-wordmark{{color:var(--sw-on-chrome);text-decoration:none;font-weight:700;font-size:17px;letter-spacing:.005em;flex:0 0 auto;}}
+.sw-search{{flex:1 1 auto;display:flex;justify-content:flex-end;}}
+.sw-search__form{{display:flex;width:100%;max-width:320px;background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.18);border-radius:6px;overflow:hidden;}}
 .sw-search__input{{flex:1;background:transparent;border:0;color:#fff;padding:8px 12px;font-size:13px;outline:none;}}
 .sw-search__input::placeholder{{color:rgba(255,255,255,.6);}}
 .sw-search__btn{{background:transparent;border:0;color:rgba(255,255,255,.85);padding:0 12px;cursor:pointer;display:inline-flex;align-items:center;}}
-.sw-utility{{display:flex;align-items:center;gap:18px;flex:0 0 auto;}}
-.sw-utility__link{{color:var(--sw-on-chrome-muted);text-decoration:none;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;}}
-.sw-utility__link:hover{{color:var(--sw-on-chrome);}}
-.sw-lang{{display:flex;gap:4px;font-size:12px;font-weight:600;color:var(--sw-on-chrome-muted);}}
-.sw-lang__active{{color:var(--sw-on-chrome);}}
-.sw-burger{{display:none;flex:0 0 auto;cursor:pointer;color:#fff;padding:6px;border-radius:4px;align-items:center;}}
-.sw-drawer{{position:fixed;top:0;left:0;bottom:0;width:82%;max-width:320px;background:var(--sw-topnav-bg);color:#fff;transform:translateX(-100%);transition:transform .25s ease;z-index:60;padding:20px;box-sizing:border-box;overflow-y:auto;}}
-.sw-drawer__close{{display:block;text-align:right;color:var(--sw-on-chrome);cursor:pointer;font-size:24px;line-height:1;margin-bottom:12px;}}
-.sw-drawer__link{{display:block;padding:12px 4px;color:#fff;text-decoration:none;font-size:15px;border-bottom:1px solid rgba(255,255,255,.12);}}
-.sw-scrim{{position:fixed;inset:0;background:rgba(0,0,0,.5);opacity:0;visibility:hidden;transition:opacity .25s ease;z-index:55;}}
-.sw-nav-toggle:checked ~ .sw-drawer{{transform:translateX(0);}}
-.sw-nav-toggle:checked ~ .sw-scrim{{opacity:1;visibility:visible;}}
 .sw-footer{{background:var(--sw-footer-bg);color:var(--sw-footer-fg);width:100%;}}
 .sw-footer__inner{{max-width:1280px;margin:0 auto;padding:48px 24px 28px;box-sizing:border-box;}}
 .sw-footer__top{{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:32px;}}
@@ -102,6 +80,11 @@ fn chrome_style() -> Markup {
 .sw-footer__disclosure:not([open]) .sw-footer__slot{{display:block!important;}}
 }}
 .sw-footer__cities{{margin-top:20px;padding-top:20px;border-top:1px solid var(--sw-footer-divider);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--sw-footer-fg-muted);}}
+.sw-footer__badge{{display:inline-flex;align-items:center;gap:6px;margin-top:14px;padding:5px 10px;background:#fff;border:1px solid var(--sw-footer-divider);border-radius:3px;text-decoration:none;color:var(--sw-footer-fg);}}
+.sw-footer__badge-glyph{{display:inline-flex;color:var(--sw-accent);}}
+.sw-footer__badge-text{{display:flex;flex-direction:column;line-height:1.1;}}
+.sw-footer__badge-label{{font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--sw-footer-fg-muted);}}
+.sw-footer__badge-name{{font-size:12px;font-weight:700;color:var(--sw-footer-fg);}}
 .sw-footer__meta{{margin-top:10px;font-size:12px;}}
 .sw-footer__meta a{{color:var(--sw-footer-fg-muted);text-decoration:none;}}
 .sw-footer__meta a:hover{{color:var(--sw-accent);}}
@@ -115,8 +98,7 @@ fn chrome_style() -> Markup {
 .sw-legal hr{{border:none;border-top:1px solid #ddd;margin:32px 0 20px;}}
 .sw-legal__copyright,.sw-legal__trademark{{font-size:12px;color:#666;max-width:80ch;}}
 @media (max-width:768px){{
-.sw-search,.sw-utility,.sw-masthead__nav{{display:none;}}
-.sw-burger{{display:inline-flex;}}
+.sw-search{{display:none;}}
 .sw-masthead__inner{{gap:12px;}}
 .sw-footer__top{{grid-template-columns:1fr;gap:24px;}}
 }}"#,
@@ -137,26 +119,33 @@ fn chrome_style() -> Markup {
 
 // ── Masthead + off-canvas drawer ────────────────────────────────────────────────
 
-/// The dark navy masthead: wordmark (left) · product search (centre) · utility
-/// controls (right) · 48px sub-nav. Also emits the pure-CSS off-canvas drawer and
-/// its scrim — all rendered as siblings so the `#sw-nav-toggle` checkbox drives
-/// them via the general-sibling selector once spliced under `<body>`.
+/// The navy masthead: a single flat-text wordmark (left) and product search
+/// (right) — no icon, no stacked descriptor, no account/language controls, no
+/// off-canvas drawer.
+///
+/// **Redesigned 2026-07-07 (second pass, same day)** — the prior icon + two-line
+/// "PointSav / Software" lockup was, byte-for-byte, the same structural pattern as
+/// `documentation.pointsav.com`'s own masthead: verified directly against its
+/// served HTML, its `<svg>` glyph path is character-for-character identical to
+/// this crate's `GLYPH_SVG`, and its lockup is the same "brand name + small-caps
+/// descriptor stacked below it" shape. That's the concrete, verified reason this
+/// site kept reading as the wiki. `home.pointsav.com`'s real masthead is
+/// structurally simpler and distinct from the wiki's: a single flat-text wordmark
+/// link, no icon at all (`<a class="m-masthead__wordmark">PointSav Digital
+/// Systems</a>`) — checked directly against its served HTML, not assumed. This
+/// follows that verified precedent: one flat wordmark naming the site's actual
+/// identity, no icon. Also drops Account and the EN/ES language toggle (operator
+/// instruction) and, since the wordmark already links to `/` (which redirects to
+/// `/software` — see `main.rs`'s `root()`), the separate one-item nav row from the
+/// prior pass is now itself redundant with the wordmark and is removed along with
+/// the drawer/burger system that existed only to hold it and the now-removed
+/// Account link on mobile.
 pub fn masthead(surface: SoftwareSurface) -> Markup {
     html! {
-        input."sw-nav-toggle" #"sw-nav-toggle" type="checkbox" aria-hidden="true";
         header."sw-masthead" role="banner" {
             div."sw-masthead__inner" {
-                a."sw-brand" href="/" aria-label=(surface.home_label()) {
-                    span."sw-brand__glyph" { (PreEscaped(GLYPH_SVG)) }
-                    span."sw-brand__lockup" {
-                        span."sw-brand__name" { "PointSav" }
-                        span."sw-brand__desc" { "Software" }
-                    }
-                }
-                nav."sw-masthead__nav" aria-label="Primary" {
-                    @for l in surface.nav_links() {
-                        a."sw-masthead__navlink" href=(l.href) { (l.label) }
-                    }
+                a."sw-wordmark" href="/" aria-label=(surface.home_label()) {
+                    (surface.home_label())
                 }
                 div."sw-search" {
                     form."sw-search__form" role="search" action="/software" method="get" {
@@ -169,32 +158,8 @@ pub fn masthead(surface: SoftwareSurface) -> Markup {
                         }
                     }
                 }
-                div."sw-utility" {
-                    @if surface.show_account_nav() {
-                        a."sw-utility__link" href="/licensing" { "Account" }
-                    }
-                    span."sw-lang" aria-label="Language" {
-                        span."sw-lang__active" { "EN" }
-                        span aria-hidden="true" { " | " }
-                        span { "ES" }
-                    }
-                }
-                label."sw-burger" for="sw-nav-toggle" aria-label="Open menu" {
-                    (PreEscaped(BURGER_ICON))
-                }
             }
         }
-        // Off-canvas drawer + scrim — opened by the #sw-nav-toggle checkbox (no JS).
-        aside."sw-drawer" aria-label="Menu" {
-            label."sw-drawer__close" for="sw-nav-toggle" aria-label="Close menu" { "\u{00d7}" }
-            @for l in surface.nav_links() {
-                a."sw-drawer__link" href=(l.href) { (l.label) }
-            }
-            @if surface.show_account_nav() {
-                a."sw-drawer__link" href="/licensing" { "Account" }
-            }
-        }
-        label."sw-scrim" for="sw-nav-toggle" aria-hidden="true" {}
     }
 }
 
@@ -301,6 +266,25 @@ pub fn footer(surface: SoftwareSurface) -> Markup {
                     @for (i, c) in surface.cities().iter().enumerate() {
                         @if i > 0 { span aria-hidden="true" { " | " } }
                         span { (c) }
+                    }
+                }
+                // "Powered by" badge — the family's own attribution-mark pattern
+                // (`home.pointsav.com`'s "Powered by MediaKit" / `documentation.
+                // pointsav.com`'s equivalent, verified against their served HTML:
+                // `<a class="m-badge"><span class="m-badge__glyph">…</span>
+                // <span class="m-badge__label">Powered by</span><span
+                // class="m-badge__name">…</span></a>`). This site is credited to
+                // the engine that actually built it, `PrivateGit`
+                // (`app-privategit-source-2` + `app-privategit-marketplace-2`),
+                // linking to its public source the same way the Network column's
+                // own `Source` link does — no dedicated marketing page exists for
+                // it yet, so this reuses the one real, live destination.
+                a."sw-footer__badge" href="https://github.com/pointsav" target="_blank" rel="noopener"
+                    aria-label="Powered by PrivateGit (opens in new tab)" {
+                    span."sw-footer__badge-glyph" aria-hidden="true" { (PreEscaped(BADGE_GLYPH)) }
+                    span."sw-footer__badge-text" {
+                        span."sw-footer__badge-label" { "Powered by" }
+                        span."sw-footer__badge-name" { "PrivateGit" }
                     }
                 }
                 p."sw-footer__meta" {
@@ -441,10 +425,7 @@ mod tests {
 
         // Masthead markers.
         assert!(page.contains("sw-masthead"));
-        assert!(page.contains("PointSav"));
-        for l in SURFACE.nav_links() {
-            assert!(page.contains(l.href), "missing nav link {}", l.href);
-        }
+        assert!(page.contains(SURFACE.home_label()));
 
         // Footer markers: verbatim trademark line, copyright holder, cities.
         assert!(page.contains(SURFACE.trademark_line()));
