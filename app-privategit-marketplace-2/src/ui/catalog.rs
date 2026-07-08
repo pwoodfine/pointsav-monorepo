@@ -12,8 +12,10 @@
 //! exactly one ratified tier (`license_tier`) and one active price (`price_usdc`).
 //! There is no more separate free-installer/license split: `price_usdc == 0` is the
 //! active BETA gate (same curl-pipe-sh install as before), and any product's own
-//! `license_tier` label ("PointSav Commercial" or "FSL") is always shown regardless of
-//! BETA status — that's ratified legal/display metadata, not a payment gate.
+//! `license_tier` label (one of `Proprietary`/`FSL-1.1-ALv2`/`AGPL-3.0-or-later`/
+//! `Apache-2.0`, per `BRIEF-software-licensing-structure.md`) is always shown
+//! regardless of BETA status — that's ratified legal/display metadata, not a
+//! payment gate.
 //!
 //! Fields NOT available in the catalog (noted rather than fabricated):
 //!   - **sha256** — no SHA field exists on `Installer`. Per-artifact SHA256 lives on
@@ -69,8 +71,22 @@ fn tier_badge(tier: LicenseTier) -> Markup {
 
 /// A free/BETA product card — `price_usdc == 0` (the active BETA gate). Real
 /// curl-pipe-sh install command, no payment step, same pattern as before.
+///
+/// Binary Library Phase 3: the "free" badge text now depends on *why* the price is
+/// zero. `Apache`-tier products are permanently free — no BETA gate to ever lift
+/// (`load_catalog`'s validation guarantees `price_usdc == 0` is the only legal
+/// value for that tier) — so labeling one "BETA" would be a real inaccuracy,
+/// implying a future price that will never come. Every other tier keeps the
+/// original "BETA · free" wording — per `BRIEF-software-licensing-structure.md`
+/// §4, all of them genuinely are in a $0 BETA state with real future pricing yet
+/// to be decided, not a placeholder that will never resolve.
 fn free_product_card(i: &crate::Installer, source_base_url: &str) -> Markup {
     let command = install_command(source_base_url, &i.id);
+    let free_label = if i.license_tier == LicenseTier::Apache {
+        "Free \u{00b7} open source"
+    } else {
+        "BETA \u{00b7} free"
+    };
     html! {
         article."sw-cat-card" {
             span."sw-cat-card__id" { (i.id) }
@@ -211,20 +227,20 @@ document.querySelectorAll('[data-sw-clip]').forEach(function(btn){
 /// two ways at once:
 ///
 /// 1. **Shelf** (`LicenseTier::shelf`, `BRIEF-binary-library-repositioning.md`'s two-shelf
-///    model, operator-approved 2026-07-07) — the outer grouping. `Commercial`/`Fsl` tiers
-///    render inside the **Commercial** shelf (unchanged from before this phase — the
-///    ratified os-*-only public catalog, untouched). `OpenSource` tier renders inside a
-///    new **Open Source / Community** shelf — same neutral surface as the Commercial
-///    shelf (no background-color coding since gold is gone), distinguished by its own
-///    section heading and navy tier badges, same as everywhere else. Only rendered when
-///    at least one `open-source`-tier product exists in the catalog — there are none live
-///    yet (Phase 2's relicensing landed the governance, not a catalog entry), so today
-///    this still renders as a single-shelf page; the shelf appears automatically the
-///    moment a real open-source product is catalogued, no further code change needed.
-/// 2. **Tier** (within the Commercial shelf) — `PointSav Commercial` and `FSL` keep their
-///    own named sections (a correction from the prior ng-rewrite program: grouped by
-///    ratified tier, not by free/paid state). Each product still renders its own
-///    BETA-free-vs-paid card individually (`free_product_card`/`paid_product_card`).
+///    model, operator-approved 2026-07-07) — the outer grouping. `Proprietary`/`Fsl`/`Agpl`
+///    tiers render inside the **Commercial** shelf (the ratified os-*-only public catalog).
+///    `Apache` tier renders inside a separate **Open Source / Community** shelf — same
+///    neutral surface as the Commercial shelf (no background-color coding since gold is
+///    gone), distinguished by its own section heading and navy tier badges, same as
+///    everywhere else. Only rendered when at least one `apache`-tier product exists in the
+///    catalog.
+/// 2. **Tier** (within the Commercial shelf) — `Proprietary`, `FSL-1.1-ALv2`, and
+///    `AGPL-3.0-or-later` each keep their own named section, matching
+///    `BRIEF-software-licensing-structure.md`'s per-product table exactly (rebuilt
+///    2026-07-07 — that BRIEF's table never uses "PointSav Commercial" as a tier; see
+///    `LicenseTier`'s doc comment in `main.rs` for the full per-product mapping and the
+///    reasoning). Each product still renders its own BETA-free-vs-paid card individually
+///    (`free_product_card`/`paid_product_card`).
 ///
 /// The left rail's categories are exactly the two real shelves — no invented product
 /// taxonomy (the CURSOR-marketplace mockup this design takes structural cues from used
@@ -234,22 +250,27 @@ document.querySelectorAll('[data-sw-clip]').forEach(function(btn){
 /// The returned [`Markup`] is meant to be wrapped by `layout::render_page`, which supplies
 /// the masthead + footer chrome.
 pub fn catalog_markup(catalog: &crate::Catalog, source_base_url: &str) -> Markup {
-    let (commercial, fsl): (Vec<_>, Vec<_>) = catalog
+    let proprietary: Vec<_> = catalog
         .installers
         .iter()
-        .filter(|i| i.license_tier == LicenseTier::Commercial)
+        .filter(|i| i.license_tier == LicenseTier::Proprietary)
         .collect();
     let fsl: Vec<_> = catalog
         .installers
         .iter()
         .filter(|i| i.license_tier == LicenseTier::Fsl)
         .collect();
-    let open_source: Vec<_> = catalog
+    let agpl: Vec<_> = catalog
         .installers
         .iter()
-        .filter(|i| i.license_tier == LicenseTier::OpenSource)
+        .filter(|i| i.license_tier == LicenseTier::Agpl)
         .collect();
-    let commercial_count = commercial.len() + fsl.len();
+    let apache: Vec<_> = catalog
+        .installers
+        .iter()
+        .filter(|i| i.license_tier == LicenseTier::Apache)
+        .collect();
+    let commercial_count = proprietary.len() + fsl.len() + agpl.len();
     let total_count = catalog.installers.len();
 
     let tier_section = |id: &'static str, heading: &'static str, products: &[&crate::Installer]| {
@@ -291,9 +312,9 @@ pub fn catalog_markup(catalog: &crate::Catalog, source_base_url: &str) -> Markup
                     a href="#commercial" {
                         "Commercial" span."sw-cat-rail__count" { (commercial_count) }
                     }
-                    @if !open_source.is_empty() {
+                    @if !apache.is_empty() {
                         a href="#open-source" {
-                            "Open Source / Community" span."sw-cat-rail__count" { (open_source.len()) }
+                            "Open Source / Community" span."sw-cat-rail__count" { (apache.len()) }
                         }
                     }
                     a href="/software" class="is-current" {
@@ -302,10 +323,11 @@ pub fn catalog_markup(catalog: &crate::Catalog, source_base_url: &str) -> Markup
                 }
                 div."sw-cat-main" {
                     div."sw-cat-shelf sw-cat-shelf--commercial" {
-                        (tier_section("commercial", "PointSav Commercial", &commercial))
-                        (tier_section("fsl", "FSL", &fsl))
+                        (tier_section("proprietary", "Proprietary", &proprietary))
+                        (tier_section("fsl", "FSL-1.1-ALv2", &fsl))
+                        (tier_section("agpl", "AGPL-3.0-or-later", &agpl))
                     }
-                    @if !open_source.is_empty() {
+                    @if !apache.is_empty() {
                         div."sw-cat-shelfsplit" {
                             p."sw-cat-shelfsplit__text" {
                                 "Two shelves, one catalog. The Commercial shelf above is the ratified, \
@@ -316,7 +338,7 @@ pub fn catalog_markup(catalog: &crate::Catalog, source_base_url: &str) -> Markup
                             }
                         }
                         div."sw-cat-shelf sw-cat-shelf--opensource" {
-                            (tier_section("open-source", "Open Source \u{00b7} Community", &open_source))
+                            (tier_section("open-source", "Open Source \u{00b7} Community", &apache))
                         }
                     }
                 }
@@ -355,14 +377,14 @@ mod tests {
                     guide_url: None,
                 },
                 Installer {
-                    id: "os-privategit".into(),
-                    name: "PrivateGit OS".into(),
-                    description: "Independent code repository.".into(),
+                    id: "os-console".into(),
+                    name: "Console OS".into(),
+                    description: "Operator Terminal Surface.".into(),
                     edition: "1.0.0".into(),
                     platform: "linux-x86_64".into(),
                     size_mb: 150,
-                    path: "os-privategit/1.0.0/installer.run".into(),
-                    license_tier: LicenseTier::Commercial,
+                    path: "os-console/1.0.0/installer.run".into(),
+                    license_tier: LicenseTier::Agpl,
                     price_usdc: 19_000_000, // BETA lifted, test fixture only ($19)
                     fsl_conversion_date: None,
                     guide_url: None,
@@ -390,24 +412,24 @@ mod tests {
         // Known ids and names from the fixture drive the cards (no drift possible).
         assert!(html.contains("os-mediakit"));
         assert!(html.contains("MediaKit OS"));
-        assert!(html.contains("os-privategit"));
-        assert!(html.contains("PrivateGit OS"));
-        assert!(html.contains("FSL"));
-        assert!(html.contains("PointSav Commercial"));
+        assert!(html.contains("os-console"));
+        assert!(html.contains("Console OS"));
+        assert!(html.contains("FSL-1.1-ALv2"));
+        assert!(html.contains("AGPL-3.0-or-later"));
         assert!(
-            !html.contains("Apache 2.0"),
-            "must not use the factually wrong tier label"
+            !html.contains("Apache 2.0<") && !html.contains("PointSav Commercial"),
+            "must not use a factually wrong or retired tier label"
         );
         // Each populated tier renders its own section (Phase 3: grouped by license
-        // tier, not by free/paid — os-mediakit is FSL, os-privategit is Commercial).
-        assert!(html.contains(r#"id="commercial""#));
+        // tier, not by free/paid — os-mediakit is FSL, os-console is AGPL).
+        assert!(html.contains(r#"id="agpl""#));
         assert!(html.contains(r#"id="fsl""#));
         // Section heading contains the tier name plus a live product count (added
         // 2026-07-07 redesign) — check the open tag + heading text, not an exact
         // closing match, since a `<span class="sw-cat-section__count">` now sits
         // between the heading text and `</h2>`.
-        assert!(html.contains("<h2 class=\"sw-cat-section__h\">PointSav Commercial"));
-        assert!(html.contains("<h2 class=\"sw-cat-section__h\">FSL"));
+        assert!(html.contains("<h2 class=\"sw-cat-section__h\">AGPL-3.0-or-later"));
+        assert!(html.contains("<h2 class=\"sw-cat-section__h\">FSL-1.1-ALv2"));
         // Badge row shows the fields that ARE in the catalog.
         assert!(html.contains("v1.2.0"));
         assert!(html.contains("linux-x86_64"));
@@ -420,10 +442,10 @@ mod tests {
         // Non-zero price_usdc -> price display + Polygon USDC CTA.
         assert!(html.contains("$19.00"));
         assert!(html.contains("Pay with Polygon USDC"));
-        assert!(html.contains("href=\"/checkout/os-privategit\""));
+        assert!(html.contains("href=\"/checkout/os-console\""));
         // And NO curl-pipe-sh install command for the paid product.
         assert!(
-            !html.contains("releases/os-privategit/install.sh"),
+            !html.contains("releases/os-console/install.sh"),
             "paid product must NOT render an install command"
         );
     }
@@ -446,8 +468,10 @@ mod tests {
         // Page shell still renders…
         assert!(html.contains("sw-cat-intro"));
         // …but no product section.
-        assert!(!html.contains("id=\"commercial\""));
+        assert!(!html.contains("id=\"proprietary\""));
         assert!(!html.contains("id=\"fsl\""));
+        assert!(!html.contains("id=\"agpl\""));
+        assert!(!html.contains("id=\"open-source\""));
     }
 
     #[test]
@@ -461,5 +485,86 @@ mod tests {
         assert!(!html.contains("Wallet &amp; Tools"));
         assert!(!html.contains("Knowledge &amp; Source"));
         assert!(!html.contains("Orchestration"));
+    }
+
+    // ── Binary Library Phase 3: two-shelf model ───────────────────────────────
+    // (BRIEF-binary-library-repositioning.md, operator-approved 2026-07-07)
+
+    fn fixture_with_open_source() -> Catalog {
+        let mut catalog = fixture();
+        catalog.installers.push(Installer {
+            id: "tool-wallet".into(),
+            name: "PointSav Wallet".into(),
+            description: "Polygon USDC watcher, relicensed Apache-2.0.".into(),
+            edition: "1.0.0".into(),
+            platform: "linux-x86_64".into(),
+            size_mb: 12,
+            path: "tool-wallet/1.0.0/installer.run".into(),
+            license_tier: LicenseTier::Apache,
+            price_usdc: 0,
+            fsl_conversion_date: None,
+            guide_url: None,
+        });
+        catalog
+    }
+
+    #[test]
+    fn open_source_tier_renders_in_distinct_shelf_section() {
+        let html = catalog_markup(&fixture_with_open_source(), BASE).into_string();
+        // Own section, own id — never folded into "FSL" (the pre-Phase-3 2-way
+        // partition would have silently misfiled Apache under the FSL heading).
+        assert!(html.contains(r#"id="open-source""#));
+        assert!(html.contains("Open Source"));
+        assert!(html.contains("Community"));
+        assert!(html.contains("tool-wallet"));
+        assert!(html.contains("Apache-2.0 (Open Source)"));
+        // The two-shelf explainer strip appears whenever the shelf does. Check the
+        // rendered *element* (class attribute + its text), not just the class name —
+        // the CSS class selector of the same name is always present in the
+        // stylesheet regardless of whether the element itself renders.
+        assert!(html.contains(r#"class="sw-cat-shelfsplit""#));
+        assert!(html.contains("Two shelves, one catalog"));
+        // Distinct shelf CSS scope, not reusing the Commercial shelf's classes.
+        assert!(html.contains(r#"class="sw-cat-shelf sw-cat-shelf--opensource""#));
+    }
+
+    #[test]
+    fn open_source_shelf_absent_when_no_open_source_products() {
+        // The base fixture has zero OpenSource-tier installers (matches the live
+        // catalog today — Phase 2 landed governance, not a real catalog entry).
+        // Check for the rendered *element* class attribute, not the bare class name
+        // — the stylesheet always defines `.sw-cat-shelfsplit`/`.sw-cat-shelf--
+        // opensource` regardless of whether either element actually renders, so a
+        // bare substring check would pass even if this regressed to always-render.
+        let html = catalog_markup(&fixture(), BASE).into_string();
+        assert!(!html.contains(r#"id="open-source""#));
+        assert!(!html.contains(r#"class="sw-cat-shelfsplit""#));
+        assert!(!html.contains(r#"class="sw-cat-shelf sw-cat-shelf--opensource""#));
+        assert!(!html.contains("Two shelves, one catalog"));
+    }
+
+    #[test]
+    fn open_source_free_badge_reads_open_source_not_beta() {
+        // A permanently-free Apache-2.0 grant is not a "BETA" gate awaiting a future
+        // price (Phase 1's `load_catalog` guarantees `price_usdc == 0` is the only
+        // legal value here) — the badge copy must not imply one.
+        let html = catalog_markup(&fixture_with_open_source(), BASE).into_string();
+        assert!(html.contains("Free \u{00b7} open source"));
+        // The existing FSL/AGPL fixture items still say "BETA · free" —
+        // unaffected by the Apache-specific badge text.
+        assert!(html.contains("BETA \u{00b7} free"));
+    }
+
+    #[test]
+    fn hero_introduces_the_binary_library_without_replacing_established_copy() {
+        // Binary Library Phase 4: a small eyebrow label names the concept; the
+        // established, already-shipped "buy it once… own it forever" lede is
+        // extended, not replaced (that copy is referenced/tested elsewhere and is
+        // load-bearing brand voice, not a placeholder to discard).
+        let html = catalog_markup(&fixture(), BASE).into_string();
+        assert!(html.contains("The Binary Library"));
+        assert!(html.contains("Buy it once. Run it anywhere. Own it forever."));
+        assert!(html.contains("components of an orchestration, not"));
+        assert!(html.contains("an app store"));
     }
 }
