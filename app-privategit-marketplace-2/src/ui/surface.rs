@@ -32,35 +32,27 @@ impl SoftwareSurface {
         }
     }
 
-    /// Primary masthead sub-bar links (also drive the mobile drawer).
+    /// Primary masthead nav links (single-row header, also drives the mobile
+    /// drawer).
     ///
-    /// Phase 3 (nav restructuring): stays a flat list — no dropdown/mega-menu is
-    /// needed for a single, small, two-tier product catalog (the public storefront
-    /// sells os-* products only; the earlier 4-family dropdown design from the
-    /// original audit was corrected once the ratified three-path model was
-    /// checked). `Downloads` used to anchor at `#downloads`, a section id that no
-    /// longer exists now that the catalog groups by license tier (`#commercial`/
-    /// `#fsl`) rather than free/paid status — points at the bare page instead.
+    /// **Redesigned 2026-07-07** — the prior five-link list (Products, Pricing,
+    /// Licensing, Documentation, Binary Library) was genuinely redundant: it
+    /// duplicated the footer's own comprehensive Site/Network columns
+    /// (`layout::footer`) one-for-one, and `Products`/`Binary Library` pointed at
+    /// the same page (`/software`, with the latter just an in-page anchor) — a
+    /// header link to itself. Operator feedback ("no point having the links to
+    /// nowhere if it's below," "something totally different and non-redundant")
+    /// confirmed this reading. The header's job is primary discovery, not a
+    /// second copy of the footer's full reference list — collapsed to the one
+    /// link that actually matters at that level: the catalog itself, under its
+    /// new name. `Pricing`, `Licensing`, and `Documentation` remain fully
+    /// reachable — they're in the footer's Site/Network columns, not deleted.
     pub fn nav_links(self) -> &'static [NavLink] {
         match self {
-            SoftwareSurface::Marketplace => &[
-                NavLink {
-                    label: "Products",
-                    href: "/software",
-                },
-                NavLink {
-                    label: "Pricing",
-                    href: "/pricing",
-                },
-                NavLink {
-                    label: "Licensing",
-                    href: "/licensing",
-                },
-                NavLink {
-                    label: "Documentation",
-                    href: "https://documentation.pointsav.com/",
-                },
-            ],
+            SoftwareSurface::Marketplace => &[NavLink {
+                label: "Binary Library",
+                href: "/software",
+            }],
         }
     }
 
@@ -131,5 +123,21 @@ impl SoftwareSurface {
     /// someone else's.
     pub fn disclosure_label(self) -> &'static str {
         "Payment and licensing disclosure"
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn nav_is_a_single_non_redundant_binary_library_link() {
+        // Redesigned 2026-07-07: the header carries exactly one link — everything
+        // else (Pricing, Licensing, Documentation) lives in the footer instead of
+        // being duplicated at both levels. See the doc comment on `nav_links`.
+        let links = SoftwareSurface::Marketplace.nav_links();
+        assert_eq!(links.len(), 1);
+        assert_eq!(links[0].label, "Binary Library");
+        assert_eq!(links[0].href, "/software");
     }
 }

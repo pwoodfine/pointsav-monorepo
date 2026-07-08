@@ -53,6 +53,9 @@ fn chrome_style() -> Markup {
 .sw-brand__lockup{{display:flex;flex-direction:column;line-height:1.05;}}
 .sw-brand__name{{font-family:Georgia,"Times New Roman",serif;font-weight:700;font-size:18px;letter-spacing:.01em;}}
 .sw-brand__desc{{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--sw-on-chrome-muted);}}
+.sw-masthead__nav{{display:flex;align-items:center;gap:22px;flex:0 0 auto;}}
+.sw-masthead__navlink{{color:var(--sw-on-chrome);text-decoration:none;font-size:13px;font-weight:600;letter-spacing:.03em;white-space:nowrap;}}
+.sw-masthead__navlink:hover{{color:var(--sw-on-chrome-muted);}}
 .sw-search{{flex:1 1 auto;display:flex;justify-content:center;}}
 .sw-search__form{{display:flex;width:100%;max-width:420px;background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.18);border-radius:6px;overflow:hidden;}}
 .sw-search__input{{flex:1;background:transparent;border:0;color:#fff;padding:8px 12px;font-size:13px;outline:none;}}
@@ -64,10 +67,6 @@ fn chrome_style() -> Markup {
 .sw-lang{{display:flex;gap:4px;font-size:12px;font-weight:600;color:var(--sw-on-chrome-muted);}}
 .sw-lang__active{{color:var(--sw-on-chrome);}}
 .sw-burger{{display:none;flex:0 0 auto;cursor:pointer;color:#fff;padding:6px;border-radius:4px;align-items:center;}}
-.sw-subnav{{background:color-mix(in oklab,var(--sw-topnav-bg) 86%,#000);width:100%;}}
-.sw-subnav__inner{{display:flex;gap:28px;height:48px;align-items:center;max-width:1280px;margin:0 auto;padding:0 24px;box-sizing:border-box;overflow-x:auto;}}
-.sw-subnav__link{{color:var(--sw-on-chrome-muted);text-decoration:none;font-size:13px;font-weight:600;letter-spacing:.04em;white-space:nowrap;}}
-.sw-subnav__link:hover{{color:var(--sw-on-chrome);}}
 .sw-drawer{{position:fixed;top:0;left:0;bottom:0;width:82%;max-width:320px;background:var(--sw-topnav-bg);color:#fff;transform:translateX(-100%);transition:transform .25s ease;z-index:60;padding:20px;box-sizing:border-box;overflow-y:auto;}}
 .sw-drawer__close{{display:block;text-align:right;color:var(--sw-on-chrome);cursor:pointer;font-size:24px;line-height:1;margin-bottom:12px;}}
 .sw-drawer__link{{display:block;padding:12px 4px;color:#fff;text-decoration:none;font-size:15px;border-bottom:1px solid rgba(255,255,255,.12);}}
@@ -116,7 +115,7 @@ fn chrome_style() -> Markup {
 .sw-legal hr{{border:none;border-top:1px solid #ddd;margin:32px 0 20px;}}
 .sw-legal__copyright,.sw-legal__trademark{{font-size:12px;color:#666;max-width:80ch;}}
 @media (max-width:768px){{
-.sw-search,.sw-utility,.sw-subnav{{display:none;}}
+.sw-search,.sw-utility,.sw-masthead__nav{{display:none;}}
 .sw-burger{{display:inline-flex;}}
 .sw-masthead__inner{{gap:12px;}}
 .sw-footer__top{{grid-template-columns:1fr;gap:24px;}}
@@ -154,6 +153,11 @@ pub fn masthead(surface: SoftwareSurface) -> Markup {
                         span."sw-brand__desc" { "Software" }
                     }
                 }
+                nav."sw-masthead__nav" aria-label="Primary" {
+                    @for l in surface.nav_links() {
+                        a."sw-masthead__navlink" href=(l.href) { (l.label) }
+                    }
+                }
                 div."sw-search" {
                     form."sw-search__form" role="search" action="/software" method="get" {
                         label."sw-search__input" style="display:none" for="sw-q" { "Search products" }
@@ -177,13 +181,6 @@ pub fn masthead(surface: SoftwareSurface) -> Markup {
                 }
                 label."sw-burger" for="sw-nav-toggle" aria-label="Open menu" {
                     (PreEscaped(BURGER_ICON))
-                }
-            }
-        }
-        nav."sw-subnav" aria-label="Primary" {
-            div."sw-subnav__inner" {
-                @for l in surface.nav_links() {
-                    a."sw-subnav__link" href=(l.href) { (l.label) }
                 }
             }
         }
