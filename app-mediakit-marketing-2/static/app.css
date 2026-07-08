@@ -577,7 +577,15 @@ html:not(.js) .m-drawer-scrim {
        different layout, not a size jump at fixed layout. */
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+    /* Round 12: anchor the icon to the TOP of the grid cell, not the middle.
+       Grid stretches every cell in the row to the tallest sibling's height;
+       with `justify-content: center` a shorter item (1-line caption) centered
+       its icon+caption block within that stretched cell, pushing its icon DOWN
+       relative to a taller sibling (2-line caption) — an 11px icon-top / title-
+       top Y offset at 1440px even with a now-uniform icon box. flex-start pins
+       the icon to the cell top so row alignment holds regardless of how many
+       lines each caption wraps to. */
+    justify-content: flex-start;
     text-align: center;
   }
   .m-icon-strip__text {
@@ -592,30 +600,33 @@ html:not(.js) .m-drawer-scrim {
 .m-icon-strip__img {
   display: block;
   flex-shrink: 0;
-  /* Height-driven, not width-driven (round 11): each of the 7 icon SVGs
-     was retrimmed to its own tight content bounding box in round 10, so
-     their native aspect ratios now differ (~0.81:1 to ~2.02:1). A fixed
-     square box (width + aspect-ratio: 1) let the browser's default
-     `xMidYMid meet` letterbox each icon differently, rendering them at
-     inconsistent effective sizes and misaligned bottom edges. Fixing the
-     HEIGHT and letting width follow the native ratio normalises visual
-     size and guarantees consistent vertical alignment across the row. */
-  /* `height` is deliberately NOT a fixed length here (verified empirically
-     — see NEXT.md/report): pairing a fixed `height` with `width: auto` and
-     `max-width: 100%` does clamp the rendered width in narrow grid cells,
-     but Chromium does not recompute `height` to match — the icon is
-     visibly squished (confirmed via headless measurement: rendered
-     width/height ratio dropped up to 39% off the SVG's intrinsic ratio in
-     the 700-915px band). Using `height: auto` + `max-height` instead keeps
-     both axes in the `auto`/`max-*` sizing algorithm together, which DOES
-     preserve the intrinsic ratio while shrinking — confirmed identical
-     rendered height to the original fixed-height design at every width
-     where the column has room (>=~1120px here), and distortion-free
-     shrinking below that. */
-  height: auto;
-  width: auto;
-  max-height: var(--m-icon-strip-size);
+  /* Round 12 (2026-07-07): UNIFORM fixed box + object-fit: contain.
+     Round 10 retrimmed each of the 7 SVGs to its own tight bounding box, so
+     native aspect ratios now span ~0.81:1 to ~2.02:1. Round 11 sized by a
+     fixed HEIGHT with native-ratio (auto) WIDTH — which preserved each icon's
+     ratio but gave each a DIFFERENT footprint, and that is exactly what the
+     operator flagged as misaligned: different rendered widths make the stacked
+     mobile list ragged (captions start at different X), and different rendered
+     heights make the desktop row uneven (icon tops / caption tops at different
+     Y). The fix, operator-approved to render some icons slightly smaller: give
+     every icon the SAME box — explicit width AND height (both from tokens) —
+     and center the artwork inside it with `object-fit: contain`, which scales
+     the SVG to fit without distortion and letterboxes the leftover space. Now
+     every icon's box is identical at a given breakpoint, so desktop rows align
+     (equal height) and mobile columns align (equal width) by construction.
+     `max-width: 100%` is the overflow guard: in the narrowest desktop grid
+     cells (Woodfine's 4-icon row in the ~700px band) the box width is capped to
+     the 1fr cell width instead of forcing the track wider than the viewport.
+     Because every cell in a `repeat(N, 1fr)` row is equal width, the cap hits
+     all icons identically — the box stays uniform and the row stays aligned;
+     height is never capped, so row-level top/height alignment is unconditional.
+     `min-width: 0` on the item (below) lets the track shrink so the cap can
+     apply. Box ratio (1.3:1) and rationale: see tokens.css --m-icon-strip-width. */
+  width: var(--m-icon-strip-width);
+  height: var(--m-icon-strip-size);
   max-width: 100%;
+  object-fit: contain;
+  object-position: center;
 }
 .m-icon-strip__text {
   display: flex;

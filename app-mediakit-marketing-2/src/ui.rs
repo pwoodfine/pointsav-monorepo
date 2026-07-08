@@ -802,12 +802,13 @@ fn icon_strip(icons: &[crate::content::IconTile]) -> Markup {
                     // text, so the image itself is decorative (empty alt)
                     // to avoid a screen reader announcing the label twice.
                     div.m-icon-strip__item {
-                        // No hardcoded width/height attributes (round 11):
-                        // sizing is height-driven in CSS (.m-icon-strip__img)
-                        // and each retrimmed SVG has its own native aspect
-                        // ratio, so a fixed 200x200 square hint would be
-                        // inaccurate and provoke a layout shift on load. The
-                        // SVGs carry their own intrinsic size via viewBox.
+                        // No hardcoded width/height attributes: sizing is a
+                        // uniform fixed box + object-fit: contain in CSS
+                        // (.m-icon-strip__img, round 12) — the CSS box, not the
+                        // SVG's intrinsic viewBox, decides the rendered size, so
+                        // an inline square hint would be both inaccurate and
+                        // pointless. The SVGs carry their own intrinsic size via
+                        // viewBox; object-fit centers each one inside the box.
                         img.m-icon-strip__img src=(icon.src) alt="" aria-hidden="true" loading="lazy";
                         div.m-icon-strip__text {
                             h3.m-icon-strip__title { (icon.alt) }
