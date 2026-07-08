@@ -338,10 +338,11 @@ html:not(.js) .m-drawer-scrim {
    server-rendered HTML (see card_grid() in ui.rs) and stays that way with
    no JS: nothing is ever hidden and this dead button never appears, so the
    page degrades to "everything visible," never to "content missing."
-   app.js un-hides it only on narrow viewports (<700px, matching the icon
-   strip's own breakpoint) and wires the reveal click. Desktop/tablet keep
-   every card visible via the grid's existing fluid columns — nothing here
-   ever runs there. */
+   app.js un-hides it only on narrow viewports (<500px, where this grid's
+   fluid auto-fit columns are still a single column; at ~497px+ they become
+   2 columns and every card fits) and wires the reveal click. Wider
+   viewports keep every card visible via the grid's existing fluid
+   columns — nothing here ever runs there. */
 .m-card-grid__more {
   grid-column: 1 / -1;
   justify-self: center;
@@ -357,10 +358,29 @@ html:not(.js) .m-drawer-scrim {
   text-transform: uppercase;
   letter-spacing: var(--m-label-tracking);
   cursor: pointer;
+  /* Inline down-chevron (round 11) sits after the "View all" label with a
+     small flex gap, sized to the button's own font via the icon's 1em box
+     below. */
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+}
+/* `inline-flex` above overrides the browser's default `[hidden] { display:
+   none }` rule, so the server-rendered `hidden` attribute (see comment above)
+   would otherwise stop suppressing the button. Restore the suppression
+   explicitly. */
+.m-card-grid__more[hidden] {
+  display: none;
 }
 .m-card-grid__more:hover,
 .m-card-grid__more:focus-visible {
   background: var(--m-surface-section);
+}
+.m-card-grid__more-icon {
+  display: block;
+  width: 1em;
+  height: 1em;
+  flex: none;
 }
 
 /* Cross-site handoff card (e.g. Woodfine's "Digital Systems" card pointing
@@ -538,6 +558,16 @@ html:not(.js) .m-drawer-scrim {
   align-items: center;
   gap: var(--m-icon-strip-text-gap);
   text-align: left;
+  /* Grid items default to `min-width: auto`, which floors their size at
+     their content's intrinsic min size (here, the widest icon's natural
+     width at the fixed strip height) even when the grid track itself is
+     narrower. At >=700px this item is also a grid cell of
+     `.m-icon-strip__inner`'s `repeat(--m-icon-count, 1fr)` track — without
+     this override, a wide-ratio icon (e.g. ~2:1) can force its track past
+     1fr and overflow the viewport (observed ~700-915px with 4 icons).
+     `min-width: 0` lets the track — and this item — shrink to fit; the
+     icon's own `max-width: 100%` (below) then caps it proportionally. */
+  min-width: 0;
 }
 @media (min-width: 700px) {
   .m-icon-strip__item {
@@ -562,9 +592,30 @@ html:not(.js) .m-drawer-scrim {
 .m-icon-strip__img {
   display: block;
   flex-shrink: 0;
-  width: var(--m-icon-strip-size);
+  /* Height-driven, not width-driven (round 11): each of the 7 icon SVGs
+     was retrimmed to its own tight content bounding box in round 10, so
+     their native aspect ratios now differ (~0.81:1 to ~2.02:1). A fixed
+     square box (width + aspect-ratio: 1) let the browser's default
+     `xMidYMid meet` letterbox each icon differently, rendering them at
+     inconsistent effective sizes and misaligned bottom edges. Fixing the
+     HEIGHT and letting width follow the native ratio normalises visual
+     size and guarantees consistent vertical alignment across the row. */
+  /* `height` is deliberately NOT a fixed length here (verified empirically
+     — see NEXT.md/report): pairing a fixed `height` with `width: auto` and
+     `max-width: 100%` does clamp the rendered width in narrow grid cells,
+     but Chromium does not recompute `height` to match — the icon is
+     visibly squished (confirmed via headless measurement: rendered
+     width/height ratio dropped up to 39% off the SVG's intrinsic ratio in
+     the 700-915px band). Using `height: auto` + `max-height` instead keeps
+     both axes in the `auto`/`max-*` sizing algorithm together, which DOES
+     preserve the intrinsic ratio while shrinking — confirmed identical
+     rendered height to the original fixed-height design at every width
+     where the column has room (>=~1120px here), and distortion-free
+     shrinking below that. */
   height: auto;
-  aspect-ratio: 1;
+  width: auto;
+  max-height: var(--m-icon-strip-size);
+  max-width: 100%;
 }
 .m-icon-strip__text {
   display: flex;
