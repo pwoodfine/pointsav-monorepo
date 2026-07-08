@@ -10,7 +10,7 @@ use maud::{html, Markup, PreEscaped};
 
 fn order_style() -> Markup {
     let css = r#".sw-or-wrap{max-width:640px;margin:0 auto;padding:40px 24px 64px;box-sizing:border-box;}
-.sw-or-title{margin:0 0 24px;font-family:"Playfair Display",Georgia,serif;font-size:26px;color:#111;}
+.sw-or-title{margin:0 0 24px;font-family:Georgia,"Times New Roman",serif;font-size:26px;color:#111827;}
 .sw-or-card{border:1px solid #e4e7ec;border-radius:10px;padding:24px;background:#fff;box-shadow:0 1px 2px rgba(16,24,40,.04);}
 .sw-or-status{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:4px 10px;border-radius:999px;margin:0 0 16px;}
 .sw-or-status--pending{background:#fef3c7;color:#92400e;}

@@ -83,14 +83,14 @@ pub fn pricing_markup(catalog: &Catalog) -> Markup {
 
 fn pricing_style() -> Markup {
     let css = r#".sw-pr-wrap{max-width:840px;margin:0 auto;padding:40px 24px 64px;box-sizing:border-box;}
-.sw-pr-title{margin:0 0 8px;font-family:"Playfair Display",Georgia,serif;font-size:30px;color:#111;}
+.sw-pr-title{margin:0 0 8px;font-family:Georgia,"Times New Roman",serif;font-size:30px;color:#111827;}
 .sw-pr-lede{margin:0 0 16px;font-size:16px;line-height:1.5;color:#344054;max-width:56ch;}
 .sw-pr-trust{margin:0 0 32px;font-size:12px;letter-spacing:.04em;color:#667085;display:flex;gap:10px;flex-wrap:wrap;}
 .sw-pr-tiers{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;margin:0 0 32px;}
 .sw-pr-tier{border:1px solid #e4e7ec;border-radius:10px;padding:24px;background:#fff;box-shadow:0 1px 2px rgba(16,24,40,.04);}
-.sw-pr-tier__name{font-family:"Playfair Display",Georgia,serif;font-size:20px;margin:0 0 8px;color:#111;}
-.sw-pr-tier__amt{font-size:28px;font-weight:700;font-family:"Playfair Display",Georgia,serif;color:#111;margin:0 0 4px;}
-.sw-pr-tier__count{font-size:12px;color:#8a4b13;font-weight:600;margin:0 0 12px;}
+.sw-pr-tier__name{font-family:Georgia,"Times New Roman",serif;font-size:20px;margin:0 0 8px;color:#111827;}
+.sw-pr-tier__amt{font-size:28px;font-weight:700;font-family:Georgia,"Times New Roman",serif;color:#111827;margin:0 0 4px;}
+.sw-pr-tier__count{font-size:12px;color:#164679;font-weight:600;margin:0 0 12px;}
 .sw-pr-tier__desc{font-size:13.5px;line-height:1.55;color:#475467;margin:0;}
 .sw-pr-beta-note{font-size:13px;line-height:1.55;color:#475467;margin:0 0 16px;padding:14px;border:1px dashed #d0d5dd;border-radius:8px;background:#fcfcfd;}
 .sw-pr-tax{font-size:12.5px;color:#667085;margin:0 0 8px;}
