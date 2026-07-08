@@ -439,6 +439,9 @@ content-quality trajectory audit". Condensed:
   pending operator go-ahead per item. [2026-07-02 totebox@claude-code]
 
 Last updated: 2026-07-02
+Last updated: 2026-07-08 (session — brand-color correction, header/footer overhaul, LicenseTier
+rebuilt to match BRIEF-software-licensing-structure.md's real four-tier model; Stage 6 lite
+pushed to staging mirrors, canonical merge + foundry-prod deploy pending Command).
 
 ---
 
@@ -925,26 +928,55 @@ visually wrong — verified directly against `home.pointsav.com`/`documentation.
 real live CSS (not assumption): the near-black footer and gold accent used throughout this crate
 (inherited from the prior ng-rewrite program) matched **neither** real family site, and
 `pointsav-design-system`'s own registered footer token is itself stale/wrong (claims to be "live
-on documentation.pointsav.com," verified false). Corrected `tokens.rs` to the real values (navy
-`#164679` — confirmed correct — as the only accent, light-grey `#f8f9fa` footer, no gold), footer
-restructured to home.pointsav.com's exact Site/Network two-column pattern (real URLs), and
-dropped `"Playfair Display"` site-wide for `Georgia` (Playfair is specifically the *wiki's*
-display font, not the family's real headline font). `/software` also restructured toward denser,
-CURSOR-mockup-inspired card-grid + shelf-rail layout — real PointSav colors, not CURSOR's.
-Full provenance and reasoning for every token value is in `tokens.rs`'s doc comment. 76/76 tests
-passing, clippy/fmt clean. Incidentally fixed a real pre-existing bug: the footer's "Pricing"
-link pointed at `/licensing` instead of `/pricing`.
+on documentation.pointsav.com," verified false). Corrected `tokens.rs`, footer restructured to
+home.pointsav.com's exact Site/Network two-column pattern (real URLs), and dropped `"Playfair
+Display"` site-wide for `Georgia` (Playfair is specifically the *wiki's* display font, not the
+family's real headline font). `/software` also restructured toward denser, CURSOR-mockup-inspired
+card-grid + shelf-rail layout — real PointSav colors, not CURSOR's. Incidentally fixed a real
+pre-existing bug: the footer's "Pricing" link pointed at `/licensing` instead of `/pricing`.
 
-**Still open, explicitly deferred, not assumed:** page consolidation (merging
-Products/Pricing/Licensing into one page, per the operator's "we don't need all these pages??")
-— the redesign's added density may already address the underlying concern; revisit only if the
-operator still wants it after seeing this live.
+**2026-07-08 follow-up session — six more commits, all COMPLETE:**
+- **Brand-color correction (important):** the navy `#164679` used above was itself wrong —
+  `home.pointsav.com`'s `tokens.css` is two-tenant (`:root` base + `[data-brand="pointsav"]`
+  override), and `#164679` is explicitly Woodfine's fallback color, not PointSav's. The real
+  PointSav accent (confirmed live via `data-brand="pointsav"` on the actual site) is
+  `#234ed8`/`#173ab1`/`#0c2785` — swept across every UI file. See `tokens.rs`'s doc comment for
+  full provenance.
+- **Trademark line corrected again** — the 2026-07-04 "correction" had fabricated a 7-mark set
+  never present in any version of `TRADEMARK.md`; restored the real 6-mark canonical notice.
+- **Header consolidated to one row**, nav cut from 5 links to 1 (was duplicating the footer's own
+  Site/Network columns) — **this resolves the page-consolidation question flagged below**: nav
+  redundancy was the real complaint, not the existence of the Pricing/Licensing routes, which
+  still exist and are reachable from the footer.
+- **Header identity redesigned** — dropped the icon (verified byte-identical to
+  `documentation.pointsav.com`'s wiki glyph) for a flat "PointSav Binary Library" wordmark
+  matching `home.pointsav.com`'s real masthead pattern. Account/EN-ES dropped, Berlin dropped from
+  footer cities, "Powered by PrivateGit" badge added (family attribution-badge pattern).
+- **`LicenseTier` rebuilt to match `BRIEF-software-licensing-structure.md`'s real four-tier model**
+  (`Proprietary`/`FSL-1.1-ALv2`/`AGPL-3.0-or-later`/`Apache-2.0`) — "PointSav Commercial" was never
+  a tier in that ratified BRIEF. Also removed fabricated "$1.00/$19.00 USDC" canonical future
+  prices from `/pricing` (that BRIEF's §4 ratifies no future price for any tier) and fixed the
+  `os-orchestration` FSL-vs-Proprietary bug in `static/licensing.html` that the BRIEF flagged as
+  corrected elsewhere but never propagated to this file.
+
+Full detail: `.agent/briefs/BRIEF-binary-library-repositioning.md`'s 2026-07-08 session entry.
+76/76 tests passing, clippy/fmt clean throughout every commit.
+
+**Stage 6 lite:** pushed to both staging mirrors (verified via direct SHA comparison — both match
+monorepo HEAD `4950b607`). `bin/self-service-promote.sh` itself reported false failures with a
+wrong `head` SHA (a real script bug — it reads the archive root's git context instead of the
+nested monorepo sub-clone's; flagged to Command via outbox, msg-id
+`project-software-20260708-promote-script-wrong-repo-context`). Command still needs to process
+the (metadata-wrong but content-correct) queue entries, merge to canonical, and deploy to
+`foundry-prod`.
 
 **Still no live catalog entries** in either new shelf — Phases 1–4 built the capability;
 depositing tool-wallet's actual binary (SHA256, `install.sh`, `RELEASES_DIR`, `products.yaml`
-entry) is separate follow-up work, not yet scheduled. **Next: Phase 5 — full cross-viewport
-operator visual sign-off, required before Phase 6 (production cutover). Nothing further should
-proceed without it.**
+entry) is separate follow-up work, not yet scheduled.
+
+**New follow-up, not yet scoped:** the licensing-tier correction (Proprietary/FSL/AGPL/Apache)
+should propagate to any published TOPICs/GUIDEs or other repos still carrying the old "PointSav
+Commercial" language — not actioned this session.
 
 ### software distribution — Stage 6 NOT blocked, queued for auto-promote [2026-07-02 totebox@claude-code]
 
