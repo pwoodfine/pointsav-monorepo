@@ -719,7 +719,9 @@ fn card_grid(columns: u8, cards: &[crate::content::Card], style: Option<&str>) -
     // informational grid ever needs this — button rows are short
     // navigation lists, never long enough to warrant collapsing. Ships
     // fully visible with a `hidden` reveal button; app.js only activates
-    // it below 700px, and only ever hides cards beyond the first 4 that
+    // it below 500px (round 11: the grid renders 2 columns from ~497px up,
+    // fitting all cards without collapse), and only ever hides cards
+    // beyond the first 4 that
     // AREN'T a cross-site linked card (Digital Systems / Real Property
     // Infrastructure stay visible unconditionally — they're navigation to
     // the sibling site, not informational content to defer).
@@ -761,8 +763,21 @@ fn card_grid(columns: u8, cards: &[crate::content::Card], style: Option<&str>) -
                 }
             }
             @if collapsible {
+                // "View all" + inline down-chevron (round 11): institutional
+                // reference sites (Blackstone "Load More", Brookfield "See
+                // All News", Digital Realty "See More", Equinix "View all")
+                // use a short verb phrase with a directional glyph, not a
+                // "Show all N noun" construction. The chevron signals in-place
+                // expansion. Chevron matches the .m-card__kicker-icon stroke
+                // convention (viewBox 0 0 24 24, stroke-width 1.6, round caps).
+                // No rotation logic is needed: app.js removes the button
+                // outright once the cards are revealed, so the glyph is static.
                 button type="button" class="m-card-grid__more" data-m-card-grid-more hidden {
-                    "Show all " (cards.len()) " terms"
+                    "View all"
+                    svg.m-card-grid__more-icon viewBox="0 0 24 24" aria-hidden="true" {
+                        path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"
+                            d="M6 9l6 6 6-6";
+                    }
                 }
             }
         }
@@ -787,7 +802,13 @@ fn icon_strip(icons: &[crate::content::IconTile]) -> Markup {
                     // text, so the image itself is decorative (empty alt)
                     // to avoid a screen reader announcing the label twice.
                     div.m-icon-strip__item {
-                        img.m-icon-strip__img src=(icon.src) alt="" aria-hidden="true" loading="lazy" width="200" height="200";
+                        // No hardcoded width/height attributes (round 11):
+                        // sizing is height-driven in CSS (.m-icon-strip__img)
+                        // and each retrimmed SVG has its own native aspect
+                        // ratio, so a fixed 200x200 square hint would be
+                        // inaccurate and provoke a layout shift on load. The
+                        // SVGs carry their own intrinsic size via viewBox.
+                        img.m-icon-strip__img src=(icon.src) alt="" aria-hidden="true" loading="lazy";
                         div.m-icon-strip__text {
                             h3.m-icon-strip__title { (icon.alt) }
                             @if let Some(body) = &icon.body {
@@ -1096,7 +1117,9 @@ sections:
         let html = card_grid(4, &cards, None).into_string();
         // Reveal button present, ships hidden (no-JS-safe default).
         assert!(html.contains("data-m-card-grid-more"));
-        assert!(html.contains("Show all 8 terms"));
+        // Round 11: static "View all" wording (no count) + inline chevron.
+        assert!(html.contains("View all"));
+        assert!(html.contains("m-card-grid__more-icon"));
         // Exactly 3 cards marked extra (Terms 5-7) — the linked 8th card,
         // despite being past the visible-count threshold, is never marked.
         assert_eq!(html.matches("data-m-card-extra").count(), 3);
