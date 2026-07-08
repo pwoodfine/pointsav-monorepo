@@ -884,7 +884,7 @@ first (or run 4 separate GLiNER processes).
 - [ ] **TOPIC/GUIDE/JOURNAL** — stage to .agent/drafts-outbound/ → project-editorial. [2026-06-22 totebox@project-totebox]
 ## Currently open
 
-### software.pointsav.com — Binary Library repositioning, Phases 1–4 COMPLETE [2026-07-07 totebox@claude-code]
+### software.pointsav.com — Binary Library repositioning + visual redesign COMPLETE [2026-07-07 totebox@claude-code]
 
 The `-2` rewrite program (`BRIEF-software-ng-rewrite.md`, P0–P8 complete, still live/shipped —
 not reverted) is redirected per operator decision: software.pointsav.com is being repositioned
@@ -919,6 +919,26 @@ an `open-source` product under the "FSL" heading. `shelf` field added to `/v1/pr
 `/software#open-source`, not a new route or a `Products` rename); hero copy extended (not
 replaced) with a "The Binary Library" eyebrow + "components of an orchestration, not an app
 store" line. 76/76 tests passing, clippy/fmt clean.
+
+**Post-Phase-4 visual redesign — COMPLETE, same day.** Operator flagged the rendered result as
+visually wrong — verified directly against `home.pointsav.com`/`documentation.pointsav.com`'s
+real live CSS (not assumption): the near-black footer and gold accent used throughout this crate
+(inherited from the prior ng-rewrite program) matched **neither** real family site, and
+`pointsav-design-system`'s own registered footer token is itself stale/wrong (claims to be "live
+on documentation.pointsav.com," verified false). Corrected `tokens.rs` to the real values (navy
+`#164679` — confirmed correct — as the only accent, light-grey `#f8f9fa` footer, no gold), footer
+restructured to home.pointsav.com's exact Site/Network two-column pattern (real URLs), and
+dropped `"Playfair Display"` site-wide for `Georgia` (Playfair is specifically the *wiki's*
+display font, not the family's real headline font). `/software` also restructured toward denser,
+CURSOR-mockup-inspired card-grid + shelf-rail layout — real PointSav colors, not CURSOR's.
+Full provenance and reasoning for every token value is in `tokens.rs`'s doc comment. 76/76 tests
+passing, clippy/fmt clean. Incidentally fixed a real pre-existing bug: the footer's "Pricing"
+link pointed at `/licensing` instead of `/pricing`.
+
+**Still open, explicitly deferred, not assumed:** page consolidation (merging
+Products/Pricing/Licensing into one page, per the operator's "we don't need all these pages??")
+— the redesign's added density may already address the underlying concern; revisit only if the
+operator still wants it after seeing this live.
 
 **Still no live catalog entries** in either new shelf — Phases 1–4 built the capability;
 depositing tool-wallet's actual binary (SHA256, `install.sh`, `RELEASES_DIR`, `products.yaml`
