@@ -263,9 +263,14 @@ fn default_module_id() -> ModuleId {
 /// DataGraph content lives). Every session's `.mcp.json` sets its own archive name as
 /// module_id — under the old per-caller-scoped design, that meant every real DataGraph
 /// query silently returned empty, since all content lives under a small fixed set of
-/// tenants regardless of which archive asks. Configurable via `DOORMAN_GRAPH_READ_TENANTS`
-/// (comma-separated); defaults to "jennifer,mathew" — merged/future-proofed even though
-/// "mathew" has no ingested content yet, so this doesn't need touching again once it does.
+/// tenants regardless of which archive asks. Confirmed live (2026-07-08) that real content
+/// exists under THREE tenants, not just "jennifer": "woodfine" also holds real corporate/
+/// regulatory entities (Woodfine Capital Projects, Woodfine Management Corp., etc.) from a
+/// separate ingest-jennifer.py-driven structured load that (despite its filename) targets
+/// module_id=woodfine, not jennifer. Configurable via `DOORMAN_GRAPH_READ_TENANTS`
+/// (comma-separated); defaults to "jennifer,woodfine,mathew" — "mathew" is
+/// merged/future-proofed per operator direction even though it has no ingested content yet,
+/// so this doesn't need touching again once it does.
 fn graph_read_tenants() -> Vec<String> {
     let raw = std::env::var("DOORMAN_GRAPH_READ_TENANTS").unwrap_or_default();
     let tenants: Vec<String> = raw
@@ -274,7 +279,7 @@ fn graph_read_tenants() -> Vec<String> {
         .filter(|s| !s.is_empty())
         .collect();
     if tenants.is_empty() {
-        vec!["jennifer".to_string(), "mathew".to_string()]
+        vec!["jennifer".to_string(), "woodfine".to_string(), "mathew".to_string()]
     } else {
         tenants
     }

@@ -2582,12 +2582,12 @@ async fn audit_tenant_concurrency_cap_per_tenant_independent() {
 // ===========================================================================
 
 /// POST /v1/graph/query happy path — proxies to service-content and merges
-/// results across every fixed read-tenant (default: jennifer, mathew — see
-/// `graph_read_tenants()`), NOT scoped to the caller's own X-Foundry-Module-ID
+/// results across every fixed read-tenant (default: jennifer, woodfine, mathew —
+/// see `graph_read_tenants()`), NOT scoped to the caller's own X-Foundry-Module-ID
 /// (that header identifies the caller, not the read scope, as of the Phase C
 /// tenant-scoping fix). The mock doesn't distinguish module_id in its query
 /// param, so the same two-entity array comes back once per configured tenant —
-/// 2 tenants × 2 entities = 4 merged rows.
+/// 3 tenants × 2 entities = 6 raw merged rows, truncated to the requested limit (5).
 #[tokio::test]
 async fn graph_query_proxies_to_service_content_returns_200() {
     let mock_sc = MockServer::start().await;
@@ -2643,8 +2643,8 @@ async fn graph_query_proxies_to_service_content_returns_200() {
     );
     assert_eq!(
         body.as_array().unwrap().len(),
-        4,
-        "expected 4 entities: the mock's 2-entity array merged once per default read tenant (jennifer, mathew)"
+        5,
+        "expected 5 entities: 3 tenants x 2-entity mock response = 6 raw, truncated to the requested limit of 5"
     );
 }
 
