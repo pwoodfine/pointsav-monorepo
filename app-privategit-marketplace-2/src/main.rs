@@ -88,35 +88,87 @@ struct AppState {
 // (not a customer choice), so the fix is additive fields on `Installer`, not a new
 // products/terms-with-references model.
 
-/// The two ratified commercial tiers (factory-release-engineering/LICENSE-MATRIX.md).
-/// `Commercial` conveys Apache-2.0-equivalent rights over an AGPL-3.0-or-later source
-/// (a separate PointSav-Commercial grant on the compiled binary, NOT "Apache 2.0" —
-/// that earlier catalog label was factually wrong). `Fsl` is FSL-1.1-ALv2 as-is.
+/// The ratified license tiers.
+///
+/// **Rebuilt 2026-07-07** to match `BRIEF-software-licensing-structure.md`
+/// (Command Session, ratified 2026-07-07) — the authoritative per-product tier
+/// review that superseded the three-tier `Commercial`/`Fsl`/`OpenSource` model
+/// this enum used to carry. That BRIEF's own per-product table never uses
+/// "PointSav Commercial" as a license category — it reclassifies every `os-*`
+/// product into one of exactly four real tiers, each a real license identifier:
+///
+/// - `Proprietary` — permanent, no source grant. `os-orchestration` +
+///   `app-orchestration-*` only (the company's stated commercial moat).
+/// - `Fsl` — FSL-1.1-ALv2. Source-readable now, converts to Apache-2.0 two years
+///   after each release. `os-infrastructure`, `os-network-admin`, `os-mediakit`,
+///   `os-totebox`, the `os-privategit` engine, and the `os-workplace` `moonshot-*`
+///   engine crates.
+/// - `Agpl` — AGPL-3.0-or-later, this workspace's deliberate backend default
+///   (kept, not replaced — see that BRIEF's Decision 1). Includes `os-console` +
+///   `app-console-*`, the flagship buy-to-own product: its BRIEF explicitly
+///   calls "Commercial" a *pricing* state ("Commercial tier when priced"), not a
+///   separate license — the license underneath is AGPL.
+/// - `Apache` — a genuine, unconditional Apache-2.0 grant. `tool-wallet` (a named
+///   exception to the `tool-*` AGPL default, seeding the Binary Library's Open
+///   Source/Community shelf), `pointsav-design-system`, `woodfine-bim-library`.
+///
+/// Per that BRIEF §4, **every catalogued product is priced at $0 USDC (BETA) for
+/// now, regardless of tier** — pricing and licensing are independent decisions,
+/// and no non-zero future price has been ratified for any tier (see
+/// `Installer::price_usdc`, not this enum, for the one number that's real).
 #[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 enum LicenseTier {
-    Commercial,
+    Proprietary,
     Fsl,
+    Agpl,
+    Apache,
 }
 
 impl LicenseTier {
-    /// Display label — "PointSav Commercial", never "Apache 2.0".
+    /// Display label — the real SPDX-recognizable identifier for every tier
+    /// except `Proprietary` (which has none). `Apache` carries a shelf-clarifying
+    /// suffix since it's the one tier that's permanently, unconditionally free.
     fn label(self) -> &'static str {
         match self {
-            LicenseTier::Commercial => "PointSav Commercial",
-            LicenseTier::Fsl => "FSL",
+            LicenseTier::Proprietary => "Proprietary",
+            LicenseTier::Fsl => "FSL-1.1-ALv2",
+            LicenseTier::Agpl => "AGPL-3.0-or-later",
+            LicenseTier::Apache => "Apache-2.0 (Open Source)",
         }
     }
 
-    /// The ratified tier price (factory-release-engineering/LICENSE-MATRIX.md), in
-    /// micro-USDC — what a product in this tier costs once its own BETA gate lifts.
-    /// Distinct from any individual `Installer::price_usdc`, which is `0` for every
-    /// product today. Used for the `/pricing` page (Phase 4), which describes the
-    /// tier structure rather than any one product's current active price.
-    fn canonical_price_usdc(self) -> u64 {
+    /// Which Binary Library shelf this tier belongs to
+    /// (`BRIEF-binary-library-repositioning.md`'s two-shelf model, operator-approved
+    /// 2026-07-07). `Proprietary`/`Fsl`/`Agpl` are all the existing, ratified
+    /// os-*-only public catalog — unchanged. `Apache` is the Open Source shelf,
+    /// populated only as individual crates are actually relicensed (Phase 2),
+    /// never inferred. Read by `v1_products` (JSON `shelf` field) and
+    /// `ui::catalog::catalog_markup` (the two-shelf HTML grouping) — kept
+    /// alongside the tier it derives from rather than a separate,
+    /// independently-settable field, so shelf membership can never drift out of
+    /// sync with `license_tier` itself.
+    fn shelf(self) -> Shelf {
         match self {
-            LicenseTier::Commercial => 1_000_000,
-            LicenseTier::Fsl => 19_000_000,
+            LicenseTier::Proprietary | LicenseTier::Fsl | LicenseTier::Agpl => Shelf::Commercial,
+            LicenseTier::Apache => Shelf::OpenSource,
+        }
+    }
+}
+
+/// The two Binary Library shelves. See [`LicenseTier::shelf`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Shelf {
+    Commercial,
+    OpenSource,
+}
+
+impl Shelf {
+    /// Wire-format value for the `/v1/products` JSON `shelf` field.
+    fn as_str(self) -> &'static str {
+        match self {
+            Shelf::Commercial => "commercial",
+            Shelf::OpenSource => "open-source",
         }
     }
 }
@@ -172,7 +224,23 @@ struct Catalog {
 
 fn load_catalog(catalog_path: &PathBuf) -> Result<Catalog> {
     let raw = fs::read_to_string(catalog_path)?;
-    Ok(serde_yaml::from_str(&raw)?)
+    let catalog: Catalog = serde_yaml::from_str(&raw)?;
+    for i in &catalog.installers {
+        // `Apache` is a genuine, unconditional Apache-2.0 grant, not a BETA gate —
+        // it has no "real price to flip to later." A nonzero price here is always a
+        // data-entry mistake (e.g. a stray FSL/AGPL price copied onto a relicensed
+        // entry), not a valid pricing choice. Fail loudly, matching this catalog's
+        // established pattern for the retired `licenses:` key above.
+        if i.license_tier == LicenseTier::Apache && i.price_usdc != 0 {
+            anyhow::bail!(
+                "installer '{}' is license_tier: apache but has a nonzero \
+                 price_usdc ({}) — apache entries must always be price_usdc: 0",
+                i.id,
+                i.price_usdc
+            );
+        }
+    }
+    Ok(catalog)
 }
 
 // ── Receipt (mirrors tool-wallet's LicenseReceipt) ────────────────────────────
@@ -1323,7 +1391,7 @@ mod tests {
     platform: "macOS · Win · Linux"
     size_mb: 412
     path: os-console/2026.05.144
-    license_tier: commercial
+    license_tier: agpl
     price_usdc: 1000000
   - id: os-mediakit
     name: PointSav MediaKit OS
@@ -1414,7 +1482,7 @@ esac
     platform: linux-x86_64
     size_mb: 300
     path: os-console/1.0.0/installer.run
-    license_tier: commercial
+    license_tier: agpl
     price_usdc: 0
   - id: os-privategit
     name: PrivateGit OS
@@ -1423,7 +1491,7 @@ esac
     platform: linux-x86_64
     size_mb: 150
     path: os-privategit/1.0.0/installer.run
-    license_tier: commercial
+    license_tier: fsl
     price_usdc: 1000000
 "#,
         )
@@ -1665,7 +1733,7 @@ esac
         assert_eq!(lines.len(), 1, "exactly one row for one fresh confirmation");
         let row: Value = serde_json::from_str(lines[0]).unwrap();
         assert_eq!(row["sku"], "os-console@2026.05.144");
-        assert_eq!(row["license_tier"], "PointSav Commercial");
+        assert_eq!(row["license_tier"], "AGPL-3.0-or-later");
         assert_eq!(row["crypto_received"], "1.00 USDC");
         assert_eq!(row["polygon_tx"], tx);
         assert_eq!(row["spot_rate_cad"], "1.37");
@@ -1824,12 +1892,101 @@ esac
         assert_eq!(i.price_usdc, 0); // active BETA gate
 
         assert_eq!(catalog.installers[1].id, "os-console");
-        assert_eq!(catalog.installers[1].license_tier, LicenseTier::Commercial);
+        assert_eq!(catalog.installers[1].license_tier, LicenseTier::Agpl);
         assert_eq!(catalog.installers[1].price_usdc, 0); // active BETA gate
 
         assert_eq!(catalog.installers[2].id, "os-privategit");
-        assert_eq!(catalog.installers[2].license_tier, LicenseTier::Commercial);
+        assert_eq!(catalog.installers[2].license_tier, LicenseTier::Fsl);
         assert_eq!(catalog.installers[2].price_usdc, 1_000_000); // micro-USDC
+
+        let _ = fs::remove_dir_all(&scratch);
+    }
+
+    // ── Phase 1: Binary Library two-shelf model ───────────────────────────────
+    // (BRIEF-binary-library-repositioning.md, operator-approved 2026-07-07)
+
+    #[test]
+    fn license_tier_apache_round_trips_as_apache() {
+        let s = serde_yaml::to_string(&LicenseTier::Apache).unwrap();
+        assert_eq!(s.trim(), "apache");
+        let back: LicenseTier = serde_yaml::from_str("apache").unwrap();
+        assert_eq!(back, LicenseTier::Apache);
+    }
+
+    #[test]
+    fn license_tier_apache_label() {
+        assert_eq!(LicenseTier::Apache.label(), "Apache-2.0 (Open Source)");
+    }
+
+    #[test]
+    fn shelf_mapping_matches_two_shelf_model() {
+        // Rebuilt 2026-07-07 for BRIEF-software-licensing-structure.md's four-tier
+        // model: Proprietary/Fsl/Agpl are all the Commercial shelf; Apache alone is
+        // the Open Source shelf. See `LicenseTier::shelf`'s doc comment.
+        assert_eq!(LicenseTier::Proprietary.shelf(), Shelf::Commercial);
+        assert_eq!(LicenseTier::Fsl.shelf(), Shelf::Commercial);
+        assert_eq!(LicenseTier::Agpl.shelf(), Shelf::Commercial);
+        assert_eq!(LicenseTier::Apache.shelf(), Shelf::OpenSource);
+    }
+
+    #[test]
+    fn load_catalog_accepts_apache_installer_at_zero_price() {
+        let scratch = scratch_dir("oss-ok");
+        let path = scratch.join("products.yaml");
+        fs::write(
+            &path,
+            r#"installers:
+  - id: tool-wallet
+    name: PointSav Wallet
+    description: Polygon USDC watcher, relicensed Apache-2.0.
+    edition: "1.0.0"
+    platform: linux-x86_64
+    size_mb: 12
+    path: tool-wallet/1.0.0/installer.run
+    license_tier: apache
+    price_usdc: 0
+"#,
+        )
+        .unwrap();
+
+        let catalog = load_catalog(&path).unwrap();
+        assert_eq!(catalog.installers[0].license_tier, LicenseTier::Apache);
+        assert_eq!(
+            catalog.installers[0].license_tier.shelf(),
+            Shelf::OpenSource
+        );
+        assert_eq!(catalog.installers[0].price_usdc, 0);
+
+        let _ = fs::remove_dir_all(&scratch);
+    }
+
+    #[test]
+    fn load_catalog_rejects_apache_installer_with_nonzero_price() {
+        let scratch = scratch_dir("oss-bad-price");
+        let path = scratch.join("products.yaml");
+        fs::write(
+            &path,
+            r#"installers:
+  - id: tool-wallet
+    name: PointSav Wallet
+    description: Polygon USDC watcher, relicensed Apache-2.0.
+    edition: "1.0.0"
+    platform: linux-x86_64
+    size_mb: 12
+    path: tool-wallet/1.0.0/installer.run
+    license_tier: apache
+    price_usdc: 1000000
+"#,
+        )
+        .unwrap();
+
+        let err = load_catalog(&path);
+        assert!(
+            err.is_err(),
+            "an apache-tier installer with a nonzero price must fail to load loudly, \
+             not silently accept an invalid price"
+        );
+        assert!(err.unwrap_err().to_string().contains("tool-wallet"));
 
         let _ = fs::remove_dir_all(&scratch);
     }
@@ -1919,7 +2076,8 @@ esac
         assert_eq!(mediakit["edition"], "1.2.0");
         assert_eq!(mediakit["platform"], "linux-x86_64");
         assert_eq!(mediakit["size_mb"], 812);
-        assert_eq!(mediakit["license_tier"], "FSL");
+        assert_eq!(mediakit["license_tier"], "FSL-1.1-ALv2");
+        assert_eq!(mediakit["shelf"], "commercial"); // Fsl tier -> Commercial shelf
         assert_eq!(mediakit["price_usdc"], 0);
         assert_eq!(mediakit["cost"], "free"); // active BETA gate
         assert_eq!(
@@ -1933,9 +2091,59 @@ esac
 
         let privategit = &installers[2];
         assert_eq!(privategit["id"], "os-privategit");
-        assert_eq!(privategit["license_tier"], "PointSav Commercial");
+        assert_eq!(privategit["license_tier"], "FSL-1.1-ALv2");
+        assert_eq!(privategit["shelf"], "commercial");
         assert_eq!(privategit["price_usdc"], 1_000_000); // micro-USDC passthrough
         assert_eq!(privategit["cost"], "paid");
+
+        let _ = fs::remove_dir_all(&scratch);
+    }
+
+    /// Binary Library Phase 3: an `apache`-tier installer must report
+    /// `shelf: "open-source"` distinctly from `agpl`/`fsl`'s `shelf: "commercial"`
+    /// — the JSON API's grouping must never drift from the HTML catalog's.
+    #[tokio::test]
+    async fn v1_products_apache_tier_reports_open_source_shelf() {
+        let scratch = scratch_dir("shelf");
+        let path = scratch.join("products.yaml");
+        fs::write(
+            &path,
+            r#"installers:
+  - id: tool-wallet
+    name: PointSav Wallet
+    description: Polygon USDC watcher, relicensed Apache-2.0.
+    edition: "1.0.0"
+    platform: linux-x86_64
+    size_mb: 12
+    path: tool-wallet/1.0.0/installer.run
+    license_tier: apache
+    price_usdc: 0
+  - id: os-console
+    name: Console OS
+    description: Operator Terminal Surface.
+    edition: "1.0.0"
+    platform: linux-x86_64
+    size_mb: 300
+    path: os-console/1.0.0/installer.run
+    license_tier: agpl
+    price_usdc: 0
+"#,
+        )
+        .unwrap();
+        let state = test_state_at(&scratch, path);
+
+        let (status, Json(body)) = v1_products(State(state)).await;
+        assert_eq!(status, StatusCode::OK);
+        let installers = body["installers"].as_array().unwrap();
+
+        let wallet = &installers[0];
+        assert_eq!(wallet["id"], "tool-wallet");
+        assert_eq!(wallet["license_tier"], "Apache-2.0 (Open Source)");
+        assert_eq!(wallet["shelf"], "open-source");
+
+        let console = &installers[1];
+        assert_eq!(console["id"], "os-console");
+        assert_eq!(console["shelf"], "commercial");
 
         let _ = fs::remove_dir_all(&scratch);
     }
@@ -1972,7 +2180,8 @@ esac
         assert!(html.contains("MediaKit OS"));
         assert!(html.contains("os-console"));
         assert!(html.contains("os-privategit"));
-        assert!(html.contains("PointSav Commercial"));
+        assert!(html.contains("AGPL-3.0-or-later"));
+        assert!(html.contains("FSL-1.1-ALv2"));
         assert!(
             !html.contains("Apache 2.0"),
             "must not use the factually wrong tier label"
@@ -2147,10 +2356,8 @@ esac
         let resp = pricing_page(State(state)).await;
         assert_eq!(resp.status(), StatusCode::OK);
         let html = body_text(resp.into_body()).await;
-        assert!(html.contains("PointSav Commercial"));
-        assert!(html.contains("FSL"));
-        assert!(html.contains("$1.00 USDC"));
-        assert!(html.contains("$19.00 USDC"));
+        assert!(html.contains("AGPL-3.0-or-later"));
+        assert!(html.contains("FSL-1.1-ALv2"));
         assert!(html.contains("currently free during BETA"));
         assert!(html.contains("No tax collected"));
         assert!(html.contains("github.com/pointsav/pointsav-monorepo"));
@@ -2189,8 +2396,16 @@ esac
                 "static/licensing.html regressed: contains fictional content `{fictional}`"
             );
         }
-        assert!(real.contains("PointSav Commercial"));
-        assert!(real.contains("FSL"));
+        // Rebuilt 2026-07-07 to match BRIEF-software-licensing-structure.md's real
+        // four-tier model — "PointSav Commercial" is not a license category in that
+        // BRIEF's per-product table (see `LicenseTier`'s doc comment in this file).
+        assert!(real.contains("Proprietary"));
+        assert!(real.contains("FSL-1.1-ALv2"));
+        assert!(real.contains("AGPL-3.0-or-later"));
+        assert!(real.contains("Apache-2.0"));
+        // The exact bug that BRIEF explicitly flags as corrected elsewhere
+        // (`os-orchestration` was wrongly FSL) must not reappear here.
+        assert!(!real.contains("<code>os-orchestration</code>. These are distributed under FSL"));
         assert!(real.contains("github.com/pointsav/pointsav-monorepo"));
     }
 

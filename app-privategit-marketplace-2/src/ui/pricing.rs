@@ -7,6 +7,18 @@
 //! buy-to-own framing established in the BRIEF's Positioning Pivot; carries the
 //! BC tax line and AGPL §13 source link required by `BRIEF-software-distribution-
 //! substrate.md` and previously missing anywhere in this crate.
+//!
+//! **Rebuilt 2026-07-07** to match `BRIEF-software-licensing-structure.md`'s
+//! four-tier model (`Proprietary`/`Fsl`/`Agpl`/`Apache`, see `LicenseTier`'s doc
+//! comment in `main.rs`) and, separately, to stop displaying a per-tier dollar
+//! figure. The prior version showed "$1.00 USDC" / "$19.00 USDC" as each tier's
+//! "canonical future price" — that BRIEF's §4 explicitly states **no non-zero
+//! future price has been ratified for any tier**: "Actual, non-zero future
+//! pricing for any product — this BRIEF only ratifies $0-for-now; real pricing
+//! is a separate, later decision per product." Those two numbers were this
+//! crate's own earlier invention, not a ratified fact, and showing them as tier
+//! pricing on a real storefront page was a real accuracy problem independent of
+//! the naming mismatch — removed rather than relabeled.
 
 use crate::{Catalog, LicenseTier};
 use maud::{html, Markup, PreEscaped};
@@ -17,21 +29,29 @@ fn tier_card(tier: LicenseTier, catalog: &Catalog) -> Markup {
         .iter()
         .filter(|i| i.license_tier == tier)
         .count();
-    let dollars = tier.canonical_price_usdc() as f64 / 1_000_000.0;
     let desc = match tier {
-        LicenseTier::Commercial => {
-            "Apache-2.0-equivalent rights on the compiled binary. No copyleft \
-             obligations. Fork, redistribute, or compete freely."
+        LicenseTier::Proprietary => {
+            "No source grant. The company's stated commercial moat — solo use is \
+             free during BETA; aggregation or resale requires a separate \
+             commercial agreement, permanently."
         }
         LicenseTier::Fsl => {
-            "Source-readable. A two-year non-compete restriction, then automatic \
-             conversion to Apache 2.0 for that version."
+            "Source-readable now. A two-year non-compete restriction, then \
+             automatic conversion to Apache-2.0 for that release."
+        }
+        LicenseTier::Agpl => {
+            "AGPL-3.0-or-later. Source is freely available under copyleft terms; \
+             a purchase buys the official signed binary and commercial \
+             redistribution rights, not access to the code itself."
+        }
+        LicenseTier::Apache => {
+            "A genuine, unconditional Apache-2.0 grant. No purchase, no license \
+             key, no BETA gate to lift — free to use, fork, or redistribute."
         }
     };
     html! {
         article."sw-pr-tier" {
             h2."sw-pr-tier__name" { (tier.label()) }
-            p."sw-pr-tier__amt" { "$" (format!("{dollars:.2}")) " USDC" }
             p."sw-pr-tier__count" { (count) " product" (if count == 1 { "" } else { "s" }) }
             p."sw-pr-tier__desc" { (desc) }
         }
@@ -57,13 +77,15 @@ pub fn pricing_markup(catalog: &Catalog) -> Markup {
                 span { "Your keys, your license" }
             }
             div."sw-pr-tiers" {
-                (tier_card(LicenseTier::Commercial, catalog))
+                (tier_card(LicenseTier::Proprietary, catalog))
                 (tier_card(LicenseTier::Fsl, catalog))
+                (tier_card(LicenseTier::Agpl, catalog))
+                (tier_card(LicenseTier::Apache, catalog))
             }
             p."sw-pr-beta-note" {
-                "Every product is currently free during BETA — the prices above are what \
-                 apply once BETA lifts for a given product, not a charge in effect today. \
-                 See each product's own listing on the "
+                "Every product is currently free during BETA, regardless of tier — future \
+                 pricing has not been set for any product yet. See each product's own \
+                 listing on the "
                 a href="/software" { "Products" }
                 " page for its current, active price."
             }
@@ -89,7 +111,6 @@ fn pricing_style() -> Markup {
 .sw-pr-tiers{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;margin:0 0 32px;}
 .sw-pr-tier{border:1px solid #e4e7ec;border-radius:10px;padding:24px;background:#fff;box-shadow:0 1px 2px rgba(16,24,40,.04);}
 .sw-pr-tier__name{font-family:Georgia,"Times New Roman",serif;font-size:20px;margin:0 0 8px;color:#111827;}
-.sw-pr-tier__amt{font-size:28px;font-weight:700;font-family:Georgia,"Times New Roman",serif;color:#111827;margin:0 0 4px;}
 .sw-pr-tier__count{font-size:12px;color:#234ed8;font-weight:600;margin:0 0 12px;}
 .sw-pr-tier__desc{font-size:13.5px;line-height:1.55;color:#475467;margin:0;}
 .sw-pr-beta-note{font-size:13px;line-height:1.55;color:#475467;margin:0 0 16px;padding:14px;border:1px dashed #d0d5dd;border-radius:8px;background:#fcfcfd;}
@@ -107,6 +128,19 @@ mod tests {
         Catalog {
             installers: vec![
                 Installer {
+                    id: "os-orchestration".into(),
+                    name: "Orchestration OS".into(),
+                    description: "d".into(),
+                    edition: "1.0".into(),
+                    platform: "linux".into(),
+                    size_mb: 1,
+                    path: "os-orchestration/1.0".into(),
+                    license_tier: LicenseTier::Proprietary,
+                    price_usdc: 0,
+                    fsl_conversion_date: None,
+                    guide_url: None,
+                },
+                Installer {
                     id: "os-console".into(),
                     name: "Console".into(),
                     description: "d".into(),
@@ -114,7 +148,7 @@ mod tests {
                     platform: "linux".into(),
                     size_mb: 1,
                     path: "os-console/1.0".into(),
-                    license_tier: LicenseTier::Commercial,
+                    license_tier: LicenseTier::Agpl,
                     price_usdc: 0,
                     fsl_conversion_date: None,
                     guide_url: None,
@@ -127,7 +161,7 @@ mod tests {
                     platform: "linux".into(),
                     size_mb: 1,
                     path: "os-privategit/1.0".into(),
-                    license_tier: LicenseTier::Commercial,
+                    license_tier: LicenseTier::Fsl,
                     price_usdc: 0,
                     fsl_conversion_date: None,
                     guide_url: None,
@@ -145,19 +179,37 @@ mod tests {
                     fsl_conversion_date: None,
                     guide_url: None,
                 },
+                Installer {
+                    id: "tool-wallet".into(),
+                    name: "PointSav Wallet".into(),
+                    description: "d".into(),
+                    edition: "1.0".into(),
+                    platform: "linux".into(),
+                    size_mb: 1,
+                    path: "tool-wallet/1.0".into(),
+                    license_tier: LicenseTier::Apache,
+                    price_usdc: 0,
+                    fsl_conversion_date: None,
+                    guide_url: None,
+                },
             ],
         }
     }
 
     #[test]
-    fn pricing_page_shows_both_tiers_with_live_counts() {
+    fn pricing_page_shows_all_four_tiers_with_live_counts() {
         let html = pricing_markup(&fixture()).into_string();
-        assert!(html.contains("PointSav Commercial"));
-        assert!(html.contains("$1.00 USDC"));
-        assert!(html.contains("2 products"));
-        assert!(html.contains("FSL"));
-        assert!(html.contains("$19.00 USDC"));
+        assert!(html.contains("Proprietary"));
         assert!(html.contains("1 product<"));
+        assert!(html.contains("FSL-1.1-ALv2"));
+        assert!(html.contains("2 products"));
+        assert!(html.contains("AGPL-3.0-or-later"));
+        assert!(html.contains("Apache-2.0 (Open Source)"));
+        assert!(
+            !html.contains("sw-pr-tier__amt"),
+            "must not display a fabricated per-tier dollar figure — \
+             BRIEF-software-licensing-structure.md §4 ratifies no future price"
+        );
     }
 
     #[test]

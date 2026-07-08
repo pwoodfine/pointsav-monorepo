@@ -83,7 +83,7 @@ mod tests {
             platform: "macOS \u{b7} Win \u{b7} Linux".into(),
             size_mb: 412,
             path: "os-console/2026.05.144".into(),
-            license_tier: LicenseTier::Commercial,
+            license_tier: LicenseTier::Agpl,
             price_usdc: 1_000_000,
             fsl_conversion_date: None,
             guide_url: None,
@@ -95,7 +95,7 @@ mod tests {
         let html = checkout_markup(&fixture(), "0xTESTWALLET").into_string();
         assert!(html.contains("os-console"));
         assert!(html.contains("PointSav Console OS"));
-        assert!(html.contains("PointSav Commercial"));
+        assert!(html.contains("AGPL-3.0-or-later"));
         assert!(html.contains("$1.00"));
         assert!(html.contains("0xTESTWALLET"));
         assert!(html.contains("action=\"/order\""));

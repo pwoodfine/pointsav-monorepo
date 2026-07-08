@@ -9,31 +9,46 @@
 <main>
 <h1>Licensing</h1>
 <p>
-software.pointsav.com distributes pre-compiled binaries under exactly two license tiers.
-Both are one-time purchases in native USDC on the Polygon network — there is no subscription,
-and no recurring charge for continued use of a binary you have already purchased.
+software.pointsav.com distributes pre-compiled binaries under four license tiers, one per
+product family. All are one-time purchases in native USDC on the Polygon network — there is no
+subscription, and no recurring charge for continued use of a binary you have already purchased.
+Every product is priced at $0 during the current BETA period, regardless of which tier applies —
+tier governs the rights you hold, not what's charged today.
 </p>
 
-<h2>PointSav Commercial (Apache-compatible)</h2>
+<h2>Proprietary</h2>
 <p>
-Applies to <code>os-console</code>, <code>os-privategit</code>, <code>os-totebox</code>, and
-<code>os-workplace</code>. The underlying source for these products is published under
-AGPL-3.0-or-later at <a href="https://github.com/pointsav/pointsav-monorepo">github.com/pointsav/pointsav-monorepo</a>.
-As copyright holder of that source, Woodfine Capital Projects Inc. separately grants purchasers
-of the compiled binary a commercial license conveying Apache-2.0-equivalent rights: no copyleft
-obligations attach to your use of the binary, and you may fork, redistribute, or compete freely.
-This is a grant on the compiled artifact only — it does not relicense the published source, which
-remains AGPL-3.0-or-later.
+Applies to <code>os-orchestration</code> and its <code>app-orchestration-*</code> surfaces —
+permanently, no source grant. This is the company's stated commercial moat: a solo Totebox
+deployment is free forever, and aggregation or resale requires a separate commercial agreement.
 </p>
 
-<h2>FSL (Functional Source License)</h2>
+<h2>FSL-1.1-ALv2 (Functional Source License)</h2>
 <p>
-Applies to <code>os-infrastructure</code>, <code>os-mediakit</code>, <code>os-network-admin</code>,
-and <code>os-orchestration</code>. These are distributed under FSL-1.1-ALv2: the source is
-readable, and the license carries one restriction — you may not use the binary or its source to
-build a product that competes with PointSav. Two years after a given version's release date,
-that version's license automatically converts to Apache 2.0, at which point the non-compete
-restriction lapses for that version. Reference: <a href="https://fsl.software/">fsl.software</a>.
+Applies to <code>os-infrastructure</code>, <code>os-network-admin</code>, <code>os-mediakit</code>,
+<code>os-totebox</code>, and the <code>os-privategit</code> engine (this storefront and its
+release server). The source is readable, and the license carries one restriction — you may not
+use the binary or its source to build a product that competes with PointSav. Two years after a
+given version's release date, that version's license automatically converts to Apache-2.0, at
+which point the non-compete restriction lapses for that version.
+Reference: <a href="https://fsl.software/">fsl.software</a>.
+</p>
+
+<h2>AGPL-3.0-or-later</h2>
+<p>
+Applies to <code>os-console</code> and its <code>app-console-*</code> surfaces — the flagship
+buy-to-own product line. Source is freely available under AGPL-3.0-or-later's copyleft terms at
+<a href="https://github.com/pointsav/pointsav-monorepo">github.com/pointsav/pointsav-monorepo</a>.
+A purchase buys the official signed binary and commercial redistribution rights, not access to
+the code — the binary itself carries no license-key check, no phone-home, and no kill switch, so
+reading or building the source has never required a purchase.
+</p>
+
+<h2>Apache-2.0 (Open Source)</h2>
+<p>
+A genuine, unconditional grant — no purchase, no license key, no BETA gate to lift. Currently
+applies to <code>tool-wallet</code>, the Polygon USDC watcher this storefront's own payment flow
+runs on.
 </p>
 
 <h2>What a purchase includes</h2>
