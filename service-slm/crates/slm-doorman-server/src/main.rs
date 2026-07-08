@@ -392,6 +392,10 @@ async fn main() -> anyhow::Result<()> {
                     }
                     Ok(Some(leased)) => {
                         let brief_id = leased.entry.brief.brief_id.clone();
+                        // Set inside the LocalSaturated match arm below; read by the
+                        // retry-counter block to exempt pure slot-contention retries
+                        // from the shared attempts budget (see comment there).
+                        let mut is_local_saturated_retry = false;
 
                         // Payload size gate: poison oversized briefs immediately so
                         // they never reach OLMo or the dispatch path.
@@ -521,6 +525,19 @@ async fn main() -> anyhow::Result<()> {
                                     ) {
                                         ReleaseOutcome::Poison
                                     } else {
+                                        // Tier A slot contention (LocalSaturated) is a
+                                        // known, self-imposed, transient admission-control
+                                        // rejection (router.rs classifies it PolicyDenied),
+                                        // not a real failure — real Tier A inference runs
+                                        // 17-60 min (see local.rs's 1800s timeout) while the
+                                        // shared attempts budget below is only 30s x 5 = 150s.
+                                        // Without this exemption, any period of Tier A
+                                        // activity poisons the brief regardless of whether
+                                        // the underlying task is actually broken.
+                                        is_local_saturated_retry = matches!(
+                                            e,
+                                            slm_doorman::DoormanError::LocalSaturated
+                                        );
                                         ReleaseOutcome::Retry
                                     }
                                 }
@@ -535,39 +552,16 @@ async fn main() -> anyhow::Result<()> {
                             ReleaseOutcome::Retry
                         };
 
-                        // Retry counter: escalate Retry → Poison once a brief
-                        // has been retried too many times. Prevents a single
-                        // persistently-failing brief from blocking the serial
-                        // drain queue indefinitely.
+                        // Retry counter: escalate Retry → Poison once a brief has been
+                        // retried too many times (except pure Tier A slot-contention,
+                        // which is exempt — see escalate_retry_outcome's doc comment).
                         let outcome = if outcome == ReleaseOutcome::Retry {
-                            let attempts = slm_doorman_server::queue::bump_attempts(
-                                &drain_cfg, &brief_id,
+                            escalate_retry_outcome(
+                                &drain_cfg,
+                                &brief_id,
+                                is_local_saturated_retry,
+                                max_retries,
                             )
-                            .unwrap_or_else(|e| {
-                                tracing::warn!(
-                                    brief_id = %brief_id,
-                                    error = %e,
-                                    "drain worker: attempts counter I/O error; treating as 1"
-                                );
-                                1
-                            });
-                            if attempts >= max_retries {
-                                tracing::warn!(
-                                    brief_id = %brief_id,
-                                    attempts,
-                                    max_retries,
-                                    "drain worker: max retries reached — poisoning brief"
-                                );
-                                ReleaseOutcome::Poison
-                            } else {
-                                tracing::info!(
-                                    brief_id = %brief_id,
-                                    attempts,
-                                    max_retries,
-                                    "drain worker: brief retry {attempts}/{max_retries}"
-                                );
-                                ReleaseOutcome::Retry
-                            }
                         } else {
                             outcome
                         };
@@ -713,6 +707,60 @@ async fn main() -> anyhow::Result<()> {
         .await
         .context("axum serve loop exited")?;
     Ok(())
+}
+
+/// Decides the final `ReleaseOutcome` for a brief already classified as
+/// `Retry`, applying the shared attempts-budget escalation (Retry -> Poison
+/// once `attempts >= max_retries`) — with one exception: pure Tier A
+/// slot-contention (`DoormanError::LocalSaturated`, `is_local_saturated_retry
+/// = true`) never counts against this budget. `LocalSaturated` is a known,
+/// self-imposed, transient admission-control rejection (`router.rs`
+/// classifies it `PolicyDenied`), not a real failure — real Tier A inference
+/// runs 17-60 min (see `local.rs`'s 1800s timeout) while the shared attempts
+/// budget is only `drain_interval * max_retries` (30s x 5 = 150s by default).
+/// Without this exemption, any period of Tier A activity poisons the brief
+/// regardless of whether the underlying task is actually broken. The brief
+/// simply re-queues and is retried again next drain cycle, indefinitely,
+/// until it either succeeds or hits a genuine (non-contention) failure.
+fn escalate_retry_outcome(
+    cfg: &QueueConfig,
+    brief_id: &str,
+    is_local_saturated_retry: bool,
+    max_retries: u32,
+) -> ReleaseOutcome {
+    if is_local_saturated_retry {
+        tracing::debug!(
+            brief_id = %brief_id,
+            "drain worker: Tier A slot contention — retrying without \
+             counting against attempts budget"
+        );
+        return ReleaseOutcome::Retry;
+    }
+    let attempts = slm_doorman_server::queue::bump_attempts(cfg, brief_id).unwrap_or_else(|e| {
+        tracing::warn!(
+            brief_id = %brief_id,
+            error = %e,
+            "drain worker: attempts counter I/O error; treating as 1"
+        );
+        1
+    });
+    if attempts >= max_retries {
+        tracing::warn!(
+            brief_id = %brief_id,
+            attempts,
+            max_retries,
+            "drain worker: max retries reached — poisoning brief"
+        );
+        ReleaseOutcome::Poison
+    } else {
+        tracing::info!(
+            brief_id = %brief_id,
+            attempts,
+            max_retries,
+            "drain worker: brief retry {attempts}/{max_retries}"
+        );
+        ReleaseOutcome::Retry
+    }
 }
 
 fn build_doorman() -> anyhow::Result<Doorman> {
@@ -1249,4 +1297,60 @@ fn init_tracing() {
         .with(filter)
         .with(fmt::layer())
         .init();
+}
+
+#[cfg(test)]
+mod escalate_retry_outcome_tests {
+    use super::*;
+
+    fn tmp_cfg(label: &str) -> QueueConfig {
+        let dir = std::env::temp_dir().join(format!(
+            "slm-doorman-escalate-test-{label}-{}",
+            std::process::id()
+        ));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(dir.join("queue-attempts")).unwrap();
+        QueueConfig::with_base_dir(dir)
+    }
+
+    #[test]
+    fn local_saturated_retry_never_bumps_attempts_or_poisons() {
+        let cfg = tmp_cfg("saturated");
+        // Call it more times than max_retries would normally allow — a pure
+        // slot-contention retry must never escalate to Poison, no matter how
+        // many times it happens.
+        for _ in 0..10 {
+            let outcome = escalate_retry_outcome(&cfg, "brief-a", true, 5);
+            assert_eq!(outcome, ReleaseOutcome::Retry);
+        }
+        // Confirm the attempts sidecar was genuinely never touched — this is
+        // the actual behavioral guarantee, not just the return value.
+        let attempts_file = cfg.base_dir.join("queue-attempts").join("brief-a.attempts");
+        assert!(
+            !attempts_file.exists(),
+            "LocalSaturated retries must not write to the attempts sidecar"
+        );
+    }
+
+    #[test]
+    fn genuine_retry_still_escalates_to_poison_after_max_retries() {
+        let cfg = tmp_cfg("genuine");
+        let mut last = ReleaseOutcome::Retry;
+        for _ in 0..5 {
+            last = escalate_retry_outcome(&cfg, "brief-b", false, 5);
+        }
+        assert_eq!(
+            last,
+            ReleaseOutcome::Poison,
+            "a genuinely failing brief must still poison after max_retries — \
+             the LocalSaturated exemption must not weaken this"
+        );
+    }
+
+    #[test]
+    fn genuine_retry_does_not_poison_before_max_retries() {
+        let cfg = tmp_cfg("genuine-early");
+        let outcome = escalate_retry_outcome(&cfg, "brief-c", false, 5);
+        assert_eq!(outcome, ReleaseOutcome::Retry);
+    }
 }
