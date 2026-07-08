@@ -34,37 +34,42 @@ fn chrome_style() -> Markup {
     let css = format!(
         r#":root{{
 --sw-topnav-bg:{topnav};
+--sw-on-chrome:{on_chrome};
+--sw-on-chrome-muted:{on_chrome_muted};
 --sw-accent:{accent};
+--sw-accent-hover:{accent_hover};
 --sw-footer-bg:{footer_bg};
 --sw-footer-fg:{footer_fg};
+--sw-footer-fg-muted:{footer_fg_muted};
 --sw-footer-divider:{footer_div};
+--sw-ink:{ink};
 --sw-wordmark:{wordmark};
 }}
 .sw-nav-toggle{{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;}}
-.sw-masthead{{background:var(--sw-topnav-bg);color:var(--sw-wordmark);width:100%;}}
+.sw-masthead{{background:var(--sw-topnav-bg);color:var(--sw-on-chrome);width:100%;}}
 .sw-masthead__inner{{display:flex;align-items:center;gap:24px;height:64px;max-width:1280px;margin:0 auto;padding:0 24px;box-sizing:border-box;}}
-.sw-brand{{display:flex;align-items:center;gap:10px;color:var(--sw-wordmark);text-decoration:none;flex:0 0 auto;}}
-.sw-brand__glyph{{display:inline-flex;color:var(--sw-accent);}}
+.sw-brand{{display:flex;align-items:center;gap:10px;color:var(--sw-on-chrome);text-decoration:none;flex:0 0 auto;}}
+.sw-brand__glyph{{display:inline-flex;color:var(--sw-on-chrome);}}
 .sw-brand__lockup{{display:flex;flex-direction:column;line-height:1.05;}}
 .sw-brand__name{{font-family:"Playfair Display",Georgia,serif;font-weight:700;font-size:18px;letter-spacing:.01em;}}
-.sw-brand__desc{{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--sw-accent);}}
+.sw-brand__desc{{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--sw-on-chrome-muted);}}
 .sw-search{{flex:1 1 auto;display:flex;justify-content:center;}}
 .sw-search__form{{display:flex;width:100%;max-width:420px;background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.18);border-radius:6px;overflow:hidden;}}
 .sw-search__input{{flex:1;background:transparent;border:0;color:#fff;padding:8px 12px;font-size:13px;outline:none;}}
 .sw-search__input::placeholder{{color:rgba(255,255,255,.6);}}
 .sw-search__btn{{background:transparent;border:0;color:rgba(255,255,255,.85);padding:0 12px;cursor:pointer;display:inline-flex;align-items:center;}}
 .sw-utility{{display:flex;align-items:center;gap:18px;flex:0 0 auto;}}
-.sw-utility__link{{color:rgba(255,255,255,.9);text-decoration:none;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;}}
-.sw-utility__link:hover{{color:var(--sw-accent);}}
-.sw-lang{{display:flex;gap:4px;font-size:12px;font-weight:600;color:rgba(255,255,255,.55);}}
-.sw-lang__active{{color:var(--sw-wordmark);}}
+.sw-utility__link{{color:var(--sw-on-chrome-muted);text-decoration:none;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;}}
+.sw-utility__link:hover{{color:var(--sw-on-chrome);}}
+.sw-lang{{display:flex;gap:4px;font-size:12px;font-weight:600;color:var(--sw-on-chrome-muted);}}
+.sw-lang__active{{color:var(--sw-on-chrome);}}
 .sw-burger{{display:none;flex:0 0 auto;cursor:pointer;color:#fff;padding:6px;border-radius:4px;align-items:center;}}
 .sw-subnav{{background:color-mix(in oklab,var(--sw-topnav-bg) 86%,#000);width:100%;}}
 .sw-subnav__inner{{display:flex;gap:28px;height:48px;align-items:center;max-width:1280px;margin:0 auto;padding:0 24px;box-sizing:border-box;overflow-x:auto;}}
-.sw-subnav__link{{color:rgba(255,255,255,.82);text-decoration:none;font-size:13px;font-weight:600;letter-spacing:.04em;white-space:nowrap;}}
-.sw-subnav__link:hover{{color:var(--sw-accent);}}
+.sw-subnav__link{{color:var(--sw-on-chrome-muted);text-decoration:none;font-size:13px;font-weight:600;letter-spacing:.04em;white-space:nowrap;}}
+.sw-subnav__link:hover{{color:var(--sw-on-chrome);}}
 .sw-drawer{{position:fixed;top:0;left:0;bottom:0;width:82%;max-width:320px;background:var(--sw-topnav-bg);color:#fff;transform:translateX(-100%);transition:transform .25s ease;z-index:60;padding:20px;box-sizing:border-box;overflow-y:auto;}}
-.sw-drawer__close{{display:block;text-align:right;color:var(--sw-accent);cursor:pointer;font-size:24px;line-height:1;margin-bottom:12px;}}
+.sw-drawer__close{{display:block;text-align:right;color:var(--sw-on-chrome);cursor:pointer;font-size:24px;line-height:1;margin-bottom:12px;}}
 .sw-drawer__link{{display:block;padding:12px 4px;color:#fff;text-decoration:none;font-size:15px;border-bottom:1px solid rgba(255,255,255,.12);}}
 .sw-scrim{{position:fixed;inset:0;background:rgba(0,0,0,.5);opacity:0;visibility:hidden;transition:opacity .25s ease;z-index:55;}}
 .sw-nav-toggle:checked ~ .sw-drawer{{transform:translateX(0);}}
@@ -72,15 +77,16 @@ fn chrome_style() -> Markup {
 .sw-footer{{background:var(--sw-footer-bg);color:var(--sw-footer-fg);width:100%;}}
 .sw-footer__inner{{max-width:1280px;margin:0 auto;padding:48px 24px 28px;box-sizing:border-box;}}
 .sw-footer__top{{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:32px;}}
-.sw-footer__brand-name{{color:#fff;font-family:"Playfair Display",Georgia,serif;font-weight:700;font-size:18px;}}
-.sw-footer__tagline{{margin-top:8px;font-size:13px;max-width:30ch;}}
-.sw-footer__col h2{{color:#fff;font-size:12px;letter-spacing:.12em;text-transform:uppercase;margin:0 0 12px;}}
+.sw-footer__brand-name{{color:var(--sw-ink);font-family:"Playfair Display",Georgia,serif;font-weight:700;font-size:18px;}}
+.sw-footer__tagline{{margin-top:8px;font-size:13px;max-width:30ch;color:var(--sw-footer-fg-muted);}}
+.sw-footer__col h2{{color:var(--sw-ink);font-size:12px;letter-spacing:.12em;text-transform:uppercase;margin:0 0 12px;}}
 .sw-footer__col ul{{list-style:none;margin:0;padding:0;}}
 .sw-footer__col li{{margin-bottom:8px;}}
-.sw-footer__col a{{color:var(--sw-footer-fg);text-decoration:none;font-size:13px;}}
-.sw-footer__col a:hover{{color:var(--sw-accent);}}
+.sw-footer__col a{{color:var(--sw-accent);text-decoration:none;font-size:13px;}}
+.sw-footer__col a:hover{{color:var(--sw-accent-hover);text-decoration:underline;}}
+.sw-footer__ext{{font-size:11px;margin-left:2px;}}
 .sw-footer__disclosure{{margin-top:32px;border:1px solid var(--sw-footer-divider);border-radius:6px;}}
-.sw-footer__disclosure-summary{{cursor:pointer;padding:14px 18px;color:#fff;font-size:12px;letter-spacing:.06em;text-transform:uppercase;list-style:none;}}
+.sw-footer__disclosure-summary{{cursor:pointer;padding:14px 18px;color:var(--sw-ink);font-size:12px;letter-spacing:.06em;text-transform:uppercase;list-style:none;}}
 .sw-footer__disclosure-summary::-webkit-details-marker{{display:none;}}
 .sw-footer__disclosure-summary::after{{content:"\25be";margin-left:8px;display:inline-block;}}
 .sw-footer__disclosure[open] .sw-footer__disclosure-summary::after{{transform:rotate(180deg);}}
@@ -90,19 +96,19 @@ fn chrome_style() -> Markup {
 .sw-footer__slot-body p{{margin:0 0 10px;}}
 .sw-footer__slot-body p:last-child{{margin-bottom:0;}}
 .sw-footer__slot-body a{{color:var(--sw-accent);}}
-.sw-footer__slot-body strong{{color:#fff;}}
-.sw-footer__persistent-disclaimer{{margin-top:12px;font-size:11px;line-height:1.5;color:var(--sw-footer-fg);}}
+.sw-footer__slot-body strong{{color:var(--sw-ink);}}
+.sw-footer__persistent-disclaimer{{margin-top:12px;font-size:11px;line-height:1.5;color:var(--sw-footer-fg-muted);}}
 .sw-footer__persistent-disclaimer a{{color:var(--sw-accent);}}
 @media print{{
 .sw-footer__disclosure:not([open]) .sw-footer__slot{{display:block!important;}}
 }}
-.sw-footer__cities{{margin-top:20px;padding-top:20px;border-top:1px solid var(--sw-footer-divider);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#fff;}}
+.sw-footer__cities{{margin-top:20px;padding-top:20px;border-top:1px solid var(--sw-footer-divider);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--sw-footer-fg-muted);}}
 .sw-footer__meta{{margin-top:10px;font-size:12px;}}
-.sw-footer__meta a{{color:var(--sw-footer-fg);text-decoration:none;}}
+.sw-footer__meta a{{color:var(--sw-footer-fg-muted);text-decoration:none;}}
 .sw-footer__meta a:hover{{color:var(--sw-accent);}}
 .sw-footer__legal{{margin-top:20px;padding-top:18px;border-top:1px solid var(--sw-footer-divider);font-size:11.5px;line-height:1.6;}}
-.sw-footer__copyright{{color:#fff;margin:0 0 8px;}}
-.sw-footer__trademark{{margin:0;color:var(--sw-footer-fg);max-width:80ch;}}
+.sw-footer__copyright{{color:var(--sw-footer-fg-muted);margin:0 0 8px;}}
+.sw-footer__trademark{{margin:0;color:var(--sw-footer-fg-muted);max-width:80ch;}}
 .sw-legal{{max-width:70ch;margin:0 auto;padding:40px 24px 64px;line-height:1.65;}}
 .sw-legal h1{{font-family:"Playfair Display",Georgia,serif;font-size:32px;margin:0 0 8px;}}
 .sw-legal h2{{font-size:16px;margin:28px 0 8px;}}
@@ -116,10 +122,15 @@ fn chrome_style() -> Markup {
 .sw-footer__top{{grid-template-columns:1fr;gap:24px;}}
 }}"#,
         topnav = tokens::TOPNAV_BG,
+        on_chrome = tokens::ON_CHROME,
+        on_chrome_muted = tokens::ON_CHROME_MUTED,
         accent = tokens::ACCENT,
+        accent_hover = tokens::ACCENT_HOVER,
         footer_bg = tokens::FOOTER_BG,
         footer_fg = tokens::FOOTER_FG,
+        footer_fg_muted = tokens::FOOTER_FG_MUTED,
         footer_div = tokens::FOOTER_DIVIDER,
+        ink = tokens::INK,
         wordmark = tokens::WORDMARK,
     );
     html! { style { (PreEscaped(css)) } }
@@ -192,8 +203,16 @@ pub fn masthead(surface: SoftwareSurface) -> Markup {
 
 // ── Footer ──────────────────────────────────────────────────────────────────────
 
-/// Near-black institutional footer: link columns, cities line, meta row, and the
-/// legal block (copyright + verbatim WCP Inc. trademark line).
+/// Light institutional footer: Site / Network link columns, cities line, meta row,
+/// and the legal block (copyright + verbatim WCP Inc. trademark line).
+///
+/// **Corrected 2026-07-07**: restructured from the ad-hoc "Catalog" / "Legal &
+/// Policy" columns to the exact two-column **Site / Network** pattern verified
+/// live on `home.pointsav.com` (`m-footer__columns`, `Site` + `Network` nav) —
+/// operator-confirmed. Site = this site's own pages; Network = links out to the
+/// other PointSav/Woodfine properties. External links carry `target="_blank"`,
+/// `rel="noopener"`, an `↗` glyph, and an `"(opens in new tab)"` aria-label
+/// suffix, matching `home.pointsav.com`'s exact external-link pattern verbatim.
 ///
 /// Note: the brand lockup reads "PointSav Software" WITHOUT a ™ — that exact string
 /// is not one of the enumerated marks in TRADEMARK.md v1.1, so asserting a mark on
@@ -210,20 +229,48 @@ pub fn footer(surface: SoftwareSurface) -> Markup {
                         }
                     }
                     div."sw-footer__col" {
-                        h2 { "Catalog" }
+                        h2 { "Site" }
                         ul {
                             li { a href="/software" { "Products" } }
-                            li { a href="/licensing" { "Pricing" } }
-                            li { a href="/licensing" { "Support" } }
+                            li { a href="/pricing" { "Pricing" } }
+                            li { a href="/licensing" { "Licensing" } }
+                            li { a href="/page/contact" { "Contact Us" } }
+                            li { a href="/page/disclaimer" { "Disclaimer" } }
                         }
                     }
                     div."sw-footer__col" {
-                        h2 { "Legal & Policy" }
+                        h2 { "Network" }
                         ul {
-                            li { a href="/page/privacy" { "Privacy" } }
-                            li { a href="/page/disclaimer" { "Disclaimer" } }
-                            li { a href="/page/accessibility" { "Accessibility" } }
-                            li { a href="/page/contact" { "Contact us" } }
+                            li {
+                                a href="https://home.pointsav.com/" target="_blank" rel="noopener"
+                                    aria-label="Home (opens in new tab)" {
+                                    "Home" span."sw-footer__ext" aria-hidden="true" { "\u{2197}" }
+                                }
+                            }
+                            li {
+                                a href="https://documentation.pointsav.com/" target="_blank" rel="noopener"
+                                    aria-label="Documentation (opens in new tab)" {
+                                    "Documentation" span."sw-footer__ext" aria-hidden="true" { "\u{2197}" }
+                                }
+                            }
+                            li {
+                                a href="https://design.pointsav.com/" target="_blank" rel="noopener"
+                                    aria-label="Design System (opens in new tab)" {
+                                    "Design System" span."sw-footer__ext" aria-hidden="true" { "\u{2197}" }
+                                }
+                            }
+                            li {
+                                a href="https://pointsav.com/" target="_blank" rel="noopener"
+                                    aria-label="Newsroom (opens in new tab)" {
+                                    "Newsroom" span."sw-footer__ext" aria-hidden="true" { "\u{2197}" }
+                                }
+                            }
+                            li {
+                                a href="https://github.com/pointsav" target="_blank" rel="noopener"
+                                    aria-label="Source (opens in new tab)" {
+                                    "Source" span."sw-footer__ext" aria-hidden="true" { "\u{2197}" }
+                                }
+                            }
                         }
                     }
                 }
