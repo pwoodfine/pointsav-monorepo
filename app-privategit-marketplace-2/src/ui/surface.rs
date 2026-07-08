@@ -72,26 +72,35 @@ impl SoftwareSurface {
         }
     }
 
-    /// Verbatim trademark line — the actual canonical mark list from `TRADEMARK.md`
-    /// (repo root): `PointSav™`, `Foundry™`, `ToteboxOS™`, `ConsoleOS™`,
-    /// `OrchestrationOS™`, `WorkplaceOS™`, `WoodfineGroup™`. **Correction, 2026-07-04
-    /// live-site audit:** a 2026-07-02 change here (msg-id
-    /// `command-20260702-important-information-footer-structure-w`) replaced the
-    /// original PointSav-only subset with a *different* six-mark set
-    /// ("Woodfine Capital Projects™, MCorp™, PointSav Digital Systems™, Totebox
-    /// Orchestration™, Totebox Archive™, Capability Geometry™") that its own doc
-    /// comment claimed was "per the current TRADEMARK.md" — `git log -- TRADEMARK.md`
-    /// shows that file has never contained any of those six strings. Several of them
-    /// read as internal Foundry-workspace session/architecture vocabulary (see
-    /// `AGENT.md` §11), not product trademarks. This restores the line to what
-    /// `TRADEMARK.md` actually says. Do not paraphrase or shorten again without
-    /// reading `TRADEMARK.md` directly — a claimed citation is not a substitute for
-    /// checking the file.
+    /// Verbatim trademark line.
+    ///
+    /// **Corrected 2026-07-07** — the 2026-07-04 "correction" documented in this
+    /// function's prior version was itself wrong: it claimed `git log --
+    /// TRADEMARK.md` showed the six-mark set it was replacing "has never contained
+    /// any of those six strings." That check was mistaken. `TRADEMARK.md` was
+    /// rewritten to the "Woodfine Capital Projects™, Woodfine Management Corp™,
+    /// PointSav Digital Systems™, Totebox Orchestration™, Totebox Archive™" canonical
+    /// notice format on **2026-05-16** (commit `925eaee`), and gained
+    /// **Capability Geometry™** as a sixth mark on **2026-06-19** (commit `86f8b65`)
+    /// — both well before the 2026-07-04 session ran its check, and unchanged since.
+    /// Verified directly against the current file (`vendor/factory-release-
+    /// engineering/TRADEMARK.md` §13, the canonical-notice section) — the prior
+    /// seven-mark set here (`PointSav™, Foundry™, ToteboxOS™, ConsoleOS™,
+    /// OrchestrationOS™, WorkplaceOS™, WoodfineGroup™`) has **never** appeared in
+    /// `TRADEMARK.md` at any point since the April 2026 original; it predates even
+    /// the May rewrite. The exact wording below (using the informal `MCorp™`
+    /// abbreviation for Woodfine Management Corp, and folding Capability Geometry's
+    /// unregistered-mark note into the single sentence rather than a separate one)
+    /// matches `home.pointsav.com`'s real, live, served trademark line verbatim —
+    /// checked directly against its HTML, not assumed. Do not paraphrase or shorten
+    /// again without reading `TRADEMARK.md` §13 directly AND cross-checking a live
+    /// family site — a claimed citation is not a substitute for checking either.
     pub fn trademark_line(self) -> &'static str {
-        "PointSav\u{2122}, Foundry\u{2122}, ToteboxOS\u{2122}, ConsoleOS\u{2122}, \
-         OrchestrationOS\u{2122}, WorkplaceOS\u{2122}, and WoodfineGroup\u{2122} \
-         are trademarks of Woodfine Capital Projects Inc. and Woodfine Management Corp. \
-         All other trademarks are the property of their respective owners."
+        "Woodfine Capital Projects\u{2122}, MCorp\u{2122}, PointSav Digital Systems\u{2122}, \
+         Totebox Orchestration\u{2122}, Totebox Archive\u{2122}, and Capability Geometry\u{2122} \
+         are trademarks of Woodfine Capital Projects Inc., used in Canada, the United States, \
+         Latin America, and Europe. All other trademarks are the property of their respective \
+         owners."
     }
 
     /// Copyright holder — the parent company, for every surface.

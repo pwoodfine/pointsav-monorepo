@@ -2074,20 +2074,20 @@ esac
         assert!(!html.contains("Private Placement Memorandum"));
         assert!(!html.contains("Accredited Investor"));
 
-        // Self-contained: no legal-content cross-references to woodfinegroup.com's own
-        // disclaimer/legal pages (the concern the "self-contained" name refers to — this
-        // page's legal text must not duplicate or point at another site's legal text).
-        assert!(!html.contains("woodfinegroup.com"));
-
         // Sovereign chrome present (same page shell as /software and /licensing).
         assert!(html.contains("sw-masthead"));
         assert!(html.contains(SoftwareSurface::Marketplace.trademark_line()));
 
-        // `home.pointsav.com` legitimately appears now (2026-07-07 footer redesign,
-        // operator-approved) — the footer's "Network" column links out to it on every
-        // page, including this one. That's site navigation, not a legal-content
-        // cross-reference, so it doesn't violate this test's "self-contained" concern.
+        // `home.pointsav.com` and `home.woodfinegroup.com` legitimately appear now
+        // (2026-07-07 footer redesign, operator-approved) — the footer's "Network"
+        // column links out to "PointSav Digital Systems" and "Woodfine Capital
+        // Projects" on every page, including this one. That's site navigation, not
+        // a legal-content cross-reference (the original concern this test's name
+        // refers to — this page's own legal *text* must not duplicate or point at
+        // another site's legal text, which it still doesn't), so it doesn't violate
+        // the "self-contained" property.
         assert!(html.contains("home.pointsav.com"));
+        assert!(html.contains("home.woodfinegroup.com"));
     }
 
     // Three footer pages closing the long-standing dead-link gap
