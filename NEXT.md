@@ -882,3 +882,758 @@ first (or run 4 separate GLiNER processes).
 - [x] **Night 5 build verification + GFWED variable fix + log gitignore**. [2026-06-19]
 - [x] **build-aec-flood.sh OGR_GEOJSON_MAX_OBJ_SIZE + numpy 2.x fixes; AEC flood Night 5**. [2026-06-19]
 - [ ] **TOPIC/GUIDE/JOURNAL** — stage to .agent/drafts-outbound/ → project-editorial. [2026-06-22 totebox@project-totebox]
+## Currently open
+
+### software.pointsav.com — Binary Library repositioning, Phases 1–4 COMPLETE [2026-07-07 totebox@claude-code]
+
+The `-2` rewrite program (`BRIEF-software-ng-rewrite.md`, P0–P8 complete, still live/shipped —
+not reverted) is redirected per operator decision: software.pointsav.com is being repositioned
+around a "Binary Library" concept (cursor.com/marketplace-inspired) — see
+`.agent/briefs/BRIEF-binary-library-repositioning.md` for the full research, audited CURSOR
+simulation, PointSav-transposed design (mockups at
+`app-privategit-marketplace-2/docs/mockups/*.html`), product/licensing recommendation, and phased
+build roadmap.
+
+**Catalog-scope decision — RESOLVED 2026-07-07:** operator approved the recommended two-shelf
+model (Commercial os-*-only shelf unchanged + a new Open Source/Community shelf, populated only
+as crates are actually relicensed) — this partially reverses the os-*-only-**public**-catalog rule
+from `BRIEF-software-hyperscaler-audit.md` for a clearly-separated second shelf, not by opening
+the Commercial shelf itself.
+
+**Phase 1 (catalog schema) — COMPLETE.** `LicenseTier::OpenSource` + `shelf()` two-shelf model
+added to `app-privategit-marketplace-2`, with a loud-failure catalog-validation guard.
+
+**Phase 2 (relicensing) — governance COMPLETE via Command Session** (see
+`BRIEF-software-licensing-structure.md`, Command-scope): `tool-wallet` → Apache-2.0 landed in
+`factory-release-engineering` + `conventions/software-distribution-substrate.md`, plus a much
+broader per-product tier review (`os-orchestration` bug fix to Proprietary/permanent,
+`os-totebox`/`os-privategit` engine → FSL, 5 `moonshot-*` → FSL). project-software's own
+in-repo follow-up (SPDX header + `Cargo.toml` for `tool-wallet`) also done same session.
+
+**Phase 3 (two-shelf catalog UI) — COMPLETE.** `/software` now renders both shelves from the
+Phase 1 schema; fixed a real bug where the old 2-way tier partition would have silently misfiled
+an `open-source` product under the "FSL" heading. `shelf` field added to `/v1/products` JSON.
+74/74 tests passing, clippy/fmt clean.
+
+**Phase 4 (nav + hero copy) — COMPLETE.** "Binary Library" nav item added (anchors into
+`/software#open-source`, not a new route or a `Products` rename); hero copy extended (not
+replaced) with a "The Binary Library" eyebrow + "components of an orchestration, not an app
+store" line. 76/76 tests passing, clippy/fmt clean.
+
+**Still no live catalog entries** in either new shelf — Phases 1–4 built the capability;
+depositing tool-wallet's actual binary (SHA256, `install.sh`, `RELEASES_DIR`, `products.yaml`
+entry) is separate follow-up work, not yet scheduled. **Next: Phase 5 — full cross-viewport
+operator visual sign-off, required before Phase 6 (production cutover). Nothing further should
+proceed without it.**
+
+### software distribution — Stage 6 NOT blocked, queued for auto-promote [2026-07-02 totebox@claude-code]
+
+**RESOLVED — was a false alarm.** Command investigated the prior high-priority escalation
+(msg-id `command-20260701-escalation-high-project-software-stage-6`) and found the
+"3146 → 3454 → 3482 growing" framing conflated *commits behind* (irrelevant unrelated
+history from other archives' promotes) with *commits ahead* (the actual work needing
+promotion). The real number is **30 commits ahead of origin/main** — same size/pattern as
+every other archive's routine promote. See msg-id
+`command-20260701-resolved-project-software-stage-6-escala`.
+
+**30 commits queued for promotion**, including:
+- `427bfff7` — storefront HTML fix (Knowledge Wiki product card was missing)
+- `67627b33` — os-privategit README correction
+- `c3399e2e` — BETA catalog listings
+- ~10 clippy/fmt pre-promote-gate fixes; ~15 feature commits (VM fleet polling, PPN
+  heartbeat, wallet fd-lock, token revocation, original scaffold)
+- All cargo gates green
+
+- [ ] Command will run the promote automatically once this Totebox session goes idle — no
+  action needed from this archive; do not re-attempt `self-service-promote.sh`
+- [ ] After canonical promotion: app-privategit-source, app-privategit-marketplace, tool-wallet get binary-ledger entries + RELEASES_DIR entries for self-hosting
+
+### storefront `/products` page — static HTML, not catalog-driven [2026-07-01 totebox@claude-code]
+
+Discovered `app-privategit-marketplace/static/software.html` is baked into the binary via
+`include_str!` at `src/main.rs:102` — it never reads `products.yaml` at request time.
+Only `/v1/products` (JSON API) reflects catalog edits. The entire page is placeholder
+content: every "Install →" link is `href="#"` except the one card fixed this session, and
+there's a literal "Sample listing" disclaimer at the bottom.
+
+- [ ] Decide: render `/products` dynamically from products.yaml, or commit to hand-maintaining
+  cards per product (current state) — flagged to Command, not yet decided
+- [x] Added real Knowledge Wiki card with working href (commit `427bfff7`) — only fix so far
+- [ ] `os-network-admin` and `soft-orchestration-command` cards still stale/placeholder despite
+  being live BETA products
+
+### foundry-prod sync path — partially resolved [2026-07-01 totebox@claude-code]
+
+`software.pointsav.com` resolves to foundry-prod (34.168.19.68), a different machine from
+this session's host (foundry-workspace, 34.53.65.203). Found `~/Foundry/bin/push-to-prod.sh
+software` (Command-only, manual) which rsyncs the two marketplace binaries + RELEASES_DIR,
+but on read it has no reference to `/var/lib/local-software/catalog/products.yaml` — may
+leave prod's catalog stale even after a successful push. Flagged informationally to Command:
+msg-id `command-20260701-fyi-found-push-to-prod-sh-software-targe`.
+
+- [ ] Confirm whether products.yaml needs adding to push-to-prod.sh's `target_software()`
+- [ ] Nothing deposited in project-software sessions to date is confirmed live for real customers until this is resolved
+- [ ] **Clobber risk (2026-07-02):** `app-privategit-source` + `app-privategit-marketplace` were
+  just manually added to the live `/var/lib/local-software/catalog/products.yaml` (see below) —
+  this is exactly the file `push-to-prod.sh`'s `target_software()` does NOT currently sync. If
+  Command fixes that gap by adding a catalog rsync, confirm the source-of-truth direction
+  (workspace → prod) doesn't silently overwrite or drop these two live-added entries.
+
+### software distribution — BETA catalog pending [2026-07-02 totebox@claude-code]
+
+- [x] `app-mediakit-knowledge` QCOW2 (Format B) — deposited 2026-07-01: SHA verified, RELEASES_DIR slot at app-mediakit-knowledge/0.1.0/, MANIFEST.json written, products.yaml updated, ACK sent to project-knowledge
+- [x] Self-produced catalog entries — `app-privategit-source` (sha `36ecb701…`, v0.1.0) and `app-privategit-marketplace` (sha `e53b629a…`, v0.0.3) deposited 2026-07-02: RELEASES_DIR + MANIFEST.json + live products.yaml + monorepo products.yaml (commit `037e51da`); both verified 200 OK, visible in `/v1/products`. `tool-wallet` does NOT need a catalog entry — binary taxonomy rule (§6 of the BRIEF) says tool binaries are NEVER distributed; prior note listing it as pending was itself stale. `os-privategit` still needs RELEASES_DIR + catalog entry once engineering produces a binary.
+- [x] `install.sh` — **authored + deployed 2026-07-02** (commit `80e08c18`): one generic bare-binary
+  template, instantiated for the 4 live bare-binary products (`os-network-admin`,
+  `soft-orchestration-command`, `app-privategit-source`, `app-privategit-marketplace`);
+  deployed live at `RELEASES_DIR/<product>/install.sh`, verified serving via
+  `/releases/<product>/install.sh`. Templates tracked in
+  `app-privategit-source/scripts/install-templates/`. Not yet done: OS-image and
+  QCOW2-class products still have `href="#"` placeholder cards and no install.sh — deferred,
+  no real consumer today.
+  **Gap found + fixed:** the `/releases/:product/:version/MANIFEST` route does not resolve
+  `"latest"` the way the binary-download route does — a script hardcoded to check
+  `.../latest/MANIFEST` would silently skip SHA verification forever. Fixed by resolving the
+  redirect's concrete version first, then checking that version's MANIFEST. Verified
+  end-to-end against `app-privategit-source` (SHA confirmed matching).
+  **Still not live for real customers:** tested against the real public URL
+  (`https://software.pointsav.com`) and got 404 — confirms the foundry-prod sync gap above;
+  these scripts work correctly against foundry-workspace but the deposits haven't reached
+  the actual customer-facing host yet.
+- [ ] `os-privategit` engineering — scaffold only (lib.rs stub, no main.rs); README rewritten to be product-accurate 2026-07-01 but binary not yet built. A 288 KB informal binary exists in RELEASES_DIR from 2026-05-31 (commit 03741cb9, 401-gated, unledgered) — provenance/purpose unclear
+- [x] Product page template (S136, 2026-07-03) — `GET /software/:product_id` in `app-privategit-marketplace-2`, BETA badge, tier badge, single-row platform table, curl install, version, client-side-fetched SHA256 (MANIFEST endpoint, degrades to a visible link), optional `guide_url`. Platform table is a known simplification (single row from the existing free-text `platform` field + `linux-x86_64` slug convention) — real multi-platform data needs a schema change (`platforms: Vec<PlatformArtifact>` on `Installer`), tracked as a follow-up below, not blocking.
+- [ ] **Follow-up from S136:** `Installer.platform` is free-text and doesn't model true multi-platform products (some ship macOS/Win/Linux, some are Linux-only) — a `platforms: Vec<PlatformArtifact>` schema change would let the product-detail page render a real multi-row table instead of one synthesized row. Needs `products.yaml` data for every live entry; not urgent.
+- [ ] **`os-console` v0.1.0 BETA submission (2026-07-01, msg-id `command-20260701-binary-submission-os-console-v0-1-0-beta`)** —
+  tracked, not actioned. Binary itself is "pending Command Session pipeline (build-soft.sh,
+  expected after Stage 6 promotion)" — nothing to deposit yet. Revisit once Command confirms
+  the binary is built.
+- [ ] **`app-mediakit-knowledge` Format A (bare Linux x86_64 binary)** — confirmed via mailbox
+  search (2026-07-02) that no message specifically requesting this deposit has landed in this
+  archive's inbox. project-knowledge's own tracking says the bare binary is blocked on **their**
+  Stage 6 rebuild — not on project-software. No action needed here until they submit it.
+
+### software.pointsav.com — ground-up rewrite, P0-P7 complete, P8 pending [2026-07-02 totebox@claude-code]
+
+`BRIEF-software-ng-rewrite.md` (active, primary tracker) — full ground-up rewrite of
+`app-privategit-source` → `app-privategit-source-2` and `app-privategit-marketplace` →
+`app-privategit-marketplace-2`, `tool-wallet` distributed as-is (third binary, taxonomy
+exception, documented). `os-privategit` confirmed out of scope.
+
+- [x] P0-P6 complete: scaffold, characterization harness, full route port (source-2: 38 tests,
+  0 → 38; marketplace-2: 33 tests, 11 → 33), Sovereign Editorial chrome, dynamic catalog
+  rendering, license/payment flow with the reviewable pricing-unit fix (Checkpoint 2, adversarial
+  review caught and fixed 2 real issues before acceptance).
+- [x] P7 (Checkpoint 3a — simulated parity): 48-fixture diff sweep, 0 unexplained differences,
+  found + fixed a dropped securities-disclosure footer citation. Footer/disclaimer reworked to
+  match the live wiki/home-site pattern (self-contained `/page/disclaimer`, "Important
+  information" accordion) — commits `24f2dca6`, `ea987edc`.
+- [ ] **Checkpoint 3b (real on-chain USDC transaction) DEFERRED — operator decision, 2026-07-02.**
+  Real-transaction testing is not feasible for some time; the site needs to launch regardless.
+  In place of a pre-launch gate: the first real transaction through `app-privategit-marketplace-2`
+  is now flagged distinctly (marker file + `tracing::warn!` "FIRST-LIVE-TRANSACTION" log line,
+  commit `ea987edc`) for close manual review after the fact, rather than a synthetic pre-test.
+  **When that first real transaction occurs in production, review it closely** (license key,
+  receipt, catalog match) before considering coin-acceptance fully validated.
+- [ ] **Still open before P8:** operator visual sign-off across viewports (P7's other stated
+  requirement — needs an actual human, not something automatable).
+- [x] `/page/privacy`, `/page/accessibility`, `/page/contact` (2026-07-03) — built, mirroring
+  the existing `/page/disclaimer` pattern exactly. Closes the highest-priority audit finding
+  (`/page/contact` returning HTTP 0, flagged twice: original audit + operator dogfood-test
+  escalation). No fabricated legal/contact claims — `open.source@pointsav.com` is the only
+  real contact channel documented anywhere in the workspace; no retention policy, phone
+  number, or mailing address exists to cite, so none was invented.
+- [x] **Outbox handoff sent to Command** (msg-id `command-20260702-promote-queue-project-software-app-priva`,
+  priority high) — full P8 readiness state, the Checkpoint 3b deferral note (make sure whoever
+  watches production logs post-swap knows to check for "FIRST-LIVE-TRANSACTION"), and the
+  staging-mirror snag below.
+- [x] **Detailed follow-up sent** (msg-id `command-20260702-detailed-software-pointsav-com-ground-up`,
+  priority high) — full phase-by-phase detail: all three checkpoint outcomes (including
+  Checkpoint 2's adversarial review catching 2 real issues before acceptance), test counts,
+  every commit hash, deliberate deviations from the old crates, the footer/disclaimer rework,
+  and explicit action items for Command.
+- [ ] **`self-service-promote.sh` hit a non-fast-forward rejection** pushing to
+  `origin-staging-j`'s `main` — that shared jwoodfine staging fork's `main` had been advanced by
+  another archive's concurrent push (last was a project-knowledge chrome commit) since this
+  branch's last sync point. **Do not re-attempt `self-service-promote.sh` or force-push** —
+  same guidance as the earlier 30-commit escalation above; this is a cross-archive contention
+  question for Command to arbitrate, not a Totebox-scope fix. `cluster/project-software` HEAD
+  `8de58179` is fully committed and durable locally regardless.
+- [ ] **Next: P8 (swap + retire old crates).** Command Session / Stage 6 scope — processes the
+  canonical merge (once the staging-mirror contention above is resolved) and the actual
+  production swap (systemd services on ports 9201/9202).
+
+### software.pointsav.com — hyperscaler-comparison audit sprint, COMPLETE, awaiting operator review [2026-07-02 totebox@claude-code]
+
+`BRIEF-software-hyperscaler-audit.md` (new, active) — operator judged the ground-up rewrite demo
+(port 9303) "way too complicated" vs. both `home.pointsav.com` and general hyperscaler standard.
+Ran a two-pass research sprint (3 Explore agents for direct codebase re-verification, then a
+4-way parallel Opus workflow — internal audit + 3 external research streams — synthesized by a
+Fable pass) per explicit operator instruction, **before writing any new code**.
+
+- [x] Confirmed technically: `home.pointsav.com`'s own chrome is a flat 3-link editorial nav with
+  unratified placeholder tokens — not itself a hyperscaler-caliber reference to clone.
+  Confirmed: paid-tier download+license flow spans 3 services / 6 manual handoffs, 4 of them raw
+  JSON with no UI, license key never rendered to a human. Confirmed: $0/BETA pricing already
+  fully bypasses the payment flow today — does NOT need to be $1.00, question closed technically.
+  Confirmed: `products.yaml`'s `licenses:` list conflates 2 actual license-model rows
+  (Apache-2.0/FSL, should be per-product attributes) with 5 unrelated free products mislabeled as
+  "licenses" — likely a root cause of the perceived complexity.
+- [x] External research delivered: hyperscaler/dev-tool download-UX comparables (AWS, Docker Hub,
+  HashiCorp, GitHub Releases, npm/Homebrew), pricing/licensing comparables (Sentry, HashiCorp,
+  GitLab, Docker, Canonical, Red Hat) + a BETA-to-paid decision framework, and nav/IA comparables
+  (Stripe, Vercel, HashiCorp, Docker, GitHub) with a concrete `os-*/tool-*/app-*/soft-*`-keyed nav
+  proposal.
+- [x] Full findings + prioritized 7-item gap list written to `BRIEF-software-hyperscaler-audit.md`.
+  **No UI/route code touched this session** — confirmed via `git status --short` before/after.
+- [x] **Operator reviewed and approved a follow-up implementation plan** — see the new section
+  immediately below. Superseded the `os-*/tool-*/app-*/soft-*` 4-family nav proposal (item 3) once
+  the ratified three-path model was checked — public storefront sells os-* only.
+
+### software.pointsav.com — storefront cleanup implementation, IN PROGRESS [2026-07-03 totebox@claude-code]
+
+Implementation of the approved follow-up plan (BRIEF addenda: AI-Adoption Challenge Pass,
+Positioning Pivot, Licensing Corrections — all appended to `BRIEF-software-hyperscaler-audit.md`,
+commit `4a167935`). Checked directly against `factory-release-engineering/LICENSE-MATRIX.md` (top
+governance authority for licensing) and `.agent/briefs/BRIEF-software-distribution-substrate.md`
+(operator-ratified 2026-05-22 business-model spec) — both corrected several assumptions from the
+audit phase; see BRIEF for full detail.
+
+- [x] **Phase 0 (guardrails)**: baseline snapshot — 71/71 tests green (33 marketplace-2 + 38
+  source-2), both crates confirmed to build and boot cleanly with pre-change data. Saved to
+  `/tmp/software-baseline/` (scratch, not committed).
+- [x] **Phase 1 (catalog rebuild)**, commit `62c53d98`: `products.yaml` rebuilt around the
+  authoritative 8-product os-* tier table (4 PointSav Commercial/$1, 4 FSL/$19 — corrects a
+  research-agent table that had `os-privategit`/`os-interface` swapped). `os-interface` renamed to
+  `os-orchestration` per operator confirmation (cross-checked against Command's own 2026-06-30
+  binary-catalog-bootstrap message, which independently lists `os-orchestration`). `tool-wallet`
+  and 3 misplaced app-* entries removed from the public catalog. **All 8 products ship at
+  `price_usdc: 0`** — an active BETA gate, not an oversight: `.agent/inbox.md` carries explicit,
+  current (2026-07-01/02) Command/operator instructions that os-console, os-mediakit, and the
+  orchestration-command binary must stay free during BETA, and none has been lifted. Flipping a
+  specific product later is a one-line data change. 71/71 tests still green, clippy/fmt clean.
+  **Live-host catalog file NOT touched** — this folds into P8 readiness per the approved plan
+  (ships together with the pending swap, not before it); the production
+  `/var/lib/local-software/catalog/products.yaml` update happens as part of that cutover.
+- [x] **Naming conflict — RESOLVED by Command 2026-07-06**: canonical name is
+  `app-orchestration-command` (msg-id `command-20260706-decision-orchestration-command-naming-re`,
+  replying to `command-20260703-re-orchestration-command-naming-soft-vs-`). Fits the
+  already-licensed `app-orchestration-*` family (FSL-1.1-ALv2, $19 tier) per LICENSE-MATRIX.md
+  §4.3 — no governance PR needed. Command confirmed no catalog entry exists anywhere yet
+  (canonical or any clone) — this was genuinely deferred, not a rename of something live; the
+  `os-orchestration-command` operator instruction and the `soft-orchestration-command` slug are
+  both superseded. **Use `app-orchestration-command` whenever this product is actually added to
+  `products.yaml`.** Note: a stray pre-built binary + install.sh template already exist under
+  the old `soft-orchestration-command` slug (RELEASES_DIR, `install-templates/`) from a 2026-06-30
+  BETA deposit that was never actually catalogued — left as-is per Command's guidance (no rename
+  of the existing artifact required); rename only applies going forward at real catalog-add time.
+- [ ] **os-network-admin vs os-infrastructure relative pricing** — flagged for future
+  reconsideration (both currently ratified at FSL/$19; `os-network-admin` reads more like a thin
+  control-surface app than a peer substrate — see BRIEF for the size/maturity evidence). Not
+  resolved in this program; needs a `factory-release-engineering` PR + legal review if changed.
+- [x] **Phase 2 (checkout/order flow + real token minting)**, commit `230c3e01`: replaced the
+  4-raw-JSON-hop paid flow with `GET /checkout/:product_id` (invoice) → `GET /order?product=&
+  tx_hash=` (303 to canonical URL) → `GET /order/:tx_hash` (status/entitlement page, built on a
+  new `resolve_license()` shared with the existing JSON endpoint) → `GET /order/:tx_hash/download`
+  (mints a real Ed25519 token). **Closes a previously-undiscovered gap**: no code anywhere ever
+  actually minted a valid download-auth token before this — the old `generate_license_key` was a
+  cosmetic hex string structurally unrelated to what `app-privategit-source-2` verifies. Uses the
+  time-limited-URL mechanism `BRIEF-software-distribution-substrate.md` already specifies
+  (`channel_expiry` = today) rather than the single-use/revocation-list scheme originally
+  sketched in planning — simpler, and needs **zero changes to `app-privategit-source-2`**.
+  `product_id` is carried explicitly end-to-end (checkout → order) rather than relying on
+  price-based inference, which is now genuinely ambiguous since multiple products can share a
+  tier price. New `SIGNING_KEY_SECRET` env var (marketplace-2), mirroring source-2's
+  `VERIFY_KEY_PUB`; no production key provisioned — that's a deployment-time step for whoever
+  owns key management at cutover. 49 marketplace-2 (+16) + 38 source-2 tests pass, clippy/fmt
+  clean. **End-to-end verified live** across two separate scratch processes with a real keypair
+  (not just in-process tests): full checkout→order→download round trip, plus negative paths
+  (pending/not-found, a tampered token rejected 401 by source-2, a mismatched `?product=` claim
+  rejected 400 by the marketplace).
+- [x] **Phase 3 (nav restructuring)**, commit `a5bc5183`: nav stays a flat 3-link list
+  (Products/Licensing/Documentation) — corrected the 4-family (`os-*/tool-*/app-*/soft-*`)
+  dropdown proposed in the original audit, which assumed all four families sell here; the
+  ratified three-path model says os-* only. `catalog_markup` now groups by `license_tier`
+  (PointSav Commercial / FSL) instead of free/paid status, so grouping stays meaningful once
+  real pricing mixes with still-BETA products. Removed a dead `#downloads` anchor (nav + footer)
+  left over from the old free/paid section ids. Live-checked against the real 8-product catalog:
+  4 correctly under Commercial, 4 under FSL. 50 tests pass, clippy/fmt clean. **Automated checks
+  only — full cross-viewport operator visual sign-off still pending**, same caveat as P7.
+- [x] **Phase 4 (pricing page + licensing.html rewrite)**, commit `1be33071`: new `GET /pricing`
+  (catalog-driven, live per-tier product counts, buy-to-own framing, explicit "free during BETA"
+  note so tier prices aren't overstated as current charges, BC tax line, AGPL source link — all
+  previously missing). `static/licensing.html` rewritten wholesale (1211 lines → real content):
+  dropped the fictional multi-chain wallet-connect flow, live HST 13% calculator, and five fake
+  priced products that existed nowhere in `products.yaml`; replaced with the actual PointSav
+  Commercial/FSL grant text. Added a compile-time (`include_str!`) regression test guarding
+  against ever regressing to that fictional content again. "Pricing" added to the flat nav.
+  55 tests pass (+5), clippy/fmt clean. Live-checked against the real 8-product catalog.
+- [x] **Phase 6 (Docs nav link) — verified already satisfied, no code change needed.** Checked
+  `surface.rs::nav_links()` directly: `Documentation` has been its own flat top-level `NavLink`
+  since before this cleanup program started — never nested or dropdown-only. The original audit's
+  gap-list item #7 ("presently folded into or absent") was written against the never-built
+  4-family dropdown *proposal*, not the actual (always-flat) nav code. Nothing to do here.
+- [x] **Phase 5 (tx-log.jsonl + FSL clock)**, commit `03c184bb`: `append_tx_log` writes one JSONL
+  row per confirmed sale matching the ratified BRIEF's own schema, wired into `resolve_license`'s
+  fresh-confirmation branch only (never the receipt-cache-replay branch, which isn't a new sale).
+  `Installer.fsl_conversion_date` field added (optional, populated manually per release). New
+  `xtask fsl-clock <products.yaml>` subcommand lists FSL conversion dates soonest-first; live-run
+  against the real catalog correctly shows all 4 FSL products as undated. 96 tests pass across
+  all three crates, clippy/fmt clean.
+
+## software.pointsav.com storefront cleanup — ALL 6 PHASES COMPLETE [2026-07-03 totebox@claude-code]
+
+Every phase of the approved implementation plan is done and committed (commits `62c53d98`
+through `03c184bb`, plus this file's own tracking commits). Summary for anyone picking this up:
+
+- **Data model**: `products.yaml` rebuilt around the authoritative 8-product os-* tier table
+  (`LICENSE-MATRIX.md`), `tool-wallet`/app-* removed from the public catalog, all products at
+  active `price_usdc: 0` BETA gate per current Command/operator instructions.
+- **Paid flow**: real `/checkout` → `/order` → `/order/.../download` flow with genuine Ed25519
+  token minting (a real, previously-undiscovered gap this closes) — verified end-to-end live
+  with a real keypair across two separate processes, not just unit tests.
+- **Nav/IA**: flat nav (Products/Pricing/Licensing/Documentation), catalog grouped by license
+  tier. **Docs link needed no work** — it was already flat, contrary to the original audit's
+  premise.
+- **Pricing/legal content**: new catalog-driven `/pricing` page; `static/licensing.html` rewritten
+  wholesale from 1211 lines of fictional wallet-connect/tax/fake-product content to real license
+  terms.
+- **Compliance**: `tx-log.jsonl` (CRA record) and FSL conversion-date tracking now exist.
+
+**Still open, explicitly out of scope for this program** (per the approved plan):
+- One of two naming/pricing questions flagged to Command/project-data remains open: whether
+  `os-network-admin` should really share `os-infrastructure`'s FSL/$19 tier. (The other —
+  `soft-orchestration-command`'s correct name — was resolved by Command 2026-07-06:
+  `app-orchestration-command`. See the naming-conflict item above.)
+- Live production catalog sync — this folds into P8 (still pending) rather than shipping ahead
+  of it; `/var/lib/local-software/catalog/products.yaml` has not been touched.
+- Full cross-viewport operator visual sign-off on the nav/catalog changes (automated checks only
+  so far, same caveat P7 already established).
+- The pay-per-instantiation pricing idea and provenance-tier pricing option — both captured in
+  `BRIEF-software-hyperscaler-audit.md` as named future directions, deliberately not built.
+
+- [x] **Outbox handoff sent to Command** (msg-id `command-20260703-software-pointsav-com-storefront-cleanup`,
+  priority high) — requests Stage 6 canonical merge + the P8 production swap. Flags three real
+  blockers Command needs to own: (1) `cluster/project-software` is ~71 commits ahead of
+  `origin/main`, which itself just advanced independently — needs rebase/merge reconciliation,
+  same staging-mirror contention already logged above; (2) live catalog sync to
+  `/var/lib/local-software/catalog/products.yaml` hasn't happened, deliberately (folds into
+  cutover); (3) a real production `SIGNING_KEY_SECRET` needs provisioning for
+  `app-privategit-marketplace-2` (only a test key exists in code). Also reiterates the two
+  already-flagged open questions (orchestration-command naming, os-network-admin tier) and the
+  outstanding visual sign-off — none of those three block the swap itself.
+- [x] **Command replied and fixed the staging-mirror contention** (msg-id
+  `command-20260703-self-service-promote-fixed-please-retry`): root cause was every self-service
+  archive pushing to the same shared `main` ref (collision), compounded by `set -e` silently
+  dropping the promote-queue write on a failed push — confirmed zero prior queue entries for
+  project-software ever existed. Fixed: each archive now pushes to its own ref; queue-write is
+  unconditional. Also confirmed no action needed from us on `SIGNING_KEY_SECRET` provisioning
+  (Command handles it at P8 cutover) and flagged an unrelated naming reorg
+  (`local-software-marketplace`/`-source` → `local-pointsav-marketplace`/`local-pointsav-release`
+  on foundry-prod, already handled in `push-to-prod.sh`/`software-units.yaml`, nothing for us to
+  change).
+- [x] **`bin/self-service-promote.sh` retried successfully** — pushed `cluster/project-software`
+  to both staging mirrors as its own ref (no collision), promote-queue entry confirmed durable
+  (`staging_push_failed: 0`), `HEAD` at queue time `c763441e` (tip of the full storefront cleanup
+  + this tracking). Confirmation sent back to Command (msg-id
+  `command-20260703-re-self-service-promote-sh-fixed-retried`). **Nothing further from this
+  archive until the canonical merge lands** — next step is Command processing the promote-queue.
+
+### Live-site audit findings + fixes — 2026-07-04 [totebox@claude-code]
+
+Full audit of `https://software.pointsav.com` after confirming the P8 cutover had landed
+(commits `62c53d98`..`03c184bb` from the storefront-cleanup entry above). Full detail:
+`BRIEF-software-ng-rewrite.md`'s 2026-07-04 entries.
+
+- [x] **Trademark footer fixed** (`e84a5760`) — was asserting 6 fabricated marks never in
+  `TRADEMARK.md`; now correct. 4 legal pages deduplicated to a shared helper.
+- [x] **Security headers added** (`5c775712`) — HSTS/X-Content-Type-Options/X-Frame-Options/
+  Referrer-Policy on both `marketplace-2`/`source-2`; CSP on `marketplace-2` only.
+- [x] **`xtask deposit` subcommand built** (`707839f2`) — root-cause fix for "every release was
+  hand-deposited"; writes binary + manifests + surgically updates `products.yaml`. Does not
+  touch foundry-prod.
+- [x] **Partially resolved [2026-07-05 totebox@claude-code]:** confirmed only 2/8 products
+  (os-console, os-network-admin) ever had a real deposited release; the other 6 never did.
+  Operator decision: removed the 6 unbuilt products from `products.yaml` rather than build them
+  (stops the 404 symptom immediately). **Still open:** if any of those 6 should return to the
+  catalog, a real `RELEASES_DIR` build must be deposited first — `xtask deposit` is ready for
+  that once a binary exists. Also fixed a related prod/source drift: someone had hotfixed
+  os-console/os-network-admin's edition+path directly on foundry-prod, bypassing Stage 6; source
+  now matches. See `BRIEF-software-ng-rewrite.md`'s 2026-07-05 entry.
+- [ ] **`v1_products`'s `download_url` formula bug** — built from `path` alone, missing the
+  platform segment the real `/releases/:product/:version/:platform` route requires. Deliberately
+  not fixed — depends on the platform-slug policy question below.
+- [ ] **Platform-slug convention decision needed** — `order_download`/`product_detail.rs`
+  hardcode `"linux-x86_64"`, `os-network-admin`'s install script uses `"x86_64"`, the two
+  self-hosting infra install scripts use full Rust target triples. No safe default exists until
+  someone picks a go-forward convention; `xtask deposit --platform` is required with no default
+  for exactly this reason.
+- [x] **`tool-wallet` atomic-write/backup gap — reconciled [2026-07-05 totebox@claude-code]:**
+  queued as part of the Stage 6 reconciliation below (`0285c772`). Not yet confirmed merged to
+  canonical — see next entry.
+
+### Stage 6 reconciliation — 83-commit block re-diagnosed and split into 2 clean branches — 2026-07-05 [totebox@claude-code]
+
+Command's `promote.sh` reported a blocked cherry-pick (83 commits, conflict on the oldest
+scaffold-era commit). Re-diagnosed from scratch rather than trusting the specific claims — real
+scope was much smaller. Full detail: `BRIEF-software-ng-rewrite.md`'s 2026-07-05 entry,
+`command-20260705-stage-6-reconciliation-done-corrected-di`.
+
+- [x] **Corrected: `xtask/src/deposit.rs` was never actually missing from canonical** — already
+  landed byte-identical under a different commit hash. No action.
+- [x] **Corrected: canonical's `xtask/src/main.rs` is ahead of this branch, not behind** — has
+  project-knowledge's `check-content` gate, which this branch's xtask lacks entirely. Left xtask
+  untouched; promoting our version would have regressed another archive's feature.
+- [x] **Reconciled onto `scratch-stage6-reconcile` (0285c772), off `origin/main`, tests/fmt/clippy
+  clean:** old-crate `app-privategit-marketplace`/`app-privategit-source` dead-code cleanup
+  (neither is the deployed binary post-P8-cutover), the `tool-wallet` atomic-lock fix above, 5 new
+  `install-templates/*.sh` files, `os-privategit`'s scaffold-to-real-docs cleanup.
+- [x] **products.yaml drift fix isolated onto its own branch** (`scratch-products-yaml-fix`,
+  424b2746) so it isn't gated on the above — see entry above.
+- [ ] **Not yet confirmed merged to canonical** — both branches are in `promote-queue.jsonl`,
+  mirror push failed (expected, ref-collision-by-design), Command needs to `promote.sh` directly
+  from the local Totebox clone's branches (deleted locally after queuing; recoverable from
+  `424b2746`/`0285c772`). Verify against `origin/main` before assuming either has landed.
+- [ ] **Deliberately NOT reconciled — low value, flagged not silently dropped:**
+  `app-privategit-source`'s revocation-list feature and old-`app-privategit-marketplace`'s
+  cleanup both target crates that aren't the deployed binaries (`-2` versions are, and `source-2`
+  already has its own independent revocation implementation) — queued anyway per operator's
+  "go further" choice, but landing them fixes no live customer-facing gap.
+
+### NEXT.md duplication — RESOLVED, consolidated to monorepo root [2026-07-02 totebox@claude-code]
+
+This file was previously duplicated: an actively-maintained copy at the archive root
+and this stale copy (last touched 2026-05-16). Consolidated per `repo-layout.md`'s stated
+convention (NEXT.md belongs at the monorepo root) — archive-root copy reduced to a
+one-line pointer at `../NEXT.md`. This section documents the merge; no open action.
+
+### VM stability — crash prevention [2026-05-16 task@claude-code]
+
+Root causes identified and addressed after 2× daily crash pattern (GCP host maintenance + cgroup OOM).
+
+- [x] **LadybugDB buffer pool blowup** — `SystemConfig::default()` allocated 12.8 GB (80% RAM). Fixed: explicit `buffer_pool_size` from env var `SERVICE_CONTENT_LBUG_BUFFER_POOL_MB` (default 64 MB). Deployed `7672e76f`. Dropin: `MemoryMax=3G`, pool=2048 MB.
+- [x] **local-slm MemoryMax reverts to 3G on daemon-reload** — created `/etc/systemd/system/local-slm.service.d/memory.conf` with `MemoryMax=6G`. Verified `6442450944` bytes after reload.
+- [x] **vm.swappiness=10** — set via `/etc/sysctl.d/99-foundry-inference.conf`. Prevents inference workload swap.
+- [x] **Retry storm on circuit-open extract** — added `Retry-After: 300` header to `/v1/extract` when `yoyo-circuit-open`. Deployed `31397dad`.
+- [x] **GCP host maintenance — MIGRATE confirmed** — `onHostMaintenance=MIGRATE`, `automaticRestart=True`, `preemptible=False`. VM already correctly configured. Crashes were OOM-only, not host maintenance.
+- [x] **journald cap** — `/etc/systemd/journald.conf.d/foundry-cap.conf` created with `SystemMaxUse=2G`; journald restarted. Done session 3 (2026-05-16).
+- [ ] **Delete unused 7B-Think weights** — `/var/lib/local-slm/weights/` has wrong 7B variant (4.5 GB). Recover disk space once 7B → OLMo 2 1B is confirmed stable.
+
+### service-content — ontology CSVs + Domains.json [2026-05-16 task@claude-code]
+
+**DONE** — commit `7e55e530` (Jennifer Woodfine):
+- `topics_documentation.csv`: 167 documentation wiki articles registered (168 total rows).
+- `guides_documentation.csv`: 38 additional GUIDEs registered (44 unique fleet guides total).
+- `Domains.json`: `"Sovereign Telemetry"` → `"Verified System Telemetry"` (Do-Not-Use §5).
+- **Known gap:** ~30 topic titles are slug-derived (fallback) rather than H1-extracted. Low-priority editorial cleanup only.
+- **Stage 6** already complete on session start — `main == origin/main`. No promotion action needed this session.
+- **Yo-Yo 1-hr test:** DONE. Watchdog fired at T+1hr (2026-05-16T17:33:40Z) but `stop-yoyo.sh` failed — `SCRIPT_DIR: unbound variable` in watchdog subshell. VM stopped manually; bug fixed in `2a4c8ade` (SCRIPT_DIR defined at line 40 of `start-yoyo.sh`).
+
+### service-slm / service-content — Sprint 0a prerequisites [2026-05-14 task@claude-code]
+
+**Sprint 0a SHIPPED** — `POST /v1/messages` live on workspace VM (`fdd1a223` + `7cd9ca61`).
+
+- [x] **Add `graph_context_enabled: Option<bool>` to `ComputeRequest`** — done; shim sets `Some(false)` (`slm-core/src/lib.rs:116`, `http.rs:1308`)
+- [x] **Decide opus → Tier C path** — Path A shipped (2026-05-16): `claude-opus-*` routes `tier_hint: External`, `tier_c_label: "editorial-refinement"` (`31397dad`). Requires `has_external=true` at runtime (Tier C env config). Currently returns 503 (unconfigured) which is correct failsafe.
+- [x] **Reconcile apprenticeship flag drift** — `compute/systemd/slm-doorman.service:37` updated to `true` (2026-05-15)
+
+**Sprint 0b (next):**
+- [ ] **Real per-token SSE streaming** in `http.rs::anthropic_sse_body()` (~60 LOC). Currently buffers full response then emits 6 events at once.
+- [ ] **On-demand Yo-Yo lazy-start** in `router.rs` — start Yo-Yo VM when Tier B request arrives and VM is stopped.
+- [ ] **Wire `SLM_TIER_C_ANTHROPIC_*` env** for opus → Tier C passthrough (routing is wired in `31397dad`; ExternalTierClient needs API key + endpoint env vars set in `local-doorman.env`).
+
+### service-content — Ring 2/Ring 3 decoupling [2026-05-14 task@claude-code]
+
+Current `main.rs` is the **legacy watcher** that `service-content/ARCHITECTURE.md` designates
+deprecated. Ring 2 ingest halts completely when Ring 3 (Doorman) is unavailable — the Community
+Tier principle is aspirational, not real. See `.agent/plans/service-content-architecture-2026.md`.
+
+- [x] **Sprint 1 — deterministic Source node write** — done (2026-05-15, `889bc993`). Source node written before Doorman call; graph grows regardless of Tier B reachability.
+- [ ] **Persistent extraction queue** (replace per-boot retry)
+  `processed_ledgers: Vec<String>` resets on restart. 114 deferred files retry every boot.
+  Fix: disk-backed set (sidecar JSONL or SQLite) + Yo-Yo-up notification trigger.
+- [x] **Validate `module_id`; reject `__` prefix** — done (2026-05-15, `889bc993`). Rejects `__`-prefixed overrides.
+- [ ] **Wire `RelatedTo` edges in graph store**
+  `graph.rs:66-72` declares `RelatedTo` table; it is never populated anywhere. Graph is
+  node-only. Everything in ARCHITECTURE.md §8 about linked nodes is unmet.
+- [x] **Fix `main.rs:293` unwrap** — done (2026-05-15, `889bc993`).
+- [ ] **Move `/v1/draft/generate` to Doorman** (Ring violation — Ring 2 generating text via Ring 3).
+
+### service-slm — audit ledger completeness [2026-05-14 task@claude-code]
+
+- [x] **`ExtractionAuditEntry` missing fields** — done (2026-05-15, `889bc993`). `model`, `cost_usd`, `sanitised_outbound` added.
+- [x] **Add `"graph-query"` to `AUDIT_CAPTURE_VALID_EVENT_TYPES`** — done (2026-05-15, `889bc993`).
+
+### Leapfrog compound loop — close the flywheel [2026-05-14 task@claude-code]
+
+The compound moat (apprenticeship → LoRA → sovereign model) requires these steps in order.
+See `.agent/plans/leapfrog-2026.md` for full strategic analysis.
+
+- [x] **1. Git post-commit hook** — done (2026-05-15). `service-slm/scripts/capture-edit.sh` (54 LOC). Reads `.git/foundry-brief-id`; POSTs diff to `/v1/shadow`. Install: `ln -sf ... .git/hooks/post-commit`. Agent session writes brief_id to file before committing; clears at session end.
+- [ ] **2. Eval harness** — held-out eval set + regression test for Tier A and Tier B tasks.
+  Must exist BEFORE first LoRA training run (no way to measure improvement otherwise).
+- [x] **3. Corpus quality gate** — shipped (2026-05-16, `31c389b7`): MIN_BRIEF_BODY_CHARS=50, MIN_DIFF_CHARS=20, PII patterns (API keys, SSH private keys). 422 on rejection.
+- [ ] **4. Ratify `conventions/permissible-model-substrate.md`** — BCSC posture, OLMo-only
+  rule, upgrade procedure as policy. Excludes Qwen/DeepSeek/Yi/GLM (PRC-headquartered).
+- [ ] **5. Tier A upgrade** — `OLMo-2-1124-7B-Instruct-Q4_K_M.gguf`, `MemoryMax=6G`.
+  Current 1B cannot produce reliable flat-schema tool-call args (blocks haiku-tier shim).
+  Requires weights download to `/var/lib/local-slm/weights/` + unit file update + redeploy.
+- [ ] **6. First LoRA training run** — on Yo-Yo #1 after steps 1–3 complete.
+- [ ] **7. mistralrs-server migration** — at LoRA milestone; enables hot-swap adapters at runtime.
+
+### app-mediakit-knowledge — Phase 4 continuation
+
+**CLOSED (2026-05-15).** Steps 4.1–4.8 all confirmed shipped in source:
+`src/mcp.rs` (Step 4.6, `POST /mcp` default-off), `src/git_protocol.rs` (Step 4.7
+smart-HTTP). Project-root `NEXT.md` already says "Phase 4 COMPLETE". CLAUDE.md and
+project NEXT.md are authoritative.
+
+Remaining open item: **Deploy** — rebuild release binary, restart
+`local-knowledge-documentation.service` and `local-knowledge-projects.service`.
+This requires operator presence on the workspace VM; no code work needed.
+
+### Leapfrog 2030 Architecture & Multi-Yo-Yo Roadmap
+- **Software layer complete** (180/180 tests as of 2026-05-15). See `service-slm/NEXT.md`.
+- **Yo-Yo #1 VM live** — `yoyo-tier-b-1` in `europe-west4-a` (relocated from `us-central1-a` via Mode 2 stockout cascade; confirmed 2026-05-15). L4, image `slm-yoyo-20260507-061137`. Doorman wired; nginx TLS + bearer auth verified working.
+- **Idle monitor fixed** (`890b3f6`) — was returning HTTP 411 (missing `Content-Length: 0`
+  on GCP POST); fixed with `.body("")`. The SA (Editor role) can stop instances without
+  additional IAM grant — step 2 below is no longer required.
+- **VM currently TERMINATED** — stopped 2026-05-16 (manually, after 1-hr watchdog failed due to SCRIPT_DIR bug; bug fixed in `2a4c8ade`). No Instance Schedule active; operator must start manually when weights are ready.
+- **Remaining operator steps:**
+  1. Upload OLMo 3 32B-Think Q4 weights (~20 GB) to `/data/weights/olmo-3-32b-think-q4.gguf`
+     on the Yo-Yo VM via `gcloud compute scp`. This is the only blocker for full
+     nightly drain cycle. Once loaded, VM starts at 02:00 UTC, vLLM serves, drain
+     worker routes briefs to Tier B, idle monitor stops VM after 30 min idle.
+  2. ~~Grant `roles/compute.instanceAdmin.v1`~~ — not needed; Editor role sufficient.
+  3. Run smoke test per `service-slm/docs/deploy/deploy-yoyo-tier-b.md` §8.
+  4. Re-enable apprenticeship: set `SLM_APPRENTICESHIP_ENABLED=true` in `local-doorman.env`.
+- Runbook: `service-slm/docs/deploy/deploy-yoyo-tier-b.md`.
+
+### Layout hygiene — defect closures queued
+
+Rule source: `.agent/rules/repo-layout.md` (introduced 2026-04-23).
+Each item below is a separate commit via `tool-commit-as-next.sh`.
+
+*(queue empty — Tier-2 project-root scripts closed 2026-04-23;
+see Recently closed below and `cleanup-log.md`)*
+
+### Awaiting cross-repo handoff
+
+Entries lodged in `.agent/rules/handoffs-outbound.md`. Pattern is
+passive — nothing moves until Master Claude or a Root Claude in
+the destination repo picks up the entry and commits the add-side.
+Source files remain in place here until the destination has
+committed; only then does a follow-up Root Claude session commit
+the source-remove.
+
+- **`guide-operations.md` → `content-wiki-documentation`** — see
+  outbox for destination path and rationale.
+- **`USER_GUIDE_2026-03-30_V2.md` → `content-wiki-documentation`**
+  (with `_V2` dropped in transit) — see outbox.
+
+### Framework follow-ups
+
+- **BIM project activations** — three of four BIM projects are still
+  Reserved-folder. Follow the `app-console-bookkeeper` pilot pattern
+  (framework §8): `app-console-bim`, `app-orchestration-bim`,
+  `app-workplace-bim`, `service-bim` (the fourth, which triggered
+  the taxonomy expansion).
+- **`service-bookkeeper` forward reference** — the
+  `app-console-bookkeeper` view reads "Awaiting service-bookkeeper
+  sync" but that service is not in the registry. Decide: register
+  as Reserved-folder, redirect to `service-fs/data/`, or correct
+  the reference.
+- **HTML-plugin vs Rust-crate `Type`-column refinement.**
+  `app-console-*` and `app-network-*` projects contain both
+  patterns; the registry's `Type` column does not distinguish.
+  Surfaced during bookkeeper activation.
+- **`BIM.zip` triage** — verified 2026-05-07: no zip artefact present on disk; item closed.
+
+### Rename series
+
+*(queue empty — all five rename-series items closed 2026-04-23;
+see Recently closed below and `cleanup-log.md` Completed
+migrations)*
+
+### Structural defects
+
+- **lbug 0.16.1 prebuilt packaging regression** [2026-05-13] — The prebuilt `liblbug.a`
+  (both `compat` and `perf` Linux x86_64 variants) shipped without the companion
+  `libfastpfor.a`, causing undefined `__fastpack*` symbols at link time. Workaround:
+  build from source via `LBUG_SHARED=1`. Resolution options:
+  (a) pin `lbug` to the last version with a self-contained static prebuilt (was working
+  with lbug as of 2026-05-08 binary), or
+  (b) add a `build.rs` env override to force shared-lib path by default.
+  Upstream: report packaging regression to lbug crate maintainers.
+
+- ~~**`start-yoyo.sh` Mode 2 Doorman env bug**~~ — **CLOSED (2026-05-15).** `update_doorman_env` already called at line 421 in Mode 2 path (confirmed in code). Both Mode 1 (line 388) and Mode 2 (line 421) call it unconditionally.
+
+- ~~**`start-yoyo.sh` watchdog `SCRIPT_DIR` unbound variable**~~ — **CLOSED (2026-05-16).** `SCRIPT_DIR` was used at line 469 in the `--runtime` watchdog subshell but never defined. 1-hr watchdog fired but `stop-yoyo.sh` call failed; VM left running. Fix: `SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"` added after `set -uo pipefail`. Commit `2a4c8ade` (Peter Woodfine).
+
+- **Workspace `Cargo.toml` unification** — per 2026-04-18 audit,
+  workspace declares only 8 of ~70+ crates as members. Other crates
+  are treated as standalone workspaces (hence 23 stray
+  `Cargo.lock` files). Unifying would consolidate targets and
+  resolve profile inheritance.
+- **Large binaries** — tracked artefacts that should move to
+  build-time fetch:
+  - `app-mediakit-telemetry/assets/GeoLite2-City.mmdb` (63.5 MB)
+    — **still tracked**. Next candidate for fetch-at-build
+    treatment. Paths reclassified 2026-04-23.
+  - `service-slm/router-trainer/engine/llamafile` (35 MB) —
+    **untracked since 2026-04-23** via `git rm --cached` + new
+    `.gitignore` pattern. Physical file remains at path for the
+    Python workflow. History still contains the blob; shrinking
+    the repo requires `git-filter-repo`, separate task.
+  - `service-slm/router-trainer/engine/weights/qwen2.5-coder-1.5b.gguf`
+    (15 MB) — already covered by existing `**/weights/*` +
+    `*.gguf` ignore patterns. Same history-blob caveat applies.
+  - ISO / IMG artefacts in `os-infrastructure/`,
+    `os-network-admin/`, `os-totebox/` (tracking status TBD).
+
+### Conformance and activations
+
+*(queue empty — see Recently closed 2026-05-07 below)*
+
+### Stashes parked in this repo
+
+- `stash@{0}` — 2026-04-22 — "task21 WIP before worktree removal"
+  (on `audit-layer-1-findings`; engineering work on `slm-memory-kv`
+  crate, renames, untracked research doc). Restore with
+  `git stash pop` when ready to resume.
+- `stash@{1}` — pre-existing — "On service-extraction-v04: main:
+  registry + BIM untracked — parked before task [21] resume".
+
+## Recently closed (2026-05-07)
+
+- **Reverse-Flow Substrate project registrations (Doctrine claim #52)** — six new
+  Reserved-folder projects created with bilingual READMEs and registry rows in one
+  commit each: `service-market`, `service-exchange`, `app-orchestration-market`,
+  `app-orchestration-exchange`, `app-console-market`, `app-console-exchange`.
+- **`app-orchestration-gis` registry drift** — directory created; Reserved-folder row
+  added to registry. Deployed instance `gateway-orchestration-gis-1` was missing from
+  the project registry.
+- **`.gitignore` deduplication** — "Asymmetric Storage Protocol: Enforce Tier-1
+  Quarantine" block was duplicated 4× (lines 4–18). Normalised to a single copy.
+- **`service-extraction/CLAUDE.md`** — CLAUDE.md created; describes the 149-line
+  filesystem-watching router accurately (replaces the stale v0.2/v0.4 framing in README).
+- **`app-workplace-memo` activation** — CLAUDE.md + NEXT.md added; registry row
+  promoted from Scaffold-coded → Active per framework §8.
+- **`app-workplace-proforma/CLAUDE.md`** — local-only file committed to git; header
+  updated to standard CLAUDE.md format.
+
+## Recently closed (2026-04-23)
+
+- Repo-layout rule introduced — `.agent/rules/repo-layout.md`
+  codifies allowed files at the monorepo root and at each project
+  directory root; names the sibling repos
+  (`content-wiki-documentation`, `pointsav-design-system`, etc.)
+  where cross-cutting content belongs. Anchor for the "Layout
+  hygiene" queue above.
+- `force_build.sh` relocated — root → `vendor-sel4-kernel/scripts/`.
+  Zero runtime callers; script uses absolute paths so no content
+  edits were needed. Repo root is now one file lighter against the
+  new rule.
+- `os-infrastructure/build_iso/forge_iso.sh` renamed to
+  `compile_binary.sh` — resolves filename collision with the
+  sibling ISO-assembly script at the project root. In-file header
+  updated. Zero external callers. New open question logged in
+  `cleanup-log.md`: the compile and assembly scripts are not wired
+  together.
+- `app-console-content/src/{pointsav-surveyor.sh,surveyor.py}`
+  relocated to `app-console-content/scripts/`. Both files moved as
+  100% renames. Shell wrapper is relative (`$(dirname "$0")`),
+  Python script uses absolute paths — neither needed content
+  edits. Throttle open-question row in `cleanup-log.md` updated
+  with a code-reference pointer to the new path; the operator
+  decision on `MAX_DAILY_VERIFICATIONS = 10` remains open.
+- Handoff-outbound pattern introduced —
+  `.agent/rules/handoffs-outbound.md` logs cross-repo file moves
+  kept in place here until a Root Claude in the destination repo
+  commits them. Two entries lodged (`guide-operations.md`,
+  `USER_GUIDE_2026-03-30_V2.md`, both to
+  `content-wiki-documentation`). Formalisation of the pattern in
+  `~/Foundry/CLAUDE.md` §9 and §10 surfaced for Master Claude in
+  `cleanup-log.md`.
+- Tier-2 project-root scripts relocated — 18 files across 9
+  projects moved to their respective `scripts/` subfolders in 9
+  separate commits (`8f5cc48` through `faae141`). Every file
+  registered as a 100% rename; no callers needed updating.
+  Projects touched: `os-totebox`, `service-content`,
+  `service-email`, `service-slm`, `tool-cognitive-forge`,
+  `os-network-admin`, `vendor-phi3-mini`, `service-vpn`,
+  `app-mediakit-telemetry`. Stray `tool-cognitive-forge/llama.log`
+  surfaced as a separate housekeeping item.
+- `service-parser/` removed — first rename-series closure.
+  Directory contained only a README describing a superseded
+  AI-routing framing; zero runtime references, never a workspace
+  member, one commit in history. Nothing recyclable into
+  `service-extraction` (which describes a different, deterministic
+  Parser-Combinators approach). Rename-table row moved to
+  Completed migrations; registry row removed (Defect count
+  5 → 4, Total rows 100 → 99).
+- `pointsav-pty-bridge` → `service-pty-bridge` — second
+  rename-series closure. Directory renamed via `git mv` (4 files,
+  all 100% renames); `Cargo.toml` `name` field updated in the
+  same commit. Registry row moved from "Other / special" into
+  the Service table; reclassified Defect → Scaffold-coded
+  (Defect 4 → 3, Scaffold-coded 51 → 52). Zero external import
+  references; not a workspace member; stray `Cargo.lock` left
+  in place (resolves with workspace unification).
+- Fifth (final) rename-series closure — Cognitive Forge term
+  retired in one commit. `service-slm/cognitive-forge/` renamed
+  to `service-slm/router/`; former top-level `tool-cognitive-forge/`
+  moved to `service-slm/router-trainer/`. Rust runtime
+  (`router/`) and Python distillation workflow
+  (`router-trainer/`) now live together as producer/consumer.
+  Cargo.toml `name` + `main.rs` usage string updated.
+  `distill_knowledge.py` moved from non-canonical `src/` to
+  `scripts/`. Three binary/log files untracked via `git rm
+  --cached` + new `.gitignore` patterns (llamafile 35 MB,
+  engine.log, llama.log) — physical files remain at new paths.
+  Registry Scaffold-coded 54 → 53, Total 98 → 97. Closes the
+  rename-series queue entirely (5 of 5) and the separate
+  `llama.log` housekeeping item.
+- `service-email-egress-{ews,imap}` wrappers flattened — fourth
+  rename-series closure. Consolidation-to-`service-email-egress`
+  plan reversed after sub-crate review: EWS and IMAP are two
+  protocol adapters, not duplicates, and merging them would erase
+  the architectural distinction. Instead, the redundant
+  doubly-nested wrapper directories were flattened — 73 files
+  promoted up one level. Registry reclassified both from
+  Defect → Scaffold-coded; Defect count 2 → 0 (registry is now
+  Defect-free). The 13 dir-name / Cargo-name mismatches from the
+  2026-04-18 audit remain separate.
+- `vendors-maxmind` reclassified to
+  `app-mediakit-telemetry/assets/` — third rename-series closure.
+  Data-only directory moved to the authoritative path already
+  documented in the vendor's README; `.mmdb` (63.5 MB) + both
+  READMEs travelled together; empty `vendors-maxmind/` removed.
+  Open question "does it belong as a `vendor-*` crate at all?"
+  closed (answer: no; non-workspace data directory).
+  `repo-layout.md` extended to name `assets/` and `data/` as
+  conventional subfolders. Registry Defect 3 → 2, Total rows
+  99 → 98. In-transit edit to `USER_GUIDE_2026-03-30_V2.md`
+  line 902 updates the path reference — travels with the pending
+  cross-repo handoff. Separate `.mmdb` → build-time-fetch task
+  remains open under Structural defects.
+
+## Recently closed (2026-04-22)
+
+- Audit cleanup — removed 2 `__MACOSX/` directories and 16 tracked
+  `.DS_Store` / AppleDouble files from egress extraction-artefact
+  scaffolding. `.DS_Store` added to `.gitignore`. Commit `0eeaeba`.
+- Project registry bootstrap — 96-row inventory covering every
+  top-level directory. Commit `fd7811f`.
+- BIM-research project rows + cleanup-log bootstrap on `main` (drift
+  closed) + taxonomy-expansion session entry. Commit `3cc8f4a`.
+- `app-console-bookkeeper` activation pilot — Reserved-folder
+  (mis-classified) → Active. Commit `27ad6d2`.
+
+## Pointers
+
+- Workspace-level open items: `~/Foundry/NEXT.md`
+- Workspace changelog: `~/Foundry/CHANGELOG.md`
+- Project registry: `.agent/rules/project-registry.md`
+- Cleanup log: `.agent/rules/cleanup-log.md`
+- Repo layout rule: `.agent/rules/repo-layout.md`
+- Handoffs outbound: `.agent/rules/handoffs-outbound.md`
