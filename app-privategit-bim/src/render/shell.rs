@@ -177,7 +177,7 @@ undertaken to be updated except as required by law.</p>",
       </div>
       <p>Copyright &copy; 2026 Woodfine Capital Projects Inc. See <a href="https://github.com/pointsav/pointsav-monorepo/blob/main/app-privategit-bim/LICENSE" target="_blank" rel="noopener">LICENSE</a> for terms.</p>
       <p class="bim-footer__disclaimer">Provided for reference and coordination only — not a substitute for code review.</p>
-      <p class="bim-footer__trademark">Woodfine Capital Projects&trade;, Woodfine Management Corp&trade;, PointSav Digital Systems&trade;, Totebox Orchestration&trade;, Totebox Archive&trade;, and Capability Geometry&trade; are trademarks of Woodfine Capital Projects Inc., used in Canada, the United States, Latin America, and Europe. Capability Geometry&trade; is an unregistered trademark of Woodfine Capital Projects Inc. All other trademarks are the property of their respective owners.</p>
+      <p class="bim-footer__trademark">Woodfine Capital Projects&trade;, MCorp&trade;, PointSav Digital Systems&trade;, Totebox Orchestration&trade;, Totebox Archive&trade;, and Capability Geometry&trade; are trademarks of Woodfine Capital Projects Inc., used in Canada, the United States, Latin America, and Europe. Capability Geometry&trade; is an unregistered trademark of Woodfine Capital Projects Inc. All other trademarks are the property of their respective owners.</p>
     </div>
   </footer>
 </body>
