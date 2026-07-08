@@ -596,29 +596,6 @@ html:not(.js) .m-drawer-scrim {
     align-items: center;
     max-width: 32ch;
   }
-  .m-icon-strip__img {
-    /* Round 13 (2026-07-07): anchor each icon's artwork to the BOTTOM of
-       its box, not the vertical center. Every Woodfine SVG's own tight
-       crop (round 10) has its ground line sitting exactly at the bottom
-       of that icon's own viewBox (verified: 0 gap for all 4). But
-       `object-fit: contain` with the default `object-position: center`
-       vertically centers each icon within the shared box — for icons
-       wider than the 1.3:1 box ratio (Professional Centres, Tech
-       Industrial, Retail Select), that leaves EQUAL empty space above
-       and below, so their ground line sits ~26px above the box's true
-       bottom edge (at 1440px). Suburban Office (the one icon narrower
-       than 1.3:1) fills the box's full height, so its ground line
-       already sits at the box bottom — hence it visibly reads as
-       "lower" than the other three. Bottom-anchoring puts every icon's
-       ground line at the same Y (the box's own bottom edge) regardless
-       of how much each one letterboxes, fixing the base-of-building
-       alignment the operator asked for. Scoped to desktop/tablet only:
-       the mobile beside-caption layout has no cross-item baseline to
-       align (items stack vertically, one per row), and bottom-anchoring
-       there would needlessly shift a letterboxed icon away from vertical
-       center relative to its own adjacent caption text. */
-    object-position: center bottom;
-  }
 }
 .m-icon-strip__img {
   display: block;
@@ -650,6 +627,29 @@ html:not(.js) .m-drawer-scrim {
   max-width: 100%;
   object-fit: contain;
   object-position: center;
+}
+@media (min-width: 700px) {
+  .m-icon-strip__img {
+    /* Round 14 (2026-07-07): CASCADE FIX. Round 13 added this exact
+       override but placed it inside the EARLIER `@media (min-width:700px)`
+       block above (the one with `.m-icon-strip__item`/`.m-icon-strip__text`)
+       — since that block appears BEFORE this file's base `.m-icon-strip__img`
+       rule, and both have equal specificity (single class selector), the
+       base rule's unconditional `object-position: center` (just above) won
+       the cascade at every width, silently no-opping the round-13 fix.
+       Confirmed via real pixel measurement (Pillow, not just bounding-box
+       arithmetic) that the ground line was NOT actually aligned live despite
+       round 13's own numeric self-check passing — that check only verified
+       the CSS *should* work per its declared values, not what the browser
+       actually rendered. This rule is placed AFTER the base rule specifically
+       so it wins the cascade at >=700px. See the base rule's comment above
+       for the actual alignment rationale (every Woodfine icon's ground line
+       sits at its own crop's bottom edge; bottom-anchoring here makes every
+       icon's rendered content touch the shared box's bottom edge too,
+       regardless of how much each one letterboxes). Mobile (<700px) keeps
+       the base rule's `center` — no cross-item baseline to align there. */
+    object-position: center bottom;
+  }
 }
 .m-icon-strip__text {
   display: flex;
