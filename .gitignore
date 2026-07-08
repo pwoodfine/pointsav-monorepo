@@ -6,6 +6,9 @@
 build/
 target/
 
+# vendor-sel4-tools build artifacts
+vendor-sel4-tools/elfloader-tool/build/
+
 # Generated outputs — not committed
 outputs/
 
