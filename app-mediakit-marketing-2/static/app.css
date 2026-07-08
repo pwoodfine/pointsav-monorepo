@@ -627,6 +627,18 @@ html:not(.js) .m-drawer-scrim {
   max-width: 100%;
   object-fit: contain;
   object-position: center;
+  /* Round 15 (2026-07-07): the optional per-icon `scale()` transform (see
+     IconTile::scale, round 13) defaults to scaling from the element's
+     CENTER, which pushes the bottom edge DOWN as well as the top edge up —
+     directly fighting round 14's bottom-anchoring fix. Measured on
+     PointSav's scaled Building Connectivity icon: its actual bottom edge
+     landed ~14-15px lower on the page than its unscaled siblings, despite
+     round 14's alignment fix being otherwise correct. Anchoring the
+     transform origin to the bottom means any scale grows the icon upward
+     from a fixed bottom edge instead, preserving alignment. Harmless when
+     no scale is set (transform-origin has no visible effect without a
+     transform to apply it to). */
+  transform-origin: center bottom;
 }
 @media (min-width: 700px) {
   .m-icon-strip__img {
