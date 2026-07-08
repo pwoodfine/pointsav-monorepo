@@ -964,6 +964,7 @@ async fn v1_products(State(state): State<Arc<AppState>>) -> (StatusCode, Json<Va
                         "download_url": format!("{}/{}", state.source_base_url, i.path),
                         "manifest_url": format!("{}/{}/MANIFEST", state.source_base_url, i.path),
                         "license_tier": i.license_tier.label(),
+                        "shelf": i.license_tier.shelf().as_str(),
                         "price_usdc": i.price_usdc,
                         "cost": if i.price_usdc == 0 { "free" } else { "paid" },
                         "payment_address": state.polygon_wallet_address,

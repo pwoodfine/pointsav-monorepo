@@ -93,7 +93,7 @@ fn free_product_card(i: &crate::Installer, source_base_url: &str) -> Markup {
             h3."sw-cat-card__name" { (i.name) }
             p."sw-cat-card__desc" { (i.description) }
             div."sw-cat-badges" {
-                span."sw-cat-badge sw-cat-badge--free" { "BETA \u{00b7} free" }
+                span."sw-cat-badge sw-cat-badge--free" { (free_label) }
                 (tier_badge(i.license_tier))
                 span."sw-cat-badge sw-cat-badge--ver" { "v" (i.edition) }
                 span."sw-cat-badge" { (i.platform) }
@@ -298,6 +298,7 @@ pub fn catalog_markup(catalog: &crate::Catalog, source_base_url: &str) -> Markup
     html! {
         (catalog_style())
         div."sw-cat-wrap" {
+            p."sw-cat-eyebrow" { "The Binary Library" }
             h1."sw-cat-intro" { "Products" }
             p."sw-cat-lede" {
                 "Buy it once. Run it anywhere. Own it forever. No subscription, no cloud \
@@ -343,8 +344,6 @@ pub fn catalog_markup(catalog: &crate::Catalog, source_base_url: &str) -> Markup
                     }
                 }
             }
-            (tier_section("commercial", "PointSav Commercial", &commercial))
-            (tier_section("fsl", "FSL", &fsl))
         }
         (clipboard_script())
     }
