@@ -9,7 +9,7 @@ installers:
     platform: "macOS · Win · Linux"
     size_mb: 412
     path: os-console/0.2.4
-    license_tier: commercial
+    license_tier: agpl
     price_usdc: 0
 
   - id: os-network-admin
