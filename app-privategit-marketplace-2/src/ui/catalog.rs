@@ -131,81 +131,105 @@ fn paid_product_card(i: &crate::Installer) -> Markup {
 /// the masthead/footer in `layout.rs` so the grid lines up with the chrome.
 fn catalog_style() -> Markup {
     let css = r#".sw-cat-wrap{max-width:1280px;margin:0 auto;padding:40px 24px 64px;box-sizing:border-box;}
-.sw-cat-intro{margin:0 0 8px;font-family:"Playfair Display",Georgia,serif;font-size:28px;line-height:1.15;color:#111;}
+.sw-cat-eyebrow{margin:0 0 6px;font-size:12px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#164679;}
+.sw-cat-intro{margin:0 0 8px;font-family:Georgia,"Times New Roman",serif;font-size:28px;line-height:1.15;color:#111827;}
 .sw-cat-lede{margin:0 0 36px;color:#475467;font-size:15px;line-height:1.55;max-width:64ch;}
+.sw-cat-body{display:grid;grid-template-columns:200px 1fr;gap:36px;align-items:start;}
+.sw-cat-rail{position:sticky;top:24px;display:flex;flex-direction:column;gap:2px;}
+.sw-cat-rail__h{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#98a2b3;margin:0 0 8px;}
+.sw-cat-rail a{display:flex;justify-content:space-between;gap:8px;padding:7px 10px;border-radius:6px;color:#344054;text-decoration:none;font-size:13.5px;}
+.sw-cat-rail a:hover{background:#f2f4f7;}
+.sw-cat-rail a.is-current{background:#e8eef5;color:#164679;font-weight:600;}
+.sw-cat-rail__count{color:#98a2b3;font-size:12px;}
 .sw-cat-section{margin:0 0 48px;}
-.sw-cat-section__h{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:#164679;margin:0 0 18px;padding-bottom:8px;border-bottom:2px solid #C7A961;}
-.sw-cat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:20px;}
-.sw-cat-card{border:1px solid #e4e7ec;border-radius:10px;padding:20px;display:flex;flex-direction:column;background:#fff;box-shadow:0 1px 2px rgba(16,24,40,.04);}
+.sw-cat-section__h{display:flex;align-items:baseline;gap:10px;font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:#164679;margin:0 0 18px;padding-bottom:8px;border-bottom:2px solid #164679;}
+.sw-cat-section__count{color:#98a2b3;font-size:11px;letter-spacing:normal;text-transform:none;font-weight:400;}
+.sw-cat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;}
+.sw-cat-card{border:1px solid #e4e7ec;border-radius:8px;padding:16px;display:flex;flex-direction:column;background:#fff;transition:border-color .12s ease,box-shadow .12s ease;}
+.sw-cat-card:hover{border-color:#b4c5d5;box-shadow:0 2px 8px rgba(22,70,121,.08);}
 .sw-cat-card__id{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;color:#667085;letter-spacing:.02em;}
-.sw-cat-card__name{font-family:"Playfair Display",Georgia,serif;font-size:19px;line-height:1.2;color:#111;margin:4px 0 8px;}
-.sw-cat-card__desc{font-size:13.5px;line-height:1.55;color:#475467;margin:0 0 16px;flex:1 0 auto;}
-.sw-cat-badges{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 16px;}
+.sw-cat-card__name{font-family:Georgia,"Times New Roman",serif;font-size:17px;line-height:1.2;color:#111827;margin:3px 0 6px;}
+.sw-cat-card__desc{font-size:13px;line-height:1.5;color:#475467;margin:0 0 12px;flex:1 0 auto;}
+.sw-cat-badges{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 14px;}
 .sw-cat-badge{font-size:11px;font-weight:600;letter-spacing:.02em;padding:3px 8px;border-radius:999px;background:#f2f4f7;color:#344054;white-space:nowrap;}
 .sw-cat-badge--free{background:#ecfdf3;color:#067647;}
 .sw-cat-badge--ver{background:#eff4ff;color:#164679;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;}
-.sw-cat-badge--tier{background:#fdf2e9;color:#8a4b13;}
+.sw-cat-badge--tier{background:#e8eef5;color:#164679;}
 .sw-cat-install{margin-top:auto;}
-.sw-cat-cmd{display:flex;align-items:stretch;background:#0e1117;border-radius:8px;overflow:hidden;}
-.sw-cat-cmd__text{flex:1;color:#e6edf3;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;line-height:1.4;padding:10px 12px;overflow-x:auto;white-space:nowrap;}
+.sw-cat-cmd{display:flex;align-items:stretch;background:#0e1117;border-radius:6px;overflow:hidden;}
+.sw-cat-cmd__text{flex:1;color:#e6edf3;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;line-height:1.4;padding:9px 11px;overflow-x:auto;white-space:nowrap;}
 .sw-cat-cmd__copy{border:0;background:#164679;color:#fff;font-size:11px;font-weight:600;padding:0 14px;cursor:pointer;letter-spacing:.04em;flex:0 0 auto;}
-.sw-cat-cmd__copy:hover{background:#C7A961;color:#111;}
-.sw-cat-hint{font-size:11px;color:#98a2b3;margin:8px 0 0;}
-.sw-cat-price{margin-top:auto;padding:14px 16px;border:1px dashed #d0d5dd;border-radius:8px;background:#fcfcfd;}
-.sw-cat-price__amt{font-size:22px;font-weight:700;color:#111;font-family:"Playfair Display",Georgia,serif;}
-.sw-cat-price__unit{font-size:13px;color:#667085;margin-left:6px;}
+.sw-cat-cmd__copy:hover{background:#1d5795;}
+.sw-cat-hint{font-size:11px;color:#98a2b3;margin:7px 0 0;}
+.sw-cat-price{margin-top:auto;padding:12px 14px;border:1px solid #e4e7ec;border-radius:6px;background:#f8f9fa;}
+.sw-cat-price__amt{font-size:20px;font-weight:700;color:#111827;font-family:Georgia,"Times New Roman",serif;}
+.sw-cat-price__unit{font-size:12.5px;color:#667085;margin-left:6px;}
 .sw-cat-pay{margin-top:12px;}
-.sw-cat-pay__cta{display:inline-flex;align-items:center;justify-content:center;gap:8px;box-sizing:border-box;background:#6c4cf1;color:#fff;font-size:13px;font-weight:600;letter-spacing:.02em;text-decoration:none;padding:10px 16px;border-radius:8px;border:1px solid #5a3fd6;transition:background .12s ease;}
-.sw-cat-pay__cta:hover{background:#5a3fd6;}
+.sw-cat-pay__cta{display:inline-flex;align-items:center;justify-content:center;gap:8px;box-sizing:border-box;background:#164679;color:#fff;font-size:13px;font-weight:600;letter-spacing:.02em;text-decoration:none;padding:10px 16px;border-radius:6px;border:1px solid #164679;transition:background .12s ease;}
+.sw-cat-pay__cta:hover{background:#1d5795;border-color:#1d5795;}
 .sw-cat-pay__cta:focus-visible{outline:2px solid #164679;outline-offset:2px;}
 .sw-cat-pay__mark{font-size:14px;line-height:1;}
 .sw-cat-pay__meta{margin:8px 0 0;font-size:11.5px;line-height:1.45;color:#667085;}
-@media (max-width:768px){.sw-cat-grid{grid-template-columns:1fr;}.sw-cat-wrap{padding:28px 16px 48px;}.sw-cat-pay__cta{display:flex;width:100%;padding:13px 16px;font-size:14px;}}"#;
-    html! { style { (PreEscaped(css)) } }
-}
-
-/// Vanilla-JS copy-to-clipboard for every `[data-sw-clip]` control. Explicitly in scope
-/// for this phase (unlike P2's broader JS-drawer deferral). Small, dependency-free,
-/// and degrades silently where the Clipboard API is unavailable.
-fn clipboard_script() -> Markup {
-    let js = r#"(function(){
-document.querySelectorAll('[data-sw-clip]').forEach(function(btn){
-  btn.addEventListener('click',function(){
-    var text=btn.getAttribute('data-sw-clip');
-    if(!navigator.clipboard){return;}
-    navigator.clipboard.writeText(text).then(function(){
-      var label=btn.getAttribute('data-sw-label')||btn.textContent;
-      btn.textContent='Copied';
-      setTimeout(function(){btn.textContent=label;},1500);
-    }).catch(function(){});
-  });
-});
-})();"#;
-    html! { script { (PreEscaped(js)) } }
-}
-
-/// Render the full product catalog as body content for the `/software` page.
+/// **Redesigned 2026-07-07** away from the near-black/gold "Sovereign Editorial"
+/// visual system (verified, per `tokens.rs`'s doc comment, to not actually match
+/// any real PointSav/Woodfine property) toward a denser, marketplace-style layout
+/// — a left category rail plus a wider card grid — while keeping the family's real,
+/// verified colors (navy `#164679` as the one accent, `Georgia`/serif matching the
+/// family's `Source Serif 4` fallback, no gold).
 ///
-/// Iterates the loaded [`crate::Catalog`] (the same struct `v1_products` serves) — one
-/// unified list of os-* products now, grouped by **license tier** (Phase 3 — corrects
-/// the free/paid-only grouping this function used before Phase 3 landed). Each
-/// product still renders its own BETA-free-vs-paid state individually (see
-/// `free_product_card`/`paid_product_card`) — the section boundary is now the
-/// ratified tier, matching the pricing page's own PointSav Commercial/FSL split and
-/// staying meaningful once real pricing mixes with still-BETA products. The
-/// returned [`Markup`] is meant to be wrapped by `layout::render_page`, which
-/// supplies the Sovereign Editorial masthead + footer chrome.
+/// Iterates the loaded [`crate::Catalog`] (the same struct `v1_products` serves), grouped
+/// two ways at once:
+///
+/// 1. **Shelf** (`LicenseTier::shelf`, `BRIEF-binary-library-repositioning.md`'s two-shelf
+///    model, operator-approved 2026-07-07) — the outer grouping. `Commercial`/`Fsl` tiers
+///    render inside the **Commercial** shelf (unchanged from before this phase — the
+///    ratified os-*-only public catalog, untouched). `OpenSource` tier renders inside a
+///    new **Open Source / Community** shelf — same neutral surface as the Commercial
+///    shelf (no background-color coding since gold is gone), distinguished by its own
+///    section heading and navy tier badges, same as everywhere else. Only rendered when
+///    at least one `open-source`-tier product exists in the catalog — there are none live
+///    yet (Phase 2's relicensing landed the governance, not a catalog entry), so today
+///    this still renders as a single-shelf page; the shelf appears automatically the
+///    moment a real open-source product is catalogued, no further code change needed.
+/// 2. **Tier** (within the Commercial shelf) — `PointSav Commercial` and `FSL` keep their
+///    own named sections (a correction from the prior ng-rewrite program: grouped by
+///    ratified tier, not by free/paid state). Each product still renders its own
+///    BETA-free-vs-paid card individually (`free_product_card`/`paid_product_card`).
+///
+/// The left rail's categories are exactly the two real shelves — no invented product
+/// taxonomy (the CURSOR-marketplace mockup this design takes structural cues from used
+/// lifecycle-phase categories that don't correspond to anything in PointSav's actual
+/// data model; inventing an equivalent here would be decoration, not information).
+///
+/// The returned [`Markup`] is meant to be wrapped by `layout::render_page`, which supplies
+/// the masthead + footer chrome.
 pub fn catalog_markup(catalog: &crate::Catalog, source_base_url: &str) -> Markup {
     let (commercial, fsl): (Vec<_>, Vec<_>) = catalog
         .installers
         .iter()
-        .partition(|i| i.license_tier == LicenseTier::Commercial);
+        .filter(|i| i.license_tier == LicenseTier::Commercial)
+        .collect();
+    let fsl: Vec<_> = catalog
+        .installers
+        .iter()
+        .filter(|i| i.license_tier == LicenseTier::Fsl)
+        .collect();
+    let open_source: Vec<_> = catalog
+        .installers
+        .iter()
+        .filter(|i| i.license_tier == LicenseTier::OpenSource)
+        .collect();
+    let commercial_count = commercial.len() + fsl.len();
+    let total_count = catalog.installers.len();
 
     let tier_section = |id: &'static str, heading: &'static str, products: &[&crate::Installer]| {
         html! {
             @if !products.is_empty() {
                 section."sw-cat-section" id=(id) {
-                    h2."sw-cat-section__h" { (heading) }
+                    h2."sw-cat-section__h" {
+                        (heading)
+                        span."sw-cat-section__count" { (products.len()) }
+                    }
                     div."sw-cat-grid" {
                         @for i in products {
                             @if i.price_usdc == 0 {
@@ -227,9 +251,45 @@ pub fn catalog_markup(catalog: &crate::Catalog, source_base_url: &str) -> Markup
             p."sw-cat-lede" {
                 "Buy it once. Run it anywhere. Own it forever. No subscription, no cloud \
                  dependency, no kill switch. Buying your first component here is also your \
-                 key to the rest of the stack. This catalog is rendered directly from the \
-                 release catalog\u{2014}what you see here is exactly what the download \
-                 API serves."
+                 key to the rest of the stack\u{2014}the components of an orchestration, not \
+                 an app store. This catalog is rendered directly from the release catalog\
+                 \u{2014}what you see here is exactly what the download API serves."
+            }
+            div."sw-cat-body" {
+                nav."sw-cat-rail" aria-label="Catalog shelves" {
+                    p."sw-cat-rail__h" { "Shelves" }
+                    a href="#commercial" {
+                        "Commercial" span."sw-cat-rail__count" { (commercial_count) }
+                    }
+                    @if !open_source.is_empty() {
+                        a href="#open-source" {
+                            "Open Source / Community" span."sw-cat-rail__count" { (open_source.len()) }
+                        }
+                    }
+                    a href="/software" class="is-current" {
+                        "All products" span."sw-cat-rail__count" { (total_count) }
+                    }
+                }
+                div."sw-cat-main" {
+                    div."sw-cat-shelf sw-cat-shelf--commercial" {
+                        (tier_section("commercial", "PointSav Commercial", &commercial))
+                        (tier_section("fsl", "FSL", &fsl))
+                    }
+                    @if !open_source.is_empty() {
+                        div."sw-cat-shelfsplit" {
+                            p."sw-cat-shelfsplit__text" {
+                                "Two shelves, one catalog. The Commercial shelf above is the ratified, \
+                                 paid-or-BETA os-* product line. The Open Source shelf below lists \
+                                 components that have been relicensed to a genuine, unconditional \
+                                 Apache-2.0 grant\u{2014}free permanently, not a BETA gate awaiting a \
+                                 future price."
+                            }
+                        }
+                        div."sw-cat-shelf sw-cat-shelf--opensource" {
+                            (tier_section("open-source", "Open Source \u{00b7} Community", &open_source))
+                        }
+                    }
+                }
             }
             (tier_section("commercial", "PointSav Commercial", &commercial))
             (tier_section("fsl", "FSL", &fsl))
@@ -312,8 +372,12 @@ mod tests {
         // tier, not by free/paid — os-mediakit is FSL, os-privategit is Commercial).
         assert!(html.contains(r#"id="commercial""#));
         assert!(html.contains(r#"id="fsl""#));
-        assert!(html.contains("<h2 class=\"sw-cat-section__h\">PointSav Commercial</h2>"));
-        assert!(html.contains("<h2 class=\"sw-cat-section__h\">FSL</h2>"));
+        // Section heading contains the tier name plus a live product count (added
+        // 2026-07-07 redesign) — check the open tag + heading text, not an exact
+        // closing match, since a `<span class="sw-cat-section__count">` now sits
+        // between the heading text and `</h2>`.
+        assert!(html.contains("<h2 class=\"sw-cat-section__h\">PointSav Commercial"));
+        assert!(html.contains("<h2 class=\"sw-cat-section__h\">FSL"));
         // Badge row shows the fields that ARE in the catalog.
         assert!(html.contains("v1.2.0"));
         assert!(html.contains("linux-x86_64"));
