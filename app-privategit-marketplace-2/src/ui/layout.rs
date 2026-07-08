@@ -243,8 +243,8 @@ pub fn footer(surface: SoftwareSurface) -> Markup {
                         ul {
                             li {
                                 a href="https://home.pointsav.com/" target="_blank" rel="noopener"
-                                    aria-label="Home (opens in new tab)" {
-                                    "Home" span."sw-footer__ext" aria-hidden="true" { "\u{2197}" }
+                                    aria-label="PointSav Digital Systems (opens in new tab)" {
+                                    "PointSav Digital Systems" span."sw-footer__ext" aria-hidden="true" { "\u{2197}" }
                                 }
                             }
                             li {
@@ -254,21 +254,15 @@ pub fn footer(surface: SoftwareSurface) -> Markup {
                                 }
                             }
                             li {
-                                a href="https://design.pointsav.com/" target="_blank" rel="noopener"
-                                    aria-label="Design System (opens in new tab)" {
-                                    "Design System" span."sw-footer__ext" aria-hidden="true" { "\u{2197}" }
-                                }
-                            }
-                            li {
                                 a href="https://pointsav.com/" target="_blank" rel="noopener"
                                     aria-label="Newsroom (opens in new tab)" {
                                     "Newsroom" span."sw-footer__ext" aria-hidden="true" { "\u{2197}" }
                                 }
                             }
                             li {
-                                a href="https://github.com/pointsav" target="_blank" rel="noopener"
-                                    aria-label="Source (opens in new tab)" {
-                                    "Source" span."sw-footer__ext" aria-hidden="true" { "\u{2197}" }
+                                a href="https://home.woodfinegroup.com/" target="_blank" rel="noopener"
+                                    aria-label="Woodfine Capital Projects (opens in new tab)" {
+                                    "Woodfine Capital Projects" span."sw-footer__ext" aria-hidden="true" { "\u{2197}" }
                                 }
                             }
                         }
@@ -456,17 +450,19 @@ mod tests {
             assert!(page.contains(c), "missing footer city {c}");
         }
 
-        // All seven canonical TRADEMARK.md marks present (regression guard,
-        // corrected 2026-07-04 — the prior version of this test asserted six
-        // fabricated marks that TRADEMARK.md never actually contained).
+        // All six canonical TRADEMARK.md §13 marks present (regression guard,
+        // corrected 2026-07-07 — the prior version of this test asserted seven
+        // fabricated marks that have never appeared in TRADEMARK.md at any point in
+        // its history, introduced by a 2026-07-04 "correction" that itself
+        // mis-checked git log. Verified against the current file directly, and
+        // against home.pointsav.com's real live trademark line, not assumed.
         for mark in [
-            "PointSav\u{2122}",
-            "Foundry\u{2122}",
-            "ToteboxOS\u{2122}",
-            "ConsoleOS\u{2122}",
-            "OrchestrationOS\u{2122}",
-            "WorkplaceOS\u{2122}",
-            "WoodfineGroup\u{2122}",
+            "Woodfine Capital Projects\u{2122}",
+            "MCorp\u{2122}",
+            "PointSav Digital Systems\u{2122}",
+            "Totebox Orchestration\u{2122}",
+            "Totebox Archive\u{2122}",
+            "Capability Geometry\u{2122}",
         ] {
             assert!(page.contains(mark), "missing canonical mark {mark}");
         }
