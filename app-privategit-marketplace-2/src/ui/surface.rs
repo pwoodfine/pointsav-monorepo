@@ -9,13 +9,6 @@
 //! in that crate — it is a pure machine surface), so a `Source` variant would be
 //! dead code and is intentionally omitted rather than stubbed with a dead arm.
 
-/// A navigation entry rendered in the masthead sub-bar and the mobile drawer.
-#[derive(Clone, Copy)]
-pub struct NavLink {
-    pub label: &'static str,
-    pub href: &'static str,
-}
-
 /// The served surfaces of software.pointsav.com.
 ///
 /// `Source` is intentionally absent — see the module docs.
@@ -26,41 +19,21 @@ pub enum SoftwareSurface {
 
 impl SoftwareSurface {
     /// Accessible label / wordmark text for the masthead.
+    ///
+    /// **Redesigned 2026-07-07 (second pass, same day)** — was "PointSav Software"
+    /// rendered as an icon + two-line stacked lockup, a structural pattern
+    /// verified byte-for-byte identical to `documentation.pointsav.com`'s own
+    /// masthead (same SVG glyph path, same "brand + small-caps descriptor below
+    /// it" shape). Replaced with a single flat-text wordmark — no icon, matching
+    /// `home.pointsav.com`'s real masthead pattern (`<a class="m-masthead__
+    /// wordmark">PointSav Digital Systems</a>`, checked directly against its
+    /// served HTML) — and folds in the "Binary Library" identity that used to be
+    /// a separate, now-removed nav link (see `layout::masthead`'s doc comment):
+    /// the wordmark already links to `/`, which redirects to `/software`
+    /// (`main.rs`'s `root()`), so a second link to the same place added nothing.
     pub fn home_label(self) -> &'static str {
         match self {
-            SoftwareSurface::Marketplace => "PointSav Software",
-        }
-    }
-
-    /// Primary masthead nav links (single-row header, also drives the mobile
-    /// drawer).
-    ///
-    /// **Redesigned 2026-07-07** — the prior five-link list (Products, Pricing,
-    /// Licensing, Documentation, Binary Library) was genuinely redundant: it
-    /// duplicated the footer's own comprehensive Site/Network columns
-    /// (`layout::footer`) one-for-one, and `Products`/`Binary Library` pointed at
-    /// the same page (`/software`, with the latter just an in-page anchor) — a
-    /// header link to itself. Operator feedback ("no point having the links to
-    /// nowhere if it's below," "something totally different and non-redundant")
-    /// confirmed this reading. The header's job is primary discovery, not a
-    /// second copy of the footer's full reference list — collapsed to the one
-    /// link that actually matters at that level: the catalog itself, under its
-    /// new name. `Pricing`, `Licensing`, and `Documentation` remain fully
-    /// reachable — they're in the footer's Site/Network columns, not deleted.
-    pub fn nav_links(self) -> &'static [NavLink] {
-        match self {
-            SoftwareSurface::Marketplace => &[NavLink {
-                label: "Binary Library",
-                href: "/software",
-            }],
-        }
-    }
-
-    /// The marketplace carries an account / license-status control; a source
-    /// surface would not. Kept as a method so `Source` can diverge without forking.
-    pub fn show_account_nav(self) -> bool {
-        match self {
-            SoftwareSurface::Marketplace => true,
+            SoftwareSurface::Marketplace => "PointSav Binary Library",
         }
     }
 
@@ -100,9 +73,10 @@ impl SoftwareSurface {
         "Woodfine Capital Projects Inc."
     }
 
-    /// Office cities for the footer line (BRIEF footer anatomy).
+    /// Office cities for the footer line (BRIEF footer anatomy; Berlin dropped
+    /// 2026-07-07 per operator instruction).
     pub fn cities(self) -> &'static [&'static str] {
-        &["Vancouver", "New York", "Berlin"]
+        &["Vancouver", "New York"]
     }
 
     /// Label for the single "Important information" disclosure slot in the
@@ -131,13 +105,13 @@ mod tests {
     use super::*;
 
     #[test]
-    fn nav_is_a_single_non_redundant_binary_library_link() {
-        // Redesigned 2026-07-07: the header carries exactly one link — everything
-        // else (Pricing, Licensing, Documentation) lives in the footer instead of
-        // being duplicated at both levels. See the doc comment on `nav_links`.
-        let links = SoftwareSurface::Marketplace.nav_links();
-        assert_eq!(links.len(), 1);
-        assert_eq!(links[0].label, "Binary Library");
-        assert_eq!(links[0].href, "/software");
+    fn home_label_carries_binary_library_identity_without_wiki_lockup_shape() {
+        // Redesigned 2026-07-07 (second pass): a single flat wordmark, not the
+        // icon + stacked "PointSav / Software" lockup that matched the wiki's
+        // masthead structure. See the doc comment on `home_label`.
+        assert_eq!(
+            SoftwareSurface::Marketplace.home_label(),
+            "PointSav Binary Library"
+        );
     }
 }
