@@ -254,6 +254,12 @@ pub fn footer(surface: SoftwareSurface) -> Markup {
                                 }
                             }
                             li {
+                                a href="https://design.pointsav.com/" target="_blank" rel="noopener"
+                                    aria-label="Design System (opens in new tab)" {
+                                    "Design System" span."sw-footer__ext" aria-hidden="true" { "\u{2197}" }
+                                }
+                            }
+                            li {
                                 a href="https://pointsav.com/" target="_blank" rel="noopener"
                                     aria-label="Newsroom (opens in new tab)" {
                                     "Newsroom" span."sw-footer__ext" aria-hidden="true" { "\u{2197}" }

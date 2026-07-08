@@ -131,7 +131,7 @@ fn paid_product_card(i: &crate::Installer) -> Markup {
 /// the masthead/footer in `layout.rs` so the grid lines up with the chrome.
 fn catalog_style() -> Markup {
     let css = r#".sw-cat-wrap{max-width:1280px;margin:0 auto;padding:40px 24px 64px;box-sizing:border-box;}
-.sw-cat-eyebrow{margin:0 0 6px;font-size:12px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#164679;}
+.sw-cat-eyebrow{margin:0 0 6px;font-size:12px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#234ed8;}
 .sw-cat-intro{margin:0 0 8px;font-family:Georgia,"Times New Roman",serif;font-size:28px;line-height:1.15;color:#111827;}
 .sw-cat-lede{margin:0 0 36px;color:#475467;font-size:15px;line-height:1.55;max-width:64ch;}
 .sw-cat-body{display:grid;grid-template-columns:200px 1fr;gap:36px;align-items:start;}
@@ -139,10 +139,10 @@ fn catalog_style() -> Markup {
 .sw-cat-rail__h{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#98a2b3;margin:0 0 8px;}
 .sw-cat-rail a{display:flex;justify-content:space-between;gap:8px;padding:7px 10px;border-radius:6px;color:#344054;text-decoration:none;font-size:13.5px;}
 .sw-cat-rail a:hover{background:#f2f4f7;}
-.sw-cat-rail a.is-current{background:#e8eef5;color:#164679;font-weight:600;}
+.sw-cat-rail a.is-current{background:#eef3ff;color:#234ed8;font-weight:600;}
 .sw-cat-rail__count{color:#98a2b3;font-size:12px;}
 .sw-cat-section{margin:0 0 48px;}
-.sw-cat-section__h{display:flex;align-items:baseline;gap:10px;font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:#164679;margin:0 0 18px;padding-bottom:8px;border-bottom:2px solid #164679;}
+.sw-cat-section__h{display:flex;align-items:baseline;gap:10px;font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:#234ed8;margin:0 0 18px;padding-bottom:8px;border-bottom:2px solid #234ed8;}
 .sw-cat-section__count{color:#98a2b3;font-size:11px;letter-spacing:normal;text-transform:none;font-weight:400;}
 .sw-cat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;}
 .sw-cat-card{border:1px solid #e4e7ec;border-radius:8px;padding:16px;display:flex;flex-direction:column;background:#fff;transition:border-color .12s ease,box-shadow .12s ease;}
@@ -153,28 +153,58 @@ fn catalog_style() -> Markup {
 .sw-cat-badges{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 14px;}
 .sw-cat-badge{font-size:11px;font-weight:600;letter-spacing:.02em;padding:3px 8px;border-radius:999px;background:#f2f4f7;color:#344054;white-space:nowrap;}
 .sw-cat-badge--free{background:#ecfdf3;color:#067647;}
-.sw-cat-badge--ver{background:#eff4ff;color:#164679;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;}
-.sw-cat-badge--tier{background:#e8eef5;color:#164679;}
+.sw-cat-badge--ver{background:#eef3ff;color:#234ed8;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;}
+.sw-cat-badge--tier{background:#eef3ff;color:#234ed8;}
 .sw-cat-install{margin-top:auto;}
 .sw-cat-cmd{display:flex;align-items:stretch;background:#0e1117;border-radius:6px;overflow:hidden;}
 .sw-cat-cmd__text{flex:1;color:#e6edf3;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;line-height:1.4;padding:9px 11px;overflow-x:auto;white-space:nowrap;}
-.sw-cat-cmd__copy{border:0;background:#164679;color:#fff;font-size:11px;font-weight:600;padding:0 14px;cursor:pointer;letter-spacing:.04em;flex:0 0 auto;}
-.sw-cat-cmd__copy:hover{background:#1d5795;}
+.sw-cat-cmd__copy{border:0;background:#234ed8;color:#fff;font-size:11px;font-weight:600;padding:0 14px;cursor:pointer;letter-spacing:.04em;flex:0 0 auto;}
+.sw-cat-cmd__copy:hover{background:#173ab1;}
 .sw-cat-hint{font-size:11px;color:#98a2b3;margin:7px 0 0;}
 .sw-cat-price{margin-top:auto;padding:12px 14px;border:1px solid #e4e7ec;border-radius:6px;background:#f8f9fa;}
 .sw-cat-price__amt{font-size:20px;font-weight:700;color:#111827;font-family:Georgia,"Times New Roman",serif;}
 .sw-cat-price__unit{font-size:12.5px;color:#667085;margin-left:6px;}
 .sw-cat-pay{margin-top:12px;}
-.sw-cat-pay__cta{display:inline-flex;align-items:center;justify-content:center;gap:8px;box-sizing:border-box;background:#164679;color:#fff;font-size:13px;font-weight:600;letter-spacing:.02em;text-decoration:none;padding:10px 16px;border-radius:6px;border:1px solid #164679;transition:background .12s ease;}
-.sw-cat-pay__cta:hover{background:#1d5795;border-color:#1d5795;}
-.sw-cat-pay__cta:focus-visible{outline:2px solid #164679;outline-offset:2px;}
+.sw-cat-pay__cta{display:inline-flex;align-items:center;justify-content:center;gap:8px;box-sizing:border-box;background:#234ed8;color:#fff;font-size:13px;font-weight:600;letter-spacing:.02em;text-decoration:none;padding:10px 16px;border-radius:6px;border:1px solid #234ed8;transition:background .12s ease;}
+.sw-cat-pay__cta:hover{background:#173ab1;border-color:#173ab1;}
+.sw-cat-pay__cta:focus-visible{outline:2px solid #234ed8;outline-offset:2px;}
 .sw-cat-pay__mark{font-size:14px;line-height:1;}
 .sw-cat-pay__meta{margin:8px 0 0;font-size:11.5px;line-height:1.45;color:#667085;}
+.sw-cat-shelfsplit{margin:0 0 32px;padding:16px 20px;background:#234ed8;border-radius:8px;}
+.sw-cat-shelfsplit__text{max-width:64ch;margin:0 auto;color:#eef3ff;font-size:13px;line-height:1.6;text-align:center;}
+.sw-cat-shelf--opensource{margin:0;}
+@media (max-width:860px){.sw-cat-body{grid-template-columns:1fr;}.sw-cat-rail{position:static;flex-direction:row;flex-wrap:wrap;gap:8px;}}
+@media (max-width:768px){.sw-cat-grid{grid-template-columns:1fr;}.sw-cat-wrap{padding:28px 16px 48px;}.sw-cat-pay__cta{display:flex;width:100%;padding:13px 16px;font-size:14px;}}"#;
+    html! { style { (PreEscaped(css)) } }
+}
+
+/// Vanilla-JS copy-to-clipboard for every `[data-sw-clip]` control. Explicitly in scope
+/// for this phase (unlike P2's broader JS-drawer deferral). Small, dependency-free,
+/// and degrades silently where the Clipboard API is unavailable.
+fn clipboard_script() -> Markup {
+    let js = r#"(function(){
+document.querySelectorAll('[data-sw-clip]').forEach(function(btn){
+  btn.addEventListener('click',function(){
+    var text=btn.getAttribute('data-sw-clip');
+    if(!navigator.clipboard){return;}
+    navigator.clipboard.writeText(text).then(function(){
+      var label=btn.getAttribute('data-sw-label')||btn.textContent;
+      btn.textContent='Copied';
+      setTimeout(function(){btn.textContent=label;},1500);
+    }).catch(function(){});
+  });
+});
+})();"#;
+    html! { script { (PreEscaped(js)) } }
+}
+
+/// Render the full product catalog as body content for the `/software` page.
+///
 /// **Redesigned 2026-07-07** away from the near-black/gold "Sovereign Editorial"
 /// visual system (verified, per `tokens.rs`'s doc comment, to not actually match
 /// any real PointSav/Woodfine property) toward a denser, marketplace-style layout
 /// — a left category rail plus a wider card grid — while keeping the family's real,
-/// verified colors (navy `#164679` as the one accent, `Georgia`/serif matching the
+/// verified colors (navy `#234ed8` as the one accent, `Georgia`/serif matching the
 /// family's `Source Serif 4` fallback, no gold).
 ///
 /// Iterates the loaded [`crate::Catalog`] (the same struct `v1_products` serves), grouped

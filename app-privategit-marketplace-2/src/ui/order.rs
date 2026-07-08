@@ -18,12 +18,12 @@ fn order_style() -> Markup {
 .sw-or-status--notfound{background:#fee4e2;color:#912018;}
 .sw-or-receipt{margin:16px 0;padding:14px;border:1px dashed #d0d5dd;border-radius:8px;background:#fcfcfd;}
 .sw-or-receipt__label{display:block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#667085;margin:0 0 6px;}
-.sw-or-receipt__key{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:15px;color:#164679;word-break:break-all;}
+.sw-or-receipt__key{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:15px;color:#234ed8;word-break:break-all;}
 .sw-or-receipt__note{margin:10px 0 0;font-size:12px;color:#667085;line-height:1.5;}
-.sw-or-download{display:inline-block;margin-top:8px;padding:12px 20px;border-radius:8px;background:#164679;color:#fff;font-size:14px;font-weight:600;text-decoration:none;}
-.sw-or-download:hover{background:#0e3055;}
+.sw-or-download{display:inline-block;margin-top:8px;padding:12px 20px;border-radius:8px;background:#234ed8;color:#fff;font-size:14px;font-weight:600;text-decoration:none;}
+.sw-or-download:hover{background:#0c2785;}
 .sw-or-hint{font-size:13px;line-height:1.55;color:#475467;margin:16px 0 0;}
-.sw-or-back{display:inline-block;margin-top:16px;font-size:13px;color:#164679;}"#;
+.sw-or-back{display:inline-block;margin-top:16px;font-size:13px;color:#234ed8;}"#;
     html! { style { (PreEscaped(css)) } }
 }
 

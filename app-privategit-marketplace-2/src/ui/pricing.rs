@@ -90,7 +90,7 @@ fn pricing_style() -> Markup {
 .sw-pr-tier{border:1px solid #e4e7ec;border-radius:10px;padding:24px;background:#fff;box-shadow:0 1px 2px rgba(16,24,40,.04);}
 .sw-pr-tier__name{font-family:Georgia,"Times New Roman",serif;font-size:20px;margin:0 0 8px;color:#111827;}
 .sw-pr-tier__amt{font-size:28px;font-weight:700;font-family:Georgia,"Times New Roman",serif;color:#111827;margin:0 0 4px;}
-.sw-pr-tier__count{font-size:12px;color:#164679;font-weight:600;margin:0 0 12px;}
+.sw-pr-tier__count{font-size:12px;color:#234ed8;font-weight:600;margin:0 0 12px;}
 .sw-pr-tier__desc{font-size:13.5px;line-height:1.55;color:#475467;margin:0;}
 .sw-pr-beta-note{font-size:13px;line-height:1.55;color:#475467;margin:0 0 16px;padding:14px;border:1px dashed #d0d5dd;border-radius:8px;background:#fcfcfd;}
 .sw-pr-tax{font-size:12.5px;color:#667085;margin:0 0 8px;}
