@@ -894,6 +894,8 @@ h1, h2 {
 
 .bim-cc-icon {
   display: block;
+  width: 1.25rem;
+  height: 1.25rem;
 }
 
 /* Cities left, badge(s) right (2026-07-06 operator decision — the badge
@@ -1009,6 +1011,14 @@ a.bim-badge:hover {
 
 .bim-disclosure__details[open] .bim-disclosure__summary::before {
   content: "\25BE  ";
+}
+
+/* The record copy carries the full disclaimer, expanded, regardless of
+   on-screen open/closed state — matches the proven pattern in
+   project-knowledge/app-mediakit-knowledge/static/app.css. */
+@media print {
+  .bim-disclosure__body { display: block !important; }
+  .bim-disclosure__summary::before { display: none; }
 }
 
 .bim-disclosure__label {
