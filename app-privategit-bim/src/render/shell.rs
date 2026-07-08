@@ -15,22 +15,23 @@ pub fn page_shell(title: &str, active_path: &str, content: &str, state: &AppStat
     // that are only styled for a light Carbon theme — force light there
     // server-side rather than trying to make Carbon's chrome theme-reactive.
     let editor_route = active_path.starts_with("/edit/");
-    // Full disclosure copy inline, not a truncated summary + "read more" link
-    // — matches the pattern already proven correct on home.woodfinegroup.com
-    // and home.pointsav.com (both inline their complete disclosure text in
-    // the footer <details>, with a "Full disclaimer" pointer only at the
-    // very end for anyone who wants the standalone page). The prior
-    // 2-paragraph important-information.md summary + "Read the full
-    // disclaimer" link-out truncated real disclosure content — fixed here
-    // by reusing the same disclaimers_page sections /disclaimers renders.
-    let mut disclosure_sections = String::new();
-    for section in state.disclaimers_page.sections.iter() {
-        disclosure_sections.push_str(&format!(
-            "<h3>{}</h3>{}",
-            esc(&section.heading),
-            section.body_html,
-        ));
-    }
+    // "Important Information" band: a short, counsel-owned summary from
+    // important-information.md — NOT the full disclaimers_page content
+    // (that's a separate, deliberate earlier fix for a different bug —
+    // see BRIEF-app-privategit-bim.md's 2026-07-07 entry). This matches
+    // Command's actual spec (2026-07-02) and the proven, counsel-approved
+    // reference pattern already shipped on project-knowledge's
+    // app-mediakit-knowledge: short band + "Full disclaimer" link to the
+    // long-form page, with a safe issuer-aware default if the file is ever
+    // missing (never a hard failure).
+    let disclosure_body: &str = state.important_information.as_deref().unwrap_or(
+        "<p>This site presents records maintained by Woodfine Capital Projects Inc. \
+The information is provided for general information only and does not constitute \
+an offer to sell, a solicitation of an offer to buy, or investment, legal, tax, or \
+accounting advice. Statements regarding planned, intended, or targeted future \
+activities are forward-looking and subject to change without notice; they are not \
+undertaken to be updated except as required by law.</p>",
+    );
     let theme_toggle = if editor_route {
         String::new()
     } else {
@@ -106,7 +107,7 @@ pub fn page_shell(title: &str, active_path: &str, content: &str, state: &AppStat
       <summary class="bim-disclosure__summary">Important Information</summary>
       <div class="bim-disclosure__body">
         <p class="bim-disclosure__label">BIM Library disclosure</p>
-        {disclosure_sections}
+        {disclosure_body}
         <p class="bim-disclosure__more"><a href="/disclaimers">Full disclaimer &rarr;</a></p>
       </div>
     </details>
@@ -150,6 +151,18 @@ pub fn page_shell(title: &str, active_path: &str, content: &str, state: &AppStat
           <span>New York</span>
         </div>
         <div class="bim-footer__badges">
+          <a class="bim-badge bim-badge--license" href="https://creativecommons.org/licenses/by-nd/4.0/"
+             target="_blank" rel="noopener license" aria-label="Content licensed CC BY-ND 4.0">
+            <span class="bim-badge__cc" aria-hidden="true">
+              <img class="bim-cc-icon" src="/static/cc.svg" alt="" width="20" height="20">
+              <img class="bim-cc-icon" src="/static/cc-by.svg" alt="" width="20" height="20">
+              <img class="bim-cc-icon" src="/static/cc-nd.svg" alt="" width="20" height="20">
+            </span>
+            <span class="bim-badge__text">
+              <span class="bim-badge__lead">Licensed</span>
+              <span class="bim-badge__name">CC BY-ND 4.0</span>
+            </span>
+          </a>
           <span class="bim-badge">
             <svg class="bim-badge__glyph" aria-hidden="true" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M5 2.5h7l3 3v12a1 1 0 01-1 1H5a1 1 0 01-1-1v-14a1 1 0 011-1Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"></path>
@@ -174,7 +187,7 @@ pub fn page_shell(title: &str, active_path: &str, content: &str, state: &AppStat
         carbon_assets = carbon_assets,
         theme_preload_script = theme_preload_script,
         theme_toggle = theme_toggle,
-        disclosure_sections = disclosure_sections,
+        disclosure_body = disclosure_body,
         content = content,
         tc = tc,
         comp = state.components_count,

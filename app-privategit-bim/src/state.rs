@@ -18,6 +18,11 @@ pub struct AppState {
     pub categories: Arc<Vec<CategoryMeta>>,
     pub about_page: Arc<PageContent>,
     pub disclaimers_page: Arc<PageContent>,
+    /// Counsel-owned "Important Information" band content — a short,
+    /// single-paragraph summary, distinct from the full `disclaimers_page`
+    /// long-form. `None` when the file is absent; `page_shell` supplies the
+    /// safe issuer-aware default in that case (never a hard failure).
+    pub important_information: Option<Arc<str>>,
     pub events_tx: broadcast::Sender<String>,
 }
 
@@ -34,6 +39,9 @@ impl AppState {
             .ok_or("site-content/pages/about.md not found")?;
         let disclaimers_page = content::load_page(&site_content_dir, "disclaimers")
             .ok_or("site-content/pages/disclaimers.md not found")?;
+        let important_information =
+            content::load_simple_page(&site_content_dir, "important-information")
+                .map(|html| Arc::from(html.as_str()));
 
         let (events_tx, _) = broadcast::channel::<String>(64);
         Ok(Self {
@@ -45,6 +53,7 @@ impl AppState {
             categories: Arc::new(categories),
             about_page: Arc::new(about_page),
             disclaimers_page: Arc::new(disclaimers_page),
+            important_information,
             events_tx,
         })
     }
