@@ -35,6 +35,11 @@ sections:
         body: >-
           Connects a building's physical systems and sensors so they work
           together.
+        # Round 13 (2026-07-07): this icon's native aspect ratio (~0.81:1,
+        # the narrowest of the 3 PointSav icons) renders it visibly smaller
+        # than its siblings under the shared object-fit:contain box (see
+        # IconTile::scale). A modest scale bump closes that visual gap.
+        scale: 1.18
 
   - type: card-grid
     columns: 4

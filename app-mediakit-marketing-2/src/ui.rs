@@ -809,7 +809,16 @@ fn icon_strip(icons: &[crate::content::IconTile]) -> Markup {
                         // an inline square hint would be both inaccurate and
                         // pointless. The SVGs carry their own intrinsic size via
                         // viewBox; object-fit centers each one inside the box.
-                        img.m-icon-strip__img src=(icon.src) alt="" aria-hidden="true" loading="lazy";
+                        // Optional `scale` (round 13): a plain CSS transform for
+                        // the rare icon whose native aspect ratio is far enough
+                        // from the shared box ratio that it visibly reads smaller
+                        // than its siblings — see IconTile::scale doc comment.
+                        img.m-icon-strip__img
+                            src=(icon.src)
+                            alt=""
+                            aria-hidden="true"
+                            loading="lazy"
+                            style=[icon.scale.map(|s| format!("transform: scale({s})"))];
                         div.m-icon-strip__text {
                             h3.m-icon-strip__title { (icon.alt) }
                             @if let Some(body) = &icon.body {
@@ -1208,6 +1217,7 @@ sections:
             src: "/static/graphics/woodfine/class-1.svg".to_string(),
             alt: "Professional Centres".to_string(),
             body: Some("Test descriptor.".to_string()),
+            scale: None,
         }];
         let html = icon_strip(&icons).into_string();
         // Title is now visible text (h3), not just alt — image becomes
@@ -1225,6 +1235,7 @@ sections:
             src: "/static/graphics/woodfine/class-1.svg".to_string(),
             alt: "Professional Centres".to_string(),
             body: None,
+            scale: None,
         }];
         let html = icon_strip(&icons).into_string();
         assert!(html.contains("Professional Centres"));

@@ -596,6 +596,29 @@ html:not(.js) .m-drawer-scrim {
     align-items: center;
     max-width: 32ch;
   }
+  .m-icon-strip__img {
+    /* Round 13 (2026-07-07): anchor each icon's artwork to the BOTTOM of
+       its box, not the vertical center. Every Woodfine SVG's own tight
+       crop (round 10) has its ground line sitting exactly at the bottom
+       of that icon's own viewBox (verified: 0 gap for all 4). But
+       `object-fit: contain` with the default `object-position: center`
+       vertically centers each icon within the shared box — for icons
+       wider than the 1.3:1 box ratio (Professional Centres, Tech
+       Industrial, Retail Select), that leaves EQUAL empty space above
+       and below, so their ground line sits ~26px above the box's true
+       bottom edge (at 1440px). Suburban Office (the one icon narrower
+       than 1.3:1) fills the box's full height, so its ground line
+       already sits at the box bottom — hence it visibly reads as
+       "lower" than the other three. Bottom-anchoring puts every icon's
+       ground line at the same Y (the box's own bottom edge) regardless
+       of how much each one letterboxes, fixing the base-of-building
+       alignment the operator asked for. Scoped to desktop/tablet only:
+       the mobile beside-caption layout has no cross-item baseline to
+       align (items stack vertically, one per row), and bottom-anchoring
+       there would needlessly shift a letterboxed icon away from vertical
+       center relative to its own adjacent caption text. */
+    object-position: center bottom;
+  }
 }
 .m-icon-strip__img {
   display: block;
