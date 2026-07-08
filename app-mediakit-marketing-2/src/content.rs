@@ -77,6 +77,17 @@ pub struct IconTile {
     /// supply one for every icon).
     #[serde(default)]
     pub body: Option<String>,
+    /// Optional per-icon visual scale multiplier (round 13, 2026-07-07).
+    /// Every icon shares one fixed `object-fit: contain` box (see
+    /// `.m-icon-strip__img` in app.css), so an icon whose native aspect
+    /// ratio is far from the box's own ratio renders visibly smaller than
+    /// its siblings (more letterboxed). This is a targeted escape hatch for
+    /// that specific case — a plain CSS `transform: scale()` on just this
+    /// icon — rather than a global box-ratio change that would affect every
+    /// icon on both tenants' sites. Absent means no transform (default,
+    /// unaffected rendering).
+    #[serde(default)]
+    pub scale: Option<f32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
