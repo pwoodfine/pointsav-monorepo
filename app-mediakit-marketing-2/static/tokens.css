@@ -236,6 +236,26 @@
      visible title+descriptor now stacked underneath it. */
   --m-icon-strip-size:    clamp(112px, 10vw, 160px);
 
+  /* Round 12 (2026-07-07, operator alignment complaint): the icon box is now
+     a UNIFORM fixed WIDTH x HEIGHT for every icon at a given breakpoint, with
+     the artwork centered inside via `object-fit: contain` (see
+     `.m-icon-strip__img` in app.css). Round 10 retrimmed each of the 7 SVGs to
+     its own tight bounding box, so native aspect ratios now span 0.81:1 to
+     2.02:1. Round 11 sized by height with native-ratio width — which is exactly
+     what misaligned the rows (different rendered widths -> ragged mobile column)
+     and columns (different rendered heights -> uneven desktop row). A single
+     shared box size makes every icon's footprint identical, so rows align
+     (equal height) and mobile columns align (equal width) by construction.
+     --m-icon-strip-size is the box HEIGHT; this token is the box WIDTH, a fixed
+     1.3:1 (13/10) ratio of it. 1.3 is the min-max letterbox optimum for THIS
+     set of 7 ratios: it balances the worst case at ~0.62 linear fill between
+     the widest icon (2.02) and the tallest (0.81) — verified by computing fill
+     = min(R_box,R_icon)/max(R_box,R_icon) across all 7 at candidate ratios
+     1.28/1.3/1.4/1.5. Because this is calc() over --m-icon-strip-size, it
+     auto-tracks the mobile override below (76px height -> ~99px width) with no
+     separate mobile width token needed. */
+  --m-icon-strip-width:   calc(var(--m-icon-strip-size) * 1.3);
+
   /* Mobile-only reduction, same monotonic-growth discipline as before
      (76px -> 88px floor as viewport crosses 700px — growing, not
      shrinking, avoiding the backwards-jump mistake a reverted two-tier
