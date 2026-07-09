@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 //! Brand tokens for the software.pointsav.com chrome.
 //!
 //! **Corrected again 2026-07-07** (second pass, same day — operator caught a real

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 //! Privacy page for software.pointsav.com — a self-contained page, not a link
 //! out to the wiki's or marketing sites' own privacy pages (same operator
 //! instruction as `disclaimer.rs`: this site has its own content, no

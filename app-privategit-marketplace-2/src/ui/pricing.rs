@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 //! Pricing page — `GET /pricing`.
 //!
 //! Phase 4: catalog-driven (like `software_page`), not a static file — the

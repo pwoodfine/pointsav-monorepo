@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 //! `xtask fsl-clock <products.yaml>` — Phase 5 (BRIEF-software-hyperscaler-audit.md
 //! Pricing and Licensing decision framework, criterion 4: "track the two-year
 //! clock per binary and price before conversion").

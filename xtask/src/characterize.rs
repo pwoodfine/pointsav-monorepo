@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 //! `xtask characterize` — characterization-test harness for the
 //! privategit NG rewrite (app-privategit-source-2 / app-privategit-marketplace-2).
 //!

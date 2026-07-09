@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 # capability-drift-gate.sh — capability-regression check against a small fixed
 # probe set, independent of the task-specific holdout deploy-gate.sh/score-gate.sh use.
 #
