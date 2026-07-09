@@ -460,6 +460,7 @@ dependencies = [
  "serde_json",
  "tokio",
  "tokio-stream",
+ "tower 0.5.3",
  "tower-http 0.6.11",
  "zip 2.4.2",
 ]
