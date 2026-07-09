@@ -8,7 +8,7 @@ name = "app-workplace-http-prototype"
 version = "0.1.0"
 edition = "2021"
 description = "HTTP prototype surface for os-workplace — all 8 Workplace surfaces accessible over WireGuard PPN while native Tauri builds await a macOS host."
-license = "Apache-2.0"
+license = "AGPL-3.0-or-later"
 
 [dependencies]
 axum = "0.7"

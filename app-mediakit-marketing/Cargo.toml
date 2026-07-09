@@ -7,7 +7,7 @@ version = "0.1.0"
 edition = "2021"
 rust-version = "1.80"
 description = "Marketing platform engine for the os-mediakit family — server-rendered, agent-first. Composes typed sections (from app-mediakit-shell) into pages; AI authors via MCP, humans approve (F12). Serves home.woodfinegroup.com / home.pointsav.com."
-license = "Apache-2.0"
+license = "FSL-1.1-ALv2"
 publish = false
 
 [[bin]]
