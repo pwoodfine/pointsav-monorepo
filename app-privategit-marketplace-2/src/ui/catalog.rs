@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 //! Dynamic product-catalog renderer for the `/software` storefront page.
 //!
 //! This module renders the marketplace catalog **from the same [`crate::Catalog`]

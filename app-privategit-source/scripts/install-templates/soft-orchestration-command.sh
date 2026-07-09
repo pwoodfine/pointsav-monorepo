@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 # install.sh — PointSav Orchestration Command Server installer
 # curl -fsSL https://software.pointsav.com/releases/soft-orchestration-command/install.sh | bash
 set -euo pipefail

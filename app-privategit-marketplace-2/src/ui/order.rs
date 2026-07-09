@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 //! Order status/entitlement page — `GET /order/:tx_hash`.
 //!
 //! Phase 2 (paid-flow UI rework): renders the three states the payment state

@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 # install.sh — PointSav PrivateGit Marketplace installer
 # curl -fsSL https://software.pointsav.com/releases/app-privategit-marketplace/install.sh | bash
 set -euo pipefail

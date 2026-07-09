@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 //! `xtask deposit` — writes a built release binary and its manifests into the
 //! `RELEASES_DIR` tree that `app-privategit-source-2` serves from, and updates
 //! the matching `products.yaml` entry.

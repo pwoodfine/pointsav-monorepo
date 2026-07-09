@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 # _gate-common.sh — shared scratch-server infrastructure for deploy-gate.sh and
 # score-gate.sh. Not directly executable; sourced by both.
 #

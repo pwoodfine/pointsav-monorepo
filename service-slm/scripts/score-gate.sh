@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 # score-gate.sh — scored promotion gate: direction-aware quality check against a
 # curated held-out set.
 #

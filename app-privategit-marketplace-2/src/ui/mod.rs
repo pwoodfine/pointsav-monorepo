@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 //! Sovereign Editorial chrome for the marketplace storefront.
 //!
 //! `layout::wrap_static_html` wraps the P1 prerendered static pages (`software.html`,
