@@ -3,7 +3,7 @@
 
 
 [package]
-license = "AGPL-3.0-or-later"
+license = "FSL-1.1-ALv2"
 name = "moonshot-docengine"
 version = "0.1.0"
 edition = "2021"

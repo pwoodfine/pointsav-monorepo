@@ -7,7 +7,7 @@ version = "0.1.0"
 edition = "2021"
 rust-version = "1.80"
 description = "Shared chrome chassis for the os-mediakit app family — maud header/footer/page shell, the typed Section component vocabulary, and DTCG token loading. Consumed by app-mediakit-marketing (and, planned, -knowledge / -distributions). Not a binary; not the OS."
-license = "Apache-2.0"
+license = "FSL-1.1-ALv2"
 publish = false
 
 [lib]

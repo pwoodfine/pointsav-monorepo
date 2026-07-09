@@ -6,7 +6,7 @@ name = "app-privategit-workbench"
 version = "0.0.1"
 edition = "2021"
 description = "Browser-based developer workbench for Totebox Orchestration — file tree, viewer, and editor."
-license = "Apache-2.0"
+license = "AGPL-3.0-or-later"
 
 [dependencies]
 axum = "0.8"

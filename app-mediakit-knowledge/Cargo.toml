@@ -10,7 +10,7 @@ version = "0.0.1"
 edition = "2021"
 rust-version = "1.80"
 description = "PointSav knowledge wiki engine. Single binary, flat-file Markdown source-of-truth, Git-versioned, Wikipedia-structured."
-license = "Apache-2.0"
+license = "FSL-1.1-ALv2"
 publish = false
 
 [[bin]]
