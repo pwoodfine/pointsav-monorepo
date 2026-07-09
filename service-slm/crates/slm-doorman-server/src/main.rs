@@ -81,7 +81,7 @@ use slm_doorman_server::queue::{
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use anyhow::Context;
 use slm_doorman::tier::{
@@ -316,6 +316,12 @@ async fn main() -> anyhow::Result<()> {
                 );
             }
 
+            // Rate-limits the Tier-B-offline hold log (see `should_log_hold`) and
+            // remembers whether the worker was holding last iteration, so a
+            // "resumed draining" transition log can fire exactly once on recovery.
+            let mut last_hold_log: Option<Instant> = None;
+            const HOLD_LOG_REPEAT_INTERVAL: Duration = Duration::from_secs(300);
+
             loop {
                 // SLM_DRAIN_PAUSED: unconditional pause — never dequeue, never
                 // dispatch. Briefs accumulate untouched in queue/. The reaper
@@ -355,12 +361,21 @@ async fn main() -> anyhow::Result<()> {
                         effectively_down && long_enough
                     })
                 {
-                    info!(
-                        hold_threshold_secs,
-                        "drain worker: all Tier B nodes offline (circuit or health) — holding queue"
-                    );
+                    if should_log_hold(last_hold_log, Instant::now(), HOLD_LOG_REPEAT_INTERVAL) {
+                        info!(
+                            hold_threshold_secs,
+                            "drain worker: all Tier B nodes offline (circuit or health) — holding queue"
+                        );
+                        last_hold_log = Some(Instant::now());
+                    }
                     tokio::time::sleep(drain_interval).await;
                     continue;
+                } else if last_hold_log.is_some() {
+                    info!(
+                        %worker_id,
+                        "drain worker: Tier B available again — resuming queue drain"
+                    );
+                    last_hold_log = None;
                 }
 
                 // Drain-target guard: hold if the specific "trainer" node is
@@ -707,6 +722,20 @@ async fn main() -> anyhow::Result<()> {
         .await
         .context("axum serve loop exited")?;
     Ok(())
+}
+
+/// Rate-limits the drain worker's "holding queue" log line while all Tier B
+/// nodes remain offline. `SLM_DRAIN_CONCURRENCY=4` + `SLM_QUEUE_DRAIN_INTERVAL_SEC=1`
+/// (intentional config for fast backlog draining once Tier B is healthy) means
+/// 4 workers would otherwise each re-log this line every ~1s — appropriate
+/// during active draining, pure log spam during a sustained multi-hour hold.
+/// Returns `true` on first entering hold (`last_logged` is `None`) or once
+/// `interval` has elapsed since the last log; `false` otherwise.
+fn should_log_hold(last_logged: Option<Instant>, now: Instant, interval: Duration) -> bool {
+    match last_logged {
+        None => true,
+        Some(t) => now.duration_since(t) >= interval,
+    }
 }
 
 /// Decides the final `ReleaseOutcome` for a brief already classified as
@@ -1352,5 +1381,45 @@ mod escalate_retry_outcome_tests {
         let cfg = tmp_cfg("genuine-early");
         let outcome = escalate_retry_outcome(&cfg, "brief-c", false, 5);
         assert_eq!(outcome, ReleaseOutcome::Retry);
+    }
+}
+
+#[cfg(test)]
+mod should_log_hold_tests {
+    use super::*;
+
+    #[test]
+    fn first_entry_into_hold_always_logs() {
+        assert!(should_log_hold(None, Instant::now(), Duration::from_secs(300)));
+    }
+
+    #[test]
+    fn does_not_relog_before_interval_elapses() {
+        let now = Instant::now();
+        assert!(!should_log_hold(
+            Some(now),
+            now + Duration::from_secs(1),
+            Duration::from_secs(300)
+        ));
+    }
+
+    #[test]
+    fn relogs_once_interval_has_elapsed() {
+        let now = Instant::now();
+        assert!(should_log_hold(
+            Some(now),
+            now + Duration::from_secs(301),
+            Duration::from_secs(300)
+        ));
+    }
+
+    #[test]
+    fn relogs_exactly_at_interval_boundary() {
+        let now = Instant::now();
+        assert!(should_log_hold(
+            Some(now),
+            now + Duration::from_secs(300),
+            Duration::from_secs(300)
+        ));
     }
 }

@@ -223,12 +223,20 @@ impl Doorman {
                 .unwrap_or_default();
 
             let mut seen = std::collections::HashSet::new();
-            let candidates: Vec<String> = user_text
+            let mut candidates: Vec<String> = user_text
                 .split(|c: char| !c.is_alphanumeric())
                 .filter(|w| w.len() >= 4)
                 .filter(|w| seen.insert(w.to_lowercase()))
                 .map(|w| w.to_string())
                 .collect();
+            // Prefer longer, more specific candidates first. Short common-word
+            // fragments (e.g. "Peter") can substring-match wildly unrelated
+            // entities (e.g. "St. Peters", "Peterborough" — both contain
+            // "peter") and pre-empt a far more specific candidate later in the
+            // same sentence (e.g. "Woodfine"), since the loop below stops at
+            // the first candidate that returns any match at all. Stable sort
+            // preserves original sentence order among equal-length words.
+            candidates.sort_by_key(|w| std::cmp::Reverse(w.len()));
 
             let mut ctx_opt: Option<String> = None;
             for candidate in candidates.iter().take(6) {
@@ -1118,6 +1126,116 @@ mod tests {
         assert!(
             content.contains("Hamid Moghadam"),
             "expected the fetched entity name in the injected context, got: {content}"
+        );
+    }
+
+    /// Regression test for the entity-context contamination bug found 2026-07-08:
+    /// service-content does a raw substring match on `entity_name`
+    /// (`lower(e.entity_name) CONTAINS $query`), and the candidate-word loop used
+    /// to try words in sentence order and stop at the first non-empty match. For
+    /// "Who is Peter M. Woodfine?" that meant "Peter" (a short, common fragment
+    /// that substring-matches unrelated entities like "St. Peters"/"Peterborough")
+    /// was tried before the far more specific "Woodfine" — returning the wrong
+    /// entity context entirely. The fix sorts candidates by length (longest
+    /// first) before trying them. This test mounts distinct mock responses per
+    /// candidate word to prove "Woodfine" is now tried — and wins — over "Peter".
+    #[tokio::test]
+    async fn longer_more_specific_candidate_word_is_tried_before_short_common_word() {
+        use wiremock::matchers::{method, path, query_param};
+        use wiremock::{Mock, MockServer, ResponseTemplate};
+
+        let server = MockServer::start().await;
+
+        // "Peter" spuriously substring-matches unrelated retail-cluster entities —
+        // this must NOT win if the fix is working.
+        Mock::given(method("GET"))
+            .and(path("/v1/graph/context"))
+            .and(query_param("q", "Peter"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+                {
+                    "entity_name": "St. Peters",
+                    "classification": "Location",
+                    "role_vector": null,
+                    "location_vector": "retail cluster",
+                    "contact_vector": null,
+                    "module_id": "jennifer",
+                    "confidence": 0.75
+                }
+            ])))
+            .mount(&server)
+            .await;
+
+        // "Woodfine" is the correct, specific match — this must win.
+        Mock::given(method("GET"))
+            .and(path("/v1/graph/context"))
+            .and(query_param("q", "Woodfine"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+                {
+                    "entity_name": "Peter M. Woodfine",
+                    "classification": "Person",
+                    "role_vector": null,
+                    "location_vector": null,
+                    "contact_vector": null,
+                    "module_id": "jennifer",
+                    "confidence": 0.95
+                }
+            ])))
+            .mount(&server)
+            .await;
+
+        Mock::given(method("POST"))
+            .and(path("/v1/chat/completions"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "choices": [{ "message": { "role": "assistant", "content": "ok" } }]
+            })))
+            .mount(&server)
+            .await;
+
+        let doorman = Doorman::new(
+            DoormanConfig {
+                local: Some(LocalTierClient::new(crate::tier::LocalTierConfig {
+                    endpoint: server.uri(),
+                    default_model: "OLMo-3-7B-Instruct".into(),
+                })),
+                yoyo: HashMap::new(),
+                external: None,
+                lark_validator: None,
+                graph_context_client: Some(GraphContextClient::new(server.uri())),
+                tier_a_first: false,
+                daily_yoyo_cap_usd: None,
+                cost_ledger: None,
+            },
+            ledger(),
+        );
+
+        let mut request = req(Complexity::Low, Some(Tier::Local), None);
+        request.messages = vec![ChatMessage {
+            role: "user".into(),
+            content: "Who is Peter M. Woodfine?".into(),
+        }];
+
+        doorman.route(&request).await.expect("route should succeed");
+
+        let received = server
+            .received_requests()
+            .await
+            .expect("wiremock request recording should be enabled");
+        let chat_call = received
+            .iter()
+            .find(|r| r.url.path() == "/v1/chat/completions")
+            .expect("expected a dispatched chat-completions call");
+        let body: serde_json::Value =
+            serde_json::from_slice(&chat_call.body).expect("chat request body should be JSON");
+        let content = body["messages"][0]["content"].as_str().unwrap_or("");
+
+        assert!(
+            content.contains("Peter M. Woodfine"),
+            "expected the specific, correct entity match, got: {content}"
+        );
+        assert!(
+            !content.contains("St. Peters"),
+            "the short, common-word spurious match must not win over the more \
+             specific candidate, got: {content}"
         );
     }
 }

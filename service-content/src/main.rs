@@ -341,7 +341,7 @@ fn main() -> NotifyResult<()> {
             for job in tier_a_rx {
                 // Single combined OLMo call: entity extraction + open IE relation triples.
                 let (tier_a_ents, tier_a_rels) =
-                    call_tier_a_combined(&job.corpus_text, &job.doorman_endpoint);
+                    call_tier_a_combined(&job.corpus_text, &job.doorman_endpoint, &job.worm_id);
 
                 // 1. DPO training pair (entity comparison only — same format as before)
                 if write_gliner_olmo_dpo_pair(
@@ -1044,6 +1044,7 @@ fn relation_extraction_schema() -> serde_json::Value {
 fn call_tier_a_combined(
     corpus_text: &str,
     doorman_endpoint: &str,
+    worm_id: &str,
 ) -> (Vec<serde_json::Value>, Vec<serde_json::Value>) {
     let combined_prompt = format!(
         "{}{}",
@@ -1088,8 +1089,31 @@ fn call_tier_a_combined(
         .timeout(Duration::from_secs(180))
         .send()
     {
-        Ok(r) if r.status().is_success() => r.json::<serde_json::Value>().ok(),
-        _ => None,
+        Ok(r) if r.status().is_success() => match r.json::<serde_json::Value>() {
+            Ok(v) => Some(v),
+            Err(e) => {
+                eprintln!(
+                    "[TIER-A] call_tier_a_combined: response body parse failed for {}: {}",
+                    worm_id, e
+                );
+                None
+            }
+        },
+        Ok(r) => {
+            eprintln!(
+                "[TIER-A] call_tier_a_combined: non-success status {} for {}",
+                r.status(),
+                worm_id
+            );
+            None
+        }
+        Err(e) => {
+            eprintln!(
+                "[TIER-A] call_tier_a_combined: request failed for {}: {}",
+                worm_id, e
+            );
+            None
+        }
     };
 
     let content = raw.as_ref().and_then(|v| {
@@ -1111,10 +1135,18 @@ fn call_tier_a_combined(
             .strip_prefix("```")
             .unwrap_or(content.trim());
         let content = content.strip_suffix("```").unwrap_or(content).trim();
-        if let Ok(v) = serde_json::from_str::<serde_json::Value>(content) {
-            let entities = v["entities"].as_array().cloned().unwrap_or_default();
-            let relations = v["relations"].as_array().cloned().unwrap_or_default();
-            return (entities, relations);
+        match serde_json::from_str::<serde_json::Value>(content) {
+            Ok(v) => {
+                let entities = v["entities"].as_array().cloned().unwrap_or_default();
+                let relations = v["relations"].as_array().cloned().unwrap_or_default();
+                return (entities, relations);
+            }
+            Err(e) => {
+                eprintln!(
+                    "[TIER-A] call_tier_a_combined: entity/relation JSON parse failed for {}: {}",
+                    worm_id, e
+                );
+            }
         }
     }
     (vec![], vec![])
@@ -1170,31 +1202,49 @@ fn call_tier_a_extract(
         .timeout(Duration::from_secs(180))
         .send()
     {
-        Ok(r) if r.status().is_success() => r.json::<serde_json::Value>().ok().and_then(|v| {
-            // Doorman envelope: {"content": "...", "tier_used": "local", ...}
-            // OpenAI fallback: {"choices": [{"message": {"content": "..."}}]}
-            let content = v["content"]
-                .as_str()
-                .or_else(|| v["choices"][0]["message"]["content"].as_str())?;
-            // Reattach assistant pre-fill when llama-server returns only the continuation.
-            let owned;
-            let content = if content.trim_start().starts_with('[') {
-                content
-            } else {
-                owned = format!("[{{\"{}", content);
-                owned.as_str()
-            };
-            // Strip markdown fences the model may have added
-            let stripped = content
-                .trim()
-                .strip_prefix("```json")
-                .unwrap_or(content.trim())
-                .strip_prefix("```")
-                .unwrap_or(content.trim());
-            let stripped = stripped.strip_suffix("```").unwrap_or(stripped).trim();
-            serde_json::from_str(stripped).ok()
-        }),
-        _ => None,
+        Ok(r) if r.status().is_success() => {
+            let result = r.json::<serde_json::Value>().ok().and_then(|v| {
+                // Doorman envelope: {"content": "...", "tier_used": "local", ...}
+                // OpenAI fallback: {"choices": [{"message": {"content": "..."}}]}
+                let content = v["content"]
+                    .as_str()
+                    .or_else(|| v["choices"][0]["message"]["content"].as_str())?;
+                // Reattach assistant pre-fill when llama-server returns only the continuation.
+                let owned;
+                let content = if content.trim_start().starts_with('[') {
+                    content
+                } else {
+                    owned = format!("[{{\"{}", content);
+                    owned.as_str()
+                };
+                // Strip markdown fences the model may have added
+                let stripped = content
+                    .trim()
+                    .strip_prefix("```json")
+                    .unwrap_or(content.trim())
+                    .strip_prefix("```")
+                    .unwrap_or(content.trim());
+                let stripped = stripped.strip_suffix("```").unwrap_or(stripped).trim();
+                serde_json::from_str(stripped).ok()
+            });
+            if result.is_none() {
+                eprintln!(
+                    "[TIER-A] call_tier_a_extract: success response but content missing/unparseable"
+                );
+            }
+            result
+        }
+        Ok(r) => {
+            eprintln!(
+                "[TIER-A] call_tier_a_extract: non-success status {}",
+                r.status()
+            );
+            None
+        }
+        Err(e) => {
+            eprintln!("[TIER-A] call_tier_a_extract: request failed: {}", e);
+            None
+        }
     }
 }
 
@@ -2010,15 +2060,19 @@ fn process_corpus(
                 );
                 // Queue for async Tier A training pass (non-blocking, drops if queue full)
                 if let Some(tx) = tier_a_tx {
-                    tx.try_send(TierAJob {
+                    if let Err(e) = tx.try_send(TierAJob {
                         corpus_text: corpus_text.to_string(),
                         worm_id: worm_id.to_string(),
                         module_id: effective_module_id.to_string(),
                         tier_0_entities: ents.clone(),
                         feedback_dir: feedback_dir.to_string(),
                         doorman_endpoint: doorman_endpoint.to_string(),
-                    })
-                    .ok();
+                    }) {
+                        eprintln!(
+                            "[TIER-A] enqueue dropped for {} (channel full or closed): {}",
+                            worm_id, e
+                        );
+                    }
                 }
                 Some(ents)
             }
@@ -2026,15 +2080,19 @@ fn process_corpus(
                 // GLiNER reachable, no entities — queue for Tier A to catch GLiNER blind spots,
                 // then mark done immediately (production path unblocked).
                 if let Some(tx) = tier_a_tx {
-                    tx.try_send(TierAJob {
+                    if let Err(e) = tx.try_send(TierAJob {
                         corpus_text: corpus_text.to_string(),
                         worm_id: worm_id.to_string(),
                         module_id: effective_module_id.to_string(),
                         tier_0_entities: vec![],
                         feedback_dir: feedback_dir.to_string(),
                         doorman_endpoint: doorman_endpoint.to_string(),
-                    })
-                    .ok();
+                    }) {
+                        eprintln!(
+                            "[TIER-A] enqueue dropped for {} (channel full or closed): {}",
+                            worm_id, e
+                        );
+                    }
                 }
                 return ExtractResult::Success;
             }
