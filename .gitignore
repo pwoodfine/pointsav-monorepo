@@ -4,6 +4,7 @@
 
 # Build artifacts — not committed
 build/
+target/
 
 # Generated outputs — not committed
 outputs/
