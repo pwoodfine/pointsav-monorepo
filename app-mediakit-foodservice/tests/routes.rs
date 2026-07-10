@@ -125,5 +125,5 @@ async fn canonical_url_contains_request_path() {
 fn shipped_home_manifest_is_valid() {
     let dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("content");
     let page = app_mediakit_foodservice::content::load_page(&dir, "home").expect("home parses");
-    assert!(page.sections.len() >= 1, "expected at least one section");
+    assert!(!page.sections.is_empty(), "expected at least one section");
 }

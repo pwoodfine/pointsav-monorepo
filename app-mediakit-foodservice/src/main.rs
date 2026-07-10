@@ -41,7 +41,11 @@ enum Command {
         state_dir: PathBuf,
 
         /// Tenant module id selecting brand chrome.
-        #[arg(long, env = "SERVICE_FOODSERVICE_MODULE_ID", default_value = "woodfine")]
+        #[arg(
+            long,
+            env = "SERVICE_FOODSERVICE_MODULE_ID",
+            default_value = "woodfine"
+        )]
         module_id: String,
 
         /// Optional site-title override (otherwise the brand default).
@@ -53,7 +57,11 @@ enum Command {
         tokens_css: Option<PathBuf>,
 
         /// HTTP bind address.
-        #[arg(long, env = "SERVICE_FOODSERVICE_BIND", default_value = "127.0.0.1:9103")]
+        #[arg(
+            long,
+            env = "SERVICE_FOODSERVICE_BIND",
+            default_value = "127.0.0.1:9103"
+        )]
         bind: SocketAddr,
 
         /// Mount the MCP JSON-RPC endpoint at POST /api/mcp.
