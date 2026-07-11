@@ -1,232 +1,180 @@
-# Inputs — project-orgcharts cluster
+<div align="center">
 
-This folder is where you (Jennifer) drop source files for chart and
-diagram work. Task Claude reads everything here and uses it as the
-starting material for drafts in `working/` and final renders in
-`outputs/`.
+<img src="https://raw.githubusercontent.com/pointsav/pointsav-media-assets/main/ASSET-SIGNET-MASTER.svg" width="72" alt="PointSav Digital Systems">
 
-This is a private folder. It lives in the deployment instance
-`cluster-totebox-corporate-1`, which is gitignored at the workspace
-root and never travels to GitHub. The corporate content stays inside
-Woodfine; only the design-system components extracted from chart
-authoring are public.
+# PointSav Digital Systems
+### *Trustworthy Records Infrastructure for Institutions That Own Their Assets*
+### *Infraestructura de Registros Verificables para Instituciones que Poseen sus Activos*
+
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg?style=flat-square)](https://opensource.org/licenses/Apache-2.0)
+[![Compliance: WORM](https://img.shields.io/badge/Compliance-WORM_Ready-22863a.svg?style=flat-square)](#)
+[![Foundation: seL4 Verified](https://img.shields.io/badge/Foundation-seL4_Verified-6f42c1.svg?style=flat-square)](#the-trustworthy-systems-foundation)
+[![WCAG: 2.2 AAA](https://img.shields.io/badge/WCAG-2.2_AAA-0075ca.svg?style=flat-square)](https://github.com/pointsav/pointsav-design-system)
+
+<br/>
+
+**[→ Documentation Wiki](https://github.com/pointsav/content-wiki-documentation)** &nbsp;·&nbsp; **[→ Design System](https://github.com/pointsav/pointsav-design-system)** &nbsp;·&nbsp; **[→ Live Deployment](https://github.com/woodfine/woodfine-fleet-deployment)** &nbsp;·&nbsp; **[→ pointsav.com](https://pointsav.com)**
+
+</div>
+
+<br/>
+
+> [!NOTE]
+> The Sovereign Data Foundation's intended equity and oversight role has not yet been formally executed. This repository contains no active proprietary network payloads.
 
 ---
 
-## File-naming convention (authoritative)
+## The Problem
 
-Every file in this folder, in `working/`, and in `outputs/` follows
-this pattern:
+Your organisation's records live in software you do not own. The vendor controls access. If they raise their prices, change their terms, or shut down, your records are held to their schedule. This is the default arrangement for every institution that stores financial books, property records, and personnel files in a commercial cloud platform. It has always been the arrangement. Most institutions have accepted it.
 
-```
-<DEPARTMENT>_<ENTITY>_<YYYY-MM-DD>_<chart-slug>_JW<n>_AI<n>_<STATUS>.<ext>
-```
+PointSav was built for the ones that won't.
 
-Seven parts, separated by underscores. The chart-slug uses internal
-hyphens (kebab-case). Spaces are allowed only inside the
-`<DEPARTMENT>` field.
+We build operating systems — not applications — where each archive is a self-contained, formally verified environment anchored to a specific legal asset. A building. A company. A person. The archive belongs to the institution. Not to us. Not to a cloud provider. When the asset changes hands, the complete history transfers with it. When a vendor relationship ends, the data is already safely on hardware the institution physically controls.
 
-### What each part means
+---
 
-| Part | Format | Example | Notes |
-|---|---|---|---|
-| `<DEPARTMENT>` | UPPERCASE; spaces allowed | `INVESTOR RELATIONS`, `COMPLIANCE`, `OPERATIONS` | Functional area inside the entity. Same department label appears across all files for the same audience. |
-| `<ENTITY>` | short code, mixed case | `MCorp`, `WCPI`, `PointSav` | Which corporate entity the chart belongs to. `MCorp` = Woodfine Management Corp. Add new short codes as needed. |
-| `<YYYY-MM-DD>` | ISO 8601 with hyphens | `2026-04-25` | The date this version was created. Never the edit date — once a file is named, the date is fixed. ISO format sorts naturally in any tool. |
-| `<chart-slug>` | kebab-case (lowercase, hyphens) | `spv-arrangements`, `exec-team`, `corporate-structure` | One slug per chart subject. Reuse across versions of the same chart. **Internal HTML references (titles, IDs, class names) use the same kebab-case form** — no `Title_Case_With_Underscores` inside files. |
-| `JW<n>` | `JW` + integer | `JW1`, `JW2`, `JW3` | Jennifer's revision counter. Replaces the older `v1, v2` numbering. Bumps every time you upload a new version from your side. |
-| `AI<n>` | `AI` + integer | `AI1`, `AI2`, `AI3` | Independent AI iteration counter. Bumps every time Task Claude produces a new version off the current `JW<n>`. The first SOURCE upload is `AI1` because PowerPoint/source-tool export counts as the first AI step. |
-| `<STATUS>` | one of five words (UPPERCASE) | `SOURCE` | See status vocabulary below. |
-| `<ext>` | original file extension | `.html`, `.txt`, `.csv`, `.png`, `.pdf`, `.svg` | Whatever the file actually is. |
+## Five Structural Differences
 
-### How `JW<n>` and `AI<n>` move together
+### I. Asset-Level Ownership
 
-The two counters are independent. A complete chart's filename
-sequence over its life looks like this:
+Every major cloud platform is optimised for multi-tenant application workloads. Your data sits alongside other customers' data on infrastructure the vendor controls. PointSav builds differently: each archive is anchored to a specific legal identifier — a land title, a company registration number, a passport ID. The archive belongs entirely to that asset. When a building sells, the archive transfers with the title. No hyperscaler offers this concept because it is incompatible with their multi-tenant model.
 
-| Step | Filename suffix | Who wrote it | What happened |
-|---|---|---|---|
-| 1 | `_JW1_AI1_SOURCE.html` | Jennifer | First upload (PPT-to-HTML export = AI1) |
-| 2 | `_JW1_AI2_DRAFT.html` | Task Claude | First draft off Jennifer's source |
-| 3 | `_JW1_AI3_DRAFT.html` | Task Claude | Revision after chat feedback |
-| 4 | `_JW1_AI4_REVIEW.html` | Task Claude | Ready for Jennifer to review |
-| 5 | `_JW2_AI1_SOURCE.html` | Jennifer | Jennifer revises the source after review (JW bumps, AI resets to 1) |
-| 6 | `_JW2_AI2_DRAFT.html` | Task Claude | First draft off Jennifer's revised source |
-| 7 | `_JW2_AI3_FINAL.html` | Task Claude | Approved |
+For the technical reader: each ToteboxOS instance is a self-contained unikernel — a minimal operating system containing only the kernel and the services required for that specific asset. No two archives share a kernel. If one is compromised, the blast radius is mathematically contained.
 
-Rule of thumb: `JW` bumps when **Jennifer** uploads a new source.
-`AI` resets to 1 when JW bumps, then increments with every Task
-Claude iteration.
+### II. Formally Verified Security
 
-### Status vocabulary (only these five words)
+Most infrastructure security is tested — engineers attempt to break it and fix what they find. Testing proves the presence of some failures. It cannot prove the absence of all of them.
 
-| Status | Who writes it | What it means |
+PointSav's security foundation uses the seL4 microkernel, whose security properties have been formally verified using machine-checked mathematical proofs — the same technique used in avionics and medical device software. This is not a marketing claim. It is a peer-reviewed result published in the ACM Symposium on Operating Systems Principles (SOSP 2009) and maintained in continuous formal verification since. seL4 is the only general-purpose operating system kernel with this property.
+
+### III. Flat-File Permanence
+
+A database is a running software engine. If the engine is deprecated, updated, or discontinued, the data becomes inaccessible until migrated. PointSav stores all records as inert flat files — Markdown, YAML, CSV, JSON. A `.yaml` file written today requires no proprietary software to read in fifty years. The data outlives the software.
+
+This is not a limitation. It is a design commitment. Software engines process the files. The files exist independently of the engines. SHA-256 cryptographic checksums seal every record at the point of entry, making any subsequent alteration detectable by any auditor with a standard terminal.
+
+### IV. Commodity Node Economics
+
+The base ToteboxOS deployment runs on a commodity cloud node at approximately $7 per month. No proprietary hardware. No minimum commitment. The commercial staircase is transparent: base archive at commodity pricing; local AI processing as an optional hardware upgrade; multi-archive orchestration as the proprietary commercial layer. Institutions pay for the intelligence that connects archives together, not for the storage itself.
+
+### V. No Egress Lock-in
+
+The end-state export format for every ToteboxOS archive is a Bootable Disk Image — a self-contained virtual machine file that boots on any standard hypervisor: bare metal, AWS, Azure, Google Cloud, Oracle Cloud. A Docker container is not freely transferable. It requires Docker to run. A bootable disk image requires only a standard hypervisor, which is a universal commodity. The complete archive — records, ledgers, search index — can be moved to a USB drive and booted on any compatible computer on earth.
+
+---
+
+## The Trustworthy Systems Foundation
+
+The platform is built on a three-tier activation model. The base tier requires no AI dependency whatsoever. WORM compliance, cryptographic record integrity, and full-text search operate completely independently of any AI vendor relationship.
+
+| Tier | Node | What activates |
 |---|---|---|
-| `SOURCE` | **Jennifer** | Raw source material — your input. Lives in `inputs/`. |
-| `DRAFT` | Task Claude | Work-in-progress. Lives in `working/`. |
-| `REVIEW` | Task Claude | Draft Task believes is ready for your review. Lives in `working/`. |
-| `FINAL` | Task Claude | Approved by Jennifer. Lives in `outputs/`. |
-| `ARCHIVE` | Either | Superseded version kept for history. |
+| Base | ~$7/month commodity node | ToteboxOS — flat files, WORM compliance, SHA-256 sealing, search. Zero AI dependency. |
+| AI-enabled | Upgraded node meeting `service-slm` minimum specs | Local AI processing activates. The doorman gateway to external AI becomes available. Corporate data never leaves the private network. |
+| Orchestration | `os-orchestration` | Multi-archive operations. Extended compute for BIM, GIS, and data warehouse. The proprietary commercial layer. |
 
-### Worked example — current SPV chart
-
-You uploaded:
-
-```
-inputs/INVESTOR RELATIONS_MCorp_2026-04-25_spv-arrangements_JW1_AI1_SOURCE.html
-```
-
-Decoded:
-- Department: `INVESTOR RELATIONS`
-- Entity: `MCorp` (Woodfine Management Corp)
-- Date: 2026-04-25
-- Subject: `spv-arrangements`
-- Jennifer's first revision: `JW1`
-- AI iteration: `AI1` (PowerPoint HTML export)
-- Status: `SOURCE`
-
-My first draft will be:
-
-```
-working/INVESTOR RELATIONS_MCorp_2026-04-25_spv-arrangements_JW1_AI2_DRAFT.html
-```
-
-If you then revise the source after seeing my draft, you upload:
-
-```
-inputs/INVESTOR RELATIONS_MCorp_2026-04-29_spv-arrangements_JW2_AI1_SOURCE.html
-```
-
-(Note: date can change to reflect the new revision date; chart-slug
-stays the same.)
-
-### Hard rules
-
-1. **Never overwrite a file.** Always create a new file with the
-   appropriate counter increment. If `JW1_AI3_DRAFT.html` exists,
-   the next version is `JW1_AI4_DRAFT.html` (or
-   `JW1_AI4_REVIEW.html`), not a re-save of `JW1_AI3`.
-2. **Never delete an old version while the chart is active.** If
-   something is truly obsolete, rename its status to `ARCHIVE`. Bulk
-   archive cleanup happens at the end of a chart's life.
-3. **Never reuse a chart-slug for a different chart.** If the
-   subject is different, pick a new slug. `spv-arrangements` and
-   `exec-team` are separate subjects — separate slugs, separate
-   counter chains.
-4. **One chart per file.** Don't combine two unrelated charts into
-   one source file. Upload them separately with separate slugs.
-5. **Internal references match the filename casing.** When Task
-   Claude works on a file, internal HTML `<title>`, IDs, class
-   names, and references use the same kebab-case slug
-   (`spv-arrangements`, not `SPV_Arrangements`). Department label
-   stays `INVESTOR RELATIONS` in both filename and any internal
-   metadata.
+The seL4 kernel is the formal security foundation. A compatibility shim currently adapts seL4 to run on commodity cloud hardware — this is tracked as technical debt with a named replacement path in the `moonshot-*` engineering register, consistent with how every temporary dependency is managed in this codebase.
 
 ---
 
-## What to put in a SOURCE file
+## The Commercial Model
 
-Task Claude can work from many input shapes. The more structured
-your input, the more deterministic the output. In rough order of
-ease:
+Single-archive use — one ToteboxOS instance, one ConsoleOS terminal — is completely free and open source under Apache 2.0. An independent developer, a sole practitioner, or a small organisation can run a complete, WORM-compliant records platform with no commercial relationship with PointSav.
 
-### Best — an existing rendered file
+The moment you need to aggregate across multiple archives — connecting a building's property records to the personnel records of the management team, for example — you need OrchestrationOS, which is proprietary software. This is the monetisation boundary. PointSav does not charge for private data storage. It charges for the intelligence layer that connects archives together.
 
-A `.html`, `.svg`, `.pdf`, or `.pptx` exported as `.html` showing
-the chart you want re-rendered or refined. Task Claude reads the
-geometry and content directly. PowerPoint HTML exports (like the
-SPV file) work fine — Task Claude will translate from absolute
-positioning to a clean design-system layout in the DRAFT.
-
-### Good — a structured table
-
-A `.csv` file with explicit columns. For an org chart:
-
-```
-name,title,reports_to,department,status
-Jane Doe,CEO,,Executive,active
-John Smith,CFO,Jane Doe,Finance,active
-```
-
-For a structural chart (like SPV arrangements), columns vary by
-subject — describe them in a companion `.md` notes file with the
-same chart-slug.
-
-### Acceptable — a hierarchical text outline
-
-A `.txt` or `.md` file with one item per line, indented to show
-structure (two spaces per level):
-
-```
-Level 1 — Investment Banking
-  GP
-    LP 1
-    LP 2
-    LP 3
-```
-
-### Last resort — a description in prose
-
-A `.txt` or `.md` file describing the structure in words. Use this
-only if you don't have a rendered chart, table, or outline.
+PointSav follows a cost-plus commercial model. Development time is charged at cost plus a fixed margin. Value-add pricing is explicitly rejected. This keeps vendor and customer incentives structurally aligned.
 
 ---
 
-## Companion files
+## The Live Proof
 
-If a chart needs supporting material (photos, brand assets, notes),
-upload them with the **same chart-slug, JW counter, and AI counter**
-as the SOURCE file they belong to:
+Woodfine Management Corp., a real property management company operating across North America and Europe, is executing a complete digital transformation onto the PointSav platform — deploying verified, portable archives for property records, corporate governance, and operational ledgers, with select components live and the full stack in active deployment.
 
-```
-INVESTOR RELATIONS_MCorp_2026-04-25_spv-arrangements_JW1_AI1_SOURCE.html
-INVESTOR RELATIONS_MCorp_2026-04-25_spv-arrangements_JW1_AI1_SOURCE_notes.md
-INVESTOR RELATIONS_MCorp_2026-04-25_spv-arrangements_JW1_AI1_SOURCE_photo-jane-doe.jpg
-```
-
-Suffix after `_SOURCE` describes what kind of file it is. The
-filename prefix still ties them all together.
+Woodfine is a subsidiary of the same parent company that owns PointSav. This is not a coincidence. It was a design decision: build the software, use the software, and document both in public so the proof is verifiable. The Woodfine fleet deployment manifest — 201 commits and growing — is at **[github.com/woodfine/woodfine-fleet-deployment](https://github.com/woodfine/woodfine-fleet-deployment)**.
 
 ---
 
-## What goes where
+## Engineering Status
 
-| Folder | Who writes | Who reads | Direction with your Mac |
-|---|---|---|---|
-| `inputs/` | You only | Task Claude | You push (upload) |
-| `working/` | Task Claude only | You can pull to peek | Task pushes, you can pull |
-| `outputs/` | Task Claude only | You pull (download finals) | Task pushes, you pull |
+### Infrastructure
 
-You never need to write into `working/` or `outputs/` — those are
-Task Claude's working space. To change something in a draft, leave
-a note (chat with me, or upload a new SOURCE version with the
-changes spelled out — that bumps `JW`).
+| Component | Function | License | Status |
+|:---|:---|:---|:---|
+| `os-infrastructure` | Compute and hardware substrate | Proprietary | 🟢 Active |
+| `os-network-admin` | Private network routing and MBA registry | Proprietary | 🟡 Development |
+
+### Platform
+
+| Component | Function | License | Status |
+|:---|:---|:---|:---|
+| `os-totebox` | Core archive operating system | Apache 2.0 | 🟡 Development |
+| `os-orchestration` | Multi-archive aggregation and extended compute | Proprietary | 🟡 Development |
+| `os-workplace` | Staff desktop environment | Apache 2.0 | 🟡 Development |
+
+### Delivery
+
+| Component | Function | License | Status |
+|:---|:---|:---|:---|
+| `os-console` | Operator terminal — Command Ledger | Apache 2.0 | 🟡 Development |
+| `os-mediakit` | Public-facing web delivery | Proprietary | 🟢 Active |
+| `os-privategit` | Self-hosted version control | Apache 2.0 | 🟢 Active |
+
+### Totebox Services
+
+| Component | Function | Status |
+|:---|:---|:---|
+| `service-fs` | Immutable ledger — WORM-compliant filesystem | 🟡 Development |
+| `service-email` | Inbound mail processor — transport only | 🟡 Development |
+| `service-extraction` | Deterministic parser — structured and unstructured ingestion | 🟡 Development |
+| `service-slm` | AI Gateway — local model and external doorman | 🟡 Development |
+| `service-people` | Personnel ledger — flat-file state machine | 🟡 Development |
+| `service-content` | Knowledge index — self-healing first derivative | 🟡 Development |
+| `service-search` | Inverted index — air-gappable full-text search | 🟡 Development |
+| `service-egress` | Physical transfer engine — cold storage entanglement | 🟡 Development |
+
+### Moonshot Register
+
+Every third-party dependency is tracked as formal technical debt. For each quarantined `vendor-*` component, a corresponding `moonshot-*` engineering initiative works toward a native replacement.
+
+| Quarantined Dependency | Moonshot Replacement |
+|:---|:---|
+| `vendor-sel4-kernel` | `moonshot-kernel` — no_std Rust microkernel |
+| `vendor-virtio` | `moonshot-hypervisor` — native Rust VMM |
+| `vendor-azure-auth` | `system-mba-shim` — Machine-Based Authorization (active) |
+| `vendor-microsoft-graph` | `moonshot-protocol` — native mail transport |
+| `vendor-gpu-drivers` | `moonshot-gpu` — Project X-Ray native drivers |
+| `vendor-linux-systemd` | `moonshot-kernel` — rc.d / runit on FreeBSD / seL4 |
+| `vendor-wireguard` | `moonshot-network` — native private mesh |
+| `vendor-phi3-mini` | `moonshot-toolkit` — native SLM execution |
+| `app-mediakit-telemetry/assets/` (MaxMind GeoLite2) | `moonshot-index` — native geographic resolution |
 
 ---
 
-## When in doubt
+## Repository Map
 
-If you're not sure what counter to bump, what slug to pick, or
-where a file belongs — ask in chat. Better to ask once than to
-break the convention and have to rename files later.
+| Repository | Purpose |
+|:---|:---|
+| `pointsav-monorepo` | Engineering source — all `system-*`, `service-*`, `os-*`, `moonshot-*` |
+| `pointsav-design-system` | Linguistic protocols and visual standards |
+| `content-wiki-documentation` | Technical library — ADRs, service specifications, glossary |
+| `pointsav-fleet-deployment` | Vendor's own operational systems |
+| `pointsav.github.io` | Public-facing marketing site |
 
 ---
 
-*Last updated 2026-04-26. Lives in
-`/srv/foundry/deployments/cluster-totebox-corporate-1/inputs/README.md`.*
-*Convention authored by Jennifer Woodfine; documented here for
-Task Claude to follow.*
+## Contact
 
-<!-- BEGIN: factory-release-engineering license-section -->
-## License
+**pointsav.com** &nbsp;·&nbsp; **open.source@pointsav.com** &nbsp;·&nbsp; **[github.com/pointsav](https://github.com/pointsav)**
 
-This repository contains code under multiple licenses. See the `LICENSE` file in the root of this repository for the canonical multi-license notice, which is authoritative. Each source file carries an SPDX-License-Identifier header identifying the license applicable to that file.
+---
 
-Copyright (c) 2026 Woodfine Capital Projects Inc.. All rights not expressly granted by the applicable licenses are reserved.
+*→ Versión en español: [README.es.md](./README.es.md)*
 
-## Licencia
 
-Este repositorio contiene código bajo múltiples licencias. Véase el archivo `LICENSE` en la raíz del repositorio para el aviso canónico de múltiples licencias, el cual es la versión autoritativa. Cada archivo fuente incluye un encabezado SPDX-License-Identifier que identifica la licencia aplicable a ese archivo.
+---
 
-Copyright (c) 2026 Woodfine Capital Projects Inc.. Se reservan todos los derechos no concedidos expresamente por las licencias aplicables.
-<!-- END: factory-release-engineering license-section -->
+*Copyright © 2026 Woodfine Capital Projects Inc. See [LICENSE](LICENSE) for terms.*
+
+*Woodfine Capital Projects™, Woodfine Management Corp™, PointSav Digital Systems™, Totebox Orchestration™, and Totebox Archive™ are trademarks of Woodfine Capital Projects Inc., used in Canada, the United States, Latin America, and Europe. All other trademarks are the property of their respective owners.*
