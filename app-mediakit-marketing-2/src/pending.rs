@@ -37,7 +37,12 @@ impl Queue {
     /// Stage a proposed manifest for human review. Validates that the YAML
     /// at least parses as a `Page` before staging (fast feedback for the
     /// proposing agent) — this is NOT the approval gate, just a sanity check.
-    pub fn stage(&self, slug: &str, lang: &str, manifest_yaml: &str) -> Result<String, MarketingError> {
+    pub fn stage(
+        &self,
+        slug: &str,
+        lang: &str,
+        manifest_yaml: &str,
+    ) -> Result<String, MarketingError> {
         serde_yaml::from_str::<Page>(manifest_yaml).map_err(|source| MarketingError::Manifest {
             slug: slug.to_string(),
             source,
@@ -83,9 +88,11 @@ impl Queue {
             .expect("entry path always has a filename");
         let (_, slug, lang) = parse_entry_name(name).expect("entry path is always well-formed");
         let manifest_yaml = std::fs::read_to_string(&path)?;
-        serde_yaml::from_str::<Page>(&manifest_yaml).map_err(|source| MarketingError::Manifest {
-            slug: slug.to_string(),
-            source,
+        serde_yaml::from_str::<Page>(&manifest_yaml).map_err(|source| {
+            MarketingError::Manifest {
+                slug: slug.to_string(),
+                source,
+            }
         })?;
 
         let filename = if lang == "en" {
@@ -116,7 +123,9 @@ impl Queue {
                 }
             }
         }
-        Err(MarketingError::PageNotFound(format!("pending proposal {id}")))
+        Err(MarketingError::PageNotFound(format!(
+            "pending proposal {id}"
+        )))
     }
 }
 
@@ -131,7 +140,11 @@ fn parse_entry_name(name: &str) -> Option<(&str, &str, &str)> {
 }
 
 /// Load a page for read/reference purposes, exposed to the MCP layer.
-pub fn read_page(content_dir: &Path, slug: &str, lang: Option<&str>) -> Result<Page, MarketingError> {
+pub fn read_page(
+    content_dir: &Path,
+    slug: &str,
+    lang: Option<&str>,
+) -> Result<Page, MarketingError> {
     content::load_page(content_dir, slug, lang)
 }
 

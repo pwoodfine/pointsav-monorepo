@@ -84,13 +84,18 @@ fn check(content_dir: &std::path::Path, module_id: &str) -> anyhow::Result<()> {
             content_dir.display()
         );
     }
-    println!("ok: content_dir={} module_id={module_id}", content_dir.display());
+    println!(
+        "ok: content_dir={} module_id={module_id}",
+        content_dir.display()
+    );
     Ok(())
 }
 
 async fn shutdown_signal() {
     let ctrl_c = async {
-        tokio::signal::ctrl_c().await.expect("install ctrl-c handler");
+        tokio::signal::ctrl_c()
+            .await
+            .expect("install ctrl-c handler");
     };
     #[cfg(unix)]
     let terminate = async {

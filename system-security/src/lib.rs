@@ -1,7 +1,6 @@
 #![cfg_attr(not(test), no_std)]
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 #![cfg_attr(not(test), no_main)]
 
 #[cfg(not(test))]

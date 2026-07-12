@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
 
-use crate::{component_meta, component_preview, render, schema, state::AppState, tokens_gallery, vault};
+use crate::{
+    component_meta, component_preview, render, schema, state::AppState, tokens_gallery, vault,
+};
 use axum::{
     body::Body,
     extract::{Path, State},
@@ -12,7 +14,14 @@ use serde::Serialize;
 use std::{fs, io::Write};
 
 pub async fn index(State(state): State<AppState>) -> Html<String> {
-    let nav_html = render::render_nav(&state.env, &state.nav, &state.component_groups, vault::SECTIONS, "", "");
+    let nav_html = render::render_nav(
+        &state.env,
+        &state.nav,
+        &state.component_groups,
+        vault::SECTIONS,
+        "",
+        "",
+    );
 
     // Part C (2026-07-04): the CTA no longer renders as a grid card — a real button
     // next to the lede reads as an action, not a wayfinding tile; the grid below is now
@@ -121,7 +130,14 @@ pub async fn tokens_gallery_page(State(state): State<AppState>) -> Html<String> 
         .render(minijinja::context! { tiers => tiers })
         .expect("render tokens.html failed");
 
-    let nav_html = render::render_nav(&state.env, &state.nav, &state.component_groups, vault::SECTIONS, "", "");
+    let nav_html = render::render_nav(
+        &state.env,
+        &state.nav,
+        &state.component_groups,
+        vault::SECTIONS,
+        "",
+        "",
+    );
     Html(render::shell(
         &state.env,
         "Tokens — PointSav Design System",
@@ -173,7 +189,14 @@ pub async fn adoption_page(State(state): State<AppState>) -> Html<String> {
         .render(minijinja::context! { generic_count => generic_count, consumers => consumers })
         .expect("render adoption.html failed");
 
-    let nav_html = render::render_nav(&state.env, &state.nav, &state.component_groups, vault::SECTIONS, "", "");
+    let nav_html = render::render_nav(
+        &state.env,
+        &state.nav,
+        &state.component_groups,
+        vault::SECTIONS,
+        "",
+        "",
+    );
     Html(render::shell(
         &state.env,
         "Adoption — PointSav Design System",
@@ -235,7 +258,8 @@ pub async fn item_tab(
     // P1.1 — live component preview (recipe.json variants, sandboxed via iframe).
     // Phase 3 — origin + freshness meta badges, ahead of the preview.
     if section == "components" {
-        let badges = component_meta::render_meta_badges(&state.component_groups, &state.vault, &slug);
+        let badges =
+            component_meta::render_meta_badges(&state.component_groups, &state.vault, &slug);
         if let Some(preview) = component_preview::render_preview(&state.vault, &slug) {
             content = format!("{badges}{preview}{content}");
         } else {
@@ -243,7 +267,14 @@ pub async fn item_tab(
         }
     }
 
-    let nav_html = render::render_nav(&state.env, &state.nav, &state.component_groups, vault::SECTIONS, &section, &slug);
+    let nav_html = render::render_nav(
+        &state.env,
+        &state.nav,
+        &state.component_groups,
+        vault::SECTIONS,
+        &section,
+        &slug,
+    );
     let tab_bar = render::render_tab_bar(&state.env, &section, &slug, &tabs, &tab);
     let label = vault::to_title(&slug);
 

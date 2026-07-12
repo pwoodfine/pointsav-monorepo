@@ -15,7 +15,11 @@ use app_mediakit_knowledge::app::{router, AppState};
 use app_mediakit_knowledge::config::Config;
 
 #[derive(Parser)]
-#[command(name = "app-mediakit-knowledge", version, about = "Knowledge wiki engine")]
+#[command(
+    name = "app-mediakit-knowledge",
+    version,
+    about = "Knowledge wiki engine"
+)]
 struct Cli {
     #[command(subcommand)]
     command: Command,
@@ -72,7 +76,11 @@ async fn serve(toml_path: PathBuf) -> anyhow::Result<()> {
 fn check(toml_path: PathBuf) -> anyhow::Result<()> {
     let config = Config::load(&toml_path)?;
     config.socket_addr()?;
-    println!("ok: {} ({} mount(s))", config.site.title, config.mounts.len());
+    println!(
+        "ok: {} ({} mount(s))",
+        config.site.title,
+        config.mounts.len()
+    );
     Ok(())
 }
 

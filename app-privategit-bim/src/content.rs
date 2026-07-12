@@ -100,13 +100,23 @@ impl Section {
     /// yet (covers the 4 files added 2026-07-03, before this field existed).
     fn fallback_for_slug(slug: &str) -> Section {
         match slug {
-            "spatial" | "elements" | "systems" | "materials" | "assemblies" | "performance"
-            | "identity-codes" | "relationships" | "professional-office-subtypes"
+            "spatial"
+            | "elements"
+            | "systems"
+            | "materials"
+            | "assemblies"
+            | "performance"
+            | "identity-codes"
+            | "relationships"
+            | "professional-office-subtypes"
             | "building-width-calculator" => Section::Taxonomy,
             "key-plans" | "amenity-key-plan" | "retail-select" | "tech-industrial" | "interior"
             | "furniture" => Section::Objects,
-            "tile-system" | "floor-plate-standards" | "floor-plate-assembly-rules"
-            | "building-grid" | "tenant-mix" => Section::Compositions,
+            "tile-system"
+            | "floor-plate-standards"
+            | "floor-plate-assembly-rules"
+            | "building-grid"
+            | "tenant-mix" => Section::Compositions,
             "climate-zones" | "landscape-parking" | "water-management" => Section::Context,
             _ => Section::Taxonomy,
         }
@@ -173,7 +183,10 @@ fn title_case_slug(slug: &str) -> String {
 /// `$description` as fallback card/intro text and a title-cased slug as
 /// display name — rather than being silently omitted from nav, cards, and
 /// search the way it previously was.
-pub fn load_categories(tokens: &HashMap<String, Value>, site_content_dir: &Path) -> Vec<CategoryMeta> {
+pub fn load_categories(
+    tokens: &HashMap<String, Value>,
+    site_content_dir: &Path,
+) -> Vec<CategoryMeta> {
     let dir = site_content_dir.join("categories");
     let mut sidecars: HashMap<String, (u32, HashMap<String, String>, String)> = HashMap::new();
     match fs::read_dir(&dir) {
@@ -332,4 +345,3 @@ pub fn load_page(site_content_dir: &Path, name: &str) -> Option<PageContent> {
 
     Some(PageContent { sections })
 }
-

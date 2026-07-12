@@ -80,10 +80,7 @@ pub fn render_token_page(category: &str, state: &AppState) -> String {
     let mut rows = String::new();
     for (cat_key, cat_val) in bim {
         if let Some(entities) = cat_val.as_object() {
-            let mut slugs: Vec<&String> = entities
-                .keys()
-                .filter(|k| !k.starts_with('$'))
-                .collect();
+            let mut slugs: Vec<&String> = entities.keys().filter(|k| !k.starts_with('$')).collect();
             slugs.sort();
             for slug in slugs {
                 entity_count += 1;
@@ -131,8 +128,7 @@ pub fn render_token_page(category: &str, state: &AppState) -> String {
         ));
     }
     let pset_block = if pset_rows.is_empty() {
-        r#"<p class="bim-empty">No property sets registered for this category yet.</p>"#
-            .to_string()
+        r#"<p class="bim-empty">No property sets registered for this category yet.</p>"#.to_string()
     } else {
         format!(
             r#"<table class="bim-table-wrap bim-token-table">
@@ -155,10 +151,7 @@ pub fn render_token_page(category: &str, state: &AppState) -> String {
     let uniclass_row = if uniclass == "—" {
         String::new()
     } else {
-        format!(
-            "<tr><th>Uniclass 2015</th><td>{}</td></tr>",
-            esc(uniclass)
-        )
+        format!("<tr><th>Uniclass 2015</th><td>{}</td></tr>", esc(uniclass))
     };
 
     format!(

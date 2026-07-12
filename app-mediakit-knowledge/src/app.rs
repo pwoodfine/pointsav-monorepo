@@ -260,10 +260,26 @@ async fn home(State(state): State<AppState>) -> Response {
         Vec::new()
     };
 
-    let nav: Vec<(String, String)> = cats.iter().map(|(s, l, _)| (s.clone(), l.clone())).collect();
+    let nav: Vec<(String, String)> = cats
+        .iter()
+        .map(|(s, l, _)| (s.clone(), l.clone()))
+        .collect();
     let body = ui::home_page(tenant, &lede, total, &cats, &guides);
     let head = ui::doc_head(tenant.home_label(), &description, tenant);
-    Html(ui::page(tenant, "en", head, body, &nav, &[], "", state.important_info.as_deref()).into_string()).into_response()
+    Html(
+        ui::page(
+            tenant,
+            "en",
+            head,
+            body,
+            &nav,
+            &[],
+            "",
+            state.important_info.as_deref(),
+        )
+        .into_string(),
+    )
+    .into_response()
 }
 
 /// Category listing page — every article in one category.
@@ -288,7 +304,20 @@ async fn category_page(State(state): State<AppState>, Path(name): Path<String>) 
     let description = format!("Articles in the {label} area.");
     let body = ui::category_index(&label, &docs);
     let head = ui::doc_head(&label, &description, tenant);
-    Html(ui::page(tenant, "en", head, body, &nav_cats(&state), &[], "", state.important_info.as_deref()).into_string()).into_response()
+    Html(
+        ui::page(
+            tenant,
+            "en",
+            head,
+            body,
+            &nav_cats(&state),
+            &[],
+            "",
+            state.important_info.as_deref(),
+        )
+        .into_string(),
+    )
+    .into_response()
 }
 
 #[derive(serde::Deserialize)]
@@ -325,7 +354,20 @@ async fn search_page(State(state): State<AppState>, Query(params): Query<SearchQ
         )
     };
     let head = ui::doc_head(&title, &desc, tenant);
-    Html(ui::page(tenant, "en", head, body, &nav_cats(&state), &[], &q, state.important_info.as_deref()).into_string()).into_response()
+    Html(
+        ui::page(
+            tenant,
+            "en",
+            head,
+            body,
+            &nav_cats(&state),
+            &[],
+            &q,
+            state.important_info.as_deref(),
+        )
+        .into_string(),
+    )
+    .into_response()
 }
 
 #[derive(serde::Deserialize)]
@@ -343,7 +385,10 @@ async fn history_page(
     let tenant = state.tenant;
     let slug = slug.trim_end_matches('/');
     let Some(doc) = state.index.resolve(slug, Lang::En) else {
-        return not_found(&state, &format!("No record found for \u{201c}{slug}\u{201d}."));
+        return not_found(
+            &state,
+            &format!("No record found for \u{201c}{slug}\u{201d}."),
+        );
     };
     let repo_root = &state.mounts.mounts[doc.mount_index].path;
     let rel = doc.path.strip_prefix(repo_root).unwrap_or(&doc.path);
@@ -359,8 +404,20 @@ async fn history_page(
             &format!("Changes to {} in revision {}", doc.title, diff.short_sha),
             tenant,
         );
-        return Html(ui::page(tenant, "en", head, body, &nav_cats(&state), &[], "", state.important_info.as_deref()).into_string())
-            .into_response();
+        return Html(
+            ui::page(
+                tenant,
+                "en",
+                head,
+                body,
+                &nav_cats(&state),
+                &[],
+                "",
+                state.important_info.as_deref(),
+            )
+            .into_string(),
+        )
+        .into_response();
     }
 
     let revs = crate::history::file_history(repo_root, rel, 50);
@@ -370,7 +427,20 @@ async fn history_page(
         &format!("Revision history of {}", doc.title),
         tenant,
     );
-    Html(ui::page(tenant, "en", head, body, &nav_cats(&state), &[], "", state.important_info.as_deref()).into_string()).into_response()
+    Html(
+        ui::page(
+            tenant,
+            "en",
+            head,
+            body,
+            &nav_cats(&state),
+            &[],
+            "",
+            state.important_info.as_deref(),
+        )
+        .into_string(),
+    )
+    .into_response()
 }
 
 /// "Index of record" — every article A–Z (the auditor's completeness check).
@@ -394,7 +464,20 @@ async fn special_all_pages(State(state): State<AppState>) -> Response {
         "A–Z index of every record in the registry.",
         tenant,
     );
-    Html(ui::page(tenant, "en", head, body, &nav_cats(&state), &[], "", state.important_info.as_deref()).into_string()).into_response()
+    Html(
+        ui::page(
+            tenant,
+            "en",
+            head,
+            body,
+            &nav_cats(&state),
+            &[],
+            "",
+            state.important_info.as_deref(),
+        )
+        .into_string(),
+    )
+    .into_response()
 }
 
 /// "Recent changes" — records most recently updated (the site-wide delta view).
@@ -415,7 +498,20 @@ async fn special_recent(State(state): State<AppState>) -> Response {
         .collect();
     let body = ui::special_list("Recent changes", "Recent changes", &items);
     let head = ui::doc_head("Recent changes", "Records most recently updated.", tenant);
-    Html(ui::page(tenant, "en", head, body, &nav_cats(&state), &[], "", state.important_info.as_deref()).into_string()).into_response()
+    Html(
+        ui::page(
+            tenant,
+            "en",
+            head,
+            body,
+            &nav_cats(&state),
+            &[],
+            "",
+            state.important_info.as_deref(),
+        )
+        .into_string(),
+    )
+    .into_response()
 }
 
 // --- Discovery surfaces (robots / sitemap / feeds / llms.txt) ---------------
@@ -440,13 +536,21 @@ async fn robots(State(state): State<AppState>) -> Response {
 async fn sitemap(State(state): State<AppState>) -> Response {
     let docs: Vec<_> = state.index.documents().collect();
     let body = discovery::sitemap_xml(&site_base(&state), &docs);
-    ([(header::CONTENT_TYPE, "application/xml; charset=utf-8")], body).into_response()
+    (
+        [(header::CONTENT_TYPE, "application/xml; charset=utf-8")],
+        body,
+    )
+        .into_response()
 }
 
 async fn feed_atom(State(state): State<AppState>) -> Response {
     let docs = state.index.recent(20);
     let body = discovery::atom_feed(&site_base(&state), &state.config.site.title, &docs);
-    ([(header::CONTENT_TYPE, "application/atom+xml; charset=utf-8")], body).into_response()
+    (
+        [(header::CONTENT_TYPE, "application/atom+xml; charset=utf-8")],
+        body,
+    )
+        .into_response()
 }
 
 async fn llms(State(state): State<AppState>) -> Response {
@@ -499,7 +603,10 @@ async fn serve_article(
         if let Some(to) = state.redirects.get(&format!("/{slug}")) {
             return moved_301(to);
         }
-        return not_found(&state, &format!("No record found for \u{201c}{slug}\u{201d}."));
+        return not_found(
+            &state,
+            &format!("No record found for \u{201c}{slug}\u{201d}."),
+        );
     };
     let tenant = state.tenant;
     let repo_root = &state.mounts.mounts[doc.mount_index].path;
@@ -518,7 +625,15 @@ async fn serve_article(
             .clone()
             .unwrap_or_else(|| doc.title.clone());
         let short = rev.chars().take(8).collect::<String>();
-        let body = ui::article(&title, &doc.slug, None, Some(&short), Some(&date), None, &rendered.html);
+        let body = ui::article(
+            &title,
+            &doc.slug,
+            None,
+            Some(&short),
+            Some(&date),
+            None,
+            &rendered.html,
+        );
         let head = ui::doc_head(&format!("{title} (as of {date})"), "", tenant);
         return Html(
             ui::page(
@@ -540,7 +655,11 @@ async fn serve_article(
     let parsed = match content::load(doc) {
         Ok(p) => p,
         Err(e) => {
-            return (StatusCode::INTERNAL_SERVER_ERROR, format!("read error: {e}")).into_response()
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("read error: {e}"),
+            )
+                .into_response()
         }
     };
     let rendered = content::render_doc(&parsed);
@@ -549,7 +668,11 @@ async fn serve_article(
         .title
         .clone()
         .unwrap_or_else(|| doc.title.clone());
-    let description = parsed.frontmatter.short_description.clone().unwrap_or_default();
+    let description = parsed
+        .frontmatter
+        .short_description
+        .clone()
+        .unwrap_or_default();
     // Provenance: the short hash of the file's most recent commit.
     let prov = crate::history::file_history(repo_root, rel, 1);
     let sha = prov.first().map(|r| r.short_sha.as_str());
@@ -577,8 +700,20 @@ async fn serve_article(
         &rendered.html,
     );
     let head = ui::doc_head(&title, &description, tenant);
-    Html(ui::page(tenant, lang_code, head, body, &nav_cats(&state), &rendered.headings, "", state.important_info.as_deref()).into_string())
-        .into_response()
+    Html(
+        ui::page(
+            tenant,
+            lang_code,
+            head,
+            body,
+            &nav_cats(&state),
+            &rendered.headings,
+            "",
+            state.important_info.as_deref(),
+        )
+        .into_string(),
+    )
+    .into_response()
 }
 
 /// Serve an embedded static asset by path.

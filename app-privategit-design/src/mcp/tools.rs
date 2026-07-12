@@ -72,11 +72,15 @@ pub async fn call_tool(params: &Option<Value>, state: &AppState) -> Result<Value
             if slug.contains("..") || slug.contains('/') {
                 return Err("invalid name".to_string());
             }
-            let path = state.vault.join("components").join(slug).join("recipe.json");
+            let path = state
+                .vault
+                .join("components")
+                .join(slug)
+                .join("recipe.json");
             let raw = std::fs::read_to_string(&path)
                 .map_err(|_| format!("no recipe.json for component '{slug}'"))?;
-            let recipe: Value =
-                serde_json::from_str(&raw).map_err(|_| "recipe.json is not valid JSON".to_string())?;
+            let recipe: Value = serde_json::from_str(&raw)
+                .map_err(|_| "recipe.json is not valid JSON".to_string())?;
             Ok(json!({ "content": [{ "type": "text", "text": recipe.to_string() }] }))
         }
         "list_components" => {
@@ -90,7 +94,9 @@ pub async fn call_tool(params: &Option<Value>, state: &AppState) -> Result<Value
                     .map(|(_, slugs)| slugs.clone())
                     .unwrap_or_default(),
             };
-            Ok(json!({ "content": [{ "type": "text", "text": serde_json::to_string(&slugs).unwrap() }] }))
+            Ok(
+                json!({ "content": [{ "type": "text", "text": serde_json::to_string(&slugs).unwrap() }] }),
+            )
         }
         "get_token" => {
             let query = args
@@ -131,7 +137,9 @@ pub async fn call_tool(params: &Option<Value>, state: &AppState) -> Result<Value
                 .take(20)
                 .map(|doc| json!({ "id": doc.id, "title": doc.title }))
                 .collect();
-            Ok(json!({ "content": [{ "type": "text", "text": serde_json::to_string(&hits).unwrap() }] }))
+            Ok(
+                json!({ "content": [{ "type": "text", "text": serde_json::to_string(&hits).unwrap() }] }),
+            )
         }
         other => Err(format!("unknown tool: {other}")),
     }

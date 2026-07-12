@@ -1072,7 +1072,7 @@ mod tests {
         // that panicked the previous `&user_message[..7900]` fixed-offset slice.
         let prefix = "x".repeat(7899); // 7899 ASCII bytes, so the multi-byte char starts at 7899
         let s = format!("{prefix}日本語のテキスト以降"); // multi-byte chars starting right at the old cut point
-        // Old code: &s[..7900] would panic here (byte 7900 lands mid-character).
+                                                         // Old code: &s[..7900] would panic here (byte 7900 lands mid-character).
         let truncated = truncate_at_char_boundary(&s, 7900);
         assert!(s.is_char_boundary(0)); // sanity
         assert!(truncated.len() <= 7900);
@@ -1109,7 +1109,10 @@ mod tests {
 
     #[test]
     fn format_entity_block_empty_when_no_entities() {
-        assert_eq!(format_entity_block(&[], &[]), "(no entities found in graph)");
+        assert_eq!(
+            format_entity_block(&[], &[]),
+            "(no entities found in graph)"
+        );
     }
 
     #[test]
@@ -1156,9 +1159,8 @@ mod tests {
         }];
         let block = format_entity_block(&entities, &edges);
         assert!(block.contains("## Relationships"));
-        assert!(block.contains(
-            "PointSav Digital Systems --[subsidiary_of]--> Woodfine Capital Projects"
-        ));
+        assert!(block
+            .contains("PointSav Digital Systems --[subsidiary_of]--> Woodfine Capital Projects"));
     }
 
     #[test]

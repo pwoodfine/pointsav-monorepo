@@ -83,7 +83,10 @@ pub struct ParsedDoc {
 /// very first line as `---` and close with a line that is exactly `---`.
 fn split(text: &str) -> (Option<&str>, &str) {
     let t = text.strip_prefix('\u{feff}').unwrap_or(text); // tolerate BOM
-    let Some(rest) = t.strip_prefix("---\n").or_else(|| t.strip_prefix("---\r\n")) else {
+    let Some(rest) = t
+        .strip_prefix("---\n")
+        .or_else(|| t.strip_prefix("---\r\n"))
+    else {
         return (None, text);
     };
     // Find the closing delimiter line.
@@ -123,8 +126,14 @@ mod tests {
     fn parses_frontmatter_and_body() {
         let src = "---\ntitle: \"Zero-container inference\"\nslug: zero-container-inference\ncategory: architecture\nstatus: stub\n---\nBody starts here.\n";
         let doc = parse(src);
-        assert_eq!(doc.frontmatter.title.as_deref(), Some("Zero-container inference"));
-        assert_eq!(doc.frontmatter.slug.as_deref(), Some("zero-container-inference"));
+        assert_eq!(
+            doc.frontmatter.title.as_deref(),
+            Some("Zero-container inference")
+        );
+        assert_eq!(
+            doc.frontmatter.slug.as_deref(),
+            Some("zero-container-inference")
+        );
         assert_eq!(doc.frontmatter.category.as_deref(), Some("architecture"));
         assert_eq!(doc.body_md.trim(), "Body starts here.");
     }
@@ -144,7 +153,10 @@ mod tests {
         assert_eq!(doc.frontmatter.references.len(), 2);
         assert_eq!(doc.frontmatter.references[0].id, "1"); // int coerced to string
         assert_eq!(doc.frontmatter.references[1].id, "rfc-9162");
-        assert_eq!(doc.frontmatter.references[0].url.as_deref(), Some("https://a"));
+        assert_eq!(
+            doc.frontmatter.references[0].url.as_deref(),
+            Some("https://a")
+        );
     }
 
     #[test]

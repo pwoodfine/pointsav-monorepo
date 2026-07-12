@@ -94,7 +94,9 @@ impl Tenant {
     pub fn license_url(&self) -> &'static str {
         match self {
             Tenant::Documentation => "https://creativecommons.org/licenses/by/4.0/",
-            Tenant::Projects | Tenant::Corporate => "https://creativecommons.org/licenses/by-nd/4.0/",
+            Tenant::Projects | Tenant::Corporate => {
+                "https://creativecommons.org/licenses/by-nd/4.0/"
+            }
         }
     }
 
@@ -198,12 +200,18 @@ impl Tenant {
             Tenant::Projects => vec![
                 ("Corporate", "https://corporate.woodfinegroup.com/"),
                 ("Newsroom", "https://newsroom.woodfinegroup.com/"),
-                ("GitHub", "https://github.com/woodfine/woodfine-fleet-deployment"),
+                (
+                    "GitHub",
+                    "https://github.com/woodfine/woodfine-fleet-deployment",
+                ),
             ],
             Tenant::Corporate => vec![
                 ("Projects", "https://projects.woodfinegroup.com/"),
                 ("Newsroom", "https://newsroom.woodfinegroup.com/"),
-                ("GitHub", "https://github.com/woodfine/woodfine-fleet-deployment"),
+                (
+                    "GitHub",
+                    "https://github.com/woodfine/woodfine-fleet-deployment",
+                ),
             ],
         }
     }
@@ -212,7 +220,10 @@ impl Tenant {
     /// (`(label, url)`): PointSav ↔ Woodfine.
     pub fn other_org(&self) -> (&'static str, &'static str) {
         match self {
-            Tenant::Documentation => ("Woodfine Capital Projects", "https://home.woodfinegroup.com/"),
+            Tenant::Documentation => (
+                "Woodfine Capital Projects",
+                "https://home.woodfinegroup.com/",
+            ),
             Tenant::Projects | Tenant::Corporate => {
                 ("PointSav Digital Systems", "https://home.pointsav.com/")
             }

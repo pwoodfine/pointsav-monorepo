@@ -146,8 +146,10 @@ pub fn discover_nav(vault: &Path) -> HashMap<String, Vec<String>> {
                 let name = e.file_name().into_string().ok()?;
                 match layout {
                     Layout::Nested => ft.is_dir().then_some(name),
-                    Layout::Flat => (ft.is_file() && name.ends_with(".md") && !name.ends_with(".es.md"))
-                        .then(|| name[..name.len() - 3].to_string()),
+                    Layout::Flat => {
+                        (ft.is_file() && name.ends_with(".md") && !name.ends_with(".es.md"))
+                            .then(|| name[..name.len() - 3].to_string())
+                    }
                 }
             })
             .collect();
