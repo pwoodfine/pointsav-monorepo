@@ -52,11 +52,7 @@ pub extern "C" fn notified(ch: u64) {
 #[cfg(not(test))]
 #[panic_handler]
 fn panic(_info: &core::panic::PanicInfo) -> ! {
-<<<<<<< HEAD
     loop {
         core::hint::spin_loop();
     }
-=======
-    loop {}
->>>>>>> d4c89a9c (fix(pre-promote): cargo fmt --all; service-people Default impl + is_err(); app-console-content COA->Coa + format!/map_or fixes; system-gateway-mba unused import; service-fs needless-borrow)
 }
