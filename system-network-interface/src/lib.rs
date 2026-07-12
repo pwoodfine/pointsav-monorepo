@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
 
-
 // Discovery constants
 pub const GCP_RELAY_IP: [u8; 4] = [34, 53, 65, 203]; // static; reserved 2026-05-30
 pub const MDNS_MULTICAST: [u8; 4] = [224, 0, 0, 251]; // RFC 6762 §2

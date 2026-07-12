@@ -50,7 +50,12 @@ pub fn load_and_flatten(vault: &Path) -> Vec<TokenTier> {
     };
 
     let mut tiers = Vec::new();
-    for tier_name in ["primitive", "theme", "ibm-carbon-org-chart", "org-chart-extended"] {
+    for tier_name in [
+        "primitive",
+        "theme",
+        "ibm-carbon-org-chart",
+        "org-chart-extended",
+    ] {
         let Some(Value::Object(tier_map)) = root.get(tier_name) else {
             continue;
         };

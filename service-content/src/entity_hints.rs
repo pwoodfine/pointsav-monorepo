@@ -115,7 +115,12 @@ mod tests {
     fn hints_bucket_by_classification_capped_at_three() {
         // All 4 names are valid (uppercase-initial, non-noise) so this genuinely
         // exercises the HINTS_PER_LABEL cap rather than incidental filtering.
-        let names = ["Jennifer Woodfine", "Peter Woodfine", "Mathew Foster", "Alice Chen"];
+        let names = [
+            "Jennifer Woodfine",
+            "Peter Woodfine",
+            "Mathew Foster",
+            "Alice Chen",
+        ];
         let entities: Vec<GraphEntity> = names.iter().map(|n| person_entity(n)).collect();
 
         let hints = build_hints(entities);
@@ -134,7 +139,10 @@ mod tests {
 
     #[test]
     fn rejects_lowercase_initial_common_noun_phrases() {
-        assert!(!is_valid_hint_candidate("no named person identified", "Person"));
+        assert!(!is_valid_hint_candidate(
+            "no named person identified",
+            "Person"
+        ));
         assert!(!is_valid_hint_candidate("different location", "Location"));
         assert!(!is_valid_hint_candidate("candidate locations", "Location"));
         assert!(!is_valid_hint_candidate("commercial locations", "Location"));
@@ -143,7 +151,10 @@ mod tests {
     #[test]
     fn accepts_real_proper_noun_names() {
         assert!(is_valid_hint_candidate("American Brass Company", "Company"));
-        assert!(is_valid_hint_candidate("Quicksilver Harbor Logistics", "Company"));
+        assert!(is_valid_hint_candidate(
+            "Quicksilver Harbor Logistics",
+            "Company"
+        ));
         assert!(is_valid_hint_candidate("Wellington", "Location"));
         assert!(is_valid_hint_candidate("Callum Fitzgerald", "Person"));
     }
@@ -153,7 +164,10 @@ mod tests {
         // Defense-in-depth: code/path artifacts entity_filter::is_noise_entity_name
         // already catches should also be rejected as hint candidates.
         assert!(!is_valid_hint_candidate("build.py", "Project"));
-        assert!(!is_valid_hint_candidate("command-20260520-stage6-rebase", "Project"));
+        assert!(!is_valid_hint_candidate(
+            "command-20260520-stage6-rebase",
+            "Project"
+        ));
     }
 
     #[test]

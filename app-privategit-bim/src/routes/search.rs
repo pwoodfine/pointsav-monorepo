@@ -13,5 +13,7 @@ pub async fn search_handler(
 ) -> Html<String> {
     let query = params.get("q").cloned().unwrap_or_default();
     let content = render::search::render_search_results(&query, &state);
-    Html(render::shell::page_shell("Search", "/search", &content, &state))
+    Html(render::shell::page_shell(
+        "Search", "/search", &content, &state,
+    ))
 }

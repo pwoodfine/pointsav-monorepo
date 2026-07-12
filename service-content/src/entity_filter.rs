@@ -282,7 +282,9 @@ fn validate_relation_edge_in(
 /// predicate *is* in the vocabulary, its subject/object classes are enforced.
 pub fn validate_relation_edge(predicate: &str, subject_class: &str, object_class: &str) -> bool {
     match RELATION_ONTOLOGY.get() {
-        Some(ontology) => validate_relation_edge_in(ontology, predicate, subject_class, object_class),
+        Some(ontology) => {
+            validate_relation_edge_in(ontology, predicate, subject_class, object_class)
+        }
         None => true,
     }
 }
@@ -712,10 +714,7 @@ mod tests {
         // unrecognized one is "not yet in the vocabulary," not "known to be wrong."
         let ontology = HashMap::new();
         assert!(validate_relation_edge_in(
-            &ontology,
-            "invented",
-            "Person",
-            "Project"
+            &ontology, "invented", "Person", "Project"
         ));
     }
 

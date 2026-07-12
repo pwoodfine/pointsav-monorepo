@@ -32,7 +32,10 @@ pub fn sitemap_xml(base_url: &str, docs: &[&DocRef]) -> String {
     let mut s = String::from(
         "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">\n",
     );
-    s.push_str(&format!("  <url><loc>{}/</loc></url>\n", xml_escape(base_url)));
+    s.push_str(&format!(
+        "  <url><loc>{}/</loc></url>\n",
+        xml_escape(base_url)
+    ));
     for d in docs {
         let loc = xml_escape(&format!("{base_url}/wiki/{}", d.slug));
         match &d.last_edited {

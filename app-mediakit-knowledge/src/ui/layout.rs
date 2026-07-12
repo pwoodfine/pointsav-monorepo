@@ -312,14 +312,26 @@ pub fn footer(tenant: Tenant) -> Markup {
 /// Format an ISO `YYYY-MM-DD` as "25 May 2026"; pass anything else through.
 fn format_date(iso: &str) -> String {
     const MONTHS: [&str; 12] = [
-        "January", "February", "March", "April", "May", "June", "July", "August", "September",
-        "October", "November", "December",
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December",
     ];
     let p: Vec<&str> = iso.trim().split('-').collect();
     if p.len() == 3 {
-        if let (Ok(y), Ok(m), Ok(d)) =
-            (p[0].parse::<i32>(), p[1].parse::<usize>(), p[2].parse::<u32>())
-        {
+        if let (Ok(y), Ok(m), Ok(d)) = (
+            p[0].parse::<i32>(),
+            p[1].parse::<usize>(),
+            p[2].parse::<u32>(),
+        ) {
             if (1..=12).contains(&m) {
                 return format!("{d} {} {y}", MONTHS[m - 1]);
             }

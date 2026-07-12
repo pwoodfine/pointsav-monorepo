@@ -255,7 +255,10 @@ pub fn parse_entity_classes(csv: &str) -> Result<Vec<EntityClassRow>, String> {
     for result in rdr.records() {
         let r = result.map_err(|e| format!("entity_classes CSV parse error: {e}"))?;
         if r.len() < 6 {
-            return Err(format!("entity_classes row has {} columns, need 6", r.len()));
+            return Err(format!(
+                "entity_classes row has {} columns, need 6",
+                r.len()
+            ));
         }
         rows.push(EntityClassRow {
             class_id: r[0].trim().to_string(),
@@ -811,7 +814,10 @@ mod tests {
         assert_eq!(entities[0].entity_name, "Guide");
         assert_eq!(entities[0].classification, "entity-class");
         assert_eq!(entities[0].role_vector.as_deref(), Some("guide-"));
-        assert_eq!(entities[0].location_vector.as_deref(), Some("documentation"));
+        assert_eq!(
+            entities[0].location_vector.as_deref(),
+            Some("documentation")
+        );
         assert_eq!(entities[0].module_id, "__taxonomy__");
         assert!((entities[0].confidence - 1.0).abs() < f64::EPSILON);
     }
@@ -843,8 +849,7 @@ mod tests {
         let Ok(csv) = std::fs::read_to_string(csv_path) else {
             return;
         };
-        let rows =
-            parse_entity_classes(&csv).expect("entity_classes.csv must parse cleanly");
+        let rows = parse_entity_classes(&csv).expect("entity_classes.csv must parse cleanly");
         assert!(
             !rows.is_empty(),
             "entity_classes.csv must have at least one row"

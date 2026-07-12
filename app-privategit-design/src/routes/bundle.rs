@@ -76,7 +76,14 @@ pub async fn list(Path(name): Path<String>, State(state): State<AppState>) -> Re
         })
         .expect("render bundle.html failed");
 
-    let nav_html = render::render_nav(&state.env, &state.nav, &state.component_groups, vault::SECTIONS, "", "");
+    let nav_html = render::render_nav(
+        &state.env,
+        &state.nav,
+        &state.component_groups,
+        vault::SECTIONS,
+        "",
+        "",
+    );
     Html(render::shell(
         &state.env,
         &format!("{title} — PointSav Design System"),
@@ -110,7 +117,14 @@ pub async fn file(
     let schema_type = schema::detect(&frontmatter);
     let content = schema::render(schema_type, &frontmatter, &body);
 
-    let nav_html = render::render_nav(&state.env, &state.nav, &state.component_groups, vault::SECTIONS, "", "");
+    let nav_html = render::render_nav(
+        &state.env,
+        &state.nav,
+        &state.component_groups,
+        vault::SECTIONS,
+        "",
+        "",
+    );
     Html(render::shell(
         &state.env,
         &format!("{filename} — PointSav Design System"),

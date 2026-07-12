@@ -53,12 +53,14 @@ impl Config {
             ),
         );
 
-        let templates_dir = PathBuf::from(env::var("DESIGN_TEMPLATES_DIR").unwrap_or_else(|_| {
-            concat!(env!("CARGO_MANIFEST_DIR"), "/templates").to_string()
-        }));
-        let static_dir = PathBuf::from(env::var("DESIGN_STATIC_DIR").unwrap_or_else(|_| {
-            concat!(env!("CARGO_MANIFEST_DIR"), "/static").to_string()
-        }));
+        let templates_dir = PathBuf::from(
+            env::var("DESIGN_TEMPLATES_DIR")
+                .unwrap_or_else(|_| concat!(env!("CARGO_MANIFEST_DIR"), "/templates").to_string()),
+        );
+        let static_dir = PathBuf::from(
+            env::var("DESIGN_STATIC_DIR")
+                .unwrap_or_else(|_| concat!(env!("CARGO_MANIFEST_DIR"), "/static").to_string()),
+        );
 
         Config {
             vault,

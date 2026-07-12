@@ -20,7 +20,10 @@ struct Hit {
 /// card.rs::collect_kp_leaves, duplicated rather than shared since search
 /// wants every category file, not just key-plans, and the two callers'
 /// filtering needs are different enough not to force a shared abstraction).
-fn collect_entities<'a>(obj: &'a serde_json::Map<String, Value>, out: &mut Vec<(&'a str, &'a Value)>) {
+fn collect_entities<'a>(
+    obj: &'a serde_json::Map<String, Value>,
+    out: &mut Vec<(&'a str, &'a Value)>,
+) {
     for (key, val) in obj {
         if key == "$description" {
             continue;
@@ -83,7 +86,9 @@ fn highlight_snippet(text: &str, tokens: &[String]) -> String {
     let start = pos.saturating_sub(window);
     let end = (pos + window).min(text.len());
     // Snap to char boundaries.
-    let start = (start..=pos).find(|i| text.is_char_boundary(*i)).unwrap_or(0);
+    let start = (start..=pos)
+        .find(|i| text.is_char_boundary(*i))
+        .unwrap_or(0);
     let end = (end..text.len().min(end + 4))
         .find(|i| text.is_char_boundary(*i))
         .unwrap_or(text.len());
@@ -247,7 +252,11 @@ pub fn render_search_results(query: &str, state: &AppState) -> String {
         }
     }
 
-    hits.sort_by(|a, b| b.score.cmp(&a.score).then_with(|| a.tiebreak.cmp(&b.tiebreak)));
+    hits.sort_by(|a, b| {
+        b.score
+            .cmp(&a.score)
+            .then_with(|| a.tiebreak.cmp(&b.tiebreak))
+    });
 
     let count = hits.len();
     let mut results_html = String::new();

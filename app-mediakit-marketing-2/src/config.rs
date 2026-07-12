@@ -13,7 +13,11 @@ use std::path::PathBuf;
 use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
-#[command(name = "app-mediakit-marketing-2", version, about = "Marketing platform engine (rewrite)")]
+#[command(
+    name = "app-mediakit-marketing-2",
+    version,
+    about = "Marketing platform engine (rewrite)"
+)]
 pub struct Cli {
     #[command(subcommand)]
     pub command: Command,

@@ -6249,6 +6249,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "service-email"
+version = "0.1.0"
+dependencies = [
+ "axum 0.7.9",
+ "base64 0.22.1",
+ "chrono",
+ "reqwest 0.11.27",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tower 0.4.13",
+ "tracing",
+ "tracing-subscriber",
+ "ureq 3.3.0",
+ "uuid",
+]
+
+[[package]]
 name = "service-extraction"
 version = "0.1.0"
 dependencies = [
