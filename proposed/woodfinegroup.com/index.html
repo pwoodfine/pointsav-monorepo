@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#F7F9FA">
+    <meta name="color-scheme" content="light only">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    
+    <title>Woodfine Newsroom</title>
+    <meta name="description" content="Woodfine Management Corp. procures and manages regional real estate via Direct-Hold Solutions. Zero redundant fees. Absolute custodial control.">
+    <link rel="canonical" href="https://woodfinegroup.com/">
+    <meta property="og:title" content="Woodfine Capital Projects">
+    <meta property="og:description" content="Direct-Hold Solutions for Regional Real Estate.">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://woodfinegroup.com/">
+    <meta property="og:site_name" content="Woodfine Capital Projects">
+    <meta property="article:published_time" content="2026-03-20T08:00:00Z">
+    <meta property="og:image" content="https://woodfinegroup.com/og-default.png">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Woodfine Capital Projects">
+    <meta name="twitter:description" content="Woodfine Management Corp. procures and manages regional real estate via Direct-Hold Solutions. Zero redundant fees. Absolute custodial control.">
+    <meta name="twitter:image" content="https://woodfinegroup.com/og-default.png">
+    <!-- logo-512.png / og-default.png: assets not sourced yet (BRIEF-seo-cross-site-strategy Phase 0 item). Tags ship anyway per project-editorial guidance -- they degrade gracefully (no preview image) until the asset lands. Meta description trimmed 163->143 chars to clear the 160-char SERP limit (dropped "institutional-grade" qualifier only; on-page body copy is untouched). -->
+    <link rel="preload" as="font" type="font/woff2" href="/fonts/roboto-slab-700.woff2" crossorigin>
+    <link rel="preload" as="font" type="font/woff2" href="/fonts/oswald-700.woff2" crossorigin>
+    <!-- ^ preloads are inert until the two .woff2 assets above are actually added to /fonts/ (see @font-face rules in <style>). -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2250%22 fill=%22%23164679%22/><text x=%2250%22 y=%2252%22 dominant-baseline=%22central%22 text-anchor=%22middle%22 fill=%22%23ffffff%22 font-family=%22Arial,sans-serif%22 font-weight=%22700%22 font-size=%2244%22>W</text></svg>">
+    
+    <script type="application/ld+json">
+    [{
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "@id": "https://woodfinegroup.com/#organization",
+      "name": "Woodfine Capital Projects",
+      "url": "https://woodfinegroup.com",
+      "logo": "https://woodfinegroup.com/logo-512.png",
+      "sameAs": ["https://github.com/woodfine"],
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "telephone": "+1-604-375-1196",
+        "contactType": "Executive Office",
+        "email": "peter@woodfinegroup.com"
+      },
+      "founder": [
+        {"@type": "Person", "name": "Jennifer Woodfine", "sameAs": "https://www.linkedin.com/in/jenniferwoodfine"},
+        {"@type": "Person", "name": "Peter Woodfine", "sameAs": "https://www.linkedin.com/in/peter-m-woodfine-38a19935/"}
+      ]
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "@id": "https://woodfinegroup.com/#website",
+      "name": "Woodfine Capital Projects \u2014 Newsroom",
+      "url": "https://woodfinegroup.com",
+      "publisher": {"@id": "https://woodfinegroup.com/#organization"},
+      "inLanguage": ["en", "es"]
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "NewsArticle",
+      "headline": "Private Market Evolution Highlights Demand for Direct-Hold Real Estate Solutions",
+      "image": "https://woodfinegroup.com/og-default.png",
+      "datePublished": "2026-03-20T08:00:00Z",
+      "dateModified": "2026-03-20T08:00:00Z",
+      "author": [{ "@type": "Organization", "name": "Woodfine Capital Projects" }],
+      "publisher": {"@id": "https://woodfinegroup.com/#organization"}
+    }]
+    </script>
+
+    <style>
+        /* TOKENS: POINT-SAV DESIGN SYSTEM */
+        :root { 
+            --wf-canvas: #F7F9FA; 
+            --wf-card: #FFFFFF; 
+            --wf-text: #111827; 
+            --wf-muted: #6B7280; 
+            --wf-hairline: rgba(17, 24, 39, 0.15);
+            --wf-accent: #164679; 
+            --font-sans: "Nunito Sans", "Avenir LT Std", "Avenir Next", "Mulish", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+            --font-display: "Oswald", "Trade Gothic LT Std", "Barlow Condensed", "Helvetica Neue", Arial, sans-serif; 
+            --font-serif: "Roboto Slab", "Caecilia LT Std", "Zilla Slab", Georgia, serif; 
+            --font-mono: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace; 
+        }
+        /* Self-hosted brand webfonts for design-system parity with home.woodfinegroup.com. */
+        /* NOTE: binary .woff2 assets are NOT present in this repo yet -- add them at /fonts/ */
+        /* (latin subset; Nunito Sans 400/700, Roboto Slab 400/700, Oswald 500/700) before this has any visible effect; */
+        /* until then font-display:swap falls back silently to the system stack above, which is safe. */
+        /* CLS mitigation (ascent-override/size-adjust fallback metrics) intentionally left for a follow-up pass -- */
+        /* fabricating override values without measuring the real font metrics would be worse than omitting them. */
+        @font-face { font-family: "Nunito Sans"; src: url("/fonts/nunito-sans-400.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
+        @font-face { font-family: "Nunito Sans"; src: url("/fonts/nunito-sans-700.woff2") format("woff2"); font-weight: 700; font-style: normal; font-display: swap; }
+        @font-face { font-family: "Roboto Slab"; src: url("/fonts/roboto-slab-400.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
+        @font-face { font-family: "Roboto Slab"; src: url("/fonts/roboto-slab-700.woff2") format("woff2"); font-weight: 700; font-style: normal; font-display: swap; }
+        @font-face { font-family: "Oswald"; src: url("/fonts/oswald-500.woff2") format("woff2"); font-weight: 500; font-style: normal; font-display: swap; }
+        @font-face { font-family: "Oswald"; src: url("/fonts/oswald-700.woff2") format("woff2"); font-weight: 700; font-style: normal; font-display: swap; }
+
+        /* RESET & PHYSICS */
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+        html { text-size-adjust: 100%; -webkit-text-size-adjust: 100%; }
+        .skip-link { position: absolute; left: -9999px; top: auto; }
+        .skip-link:focus { position: fixed; left: 16px; top: 16px; z-index: 1000; background: #fff; color: var(--wf-text); padding: 8px 12px; border-radius: 2px; }
+        body { font-family: var(--font-sans); text-rendering: optimizeLegibility; background: var(--wf-canvas); color: var(--wf-text); line-height: 1.5; overflow-x: hidden; }
+        
+        /* LAYOUT ARCHITECTURE */
+        .header-bar { position: sticky; top: 0; background: rgba(247,249,250,0.95); border-bottom: 1px solid var(--wf-hairline); padding: max(16px, env(safe-area-inset-top)) 24px 16px 24px; z-index: 100; }
+        .nav-container { width: 100%; max-width: 976px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+        .wordmark { font-family: var(--font-display); font-weight: 700; font-size: 1.125rem; letter-spacing: 0; text-transform: uppercase; white-space: nowrap; }
+        .wordmark a { text-decoration: none; }
+        .wordmark a:hover, .wordmark a:focus-visible { text-decoration: underline; }
+        .desktop-actions { display: flex; gap: 8px; align-items: center; }
+        
+        .main-grid { width: 100%; max-width: 1024px; margin: 48px auto; padding: 0 24px; display: grid; grid-template-columns: 1fr 300px; grid-template-areas: "content sidebar" "footer sidebar"; gap: 64px; align-items: start; }
+        
+        /* CONTENT STYLING */
+        .document-canvas { grid-area: content; background: transparent; padding: 0; border: none; min-width: 0; }
+        .document-footer { grid-area: footer; }
+        .sidebar-ledger { grid-area: sidebar; position: sticky; top: max(100px, calc(env(safe-area-inset-top) + 80px)); display: flex; flex-direction: column; gap: 24px; font-family: var(--font-mono); font-size: 0.875rem; min-width: 0; }
+
+        h1, h2, h3 { color: var(--wf-text); font-family: var(--font-display); }
+        h3 { font-size: 1.25rem; margin: 32px 0 16px 0; letter-spacing: -0.01em; font-weight: 700; max-width: 38.5rem; }
+        p { margin-bottom: 16px; max-width: 38.5rem; font-size: 1.0625rem; }
+        strong { font-weight: 700; }
+
+        /* LINGUISTIC TOKENS: SUMMARY & TAKEAWAYS (THE HOOK) */
+        .hook-title { font-family: var(--font-serif); color: var(--wf-text); font-size: 1.5rem; font-weight: 700; line-height: 1.3; margin-bottom: 16px; letter-spacing: -0.01em; max-width: 32.5rem; margin-left: 0; }
+        
+        .executive-abstract { font-family: var(--font-serif); font-size: 1.125rem; color: var(--wf-text); line-height: 1.6; margin-bottom: 32px; border-left: 3px solid var(--wf-accent); padding-left: 20px; }
+        .executive-abstract p { margin-bottom: 12px; }
+        .executive-abstract p:last-child { margin-bottom: 0; }
+        
+        .takeaways-box { border: 1px solid var(--wf-hairline); background: var(--wf-card); padding: 24px; margin-bottom: 48px; border-radius: 2px; max-width: 38.5rem; }
+        .takeaways-header { display: flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--wf-accent); margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--wf-hairline); }
+        .takeaways-header svg { width: 14px; height: 14px; margin-left: 2px; }
+        .takeaways-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 16px; }
+        .takeaways-list li { position: relative; padding-left: 24px; font-size: 1.0625rem; line-height: 1.5; }
+        .takeaways-list li::before { content: "■"; position: absolute; left: 4px; top: 0; color: var(--wf-accent); font-size: 0.65rem; line-height: 2.2; }
+
+        /* LINGUISTIC TOKEN: THE LEDGER DIVIDER & OFFICIAL MANUSCRIPT */
+        .ledger-divider { border-top: 2px solid var(--wf-text); margin: 64px 0 48px 0; position: relative; }
+        .ledger-divider span { position: absolute; top: -10px; left: 0; background: var(--wf-canvas); padding-right: 16px; font-family: var(--font-mono); font-size: 0.75rem; font-weight: 700; color: var(--wf-muted); letter-spacing: 0.05em; text-transform: uppercase; }
+        
+        /* The SEO h1 Target */
+        .manuscript-title { font-size: clamp(2rem, 4vw, 2.5rem); font-weight: 700; line-height: 1.1; margin-bottom: 24px; letter-spacing: 0; max-width: 35.5rem; }
+
+        /* LEGAL LEDGER */
+        .quarantine-line { border: none; border-top: 1px solid var(--wf-hairline); margin: 40px 0 24px 0; }
+        .legal-ledger { font-family: var(--font-mono); font-size: 0.75rem; color: var(--wf-muted); }
+        .legal-ledger h2 { font-size: 0.875rem; color: var(--wf-text); margin-bottom: 8px; text-transform: uppercase; font-weight: 700; }
+        .legal-ledger p { font-size: 0.75rem; margin-bottom: 16px; max-width: 38.5rem; }
+
+        /* SIDEBAR LEDGER COMPONENTS */
+        .trust-badge { background: var(--wf-text); color: var(--wf-canvas); padding: 12px; text-align: center; font-weight: 700; letter-spacing: 0.05em; border-radius: 2px; }
+        .meta-block { border-left: 1px solid var(--wf-hairline); padding-left: 16px; }
+        .meta-label { display: block; color: var(--wf-muted); font-size: 0.75rem; text-transform: uppercase; margin-bottom: 4px; }
+        .hash-display { font-variant-numeric: tabular-nums; display: block; overflow-wrap: anywhere; word-break: break-all; }
+        
+        /* GLOBAL FOOTER */
+        .global-footer-wrapper { border-top: 1px solid var(--wf-hairline); background: var(--wf-canvas); margin-top: 40px; }
+        .global-footer { width: 100%; max-width: 1024px; margin: 0 auto; padding: 32px 24px max(32px, env(safe-area-inset-bottom)); display: grid; grid-template-columns: 612px 1fr; gap: 64px; font-family: var(--font-mono); font-size: 0.75rem; color: var(--wf-muted); }
+        .global-footer h2, .global-footer h4 { font-size: 0.875rem; color: var(--wf-text); margin-bottom: 8px; text-transform: uppercase; font-weight: 700; min-height: 2.8em; }
+        .global-footer p { font-size: 0.75rem; margin-bottom: 16px; max-width: 38.5rem; }
+
+        /* INTERACTIVE PRIMITIVES */
+        .btn { height: 44px; padding: 0 20px; border: 1px solid var(--wf-hairline); background: var(--wf-card); color: var(--wf-text); font-family: var(--font-mono); font-size: 0.875rem; font-weight: 700; text-transform: uppercase; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 2px; transition: background 0.2s, border-color 0.2s; touch-action: manipulation; }
+        .btn svg { display: block; flex-shrink: 0; width: 18px; height: 18px; }
+        .btn span { display: block; line-height: 1; transform: translateY(1px); }
+        .btn:hover { background: var(--wf-canvas); border-color: var(--wf-text); }
+        .btn-primary { background: var(--wf-text); color: var(--wf-canvas); border-color: var(--wf-text); }
+        .btn-primary:hover { background: #000; }
+        .btn:focus-visible, .document-canvas a:focus-visible, .sidebar-ledger a:focus-visible { outline: 3px solid var(--wf-accent); outline-offset: 2px; }
+        .btn-primary:focus-visible { outline-color: #FFFFFF; outline-offset: 2px; }
+        #lang-toggle:focus-visible ~ .app-wrapper label[for="lang-toggle"] { outline: 3px solid var(--wf-accent); outline-offset: 2px; }
+        
+        /* MOBILE ACTION BAR */
+        .mobile-dock { display: none; }
+
+        /* LANGUAGE TOGGLE LOGIC */
+        .lang-es, .btn-es { display: none !important; }
+        #lang-toggle:checked ~ .app-wrapper .lang-en, #lang-toggle:checked ~ .app-wrapper .btn-en { display: none !important; }
+        #lang-toggle:checked ~ .app-wrapper .lang-es { display: block !important; }
+        #lang-toggle:checked ~ .app-wrapper .btn-es { display: inline-flex !important; }
+        #lang-toggle { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
+
+        /* RESPONSIVE DOMINANCE */
+        @media (max-width: 1024px) {
+            .nav-container { flex-direction: column; align-items: center; justify-content: center; gap: 16px; }
+            .desktop-actions { justify-content: center; width: 100%; gap: 8px; }
+            .desktop-actions .btn:not(.hide-on-mobile) { flex: 1 1 0; justify-content: center; padding: 0 8px; }
+            
+            .hide-on-mobile { display: none !important; }
+            #lang-toggle:checked ~ .app-wrapper .hide-on-mobile { display: none !important; }
+            
+            .main-grid { grid-template-columns: 1fr; grid-template-areas: "content" "sidebar" "footer"; gap: 40px; margin: 32px auto; padding: 0 16px; }
+            .sidebar-ledger { position: relative; top: 0; transform: none; }
+            .quarantine-line { margin: 16px 0 32px 0; }
+            .global-footer { grid-template-columns: 1fr; gap: 24px; padding-left: 16px; padding-right: 16px; padding-bottom: calc(80px + env(safe-area-inset-bottom)); } 
+            .global-footer h2, .global-footer h4 { min-height: auto; }
+            .desktop-whatsapp { display: none !important; } 
+            
+            .mobile-dock { display: flex; position: fixed; bottom: 0; left: 0; right: 0; background: var(--wf-card); border-top: 1px solid var(--wf-hairline); padding: 12px 16px max(12px, env(safe-area-inset-bottom)) 16px; z-index: 999; box-shadow: 0 -4px 12px rgba(0,0,0,0.05); }
+            .mobile-dock .btn { flex: 1; height: 48px; }
+        }
+
+        /* REGULATORY PRINT EGRESS */
+        /* WIDE-VIEWPORT SCALING (tablet-landscape / small-laptop dead-margin fix) */
+        /* Stepped container width, matching real hyperscaler practice (Apple Newsroom steps */
+        /* 692px->980px; Stripe goes fluid then caps at 1080px; AWS steps across 4 tiers) -- */
+        /* none hold one static max-width from 1024px all the way up. Gated at 1120px, NOT   */
+        /* immediately above 1024px: the sidebar only widens to 396px here because 1120 is    */
+        /* the minimum total width where 612(content)+64(gap)+396(sidebar)+48(padding) fits    */
+        /* without shrinking the content column below its 612px invariant. So 1080/1112px      */
+        /* (real tablet-landscape widths) are DELIBERATELY still on the base 1024 tier -- widening */
+        /* them further would require a fluid (clamp-based) sidebar, not a fixed 396px one.    */
+        /* Extra width goes to the sidebar column, not the content column, so the reading      */
+        /* measure (rem-based, set above) stays exactly unchanged -- growing the content column */
+        /* instead would open a new dead gap between where the text ends and the sidebar begins. */
+        @media (min-width: 1120px) {
+            .nav-container { max-width: 1072px; }
+            .global-footer { max-width: 1120px; }
+            .main-grid { max-width: 1120px; grid-template-columns: 1fr 396px; }
+        }
+
+        .print-only { display: none; }
+        @media print {
+            @page {
+                size: letter;
+                margin: 1in;
+            }
+            body { 
+                color: #000000 !important; 
+                background: #FFFFFF !important; 
+                font-family: Charter, 'Bitstream Charter', 'Sitka Text', Cambria, Georgia, 'Times New Roman', serif !important; 
+            }
+            .sidebar-ledger, .mobile-dock, .desktop-actions, .desktop-whatsapp, .global-footer-wrapper, input[type="checkbox"], .quarantine-line { display: none !important; }
+            .legal-ledger, .legal-ledger p { color: #000000 !important; }
+            
+            .header-bar { position: static; background: transparent; padding: 0 0 16px 0; margin-bottom: 32px; border-bottom: none; backdrop-filter: none; }
+            .wordmark { color: #000000; font-size: 14pt; font-family: var(--font-sans); }
+            
+            .main-grid { display: block; margin: 0; padding: 0; }
+            .document-canvas { padding: 0; background: transparent; }
+            
+            p, .legal-ledger, .print-only, .takeaways-list li, .executive-abstract { font-size: 10.5pt; line-height: 1.5; orphans: 4; widows: 4; max-width: 100%; }
+            h1, h2, h3, h4 { color: #000000 !important; break-after: avoid; page-break-after: avoid; }
+            
+            .hook-title { font-size: 16pt; margin-bottom: 12px; margin-left: 0; max-width: 100%; } 
+            .manuscript-title { font-size: 22pt; margin-bottom: 16px; max-width: 100%; overflow-wrap: break-word; line-height: 1.1; letter-spacing: -0.02em; }
+            h2, h3 { font-size: 14pt; margin-top: 24pt; }
+            
+            .abstract-label { display: none; }
+            .executive-abstract { border-left: 2px solid #000000; padding-left: 16px; margin-bottom: 24px; }
+            
+            .takeaways-box { 
+                break-inside: avoid; 
+                page-break-inside: avoid;
+                border: none; 
+                padding: 0; 
+                margin-bottom: 32px; 
+                background: transparent; 
+                max-width: 100%; 
+            }
+            .takeaways-header { color: #000000; border-bottom: none; padding-bottom: 0; margin-bottom: 12px; }
+            .takeaways-list li::before { color: #000000; font-size: 0.75rem; line-height: 1.8; left: 0; }
+            .takeaways-list li { padding-left: 16px; }
+            
+            .ledger-divider { border-top: none; margin: 32px 0; font-weight: bold; }
+            .ledger-divider span { background: transparent; color: #000000; position: static; padding-right: 0; }
+
+            .print-only { display: block; margin-top: 32px; break-inside: avoid; page-break-inside: avoid; }
+            .document-footer { break-inside: avoid; page-break-inside: avoid; margin-top: 32px; border-top: 1px solid #000000; padding-top: 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<a href="#main" class="skip-link">Skip to content</a>
+<input type="checkbox" id="lang-toggle" aria-label="Switch page language between English and Spanish">
+
+<div class="app-wrapper">
+    <header class="header-bar">
+        <div class="nav-container">
+            <div class="wordmark" id="token-wordmark"></div>
+            <nav class="desktop-actions" id="token-desktop-nav"></nav>
+        </div>
+    </header>
+
+    <main class="main-grid" id="main">
+        <article class="document-canvas">
+            
+            <div class="lang-en" lang="en">
+                <p class="hook-title" id="token-hook-title-en" role="doc-subtitle"></p>
+                <div id="token-article-abstract-en" class="executive-abstract"></div>
+                <div id="token-article-takeaways-en"></div>
+                
+                <div class="ledger-divider"><span>FOR IMMEDIATE RELEASE</span></div>
+                
+                <h1 class="manuscript-title" id="token-official-title-en"></h1>
+                <div id="token-article-body-en"></div>
+            </div>
+            
+            <div class="lang-es" lang="es">
+                <p class="hook-title" id="token-hook-title-es" role="doc-subtitle"></p>
+                <div id="token-article-abstract-es" class="executive-abstract"></div>
+                <div id="token-article-takeaways-es"></div>
+                
+                <div class="ledger-divider"><span>PARA PUBLICACIÓN INMEDIATA</span></div>
+                
+                <h1 class="manuscript-title" id="token-official-title-es"></h1>
+                <div id="token-article-body-es"></div>
+            </div>
+            
+            <div class="print-only" id="token-print-contact"></div>
+        </article>
+
+        <aside class="sidebar-ledger" id="token-sidebar"></aside>
+
+        <div class="document-footer">
+            <hr class="quarantine-line">
+            <section class="legal-ledger" id="token-document-disclaimers"></section>
+        </div>
+    </main>
+
+    <div class="global-footer-wrapper">
+        <footer class="global-footer" id="token-global-footer"></footer>
+    </div>
+
+    <nav class="mobile-dock" id="token-mobile-dock"></nav>
+</div>
+
+<script>
+    (function() {
+        let maxScroll = 0;
+        let clickTargets = [];
+        const startTime = Date.now();
+        
+        let maxScrollable = document.documentElement.scrollHeight - window.innerHeight;
+        window.addEventListener('resize', () => {
+            maxScrollable = document.documentElement.scrollHeight - window.innerHeight;
+        }, { passive: true });
+
+        window.addEventListener('scroll', () => {
+            const scrollPercent = Math.round((window.scrollY / maxScrollable) * 100);
+            if (scrollPercent > maxScroll) maxScroll = scrollPercent;
+        }, { passive: true });
+
+        document.addEventListener('click', (e) => {
+            const target = e.target.closest('.btn, a');
+            if (target) clickTargets.push(target.innerText.trim().substring(0, 20) || 'link_click');
+        }, { passive: true });
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden') {
+                const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+                const payload = {
+                    uri: window.location.href,
+                    timestamp: new Date().toISOString(),
+                    user_agent: navigator.userAgent,
+                    referrer: document.referrer || "direct",
+                    viewport: `${window.innerWidth}x${window.innerHeight}`,
+                    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "unknown",
+                    device_memory: navigator.deviceMemory || "unknown",
+                    hardware_cores: navigator.hardwareConcurrency || "unknown",
+                    dwell_seconds: Math.round((Date.now() - startTime) / 1000),
+                    scroll_depth: maxScroll,
+                    intent_clicks: clickTargets.length > 0 ? clickTargets.join(' | ') : "none",
+                    lang_browser: navigator.language || "unknown",
+                    network: conn ? conn.effectiveType : "unknown"
+                };
+                const blob = new Blob([JSON.stringify(payload)], { type: 'text/plain' });
+                navigator.sendBeacon("https://telemetry.woodfinegroup.com/telemetry-endpoint", blob);
+            }
+        });
+    })();
+
+    async function calculateHash(){
+        const isEsp = document.getElementById('lang-toggle').checked;
+        const text = document.querySelector(isEsp ? '.lang-es' : '.lang-en').innerText;
+        const hashBuffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        document.querySelectorAll('.hash-display').forEach(el => el.innerText = hashHex);
+    }
+    
+    function setCopyrightYear() {
+        document.querySelectorAll('.current-year').forEach(el => el.textContent = new Date().getFullYear());
+    }
+
+    document.getElementById('lang-toggle').addEventListener('change', calculateHash);
+    window.addEventListener('DOMContentLoaded', () => {
+        calculateHash();
+        setCopyrightYear();
+    });
+</script>
+
+<script>
+/* ========================================================================== */
+/* STATIC CORPORATE LEDGERS (BILINGUAL PARITY)                                */
+/* ========================================================================== */
+
+document.getElementById('token-wordmark').innerHTML = `<a href="https://home.woodfinegroup.com/" style="color:inherit;">Woodfine Capital Projects</a>`;
+
+document.getElementById('token-desktop-nav').innerHTML = `
+    <label for="lang-toggle" class="btn btn-primary">
+        <span class="btn-en" lang="es">ESPAÑOL</span><span class="btn-es" lang="en">ENGLISH</span>
+    </label>
+    <a href="https://gis.woodfinegroup.com/" class="btn">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"></path></svg>
+        <span class="lang-en">LOCATION INTELLIGENCE</span><span class="lang-es">INTELIGENCIA DE UBICACIÓN</span>
+    </a>
+    <button onclick="window.print()" class="btn hide-on-mobile"><span class="lang-en">PRINT</span><span class="lang-es" lang="es">IMPRIMIR</span></button>
+    <a href="/woodfine_media_release_en.pdf" class="btn btn-en hide-on-mobile" download aria-label="Download media release (PDF, English)"><span>PDF</span></a>
+    <a href="/woodfine_media_release_es.pdf" class="btn btn-es hide-on-mobile" download aria-label="Descargar comunicado de prensa (PDF, español)"><span>PDF</span></a>
+`;
+
+const waSvg = `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>`;
+
+document.getElementById('token-mobile-dock').innerHTML = `
+    <a href="https://wa.me/16043751196" target="_blank" class="btn btn-action" style="border-color: var(--wf-hairline);">
+        ${waSvg} <span>WHATSAPP</span>
+    </a>
+`;
+
+// BILINGUAL SIDEBAR
+document.getElementById('token-sidebar').innerHTML = `
+    <div class="trust-badge lang-en">[ ∅ ZERO COOKIES ]</div>
+    <div class="trust-badge lang-es">[ ∅ CERO COOKIES ]</div>
+    
+    <div class="meta-block lang-en">
+        <span class="meta-label">Issued</span>
+        <time datetime="2026-03-20">March 20, 2026</time>
+    </div>
+    <div class="meta-block lang-es">
+        <span class="meta-label">Emitido</span>
+        <time datetime="2026-03-20">20 de marzo de 2026</time>
+    </div>
+    
+    <div class="meta-block lang-en">
+        <span class="meta-label">Contact Authority</span>
+        <address style="font-style:normal;">
+            <strong>Peter M. Woodfine</strong><br>
+            Executive Officer<br><br>
+            Woodfine Management Corp.<br>
+            595 Burrard Street,<br>
+            Lower Concourse<br>
+            PO Box 48295 Bentall<br>
+            Vancouver, BC V7X 1A1<br><br>
+            <a href="mailto:peter@woodfinegroup.com" style="color:var(--wf-accent); text-decoration:underline;">peter@woodfinegroup.com</a><br>
+            +1 604 375 1196
+        </address>
+    </div>
+    <div class="meta-block lang-es">
+        <span class="meta-label">Autoridad de Contacto</span>
+        <address style="font-style:normal;">
+            <strong>Peter M. Woodfine</strong><br>
+            Executive Officer<br><br>
+            Woodfine Management Corp.<br>
+            595 Burrard Street,<br>
+            Lower Concourse<br>
+            PO Box 48295 Bentall<br>
+            Vancouver, BC V7X 1A1<br><br>
+            <a href="mailto:peter@woodfinegroup.com" style="color:var(--wf-accent); text-decoration:underline;">peter@woodfinegroup.com</a><br>
+            +1 604 375 1196
+        </address>
+    </div>
+    
+    <div class="meta-block lang-en">
+        <span class="meta-label">Cryptographic State Hash</span>
+        <span class="hash-display" style="font-size:0.75rem;">CALCULATING...</span>
+    </div>
+    <div class="meta-block lang-es">
+        <span class="meta-label">Hash Criptográfico de Estado</span>
+        <span class="hash-display" style="font-size:0.75rem;">CALCULANDO...</span>
+    </div>
+
+    <a href="https://wa.me/16043751196" target="_blank" class="btn btn-action desktop-whatsapp" style="align-self: stretch; border-color: var(--wf-hairline);">
+        ${waSvg} <span>WHATSAPP</span>
+    </a>
+`;
+
+// BILINGUAL PRINT CONTACT
+document.getElementById('token-print-contact').innerHTML = `
+    <div class="lang-en" lang="en">
+        <h2>CONTACT FOR FURTHER INFORMATION:</h2>
+        <p>Peter M. Woodfine<br>Executive Officer</p>
+        <p>Woodfine Management Corp.<br>595 Burrard Street, Lower Concourse<br>PO Box 48295 Bentall Vancouver, BC V7X 1A1<br><br>+1 604 375 1196<br>peter@woodfinegroup.com<br>woodfinegroup.com | pointsav.com</p>
+    </div>
+    <div class="lang-es" lang="es">
+        <h2>PARA MÁS INFORMACIÓN, PÓNGASE EN CONTACTO CON:</h2>
+        <p>Peter M. Woodfine<br>Executive Officer</p>
+        <p>Woodfine Management Corp.<br>595 Burrard Street, Lower Concourse<br>PO Box 48295 Bentall Vancouver, BC V7X 1A1<br><br>+1 604 375 1196<br>peter@woodfinegroup.com<br>woodfinegroup.com | pointsav.com</p>
+    </div>
+`;
+
+// BILINGUAL LEGAL ANCHOR (Safe Harbor Compliance)
+document.getElementById('token-document-disclaimers').innerHTML = `
+    <div class="lang-en" lang="en">
+        <h2>Important notice regarding securities and forward-looking statements</h2>
+        <p>This news release does not constitute an offer to sell or a solicitation of an offer to buy any securities. Securities of Woodfine Capital Projects Inc. and its affiliated direct-hold solutions are unregistered and have not been approved by any regulatory authority. They have not been, and will not be, registered under the United States Securities Act of 1933, applicable Canadian provincial securities laws, the Ley del Mercado de Valores (LMV) of Mexico, or the EU Prospectus Regulation (EU 2017/1129) and Spain&rsquo;s Ley 6/2023 (LMVSI). Distribution is executed strictly via private placement exemptions to permitted qualified investors. This communication contains forward-looking statements within the meaning of the U.S. Private Securities Litigation Reform Act of 1995 and Canadian National Instrument 51-102. Statements regarding capital deployment, structural models, and asset yields are based on management's mathematical assumptions and are subject to material risks&mdash;including macroeconomic illiquidity and shifting multi-jurisdictional regulations&mdash;which may cause actual results to differ materially. Woodfine disclaims any obligation to update these statements.</p>
+    </div>
+    <div class="lang-es" lang="es">
+        <h2>Aviso importante sobre valores y declaraciones prospectivas</h2>
+        <p>Este comunicado de prensa no constituye una oferta de venta ni una solicitud de oferta de compra de ningún valor. Los valores de Woodfine Capital Projects Inc. y sus Direct-Hold Solutions afiliadas no están registrados y no han sido aprobados por ninguna autoridad reguladora. No han sido, ni serán, registrados bajo la United States Securities Act of 1933, las leyes de valores provinciales canadienses aplicables, la Ley del Mercado de Valores (LMV) of Mexico, o la EU Prospectus Regulation (EU 2017/1129) y Spain’s Ley 6/2023 (LMVSI). La distribución se ejecuta estrictamente a través de exenciones de colocación privada a inversores calificados permitidos. Esta comunicación contiene declaraciones prospectivas en el sentido de la U.S. Private Securities Litigation Reform Act of 1995 y el Canadian National Instrument 51-102. Las declaraciones sobre el despliegue de capital, los modelos estructurales y los rendimientos de los activos se basan en las suposiciones matemáticas de la gerencia y están sujetas a riesgos materiales &mdash;incluida la iliquidez macroeconómica y los cambios en las regulaciones multijurisdiccionales&mdash; que pueden hacer que los resultados reales difieran materialmente. Woodfine renuncia a cualquier obligación de actualizar estas declaraciones.</p>
+    </div>
+`;
+
+// UNILINGUAL GLOBAL FOOTER (Safe Harbor Compliance)
+document.getElementById('token-global-footer').innerHTML = `
+    <div class="copyright-disclaimer">
+        <h2 class="lang-en">Important notice regarding intellectual property and trademarks</h2>
+        <h2 class="lang-es" lang="es">Aviso importante sobre propiedad intelectual y marcas comerciales</h2>
+        <!-- Source: factory-release-engineering/policies/TRADEMARK.md §13 "Standard Notice" (canonical short form), used verbatim -- not legal-tokens-woodfine.yaml's website.footer_trademark_en, which was found to be missing the Capability Geometry unregistered-mark sentence and uses "Woodfine Management Corp™" where TRADEMARK.md says "MCorp™". Operator decision 2026-07-12: use "MCorp™" per TRADEMARK.md, ahead of the still-open MCorp™-vs-Woodfine-Management-Corp™ naming call. Spanish translation is ours, not an official ES source -- flag for legal/translation review before this goes live. Manual re-sync required: no build pipeline renders this file into index.html. -->
+        <p class="lang-en">Woodfine Capital Projects&trade;, MCorp&trade;, PointSav Digital Systems&trade;, Totebox Orchestration&trade;, Totebox Archive&trade;, and Capability Geometry&trade; are trademarks of Woodfine Capital Projects Inc., used in Canada, the United States, Latin America, and Europe. Capability Geometry&trade; is an unregistered trademark of Woodfine Capital Projects Inc. All other trademarks are the property of their respective owners.</p>
+        <p class="lang-es" lang="es">Woodfine Capital Projects&trade;, MCorp&trade;, PointSav Digital Systems&trade;, Totebox Orchestration&trade;, Totebox Archive&trade; y Capability Geometry&trade; son marcas comerciales de Woodfine Capital Projects Inc., utilizadas en Canad&aacute;, los Estados Unidos, Am&eacute;rica Latina y Europa. Capability Geometry&trade; es una marca comercial no registrada de Woodfine Capital Projects Inc. Todas las dem&aacute;s marcas comerciales son propiedad de sus respectivos titulares.</p>
+    </div>
+    <div class="digital-disclaimer">
+        <h4>Digital Infrastructure & Privacy Posture</h4>
+        <p>This interface operates on a Zero-Cookie and Zero-State Telemetry architecture. It does not deploy tracking cookies, retain session states, or harvest Personally Identifiable Information (PII). System interactions are limited to the collection of anonymized network routing and viewport data strictly for the purpose of auditing infrastructure performance.</p>
+    </div>
+
+    <div class="terminal-baseplate" style="grid-column: 1 / -1; border-top: 1px solid var(--wf-hairline); padding-top: 24px; margin-top: 32px; text-align: center;">
+        <!-- Source: legal-tokens-woodfine.yaml -> copyright.statement (single-year form; year_founded/range form exists in this token file but not used here). Operator decision 2026-07-12: single auto-updating year, no founding-year range, matching sibling properties. -->
+        <p class="lang-en" style="color: var(--wf-text); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; max-width: none;">&copy; <span class="current-year"></span> Woodfine Capital Projects Inc. All rights reserved.</p>
+        <p class="lang-es" lang="es" style="color: var(--wf-text); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; max-width: none;">&copy; <span class="current-year"></span> Woodfine Capital Projects Inc. Todos los derechos reservados.</p>
+    </div>
+`;
+
+
+/* ========================================================================== */
+/* DYNAMIC DOCUMENT HYDRATION (Pulled via PROTOCOL_DOCUMENT_HYDRATION.txt)    */
+/* ========================================================================== */
+
+// --- ENGLISH MANUSCRIPT ---
+document.getElementById('token-hook-title-en').innerHTML = `The transition from wealth generation to wealth stewardship requires a structural realignment of capital.`;
+
+document.getElementById('token-article-abstract-en').innerHTML = `
+    <p>While traditional joint ventures have historically provided access to institutional real estate, the extracted fees and delayed distributions inherent to these legacy models present structural friction for long-term legacy preservation.</p>
+    <p>Woodfine Capital Projects recently outlined its approach to addressing this challenge. Direct-hold solutions are engineered to preserve capital by focusing strictly on real property and perpetual equity, mitigating exposure to public market volatility. By retaining developer profit on the balance sheet as a structural reserve, the model establishes an objective alignment of interests with capital partners, providing an alternative framework for long-term stability.</p>
+`;
+
+document.getElementById('token-article-takeaways-en').innerHTML = `
+    <div class="takeaways-box">
+        <div class="takeaways-header">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>
+            <span>HIGHLIGHTS</span>
+        </div>
+        <ul class="takeaways-list">
+            <li>As restrictions ease on private market access, a structural shift is drawing multi-generational capital toward direct-hold real estate ownership.</li>
+            <li>Woodfine Capital Projects introduces direct-hold solutions, an alternative framework focused on preserving capital and aligning sponsor incentives.</li>
+            <li>The model secures investor stability by retaining developer profit on the balance sheet as a structural reserve, mitigating the risks often associated with traditional layered funds.</li>
+        </ul>
+    </div>
+`;
+
+document.getElementById('token-official-title-en').innerHTML = `Private Market Evolution Highlights Demand for Direct-Hold Real Estate Solutions`;
+
+document.getElementById('token-article-body-en').innerHTML = `
+    <p><strong>VANCOUVER, British Columbia &mdash; March 20, 2026 &mdash;</strong> A transition is underway for families shifting from active business operations to the stewardship of multi-generational wealth. The search for secure, uncorrelated yields has historically led these investors to the private markets. But as recent turbulence in alternative assets has highlighted, accessing those markets often involves complex fee structures, delayed distributions, and a structural misalignment of interests between managers and capital owners.</p>
+    <p>To address this, Woodfine Capital Projects has developed the direct-hold solution. Rather than relying on traditional joint ventures or layered equity funds, this alternative structural framework focuses strictly on real property and perpetual equity. It is engineered specifically to insulate long-term savers from public market volatility.</p>
+
+    <h3>Alignment Through Retained Equity.</h3>
+    <p>One of the central debates surrounding private market access is the alignment of incentives. In conventional structures, fees and extracted profits can erode the capital base before the assets fully stabilize. Woodfine addresses this by taking its compensation in common equity rather than drawing cash compensation.</p>
+    <h3>Developer Profit Remains on the Balance Sheet.</h3>
+    <p>This retained equity acts as a significant structural reserve, providing a tangible buffer during the development and leverage cycles. By the time the assets stabilize&mdash;forecasted to peak at a 63% debt-to-asset ratio before dropping to roughly 50%&mdash;the retained equity establishes a distinct mathematical advantage for investors. When compared to legacy joint venture models utilizing an equivalent initial capital base, this retention of developer profit is modeled to yield approximately 40% more square footage.</p>
+
+    <h3>Uncorrelated Stability.</h3>
+    <p>For family offices and long-term savers, the primary objective is insulation from commercial credit cycles. Direct-hold solutions achieve this through narrow banking principles and an explicit separation of debt and equity. The firm charges a single advisory fee based on the gross funded value&mdash;eliminating hidden layers of management costs and ensuring absolute transparency.</p>
+    <p>The underlying mechanics of the real assets are engineered to mitigate volatility. As long as a modest portion of a building is leased, the operational costs&mdash;such as common area maintenance and taxes&mdash;are covered. Regardless of fluctuations in the broader economy, the rental income provides a stable, uncorrelated return month after month. Investors must simply exercise the patience to let the initial development cycle conclude and the secure returns begin.</p>
+
+    <p>As capital continues to flow into private markets, the scrutiny on fund structures is intensifying. For those focused on legacy preservation, the appeal of a legally instantiated, direct-hold framework is clear: a singular focus on real property and an uncompromising alignment of interests.</p>
+`;
+
+
+// --- SPANISH MANUSCRIPT ---
+document.getElementById('token-hook-title-es').innerHTML = `La transición de la generación de riqueza a la administración de riqueza requiere una realineación estructural del capital.`;
+
+document.getElementById('token-article-abstract-es').innerHTML = `
+    <p>Si bien las empresas conjuntas tradicionales han proporcionado hist&oacute;ricamente acceso a bienes ra&iacute;ces institucionales, las tarifas extra&iacute;das y las distribuciones retrasadas inherentes a estos modelos heredados presentan una fricci&oacute;n estructural para la preservaci&oacute;n del legado a largo plazo.</p>
+    <p>Woodfine Capital Projects describi&oacute; recientemente su enfoque para abordar este desaf&iacute;o. Las Direct-Hold Solutions est&aacute;n dise&ntilde;adas para preservar el capital centr&aacute;ndose estrictamente en bienes inmuebles y capital perpetuo, mitigando la exposici&oacute;n a la volatilidad del mercado p&uacute;blico. Al retener las ganancias del desarrollador en el balance general como una reserva estructural, el modelo establece una alineaci&oacute;n objetiva de intereses con los socios de capital, proporcionando un marco alternativo para la estabilidad a largo plazo.</p>
+`;
+
+document.getElementById('token-article-takeaways-es').innerHTML = `
+    <div class="takeaways-box">
+        <div class="takeaways-header">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>
+            <span>PUNTOS DESTACADOS</span>
+        </div>
+        <ul class="takeaways-list">
+            <li>A medida que disminuyen las restricciones sobre el acceso al mercado privado, un cambio estructural est&aacute; atrayendo capital multigeneracional hacia la propiedad de bienes ra&iacute;ces de tenencia directa.</li>
+            <li>Woodfine Capital Projects introduce Direct-Hold Solutions, un marco alternativo centrado en preservar el capital y alinear los incentivos de los patrocinadores.</li>
+            <li>El modelo asegura la estabilidad de los inversores al retener las ganancias del desarrollador en el balance general como una reserva estructural, mitigando los riesgos a menudo asociados con los fondos estratificados tradicionales.</li>
+        </ul>
+    </div>
+`;
+
+document.getElementById('token-official-title-es').innerHTML = `La evolución del mercado privado destaca la demanda de Direct-Hold Solutions en bienes raíces`;
+
+document.getElementById('token-article-body-es').innerHTML = `
+    <p><strong>VANCOUVER, British Columbia &mdash; 20 de marzo de 2026 &mdash;</strong> Est&aacute; en marcha una transici&oacute;n para las familias que pasan de las operaciones comerciales activas a la administraci&oacute;n de riqueza multigeneracional. La b&uacute;squeda de rendimientos seguros y no correlacionados ha llevado hist&oacute;ricamente a estos inversores a los mercados privados. Pero como ha puesto de relieve la reciente turbulencia en los activos alternativos, el acceso a esos mercados a menudo implica estructuras de tarifas complejas, distribuciones retrasadas y una desalineaci&oacute;n estructural de intereses entre los administradores y los propietarios del capital.</p>
+    <p>Para abordar esto, Woodfine Capital Projects ha desarrollado la Direct-Hold Solution. En lugar de depender de empresas conjuntas tradicionales o fondos de capital estratificados, este marco estructural alternativo se centra estrictamente en bienes inmuebles y capital perpetuo. Est&aacute; dise&ntilde;ado espec&iacute;ficamente para aislar a los ahorradores a largo plazo de la volatilidad del mercado p&uacute;blico.</p>
+
+    <h3>Alineaci&oacute;n a trav&eacute;s del capital retenido.</h3>
+    <p>Uno de los debates centrales en torno al acceso al mercado privado es la alineaci&oacute;n de incentivos. En las estructuras convencionales, las tarifas y las ganancias extra&iacute;das pueden erosionar la base de capital antes de que los activos se estabilicen por completo. Woodfine aborda esto tomando su compensaci&oacute;n en capital com&uacute;n en lugar de retirar una compensaci&oacute;n en efectivo.</p>
+    <h3>Las ganancias del desarrollador permanecen en el balance general.</h3>
+    <p>Este capital retenido act&uacute;a como una importante reserva estructural, proporcionando un amortiguador tangible durante los ciclos de desarrollo y apalancamiento. Para cuando los activos se estabilizan&mdash;se prev&eacute; que alcancen un pico de 63% en la relaci&oacute;n deuda-activo antes de caer a aproximadamente 50%&mdash;el capital retenido establece una clara ventaja matem&aacute;tica para los inversores. En comparaci&oacute;n con los modelos de empresas conjuntas heredados que utilizan una base de capital inicial equivalente, se modela que esta retenci&oacute;n de ganancias del desarrollador rinde aproximadamente un 40% m&aacute;s de pies cuadrados.</p>
+
+    <h3>Estabilidad no correlacionada.</h3>
+    <p>Para las oficinas familiares y los ahorradores a largo plazo, el objetivo principal es el aislamiento de los ciclos de cr&eacute;dito comercial. Las Direct-Hold Solutions logran esto a trav&eacute;s de principios bancarios estrechos y una separaci&oacute;n expl&iacute;cita de la deuda y el capital. La firma cobra una &uacute;nica tarifa de asesoramiento basada en el valor bruto financiado, eliminando las capas ocultas de costos de administraci&oacute;n y garantizando una transparencia absoluta.</p>
+    <p>La mec&aacute;nica subyacente de los activos reales est&aacute; dise&ntilde;ada para mitigar la volatilidad. Mientras se arriende una parte modesta de un edificio, los costos operativos&mdash;como el mantenimiento de &aacute;reas comunes y los impuestos&mdash;est&aacute;n cubiertos. Independientemente de las fluctuaciones en la econom&iacute;a en general, los ingresos por alquiler proporcionan un rendimiento estable y no correlacionado mes tras mes. Los inversores simplemente deben ejercer la paciencia para dejar que concluya el ciclo de desarrollo inicial y comiencen los rendimientos seguros.</p>
+
+    <p>A medida que el capital contin&uacute;a fluyendo hacia los mercados privados, el escrutinio sobre las estructuras de los fondos se est&aacute; intensificando. Para aquellos enfocados en la preservaci&oacute;n del legado, el atractivo de un marco de tenencia directa instanciado legalmente es claro: un enfoque singular en los bienes inmuebles y una alineaci&oacute;n incondicional de intereses.</p>
+`;
+</script>
+</body>
+</html>
