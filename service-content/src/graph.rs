@@ -150,7 +150,7 @@ impl LbugGraphStore {
             .ok()
             .and_then(|s| s.parse::<u64>().ok())
         {
-            Some(mb) => SystemConfig::default().buffer_pool_size(mb * 1024 * 1024),
+            Some(mb) => SystemConfig::default().buffer_pool_size(mb.saturating_mul(1024 * 1024)),
             None => SystemConfig::default(),
         };
         let db = Database::new(db_path, config)
@@ -448,6 +448,9 @@ impl GraphStore for LbugGraphStore {
         query: &str,
         limit: usize,
     ) -> Result<Vec<GraphEntity>> {
+        // Clamp caller-supplied limit (HTTP query param, unbounded) before it
+        // feeds `limit * 3` below — an unclamped huge value can overflow usize.
+        let limit = limit.min(50);
         let conn = self.conn()?;
         let q_lower = query.to_lowercase();
 
@@ -769,6 +772,9 @@ impl GraphStore for LbugGraphStore {
         hops: usize,
     ) -> Result<Vec<GraphEntity>> {
         let hops = hops.clamp(1, 4);
+        // Clamp caller-supplied limit (HTTP query param, unbounded) before it
+        // feeds `limit * 3` below — an unclamped huge value can overflow usize.
+        let limit = limit.min(50);
         // Seed: direct name-match entities (same logic as query_context Phase 1).
         let seeds = self.query_context(module_id, query, limit)?;
         if seeds.is_empty() {

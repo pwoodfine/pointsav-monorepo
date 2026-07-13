@@ -1001,11 +1001,17 @@ pub async fn run_server(
 ) {
     let pairing_store = PairingStore::load(&graph_dir).unwrap_or_else(|e| {
         eprintln!("[HTTP] pairing store load failed: {e}; starting empty");
-        PairingStore::load("/tmp").expect("fallback pairing store")
+        PairingStore::load("/tmp").unwrap_or_else(|e2| {
+            eprintln!("[FATAL] pairing store fallback load also failed: {e2}");
+            std::process::exit(1);
+        })
     });
     let pairing_key = PairingKeypair::load_or_generate(&graph_dir).unwrap_or_else(|e| {
         eprintln!("[HTTP] pairing keypair init failed: {e}");
-        PairingKeypair::load_or_generate("/tmp").expect("fallback keypair")
+        PairingKeypair::load_or_generate("/tmp").unwrap_or_else(|e2| {
+            eprintln!("[FATAL] pairing keypair fallback init also failed: {e2}");
+            std::process::exit(1);
+        })
     });
 
     let capability_audit = InterfaceAuditLog::new(&graph_dir);
