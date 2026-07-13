@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#F7F9FA">
+    <meta name="color-scheme" content="light only">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    
+    <title>PointSav Newsroom</title>
+    <meta name="description" content="PointSav Digital Systems provides the 'Digital First' Operating System for Real Estate Infrastructure. Zero-Cookie Architecture. Verifiable ledgers.">
+    <link rel="canonical" href="https://pointsav.com/">
+    <meta property="og:title" content="PointSav Digital Systems">
+    <meta property="og:description" content="Digital First Operating System for Real Estate Infrastructure.">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://pointsav.com/">
+    <meta property="og:site_name" content="PointSav Digital Systems">
+    <meta property="article:published_time" content="2026-03-20T08:00:00Z">
+    <meta property="og:image" content="https://pointsav.com/og-default.png">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="PointSav Digital Systems">
+    <meta name="twitter:description" content="PointSav Digital Systems provides the 'Digital First' Operating System for Real Estate Infrastructure. Zero-Cookie Architecture. Verifiable ledgers.">
+    <meta name="twitter:image" content="https://pointsav.com/og-default.png">
+    <!-- logo-512.png / og-default.png: assets not sourced yet (BRIEF-seo-cross-site-strategy Phase 0 item). Tags ship anyway per project-editorial guidance -- they degrade gracefully (no preview image) until the asset lands. -->
+    <link rel="preload" as="font" type="font/woff2" href="/fonts/roboto-slab-700.woff2" crossorigin>
+    <link rel="preload" as="font" type="font/woff2" href="/fonts/oswald-700.woff2" crossorigin>
+    <!-- ^ preloads are inert until the two .woff2 assets above are actually added to /fonts/ (see @font-face rules in <style>). -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2212%22 fill=%22%23234ed8%22/><text x=%2250%22 y=%2250%22 dominant-baseline=%22central%22 text-anchor=%22middle%22 fill=%22%23ffffff%22 font-family=%22Arial,sans-serif%22 font-weight=%22700%22 font-size=%2240%22>PS</text></svg>">
+
+    <script type="application/ld+json">
+    [{
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "@id": "https://pointsav.com/#organization",
+      "name": "PointSav Digital Systems",
+      "url": "https://pointsav.com",
+      "logo": "https://pointsav.com/logo-512.png",
+      "sameAs": ["https://github.com/pointsav"],
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "telephone": "+1-604-375-1196",
+        "contactType": "Executive Office",
+        "email": "peter@woodfinegroup.com"
+      },
+      "founder": [
+        {"@type": "Person", "name": "Jennifer Woodfine", "sameAs": "https://www.linkedin.com/in/jenniferwoodfine"},
+        {"@type": "Person", "name": "Peter Woodfine", "sameAs": "https://www.linkedin.com/in/peter-m-woodfine-38a19935/"}
+      ]
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "@id": "https://pointsav.com/#website",
+      "name": "PointSav Digital Systems \u2014 Newsroom",
+      "url": "https://pointsav.com",
+      "publisher": {"@id": "https://pointsav.com/#organization"},
+      "inLanguage": ["en", "es"]
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "NewsArticle",
+      "headline": "The Shift Toward Digital Sovereignty in Physical Assets",
+      "image": "https://pointsav.com/og-default.png",
+      "datePublished": "2026-03-20T08:00:00Z",
+      "dateModified": "2026-03-20T08:00:00Z",
+      "author": [{ "@type": "Organization", "name": "PointSav Digital Systems" }],
+      "publisher": {"@id": "https://pointsav.com/#organization"}
+    }]
+    </script>
+
+    <style>
+        /* TOKENS: POINT-SAV DESIGN SYSTEM */
+        :root { 
+            --ps-canvas: #F7F9FA; 
+            --ps-card: #FFFFFF; 
+            --ps-text: #111827; 
+            --ps-muted: #6B7280; 
+            --ps-border: #E6E7E8; 
+            --ps-accent: #164679; 
+            --font-sans: "Nunito Sans", "Avenir LT Std", "Avenir Next", "Mulish", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+            --font-display: "Oswald", "Trade Gothic LT Std", "Barlow Condensed", "Helvetica Neue", Arial, sans-serif; 
+            --font-serif: "Roboto Slab", "Caecilia LT Std", "Zilla Slab", Georgia, serif; 
+            --font-mono: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace; 
+        }
+        /* Self-hosted brand webfonts for design-system parity with home.pointsav.com. */
+        /* NOTE: binary .woff2 assets are NOT present in this repo yet -- add them at /fonts/ */
+        /* (latin subset; Nunito Sans 400/700, Roboto Slab 400/700, Oswald 500/700) before this has any visible effect; */
+        /* until then font-display:swap falls back silently to the system stack above, which is safe. */
+        /* CLS mitigation (ascent-override/size-adjust fallback metrics) intentionally left for a follow-up pass -- */
+        /* fabricating override values without measuring the real font metrics would be worse than omitting them. */
+        @font-face { font-family: "Nunito Sans"; src: url("/fonts/nunito-sans-400.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
+        @font-face { font-family: "Nunito Sans"; src: url("/fonts/nunito-sans-700.woff2") format("woff2"); font-weight: 700; font-style: normal; font-display: swap; }
+        @font-face { font-family: "Roboto Slab"; src: url("/fonts/roboto-slab-400.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
+        @font-face { font-family: "Roboto Slab"; src: url("/fonts/roboto-slab-700.woff2") format("woff2"); font-weight: 700; font-style: normal; font-display: swap; }
+        @font-face { font-family: "Oswald"; src: url("/fonts/oswald-500.woff2") format("woff2"); font-weight: 500; font-style: normal; font-display: swap; }
+        @font-face { font-family: "Oswald"; src: url("/fonts/oswald-700.woff2") format("woff2"); font-weight: 700; font-style: normal; font-display: swap; }
+
+        /* RESET & PHYSICS */
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+        html { text-size-adjust: 100%; -webkit-text-size-adjust: 100%; }
+        .skip-link { position: absolute; left: -9999px; top: auto; }
+        .skip-link:focus { position: fixed; left: 16px; top: 16px; z-index: 1000; background: #fff; color: var(--ps-text); padding: 8px 12px; border-radius: 2px; }
+        body { font-family: var(--font-sans); text-rendering: optimizeLegibility; background: var(--ps-canvas); color: var(--ps-text); line-height: 1.5; overflow-x: hidden; }
+        
+        /* LAYOUT ARCHITECTURE */
+        .header-bar { position: sticky; top: 0; background: rgba(247,249,250,0.95); border-bottom: 1px solid var(--ps-border); padding: max(16px, env(safe-area-inset-top)) 24px 16px 24px; z-index: 100; }
+        .nav-container { width: 100%; max-width: 976px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+        .wordmark { font-family: var(--font-display); font-weight: 700; font-size: 1.125rem; letter-spacing: 0; text-transform: uppercase; white-space: nowrap; }
+        .wordmark a { text-decoration: none; }
+        .wordmark a:hover, .wordmark a:focus-visible { text-decoration: underline; }
+        .desktop-actions { display: flex; gap: 8px; align-items: center; }
+        
+        .main-grid { width: 100%; max-width: 1024px; margin: 48px auto; padding: 0 24px; display: grid; grid-template-columns: 1fr 300px; grid-template-areas: "content sidebar" "footer sidebar"; gap: 64px; align-items: start; }
+        
+        /* CONTENT STYLING */
+        .document-canvas { grid-area: content; background: transparent; padding: 0; border: none; min-width: 0; }
+        .document-footer { grid-area: footer; }
+        .sidebar-ledger { grid-area: sidebar; position: sticky; top: max(100px, calc(env(safe-area-inset-top) + 80px)); display: flex; flex-direction: column; gap: 24px; font-family: var(--font-mono); font-size: 0.875rem; min-width: 0; }
+
+        h1, h2, h3 { color: var(--ps-text); font-family: var(--font-display); }
+        h3 { font-size: 1.25rem; margin: 32px 0 16px 0; letter-spacing: -0.01em; font-weight: 700; max-width: 38.5rem; }
+        p { margin-bottom: 16px; max-width: 38.5rem; font-size: 1.0625rem; }
+        strong { font-weight: 700; }
+
+        /* LINGUISTIC TOKENS: SUMMARY & TAKEAWAYS (THE HOOK) */
+        .hook-title { font-family: var(--font-serif); color: var(--ps-text); font-size: 1.5rem; font-weight: 700; line-height: 1.3; margin-bottom: 16px; letter-spacing: -0.01em; max-width: 32.5rem; margin-left: 0; }
+        
+        .executive-abstract { font-family: var(--font-serif); font-size: 1.125rem; color: var(--ps-text); line-height: 1.6; margin-bottom: 32px; border-left: 3px solid var(--ps-accent); padding-left: 20px; }
+        .executive-abstract p { margin-bottom: 12px; }
+        .executive-abstract p:last-child { margin-bottom: 0; }
+        
+        .takeaways-box { border: 1px solid var(--ps-border); background: var(--ps-card); padding: 24px; margin-bottom: 48px; border-radius: 2px; max-width: 38.5rem; }
+        .takeaways-header { display: flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--ps-accent); margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--ps-border); }
+        .takeaways-header svg { width: 14px; height: 14px; margin-left: 2px; }
+        .takeaways-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 16px; }
+        .takeaways-list li { position: relative; padding-left: 24px; font-size: 1.0625rem; line-height: 1.5; }
+        .takeaways-list li::before { content: "■"; position: absolute; left: 4px; top: 0; color: var(--ps-accent); font-size: 0.65rem; line-height: 2.2; }
+
+        /* LINGUISTIC TOKEN: THE LEDGER DIVIDER & OFFICIAL MANUSCRIPT */
+        .ledger-divider { border-top: 2px solid var(--ps-text); margin: 64px 0 48px 0; position: relative; }
+        .ledger-divider span { position: absolute; top: -10px; left: 0; background: var(--ps-canvas); padding-right: 16px; font-family: var(--font-mono); font-size: 0.75rem; font-weight: 700; color: var(--ps-muted); letter-spacing: 0.05em; text-transform: uppercase; }
+        
+        /* The SEO h1 Target */
+        .manuscript-title { font-size: clamp(2rem, 4vw, 2.5rem); font-weight: 700; line-height: 1.1; margin-bottom: 24px; letter-spacing: 0; max-width: 35.5rem; }
+
+        /* LEGAL LEDGER */
+        .quarantine-line { border: none; border-top: 1px solid var(--ps-border); margin: 40px 0 24px 0; }
+        .legal-ledger { font-family: var(--font-mono); font-size: 0.75rem; color: var(--ps-muted); }
+        .legal-ledger h2 { font-size: 0.875rem; color: var(--ps-text); margin-bottom: 8px; text-transform: uppercase; font-weight: 700; }
+        .legal-ledger p { font-size: 0.75rem; margin-bottom: 16px; max-width: 38.5rem; }
+
+        /* SIDEBAR LEDGER COMPONENTS */
+        .trust-badge { background: var(--ps-text); color: var(--ps-canvas); padding: 12px; text-align: center; font-weight: 700; letter-spacing: 0.05em; border-radius: 2px; }
+        .meta-block { border-left: 1px solid var(--ps-border); padding-left: 16px; }
+        .meta-label { display: block; color: var(--ps-muted); font-size: 0.75rem; text-transform: uppercase; margin-bottom: 4px; }
+        .hash-display { font-variant-numeric: tabular-nums; display: block; overflow-wrap: anywhere; word-break: break-all; }
+        
+        /* GLOBAL FOOTER */
+        .global-footer-wrapper { border-top: 1px solid var(--ps-border); background: var(--ps-canvas); margin-top: 40px; }
+        .global-footer { width: 100%; max-width: 1024px; margin: 0 auto; padding: 32px 24px max(32px, env(safe-area-inset-bottom)); display: grid; grid-template-columns: 612px 1fr; gap: 64px; font-family: var(--font-mono); font-size: 0.75rem; color: var(--ps-muted); }
+        .global-footer h2, .global-footer h4 { font-size: 0.875rem; color: var(--ps-text); margin-bottom: 8px; text-transform: uppercase; font-weight: 700; min-height: 2.8em; }
+        .global-footer p { font-size: 0.75rem; margin-bottom: 16px; max-width: 38.5rem; }
+
+        /* INTERACTIVE PRIMITIVES */
+        .btn { height: 44px; padding: 0 20px; border: 1px solid var(--ps-border); background: var(--ps-card); color: var(--ps-text); font-family: var(--font-mono); font-size: 0.875rem; font-weight: 700; text-transform: uppercase; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 2px; transition: background 0.2s, border-color 0.2s; touch-action: manipulation; }
+        .btn svg { display: block; flex-shrink: 0; width: 18px; height: 18px; }
+        .btn span { display: block; line-height: 1; transform: translateY(1px); }
+        .btn:hover { background: var(--ps-canvas); border-color: var(--ps-text); }
+        .btn-primary { background: var(--ps-text); color: var(--ps-canvas); border-color: var(--ps-text); }
+        .btn-primary:hover { background: #000; }
+        .btn:focus-visible, .document-canvas a:focus-visible, .sidebar-ledger a:focus-visible { outline: 3px solid var(--ps-accent); outline-offset: 2px; }
+        .btn-primary:focus-visible { outline-color: #FFFFFF; outline-offset: 2px; }
+        #lang-toggle:focus-visible ~ .app-wrapper label[for="lang-toggle"] { outline: 3px solid var(--ps-accent); outline-offset: 2px; }
+        
+        /* MOBILE ACTION BAR */
+        .mobile-dock { display: none; }
+
+        /* LANGUAGE TOGGLE LOGIC */
+        .lang-es, .btn-es { display: none !important; }
+        #lang-toggle:checked ~ .app-wrapper .lang-en, #lang-toggle:checked ~ .app-wrapper .btn-en { display: none !important; }
+        #lang-toggle:checked ~ .app-wrapper .lang-es { display: block !important; }
+        #lang-toggle:checked ~ .app-wrapper .btn-es { display: inline-flex !important; }
+        #lang-toggle { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
+
+        /* RESPONSIVE DOMINANCE */
+        @media (max-width: 1024px) {
+            .nav-container { flex-direction: column; align-items: center; justify-content: center; gap: 16px; }
+            .desktop-actions { justify-content: center; width: 100%; gap: 8px; }
+            .desktop-actions .btn:not(.hide-on-mobile) { flex: 1 1 0; justify-content: center; padding: 0 8px; }
+            
+            .hide-on-mobile { display: none !important; }
+            #lang-toggle:checked ~ .app-wrapper .hide-on-mobile { display: none !important; }
+            
+            .main-grid { grid-template-columns: 1fr; grid-template-areas: "content" "sidebar" "footer"; gap: 40px; margin: 32px auto; padding: 0 16px; }
+            .sidebar-ledger { position: relative; top: 0; transform: none; }
+            .quarantine-line { margin: 16px 0 32px 0; }
+            .global-footer { grid-template-columns: 1fr; gap: 24px; padding-left: 16px; padding-right: 16px; padding-bottom: calc(80px + env(safe-area-inset-bottom)); } 
+            .global-footer h2, .global-footer h4 { min-height: auto; }
+            .desktop-whatsapp { display: none !important; } 
+            
+            .mobile-dock { display: flex; position: fixed; bottom: 0; left: 0; right: 0; background: var(--ps-card); border-top: 1px solid var(--ps-border); padding: 12px 16px max(12px, env(safe-area-inset-bottom)) 16px; z-index: 999; box-shadow: 0 -4px 12px rgba(0,0,0,0.05); }
+            .mobile-dock .btn { flex: 1; height: 48px; }
+        }
+
+        /* REGULATORY PRINT EGRESS */
+        /* WIDE-VIEWPORT SCALING (tablet-landscape / small-laptop dead-margin fix) */
+        /* Stepped container width, matching real hyperscaler practice (Apple Newsroom steps */
+        /* 692px->980px; Stripe goes fluid then caps at 1080px; AWS steps across 4 tiers) -- */
+        /* none hold one static max-width from 1024px all the way up. Gated at 1120px, NOT   */
+        /* immediately above 1024px: the sidebar only widens to 396px here because 1120 is    */
+        /* the minimum total width where 612(content)+64(gap)+396(sidebar)+48(padding) fits    */
+        /* without shrinking the content column below its 612px invariant. So 1080/1112px      */
+        /* (real tablet-landscape widths) are DELIBERATELY still on the base 1024 tier -- widening */
+        /* them further would require a fluid (clamp-based) sidebar, not a fixed 396px one.    */
+        /* Extra width goes to the sidebar column, not the content column, so the reading      */
+        /* measure (rem-based, set above) stays exactly unchanged -- growing the content column */
+        /* instead would open a new dead gap between where the text ends and the sidebar begins. */
+        @media (min-width: 1120px) {
+            .nav-container { max-width: 1072px; }
+            .global-footer { max-width: 1120px; }
+            .main-grid { max-width: 1120px; grid-template-columns: 1fr 396px; }
+        }
+
+        .print-only { display: none; }
+        @media print {
+            @page {
+                size: letter;
+                margin: 1in;
+            }
+            body { 
+                color: #000000 !important; 
+                background: #FFFFFF !important; 
+                font-family: Charter, 'Bitstream Charter', 'Sitka Text', Cambria, Georgia, 'Times New Roman', serif !important; 
+            }
+            .sidebar-ledger, .mobile-dock, .desktop-actions, .desktop-whatsapp, .global-footer-wrapper, input[type="checkbox"], .quarantine-line { display: none !important; }
+            .legal-ledger, .legal-ledger p { color: #000000 !important; }
+            
+            .header-bar { position: static; background: transparent; padding: 0 0 16px 0; margin-bottom: 32px; border-bottom: none; backdrop-filter: none; }
+            .wordmark { color: #000000; font-size: 14pt; font-family: var(--font-sans); }
+            
+            .main-grid { display: block; margin: 0; padding: 0; }
+            .document-canvas { padding: 0; background: transparent; }
+            
+            p, .legal-ledger, .print-only, .takeaways-list li, .executive-abstract { font-size: 10.5pt; line-height: 1.5; orphans: 4; widows: 4; max-width: 100%; }
+            h1, h2, h3, h4 { color: #000000 !important; break-after: avoid; page-break-after: avoid; }
+            
+            .hook-title { font-size: 16pt; margin-bottom: 12px; margin-left: 0; max-width: 100%; } 
+            .manuscript-title { font-size: 22pt; margin-bottom: 16px; max-width: 100%; overflow-wrap: break-word; line-height: 1.1; letter-spacing: -0.02em; }
+            h2, h3 { font-size: 14pt; margin-top: 24pt; }
+            
+            .abstract-label { display: none; }
+            .executive-abstract { border-left: 2px solid #000000; padding-left: 16px; margin-bottom: 24px; }
+            
+            .takeaways-box { 
+                break-inside: avoid; 
+                page-break-inside: avoid;
+                border: none; 
+                padding: 0; 
+                margin-bottom: 32px; 
+                background: transparent; 
+                max-width: 100%; 
+            }
+            .takeaways-header { color: #000000; border-bottom: none; padding-bottom: 0; margin-bottom: 12px; }
+            .takeaways-list li::before { color: #000000; font-size: 0.75rem; line-height: 1.8; left: 0; }
+            .takeaways-list li { padding-left: 16px; }
+            
+            .ledger-divider { border-top: none; margin: 32px 0; font-weight: bold; }
+            .ledger-divider span { background: transparent; color: #000000; position: static; padding-right: 0; }
+
+            .print-only { display: block; margin-top: 32px; break-inside: avoid; page-break-inside: avoid; }
+            .document-footer { break-inside: avoid; page-break-inside: avoid; margin-top: 32px; border-top: 1px solid #000000; padding-top: 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<a href="#main" class="skip-link">Skip to content</a>
+<input type="checkbox" id="lang-toggle" aria-label="Switch page language between English and Spanish">
+
+<div class="app-wrapper">
+    <header class="header-bar">
+        <div class="nav-container">
+            <div class="wordmark" id="token-wordmark"></div>
+            <nav class="desktop-actions" id="token-desktop-nav"></nav>
+        </div>
+    </header>
+
+    <main class="main-grid" id="main">
+        <article class="document-canvas">
+            
+            <div class="lang-en" lang="en">
+                <p class="hook-title" id="token-hook-title-en" role="doc-subtitle"></p>
+                <div id="token-article-abstract-en" class="executive-abstract"></div>
+                <div id="token-article-takeaways-en"></div>
+                
+                <div class="ledger-divider"><span>FOR IMMEDIATE RELEASE</span></div>
+                
+                <h1 class="manuscript-title" id="token-official-title-en"></h1>
+                <div id="token-article-body-en"></div>
+            </div>
+            
+            <div class="lang-es" lang="es">
+                <p class="hook-title" id="token-hook-title-es" role="doc-subtitle"></p>
+                <div id="token-article-abstract-es" class="executive-abstract"></div>
+                <div id="token-article-takeaways-es"></div>
+                
+                <div class="ledger-divider"><span>PARA PUBLICACIÓN INMEDIATA</span></div>
+                
+                <h1 class="manuscript-title" id="token-official-title-es"></h1>
+                <div id="token-article-body-es"></div>
+            </div>
+            
+            <div class="print-only" id="token-print-contact"></div>
+        </article>
+
+        <aside class="sidebar-ledger" id="token-sidebar"></aside>
+
+        <div class="document-footer">
+            <hr class="quarantine-line">
+            <section class="legal-ledger" id="token-document-disclaimers"></section>
+        </div>
+    </main>
+
+    <div class="global-footer-wrapper">
+        <footer class="global-footer" id="token-global-footer"></footer>
+    </div>
+
+    <nav class="mobile-dock" id="token-mobile-dock"></nav>
+</div>
+
+<script>
+    (function() {
+        let maxScroll = 0;
+        let clickTargets = [];
+        const startTime = Date.now();
+        
+        let maxScrollable = document.documentElement.scrollHeight - window.innerHeight;
+        window.addEventListener('resize', () => {
+            maxScrollable = document.documentElement.scrollHeight - window.innerHeight;
+        }, { passive: true });
+
+        window.addEventListener('scroll', () => {
+            const scrollPercent = Math.round((window.scrollY / maxScrollable) * 100);
+            if (scrollPercent > maxScroll) maxScroll = scrollPercent;
+        }, { passive: true });
+
+        document.addEventListener('click', (e) => {
+            const target = e.target.closest('.btn, a');
+            if (target) clickTargets.push(target.innerText.trim().substring(0, 20) || 'link_click');
+        }, { passive: true });
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden') {
+                const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+                const payload = {
+                    uri: window.location.href,
+                    timestamp: new Date().toISOString(),
+                    user_agent: navigator.userAgent,
+                    referrer: document.referrer || "direct",
+                    viewport: `${window.innerWidth}x${window.innerHeight}`,
+                    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "unknown",
+                    device_memory: navigator.deviceMemory || "unknown",
+                    hardware_cores: navigator.hardwareConcurrency || "unknown",
+                    dwell_seconds: Math.round((Date.now() - startTime) / 1000),
+                    scroll_depth: maxScroll,
+                    intent_clicks: clickTargets.length > 0 ? clickTargets.join(' | ') : "none",
+                    lang_browser: navigator.language || "unknown",
+                    network: conn ? conn.effectiveType : "unknown"
+                };
+                const blob = new Blob([JSON.stringify(payload)], { type: 'text/plain' });
+                navigator.sendBeacon("https://telemetry.pointsav.com/telemetry-endpoint", blob);
+            }
+        });
+    })();
+
+    async function calculateHash(){
+        const isEsp = document.getElementById('lang-toggle').checked;
+        const text = document.querySelector(isEsp ? '.lang-es' : '.lang-en').innerText;
+        const hashBuffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        document.querySelectorAll('.hash-display').forEach(el => el.innerText = hashHex);
+    }
+    
+    function setCopyrightYear() {
+        document.querySelectorAll('.current-year').forEach(el => el.textContent = new Date().getFullYear());
+    }
+
+    document.getElementById('lang-toggle').addEventListener('change', calculateHash);
+    window.addEventListener('DOMContentLoaded', () => {
+        calculateHash();
+        setCopyrightYear();
+    });
+</script>
+
+<script>
+/* ========================================================================== */
+/* STATIC CORPORATE LEDGERS (BILINGUAL PARITY)                                */
+/* ========================================================================== */
+
+document.getElementById('token-wordmark').innerHTML = `<a href="https://home.pointsav.com/" style="color:inherit;">PointSav Digital Systems</a>`;
+
+document.getElementById('token-desktop-nav').innerHTML = `
+    <label for="lang-toggle" class="btn btn-primary">
+        <span class="btn-en" lang="es">ESPAÑOL</span><span class="btn-es" lang="en">ENGLISH</span>
+    </label>
+    <a href="https://github.com/pointsav/pointsav-monorepo" target="_blank" class="btn">
+        <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"></path></svg>
+        <span class="lang-en">MONOREPO</span><span class="lang-es" lang="es">MONOREPOSITORIO</span>
+    </a>
+    <button onclick="window.print()" class="btn hide-on-mobile"><span class="lang-en">PRINT</span><span class="lang-es" lang="es">IMPRIMIR</span></button>
+    <a href="/pointsav_media_release_en.pdf" class="btn btn-en hide-on-mobile" download aria-label="Download media release (PDF, English)"><span>PDF</span></a>
+    <a href="/pointsav_media_release_es.pdf" class="btn btn-es hide-on-mobile" download aria-label="Descargar comunicado de prensa (PDF, español)"><span>PDF</span></a>
+`;
+
+const waSvg = `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>`;
+
+document.getElementById('token-mobile-dock').innerHTML = `
+    <a href="https://wa.me/16043751196" target="_blank" class="btn btn-action" style="border-color: var(--ps-border);">
+        ${waSvg} <span>WHATSAPP</span>
+    </a>
+`;
+
+// BILINGUAL SIDEBAR
+document.getElementById('token-sidebar').innerHTML = `
+    <div class="trust-badge lang-en">[ ∅ ZERO COOKIES ]</div>
+    <div class="trust-badge lang-es">[ ∅ CERO COOKIES ]</div>
+    
+    <div class="meta-block lang-en">
+        <span class="meta-label">Issued</span>
+        <time datetime="2026-03-20">March 20, 2026</time>
+    </div>
+    <div class="meta-block lang-es">
+        <span class="meta-label">Emitido</span>
+        <time datetime="2026-03-20">20 de marzo de 2026</time>
+    </div>
+    
+    <div class="meta-block lang-en">
+        <span class="meta-label">Contact Authority</span>
+        <address style="font-style:normal;">
+            <strong>Peter M. Woodfine</strong><br>
+            Executive Officer<br><br>
+            Woodfine Management Corp.<br>
+            595 Burrard Street,<br>
+            Lower Concourse<br>
+            PO Box 48295 Bentall<br>
+            Vancouver, BC V7X 1A1<br><br>
+            <a href="mailto:peter@woodfinegroup.com" style="color:var(--ps-accent); text-decoration:underline;">peter@woodfinegroup.com</a><br>
+            +1 604 375 1196
+        </address>
+    </div>
+    <div class="meta-block lang-es">
+        <span class="meta-label">Autoridad de Contacto</span>
+        <address style="font-style:normal;">
+            <strong>Peter M. Woodfine</strong><br>
+            Executive Officer<br><br>
+            Woodfine Management Corp.<br>
+            595 Burrard Street,<br>
+            Lower Concourse<br>
+            PO Box 48295 Bentall<br>
+            Vancouver, BC V7X 1A1<br><br>
+            <a href="mailto:peter@woodfinegroup.com" style="color:var(--ps-accent); text-decoration:underline;">peter@woodfinegroup.com</a><br>
+            +1 604 375 1196
+        </address>
+    </div>
+    
+    <div class="meta-block lang-en">
+        <span class="meta-label">Cryptographic State Hash</span>
+        <span class="hash-display" style="font-size:0.75rem;">CALCULATING...</span>
+    </div>
+    <div class="meta-block lang-es">
+        <span class="meta-label">Hash Criptográfico de Estado</span>
+        <span class="hash-display" style="font-size:0.75rem;">CALCULANDO...</span>
+    </div>
+
+    <a href="https://wa.me/16043751196" target="_blank" class="btn btn-action desktop-whatsapp" style="align-self: stretch; border-color: var(--ps-border);">
+        ${waSvg} <span>WHATSAPP</span>
+    </a>
+`;
+
+// BILINGUAL PRINT CONTACT
+document.getElementById('token-print-contact').innerHTML = `
+    <div class="lang-en" lang="en">
+        <h2>CONTACT FOR FURTHER INFORMATION:</h2>
+        <p>Woodfine Management Corp.<br>Peter M. Woodfine, Executive Officer<br>595 Burrard Street, Lower Concourse<br>PO Box 48295 Bentall Vancouver, BC V7X 1A1<br><br>+1 604 375 1196<br>peter@woodfinegroup.com<br>woodfinegroup.com | pointsav.com</p>
+    </div>
+    <div class="lang-es" lang="es">
+        <h2>PARA MÁS INFORMACIÓN, PÓNGASE EN CONTACTO CON:</h2>
+        <p>Woodfine Management Corp.<br>Peter M. Woodfine, Executive Officer<br>595 Burrard Street, Lower Concourse<br>PO Box 48295 Bentall Vancouver, BC V7X 1A1<br><br>+1 604 375 1196<br>peter@woodfinegroup.com<br>woodfinegroup.com | pointsav.com</p>
+    </div>
+`;
+
+// BILINGUAL LEGAL ANCHOR (Safe Harbor Compliance)
+document.getElementById('token-document-disclaimers').innerHTML = `
+    <div class="lang-en" lang="en">
+        <h2>Regulatory disclosures and forward-looking statements</h2>
+        <p>Woodfine Capital Projects Inc. operates PointSav Digital Systems as an unincorporated technology division. Management capitalizes this architecture strictly through the private placement of unregistered securities. Management restricts distribution globally to verified Accredited and Qualified Investors under statutory exemptions including Canada's NI 45-106, U.S. Regulation D, Mexico's LMV, and the EU Prospectus Regulation (EU 2017/1129) / Spain's LMVSI. These instruments remain unregistered under the U.S. Securities Act of 1933 and applicable national laws. Management prohibits sales in non-compliant jurisdictions. This news release contains forward-looking statements under the U.S. Private Securities Litigation Reform Act of 1995 and Canada's NI 51-102. Management bases projections on specific technological assumptions regarding network engineering. Actual performance deviates materially if systemic technical risks materialize. Material risks include the failure of Totebox Archives to maintain cryptographically secured isolation, physical supply chain fracture, vulnerabilities in hardware protocols (Machine-Based Authorization, Diode Standard), and operational commercialization failure. Woodfine Capital Projects Inc. disclaims any obligation to update these statements except as legally mandated.</p>
+    </div>
+    <div class="lang-es" lang="es">
+        <h2>Divulgaciones reglamentarias y declaraciones prospectivas</h2>
+        <p>Woodfine Capital Projects Inc. opera PointSav Digital Systems como una división tecnológica no incorporada. La gerencia capitaliza esta arquitectura estrictamente a través de la colocación privada de valores no registrados. La gerencia restringe la distribución a nivel mundial a inversores acreditados y calificados verificados bajo exenciones legales que incluyen Canada's NI 45-106, U.S. Regulation D, Mexico's LMV y la EU Prospectus Regulation (EU 2017/1129) / Spain's LMVSI. Estos instrumentos permanecen no registrados bajo la U.S. Securities Act of 1933 y las leyes nacionales aplicables. La gerencia prohíbe las ventas en jurisdicciones que no cumplen con los requisitos. Este comunicado de prensa contiene declaraciones prospectivas bajo la U.S. Private Securities Litigation Reform Act of 1995 y Canada's NI 51-102. La gerencia basa las proyecciones en supuestos tecnológicos específicos relacionados con la ingeniería de redes. El rendimiento real se desvía materialmente si se materializan los riesgos técnicos sistémicos. Los riesgos materiales incluyen la falla de los Totebox Archives para mantener el aislamiento asegurado criptográficamente, la fractura de la cadena de suministro física, vulnerabilidades en los protocolos de hardware (Machine-Based Authorization, Diode Standard) y fallas en la comercialización operativa. Woodfine Capital Projects Inc. renuncia a cualquier obligación de actualizar estas declaraciones, excepto cuando lo exija la ley.</p>
+    </div>
+`;
+
+// UNILINGUAL GLOBAL FOOTER (Safe Harbor Compliance)
+document.getElementById('token-global-footer').innerHTML = `
+    <div class="copyright-disclaimer">
+        <h2 class="lang-en">Important notice regarding intellectual property and trademarks</h2>
+        <h2 class="lang-es" lang="es">Aviso importante sobre propiedad intelectual y marcas comerciales</h2>
+        <!-- Source: factory-release-engineering/policies/TRADEMARK.md §13 "Standard Notice" (canonical short form), used verbatim -- not legal-tokens-pointsav.yaml's website.footer_trademark_en, which was found to be missing 2 marks + the Capability Geometry unregistered-mark sentence. Operator decision 2026-07-12: use "MCorp™" per TRADEMARK.md, ahead of the still-open MCorp™-vs-Woodfine-Management-Corp™ naming call. Spanish translation is ours, not an official ES source -- flag for legal/translation review before this goes live. Manual re-sync required: no build pipeline renders this file into index.html. -->
+        <p class="lang-en">Woodfine Capital Projects&trade;, MCorp&trade;, PointSav Digital Systems&trade;, Totebox Orchestration&trade;, Totebox Archive&trade;, and Capability Geometry&trade; are trademarks of Woodfine Capital Projects Inc., used in Canada, the United States, Latin America, and Europe. Capability Geometry&trade; is an unregistered trademark of Woodfine Capital Projects Inc. All other trademarks are the property of their respective owners.</p>
+        <p class="lang-es" lang="es">Woodfine Capital Projects&trade;, MCorp&trade;, PointSav Digital Systems&trade;, Totebox Orchestration&trade;, Totebox Archive&trade; y Capability Geometry&trade; son marcas comerciales de Woodfine Capital Projects Inc., utilizadas en Canad&aacute;, los Estados Unidos, Am&eacute;rica Latina y Europa. Capability Geometry&trade; es una marca comercial no registrada de Woodfine Capital Projects Inc. Todas las dem&aacute;s marcas comerciales son propiedad de sus respectivos titulares.</p>
+    </div>
+    <div class="digital-disclaimer">
+        <h4>Digital Infrastructure & Privacy Posture</h4>
+        <p>This interface operates on a Zero-Cookie and Zero-State Telemetry architecture. It does not deploy tracking cookies, retain session states, or harvest Personally Identifiable Information (PII). System interactions are limited to the collection of anonymized network routing and viewport data strictly for the purpose of auditing infrastructure performance.</p>
+    </div>
+
+    <div class="terminal-baseplate" style="grid-column: 1 / -1; border-top: 1px solid var(--ps-border); padding-top: 24px; margin-top: 32px; text-align: center;">
+        <!-- Source: legal-tokens-pointsav.yaml -> copyright.statement (single-year form; this brand's token defines no year_founded/range key). Operator decision 2026-07-12: single auto-updating year, no founding-year range, matching sibling properties. -->
+        <p class="lang-en" style="color: var(--ps-text); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; max-width: none;">&copy; <span class="current-year"></span> Woodfine Capital Projects Inc. All rights reserved.</p>
+        <p class="lang-es" lang="es" style="color: var(--ps-text); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; max-width: none;">&copy; <span class="current-year"></span> Woodfine Capital Projects Inc. Todos los derechos reservados.</p>
+    </div>
+`;
+
+
+/* ========================================================================== */
+/* DYNAMIC DOCUMENT HYDRATION (Pulled via PROTOCOL_DOCUMENT_HYDRATION_POINTSAV.txt) */
+/* ========================================================================== */
+
+// --- ENGLISH MANUSCRIPT ---
+document.getElementById('token-hook-title-en').innerHTML = `True ownership of physical real estate now requires structural sovereignty over its digital records.`;
+
+document.getElementById('token-article-abstract-en').innerHTML = `
+    <p>While generalized cloud computing has successfully scaled the modern economy, managing multi-generational physical assets presents a distinct operational challenge. Relying on external networks for critical building infrastructure introduces enormous complexity and human-centric vulnerabilities that long-term stewards should not have to accept.</p>
+    <p>To secure these environments, PointSav Digital Systems has released the blueprint for a specialized, independent perimeter utilizing an agentless architecture. Through our microkernel-based edge framework and freely transferable Totebox Archives, the system is designed to empower building operators to retain independent, unencumbered control over their historical data. It provides the necessary cyberphysical defense engineered to maintain the digital ledger of the asset as resilient as the concrete itself.</p>
+`;
+
+document.getElementById('token-article-takeaways-en').innerHTML = `
+    <div class="takeaways-box">
+        <div class="takeaways-header">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>
+            <span>HIGHLIGHTS</span>
+        </div>
+        <ul class="takeaways-list">
+            <li>PointSav Digital Systems has introduced a foundational operating system architecture designed to secure and manage physical real estate infrastructure.</li>
+            <li>The technology focuses on "data sovereignty," designed to ensure family offices and capital partners retain independent, localized control over their building's critical records.</li>
+            <li>By decoupling essential operations from generalized cloud networks, the system engineers a robust cyberphysical defense mechanism via immutable, freely transferable data archives.</li>
+        </ul>
+    </div>
+`;
+
+document.getElementById('token-official-title-en').innerHTML = `The Shift Toward Digital Sovereignty in Physical Assets`;
+
+document.getElementById('token-article-body-en').innerHTML = `
+    <p><strong>VANCOUVER, British Columbia &mdash; March 20, 2026 &mdash;</strong> As multi-generational capital continues to flow into direct-hold real estate, a secondary challenge is emerging for family offices: operational security. While the physical concrete and steel offer tangible stability, the digital systems required to manage these assets are increasingly complex. The reliance on generalized cloud computing has highlighted a growing need for specialized controls, prompting a structural shift toward localized data ownership.</p>
+    <p>Woodfine Management Corp executes the operational management and asset ledgers for these properties. Operating strictly as a technology vendor on a cost-plus basis, PointSav Digital Systems provides the Totebox Orchestration needed for companies to easily implement a secure, decentralized command centre at their head office, shifting away from vulnerable digital portals.</p>
+    <p>Addressing this shift, PointSav Digital Systems has unveiled a blueprint for a microkernel-based edge computing architecture. Rather than outsourcing critical infrastructure data to external networks, the framework establishes a definitive perimeter, engineered to empower building operators with robust cyberphysical defense directly at the asset level.</p>
+
+    <h3>The independent digital vault.</h3>
+    <p>At the core of this operational recalibration are Totebox Archives. These act as cryptographically secured, append-only data storage containers designed to be freely transferable across private networks, public clouds, or bare-metal installations at the owner's discretion.</p>
+    <p>By categorically separating critical property, corporate, and personnel data from public networks, the system is designed to prevent algorithmic scraping and establish an immutable, verifiable historical record. For the wealth preservation demographic, this translates directly to structural data ownership. It systemically limits the reliance on external cloud providers for fundamental asset information, engineered to ensure continuous disclosure and long-term integrity for the physical infrastructure.</p>
+
+    <h3>Aggregated control and defense.</h3>
+    <p>Security in this localized environment is fundamentally different from traditional commercial software. PointSav Digital Systems manages proprietary data flows using Totebox Orchestration, a framework that establishes a common language for fundamental behaviors without centralized control.</p>
+    <p>To further insulate the assets from human-centric vulnerabilities, the agentless architecture rejects legacy flaws like standard passwords, utilizing a Machine-Based Authorization paradigm tied to hardware pairing. Coupled with a universal one-way command flow, these encrypted, portable systems are engineered to effectively mitigate upstream vulnerabilities by design, providing robust defense against external threats.</p>
+
+    <h3>Ensuring long-term accessibility.</h3>
+    <p>A critical concern for capital partners is vendor lock-in&mdash;the risk of data becoming trapped in proprietary third-party databases over decades of ownership. PointSav Digital Systems addresses this through PointSav Console OS, a secure terminal environment designed specifically for operators.</p>
+    <p>Unlike traditional models, PointSav Console OS outputs deterministic, machine-readable files. This ensures that operators can always read, access, and control their core historical records, completely unencumbered by external vendors. For multi-generational stewards, this architecture ensures that the digital ledger of an asset remains as permanent and resilient as the physical building itself.</p>
+`;
+
+
+// --- SPANISH MANUSCRIPT ---
+document.getElementById('token-hook-title-es').innerHTML = `La verdadera propiedad de los bienes raíces físicos ahora requiere soberanía estructural sobre sus registros digitales.`;
+
+document.getElementById('token-article-abstract-es').innerHTML = `
+    <p>Si bien la computaci&oacute;n en la nube generalizada ha escalado con &eacute;xito la econom&iacute;a moderna, la gesti&oacute;n de activos f&iacute;sicos multigeneracionales presenta un desaf&iacute;o operativo distinto. Depender de redes externas para la infraestructura cr&iacute;tica de los edificios introduce una enorme complejidad y vulnerabilidades centradas en los humanos que los administradores a largo plazo no deber&iacute;an tener que aceptar.</p>
+    <p>Para proteger estos entornos, PointSav Digital Systems ha publicado el modelo para un per&iacute;metro especializado e independiente utilizando una arquitectura sin agentes. A trav&eacute;s de nuestro marco de borde basado en micron&uacute;cleo y los Totebox Archives de libre transferencia, el sistema est&aacute; dise&ntilde;ado para empoderar a los operadores de edificios a retener un control independiente y libre de cargas sobre sus datos hist&oacute;ricos. Proporciona la defensa ciberf&iacute;sica necesaria, dise&ntilde;ada para mantener el libro mayor digital del activo tan resistente como el concreto mismo.</p>
+`;
+
+document.getElementById('token-article-takeaways-es').innerHTML = `
+    <div class="takeaways-box">
+        <div class="takeaways-header">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>
+            <span>PUNTOS DESTACADOS</span>
+        </div>
+        <ul class="takeaways-list">
+            <li>PointSav Digital Systems ha introducido una arquitectura fundacional de sistema operativo diseñada para proteger y gestionar la infraestructura física de bienes raíces.</li>
+            <li>La tecnología se centra en la "soberanía de datos", diseñada para garantizar que las oficinas familiares y los socios de capital retengan un control independiente y localizado sobre los registros críticos de sus edificios.</li>
+            <li>Al desacoplar las operaciones esenciales de las redes de nube generalizadas, el sistema diseña un sólido mecanismo de defensa ciberfísica a través de archivos de datos inmutables y de libre transferencia.</li>
+        </ul>
+    </div>
+`;
+
+document.getElementById('token-official-title-es').innerHTML = `El cambio hacia la soberanía digital en los activos físicos`;
+
+document.getElementById('token-article-body-es').innerHTML = `
+    <p><strong>VANCOUVER, British Columbia &mdash; 20 de marzo de 2026 &mdash;</strong> A medida que el capital multigeneracional contin&uacute;a fluyendo hacia los bienes ra&iacute;ces de tenencia directa, est&aacute; surgiendo un desaf&iacute;o secundario para las oficinas familiares: la seguridad operativa. Si bien el concreto y el acero f&iacute;sicos ofrecen una estabilidad tangible, los sistemas digitales requeridos para gestionar estos activos son cada vez m&aacute;s complejos. La dependencia de la computaci&oacute;n en la nube generalizada ha puesto de relieve una creciente necesidad de controles especializados, impulsando un cambio estructural hacia la propiedad localizada de los datos.</p>
+    <p>Woodfine Management Corp ejecuta la gesti&oacute;n operativa y los libros mayores de activos para estas propiedades. Operando estrictamente como un proveedor de tecnolog&iacute;a sobre una base de costo m&aacute;s margen, PointSav Digital Systems proporciona la Totebox Orchestration necesaria para que las empresas implementen f&aacute;cilmente un centro de comando seguro y descentralizado en su oficina central, alej&aacute;ndose de los portales digitales vulnerables.</p>
+    <p>Abordando este cambio, PointSav Digital Systems ha revelado un modelo para una arquitectura de computaci&oacute;n de borde basada en micron&uacute;cleo. En lugar de subcontratar los datos de infraestructura cr&iacute;tica a redes externas, el marco establece un per&iacute;metro definitivo, dise&ntilde;ado para empoderar a los operadores de edificios con una s&oacute;lida defensa ciberf&iacute;sica directamente a nivel del activo.</p>
+
+    <h3>La b&oacute;veda digital independiente.</h3>
+    <p>En el n&uacute;cleo de esta recalibraci&oacute;n operativa se encuentran los Totebox Archives. Estos act&uacute;an como contenedores de almacenamiento de datos de solo adici&oacute;n, asegurados criptogr&aacute;ficamente y dise&ntilde;ados para ser de libre transferencia a trav&eacute;s de redes privadas, nubes p&uacute;blicas o instalaciones en hardware f&iacute;sico a discreci&oacute;n del propietario.</p>
+    <p>Al separar categ&oacute;ricamente los datos cr&iacute;ticos de propiedad, corporativos y de personal de las redes p&uacute;blicas, el sistema est&aacute; dise&ntilde;ado para evitar la extracci&oacute;n algor&iacute;tmica de datos y establecer un registro hist&oacute;rico inmutable y verificable. Para la demograf&iacute;a de preservaci&oacute;n de la riqueza, esto se traduce directamente en la propiedad estructural de los datos. Limita sist&eacute;micamente la dependencia de proveedores de nube externos para la informaci&oacute;n fundamental de los activos, dise&ntilde;ado para garantizar la divulgaci&oacute;n continua y la integridad a largo plazo para la infraestructura f&iacute;sica.</p>
+
+    <h3>Control y defensa agregados.</h3>
+    <p>La seguridad en este entorno localizado es fundamentalmente diferente del software comercial tradicional. PointSav Digital Systems gestiona los flujos de datos propietarios utilizando Totebox Orchestration, un marco que establece un lenguaje com&uacute;n para comportamientos fundamentales sin control centralizado.</p>
+    <p>Para aislar a&uacute;n m&aacute;s los activos de las vulnerabilidades centradas en los humanos, la arquitectura sin agentes rechaza las fallas heredadas como las contrase&ntilde;as est&aacute;ndar, utilizando un paradigma de Machine-Based Authorization vinculado al emparejamiento de hardware. Junto con un flujo de comandos universal unidireccional, estos sistemas cifrados y port&aacute;tiles est&aacute;n dise&ntilde;ados para mitigar eficazmente las vulnerabilidades ascendentes por dise&ntilde;o, proporcionando una s&oacute;lida defensa contra amenazas externas.</p>
+
+    <h3>Garantizar la accesibilidad a largo plazo.</h3>
+    <p>Una preocupaci&oacute;n cr&iacute;tica para los socios de capital es la dependencia del proveedor: el riesgo de que los datos queden atrapados en bases de datos patentadas de terceros durante d&eacute;cadas de propiedad. PointSav Digital Systems aborda esto a trav&eacute;s de PointSav Console OS, un entorno de terminal seguro dise&ntilde;ado espec&iacute;ficamente para operadores.</p>
+    <p>A diferencia de los modelos tradicionales, PointSav Console OS genera archivos deterministas y legibles por m&aacute;quina. Esto garantiza que los operadores siempre puedan leer, acceder y controlar sus registros hist&oacute;ricos centrales, completamente libres de proveedores externos. Para los administradores multigeneracionales, esta arquitectura garantiza que el libro mayor digital de un activo siga siendo tan permanente y resistente como el propio edificio f&iacute;sico.</p>
+`;
+</script>
+</body>
+</html>
