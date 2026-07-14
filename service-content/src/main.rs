@@ -165,12 +165,14 @@ fn main() -> NotifyResult<()> {
     });
     let graph_db_path = format!("{}/entities.lbug", graph_dir);
 
-    let graph_store: Arc<dyn GraphStore> = Arc::new(
-        LbugGraphStore::new(&graph_db_path).unwrap_or_else(|e| {
-            eprintln!("[FATAL] Failed to open LadybugDB graph store {:?}: {e}", graph_db_path);
+    let graph_store: Arc<dyn GraphStore> =
+        Arc::new(LbugGraphStore::new(&graph_db_path).unwrap_or_else(|e| {
+            eprintln!(
+                "[FATAL] Failed to open LadybugDB graph store {:?}: {e}",
+                graph_db_path
+            );
             std::process::exit(1);
-        }),
-    );
+        }));
     graph_store.init_schema().unwrap_or_else(|e| {
         eprintln!("[FATAL] Failed to initialise graph schema: {e}");
         std::process::exit(1);
