@@ -194,6 +194,18 @@
 .media-figure img { display: block; width: 100%; height: auto; border-radius: 2px; }
 .media-figure figcaption { margin-top: 6px; font-size: 13px; color: var(--ink-3); }
 
+/* ── Icon strip ────────────────────────────────────────────────────── */
+.section-icon-strip { padding: 32px 24px; }
+.icon-strip-heading { text-align: center; margin: 0 0 20px; }
+.icon-strip {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+.icon-strip-item { margin: 0; text-align: center; }
+.icon-strip-item img { display: block; width: 48px; height: 48px; margin: 0 auto 8px; }
+.icon-strip-item figcaption { font-size: 13px; color: var(--ink-3); }
+
 @media (min-width: 769px) {
   .section-card-grid { padding: 48px 140px; }
   .card-grid { grid-template-columns: repeat(var(--cols, 3), 1fr); gap: 24px; }
