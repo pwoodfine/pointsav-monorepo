@@ -86,3 +86,12 @@ service-slm/router-trainer/**/*.log
 # discovery-queue — runtime TX identity data (operator decision 2026-05-16)
 # Future disposition: move to service-fs/data/ — tracked as open item
 discovery-queue/
+
+# Private key material -- never committed (2026-07-18 security incident:
+# operator_private.key, vault_identity.key, and keys/gcp_node_mba_ed25519
+# were exposed on public GitHub for 3+ months; history purged via
+# git filter-repo). Public keys (*.pub) remain trackable.
+system-gateway-mba/operator_private.key
+system-gateway-mba/vault_identity.key
+system-gateway-mba/keys/gcp_node_mba_ed25519
+*.key
