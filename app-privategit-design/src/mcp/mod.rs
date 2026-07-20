@@ -1,6 +1,3 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 // Phase 3 (hyperscaler-tier initiative) — MCP JSON-RPC endpoint. Closes a dead nginx
 // proxy rule (nginx-design.conf already forwarded /mcp to this binary; no route existed).
 // Follows app-privategit-bim's mcp/{mod,protocol,tools}.rs split as the reference

@@ -22,4 +22,6 @@ pub struct AppState {
     /// `components/` slugs grouped by recipe.json `category` (generic vs GIS-origin vs
     /// wiki-origin) — precomputed once at startup, same pattern as `nav`.
     pub component_groups: Arc<Vec<(String, Vec<String>)>>,
+    /// SEO canonical/OG/JSON-LD/sitemap base origin — see Config::site_origin.
+    pub site_origin: Arc<String>,
 }

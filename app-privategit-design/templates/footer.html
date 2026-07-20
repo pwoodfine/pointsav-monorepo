@@ -3,45 +3,81 @@
   SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
 -->
 
+<!-- "Important Information" collapsible disclosure (2026-07-15, ported from the
+     v3 mockup's BIM-family pattern) -- sits directly above the footer, sharing
+     its background/rhythm. Previously only the always-visible one-line notice
+     below existed; this is the expandable governance block that was missing. -->
+<section class="site-disclosure" aria-label="{{ disclosure_summary }}">
+<details class="site-disclosure__details">
+<summary class="site-disclosure__summary">{{ disclosure_summary }}</summary>
+<p class="site-disclosure__label">{{ disclosure_label }}</p>
+<div class="site-disclosure__body">
+<p>{{ disclosure_body }}</p>
+</div>
+</details>
+</section>
+
 <footer class="ds-footer" aria-labelledby="ds-footer-label">
-<h2 id="ds-footer-label" class="sr-only">Site footer</h2>
+<h2 id="ds-footer-label" class="sr-only">{{ site_label }}</h2>
+
+<p class="ds-footer__disclosure-notice">{{ disclosure_notice }}</p>
 
 <div class="ds-footer__cols">
-<nav class="ds-footer__col" aria-label="Canonical sections">
-<p class="ds-footer__col-title">Canonical</p>
+<div class="ds-footer__col ds-footer__col--identity">
+<p class="ds-footer__col-title">PointSav Design System</p>
 <ul>
-<li><a href="/">Overview</a></li>
-<li><a href="/components/badge/usage">Components</a></li>
-<li><a href="/tokens">Tokens</a></li>
-<li><a href="/guidelines/accessibility/overview">Guidelines</a></li>
-<li><a href="/bundles/editorial-style-guide">Bundles</a></li>
-<li><a href="/adoption">Adoption</a></li>
-<li><a href="/bundles/tokens">Get started — download tokens</a></li>
+<li>{{ identity_tagline }}</li>
+<li>{{ total_tokens }} {{ tokens | lower }} &middot; {{ total_components }} {{ components | lower }}</li>
+<li>{{ identity_standards }}</li>
+<li>{{ identity_license | safe }}</li>
+<li><a href="https://github.com/pointsav/pointsav-design-system">{{ identity_source_label }}</a></li>
+</ul>
+</div>
+<nav class="ds-footer__col" aria-label="{{ canonical_title }}">
+<p class="ds-footer__col-title">{{ canonical_title }}</p>
+<ul>
+<li><a href="/">{{ overview }}</a></li>
+<li><a href="/components/button/usage">{{ components }}</a></li>
+<li><a href="/tokens">{{ tokens }}</a></li>
+<li><a href="/guidelines/accessibility/overview">{{ guidelines }}</a></li>
+<li><a href="/elements/color/overview">{{ elements }}</a></li>
+<li><a href="/paper/paper/overview">{{ paper }}</a></li>
+<li><a href="/writing/writing/overview">{{ writing }}</a></li>
+<li><a href="/bundles/editorial-style-guide">{{ bundles }}</a></li>
+<li><a href="/adoption">{{ adoption }}</a></li>
+<li><a href="/bundles/tokens">{{ get_started }}</a></li>
+<li><a href="/products/knowledge-platform/overview">{{ knowledge_platform }}</a></li>
+<li><a href="/products/gis/overview">GIS</a></li>
+<li><a href="/products/org-charts/overview">{{ org_charts }}</a></li>
+<li><a href="/releases/changelog/overview">{{ releases }}</a></li>
 </ul>
 </nav>
-<nav class="ds-footer__col ds-footer__col--mono" aria-label="Machine surface">
-<p class="ds-footer__col-title">Machine surface</p>
+<nav class="ds-footer__col ds-footer__col--mono" aria-label="{{ machine_surface_title }}">
+<p class="ds-footer__col-title">{{ machine_surface_title }}</p>
 <ul>
+<li><a href="/developing/mcp/overview">/mcp &middot; MCP endpoint</a></li>
 <li><a href="/tokens/search">/tokens/search</a></li>
-<li><a href="/bundles/editorial-style-guide">/bundles/:name</a></li>
-<li><a href="/bundles/editorial-style-guide/download">/bundles/:name/download</a></li>
+<li><a href="/bundles/tokens">/bundles/:name</a></li>
+<li><a href="/bundles/tokens/download">/bundles/:name/download</a></li>
 <li><a href="/healthz">/healthz</a></li>
+<li><a href="/releases/changelog/overview">Design System v{{ version }}</a></li>
+</ul>
+</nav>
+<nav class="ds-footer__col" aria-label="{{ network_title }}">
+<p class="ds-footer__col-title">{{ network_title }}</p>
+<ul>
+<li><a href="https://home.pointsav.com">{{ network_pointsav }}</a></li>
+<li><a href="https://documentation.pointsav.com">{{ network_documentation }}</a></li>
+<li><a href="https://software.pointsav.com">{{ network_software }}</a></li>
+<li><a href="https://home.woodfinegroup.com">{{ network_woodfine }}</a></li>
 </ul>
 </nav>
 </div>
-
-<p class="ds-footer__family">
-Part of the PointSav family:
-<a href="https://home.pointsav.com">home</a> ·
-<a href="https://documentation.pointsav.com">documentation</a>
-</p>
 
 <div class="ds-footer__base">
-<div class="ds-footer__meta">
-<p class="ds-footer__legal">Copyright &copy; 2026 Woodfine Capital Projects Inc. All rights reserved.</p>
-<p class="ds-footer__build">Design System v{{ version }} &middot; <span class="ds-footer__live">live</span></p>
-</div>
-<a class="ds-badge" href="https://github.com/pointsav/pointsav-monorepo" target="_blank" rel="noopener">
+<div class="ds-footer__identity-row">
+<span class="ds-footer__locations">{{ locations }}</span>
+<a class="ds-badge" href="https://github.com/pointsav/pointsav-monorepo" target="_blank" rel="noopener" title="PrivateGit Source v{{ version }}">
 <span class="ds-badge__glyph" aria-hidden="true">
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="15" height="15">
 <line x1="6" x2="6" y1="3" y2="15"/>
@@ -51,9 +87,16 @@ Part of the PointSav family:
 </svg>
 </span>
 <span class="ds-badge__text">
-<span class="ds-badge__lead">Powered by</span>
+<span class="ds-badge__lead">{{ powered_by }}</span>
 <span class="ds-badge__name">PrivateGit</span>
 </span>
 </a>
+</div>
+<div class="ds-footer__identity-row ds-footer__identity-row--copyright">
+<span class="ds-footer__legal">{{ copyright }}</span>
+</div>
+<div class="ds-footer__identity-row ds-footer__identity-row--trademark">
+{{ trademark }}
+</div>
 </div>
 </footer>
