@@ -24,6 +24,14 @@ pub struct Config {
     /// same bug (ServeDir 404s instead of panicking, so it didn't surface in the
     /// initial fix's smoke test). Production deploys MUST set DESIGN_STATIC_DIR.
     pub static_dir: PathBuf,
+    /// SEO — canonical/OG/JSON-LD/sitemap base origin. Defaults to a plain
+    /// http://<bind> URL (127.0.0.1:9094 by default) rather than hardcoding the
+    /// production domain, so a local/staging instance never emits production
+    /// canonical URLs for itself — the same class of bug templates_dir/static_dir
+    /// already hit (a compile-time/hardcoded value silently wrong on another
+    /// deployment). Only the promoted foundry-prod deploy should set
+    /// DESIGN_SITE_ORIGIN=https://design.pointsav.com.
+    pub site_origin: String,
 }
 
 impl Config {
@@ -53,24 +61,26 @@ impl Config {
             ),
         );
 
-        let templates_dir = PathBuf::from(
-            env::var("DESIGN_TEMPLATES_DIR")
-                .unwrap_or_else(|_| concat!(env!("CARGO_MANIFEST_DIR"), "/templates").to_string()),
-        );
-        let static_dir = PathBuf::from(
-            env::var("DESIGN_STATIC_DIR")
-                .unwrap_or_else(|_| concat!(env!("CARGO_MANIFEST_DIR"), "/static").to_string()),
-        );
+        let templates_dir = PathBuf::from(env::var("DESIGN_TEMPLATES_DIR").unwrap_or_else(|_| {
+            concat!(env!("CARGO_MANIFEST_DIR"), "/templates").to_string()
+        }));
+        let static_dir = PathBuf::from(env::var("DESIGN_STATIC_DIR").unwrap_or_else(|_| {
+            concat!(env!("CARGO_MANIFEST_DIR"), "/static").to_string()
+        }));
+
+        let bind = env::var("DESIGN_BIND").unwrap_or_else(|_| "127.0.0.1:9094".to_string());
+        let site_origin = env::var("DESIGN_SITE_ORIGIN").unwrap_or_else(|_| format!("http://{bind}"));
 
         Config {
             vault,
-            bind: env::var("DESIGN_BIND").unwrap_or_else(|_| "127.0.0.1:9094".to_string()),
+            bind,
             doorman_url: env::var("DOORMAN_URL")
                 .unwrap_or_else(|_| "http://127.0.0.1:9092".to_string()),
             tenant: env::var("DESIGN_TENANT").unwrap_or_else(|_| "pointsav".to_string()),
             bundle_mounts,
             templates_dir,
             static_dir,
+            site_origin,
         }
     }
 }

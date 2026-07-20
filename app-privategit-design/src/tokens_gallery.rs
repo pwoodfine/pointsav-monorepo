@@ -10,11 +10,17 @@
 // knowledge-wiki baseline... Adds knowledge-wiki primitives"), master-cosigned for that
 // product, not this substrate's own generic primitives. `sync-design-tokens.sh` explicitly
 // SKIPs dtcg-bundle.json from its canonical merge step — it was never meant to be the
-// gallery's source. The actual merged, canonical bundle
-// (`sync-design-tokens.sh`'s own output, matching what nginx serves at
-// `/tokens.full.json`) lives at `exports/tokens.full.json`. Its `primitive` tier's
-// `primary-60: #234ed8` matches the ratified PointSav blue from `primitive.json` /
-// `pointsav-brand.json` — confirming this is the correct source.
+// gallery's source. The actual merged, canonical bundle lives at `exports/tokens.full.json`.
+// Its `primitive` tier's `primary-60: #234ed8` matches the ratified PointSav blue from
+// `primitive.json` / `pointsav-brand.json` — confirming this is the correct source.
+//
+// Correction (2026-07-16 token-completeness audit): the line above previously called
+// `tokens.full.json` "sync-design-tokens.sh's own output" — false. That script only
+// COPIES this already-hand-edited file between deploy locations; nothing regenerates
+// its `primitive`/`theme`/`paper`/`writing` tiers from the real granular source files
+// (`primitive.json`, `pointsav-brand.json`, `paper/*`, `writing/*`). The real generator
+// is `pointsav-design-system/bin/generate-tokens-export.py` (added same day, closes this
+// gap) — run it after editing any source file, before committing `tokens.full.json`.
 use serde_json::Value;
 use std::path::Path;
 
@@ -53,6 +59,8 @@ pub fn load_and_flatten(vault: &Path) -> Vec<TokenTier> {
     for tier_name in [
         "primitive",
         "theme",
+        "paper",
+        "writing",
         "ibm-carbon-org-chart",
         "org-chart-extended",
     ] {

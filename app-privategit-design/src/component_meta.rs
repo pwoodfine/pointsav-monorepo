@@ -1,6 +1,3 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 // Phase 3 (hyperscaler-tier initiative) — per-component origin + freshness badges,
 // rendered on each component's own page (not just the sidebar grouping shipped in
 // Phase 2). Echoes Spectrum's per-component changelog/version pattern from the external

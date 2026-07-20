@@ -3,27 +3,12 @@
   SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
 -->
 
-{% for section in sections %}
-{% set items = nav[section] %}
-{% if items %}
-<div class="nav-section">
-<span class="nav-section-title">{{ section | to_title }}</span>
-{% if section == "components" %}
-{% for label, slugs in component_groups %}
-{% if label %}<span class="nav-subgroup-label">{{ label }}</span>{% endif %}
-<ul{% if label %} class="nav-subgroup"{% endif %}>
+<details class="doc-toc__components-details">
+<summary>{{ heading }} <span class="doc-toc__components-details-count">{{ slugs | length }}</span></summary>
+<ul class="doc-toc__components">
 {% for slug in slugs %}
-<li><a href="/{{ section }}/{{ slug }}/{{ default_tabs[section] }}"{% if section == active_section and slug == active_slug %} class="active"{% endif %}>{{ slug | to_title }}</a></li>
+<li><a href="/components/{{ slug }}/usage"{% if slug == active_slug %} class="active"{% endif %}>{{ slug | to_title }}</a></li>
 {% endfor %}
 </ul>
-{% endfor %}
-{% else %}
-<ul>
-{% for slug in items %}
-<li><a href="/{{ section }}/{{ slug }}/{{ default_tabs[section] }}"{% if section == active_section and slug == active_slug %} class="active"{% endif %}>{{ slug | to_title }}</a></li>
-{% endfor %}
-</ul>
-{% endif %}
-</div>
-{% endif %}
-{% endfor %}
+<div class="doc-toc__components-more">{{ slugs | length }} components.{% if see_also %} See also: <a href="{{ see_also }}">{{ heading }}</a>.{% endif %}</div>
+</details>
