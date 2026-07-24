@@ -941,7 +941,9 @@ section.act:first-of-type { border-top: none; }
 }
 .ds-footer__col ul { list-style: none; }
 .ds-footer__col li { margin-bottom: 0.375rem; }
-.ds-footer__col a { color: var(--cds-footer-link); text-decoration: none; font-size: 0.8125rem; }
+/* padding + display:block widen the tap target to ~35px tall (was ~16px, no padding) --
+   found via mobile audit 2026-07-22: WCAG 2.2 SC 2.5.8 requires 24x24px minimum. */
+.ds-footer__col a { display: block; padding: 0.5rem 0; color: var(--cds-footer-link); text-decoration: none; font-size: 0.8125rem; }
 .ds-footer__col a:hover { color: var(--cds-footer-link-hover); text-decoration: underline; }
 .ds-footer__col--mono a { font-family: var(--cds-font-mono); font-size: 0.75rem; }
 /* Identity plate — first footer column, matching the approved v3 mockup's
