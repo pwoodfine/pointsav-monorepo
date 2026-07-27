@@ -258,46 +258,6 @@ fn default_module_id() -> ModuleId {
     })
 }
 
-/// Fixed tenant(s) `graph_query` actually reads from, regardless of the caller's own
-/// `X-Foundry-Module-ID` (that header identifies the archive/session, not where the real
-/// DataGraph content lives). Every session's `.mcp.json` sets its own archive name as
-/// module_id — under the old per-caller-scoped design, that meant every real DataGraph
-/// query silently returned empty, since all content lives under a small fixed set of
-/// tenants regardless of which archive asks. Confirmed live (2026-07-08) that real content
-/// exists under THREE tenants, not just "jennifer": "woodfine" also holds real corporate/
-/// regulatory entities (Woodfine Capital Projects, Woodfine Management Corp., etc.) from a
-/// separate ingest-jennifer.py-driven structured load that (despite its filename) targets
-/// module_id=woodfine, not jennifer. Configurable via `DOORMAN_GRAPH_READ_TENANTS`
-/// (comma-separated); defaults to "jennifer,woodfine,mathew" — "mathew" is
-/// merged/future-proofed per operator direction even though it has no ingested content yet,
-/// so this doesn't need touching again once it does.
-fn graph_read_tenants() -> Vec<String> {
-    let raw = std::env::var("DOORMAN_GRAPH_READ_TENANTS").unwrap_or_default();
-    let tenants: Vec<String> = raw
-        .split(',')
-        .map(|s| s.trim().to_string())
-        .filter(|s| !s.is_empty())
-        .collect();
-    if tenants.is_empty() {
-        vec!["jennifer".to_string(), "woodfine".to_string(), "mathew".to_string()]
-    } else {
-        tenants
-    }
-}
-
-/// Fixed tenant `graph_mutate` actually writes to, regardless of the caller's own
-/// `X-Foundry-Module-ID`. Unlike reads, a mutation is a single fact and should not be
-/// duplicated across tenants — defaults to "jennifer" (the tenant with real content
-/// today). Configurable via `DOORMAN_GRAPH_WRITE_TENANT`.
-fn graph_write_tenant() -> String {
-    let raw = std::env::var("DOORMAN_GRAPH_WRITE_TENANT").unwrap_or_default();
-    if raw.trim().is_empty() {
-        "jennifer".to_string()
-    } else {
-        raw.trim().to_string()
-    }
-}
-
 async fn chat_completions(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
@@ -1582,25 +1542,24 @@ fn default_graph_query_limit() -> u32 {
 
 /// `POST /v1/graph/query` — proxy to service-content `/v1/graph/context`.
 ///
-/// 1. Requires `X-Foundry-Module-ID` header → 400 if absent (still validated + audit-logged,
-///    identifies the calling archive/session — but no longer determines which tenant is
-///    actually read from, see `graph_read_tenants()`).
+/// 1. Requires `X-Foundry-Module-ID` header → 400 if absent — this is both the caller's
+///    identity for audit purposes AND, as of this fix, the read scope itself. Each archive
+///    reads only its own tenant; there is no cross-tenant merge and no fixed default list.
+///    Cross-archive reads are the `app-orchestration-graph` federation gateway's job, not
+///    this proxy's (see `BRIEF-datagraph-tenant-isolation.md` — the prior merge-across-a-
+///    hardcoded-3-tenant-list behavior was a confirmed DOCTRINE claim #48 violation).
 /// 2. Parses `{"q": "...", "limit": N}` body.
-/// 3. Queries EVERY tenant in `graph_read_tenants()` against
-///    `{service_content_endpoint}/v1/graph/context?q=…&module_id=…&limit=…`, merging results —
-///    real DataGraph content lives under a small fixed set of tenants regardless of which
-///    archive is asking; scoping the read by the caller's own module_id silently returned
-///    empty for every session before this fix.
-/// 4. Audit-logs as `event_type = "graph-query"` via `AuditCaptureEntry`, recording both the
-///    caller's own module_id and the tenant(s) actually queried.
-/// 5. Returns the merged results (truncated to `body.limit`), status 200 unless every tenant
-///    call failed (mirrors the single-tenant upstream-error behavior from before this fix).
+/// 3. Queries `{service_content_endpoint}/v1/graph/context?q=…&module_id=…&limit=…` with
+///    `module_id` set to the caller's own `X-Foundry-Module-ID` — single tenant, no merge.
+/// 4. Audit-logs as `event_type = "graph-query"` via `AuditCaptureEntry`.
+/// 5. Returns the upstream result verbatim (truncated to `body.limit`), status mirrors the
+///    upstream response.
 async fn graph_query(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
     Json(body): Json<GraphQueryBody>,
 ) -> impl IntoResponse {
-    // 1. Module-ID is mandatory (caller identity — no longer the read scope).
+    // 1. Module-ID is mandatory — both caller identity and, now, the read scope.
     let caller_module_id = match headers
         .get("x-foundry-module-id")
         .and_then(|v| v.to_str().ok())
@@ -1618,45 +1577,49 @@ async fn graph_query(
         return err.into_response();
     }
 
-    // 3. Query every fixed read-tenant, merging results.
-    let read_tenants = graph_read_tenants();
+    // 3. Query only the caller's own tenant — no cross-tenant merge.
     let client = ReqwestClient::new();
-    let mut merged: Vec<serde_json::Value> = Vec::new();
-    let mut any_success = false;
-    let mut last_status = StatusCode::BAD_GATEWAY;
+    let url = format!(
+        "{}/v1/graph/context?q={}&module_id={}&limit={}",
+        state.service_content_endpoint,
+        urlencoding_encode(&body.q),
+        urlencoding_encode(&caller_module_id),
+        body.limit,
+    );
+    let sc_resp = client.get(&url).send().await;
 
-    for tenant in &read_tenants {
-        let url = format!(
-            "{}/v1/graph/context?q={}&module_id={}&limit={}",
-            state.service_content_endpoint,
-            urlencoding_encode(&body.q),
-            urlencoding_encode(tenant),
-            body.limit,
-        );
-        let sc_resp = match client.get(&url).send().await {
-            Ok(r) => r,
-            Err(_) => continue,
-        };
-        let sc_status = sc_resp.status();
-        last_status = StatusCode::from_u16(sc_status.as_u16()).unwrap_or(StatusCode::BAD_GATEWAY);
-        if !sc_status.is_success() {
-            continue;
+    let (status, rows): (StatusCode, Vec<serde_json::Value>) = match sc_resp {
+        Ok(r) => {
+            let sc_status = StatusCode::from_u16(r.status().as_u16()).unwrap_or(StatusCode::BAD_GATEWAY);
+            if !sc_status.is_success() {
+                (sc_status, Vec::new())
+            } else {
+                // Log a parse failure distinctly from a genuinely empty result — a malformed
+                // upstream body silently becoming [] (indistinguishable from "no matches") was
+                // a separate Phase C audit finding.
+                match r.json::<serde_json::Value>().await {
+                    Ok(serde_json::Value::Array(mut rows)) => {
+                        rows.truncate(body.limit as usize);
+                        (StatusCode::OK, rows)
+                    }
+                    Ok(other) => {
+                        tracing::warn!(
+                            "graph_query: tenant {caller_module_id:?} returned non-array JSON, treating as empty: {other}"
+                        );
+                        (StatusCode::OK, Vec::new())
+                    }
+                    Err(e) => {
+                        tracing::warn!(
+                            "graph_query: tenant {caller_module_id:?} response failed to parse as JSON, treating as empty: {e}"
+                        );
+                        (StatusCode::OK, Vec::new())
+                    }
+                }
+            }
         }
-        any_success = true;
-        // Log a parse failure distinctly from a genuinely empty result — a malformed
-        // upstream body silently becoming [] (indistinguishable from "no matches") was
-        // a separate Phase C audit finding.
-        match sc_resp.json::<serde_json::Value>().await {
-            Ok(serde_json::Value::Array(rows)) => merged.extend(rows),
-            Ok(other) => tracing::warn!(
-                "graph_query: tenant {tenant:?} returned non-array JSON, treating as empty: {other}"
-            ),
-            Err(e) => tracing::warn!(
-                "graph_query: tenant {tenant:?} response failed to parse as JSON, treating as empty: {e}"
-            ),
-        }
-    }
-    merged.truncate(body.limit as usize);
+        Err(_) => (StatusCode::BAD_GATEWAY, Vec::new()),
+    };
+    let any_success = status.is_success();
 
     // 4. Audit-log (non-fatal — proxy succeeds even if ledger write fails).
     let entry = AuditCaptureEntry {
@@ -1672,41 +1635,35 @@ async fn graph_query(
         payload: serde_json::json!({
             "q": body.q, "limit": body.limit,
             "caller_module_id": caller_module_id,
-            "read_tenants": read_tenants,
         }),
         caller_request_id: None,
     };
     let _ = state.doorman.ledger().append_capture_entry(&entry);
 
-    // 5. Return the merged result set. Only surface an error status if every
-    // tenant call failed — a partial success (e.g. mathew has no data yet) is
-    // a normal 200 with whatever rows jennifer returned.
-    let status = if any_success {
-        StatusCode::OK
-    } else {
-        last_status
-    };
-    (status, Json(serde_json::Value::Array(merged))).into_response()
+    // 5. Return the tenant-scoped result set, mirroring the upstream status.
+    (status, Json(serde_json::Value::Array(rows))).into_response()
 }
 
 /// `POST /v1/graph/mutate` — proxy to service-content `/v1/graph/mutate`.
 ///
-/// 1. Requires `X-Foundry-Module-ID` header → 400 if absent (caller identity, same as
-///    `graph_query` — no longer the write scope).
-/// 2. Parses the body as JSON and overwrites/injects its `module_id` field with
-///    `graph_write_tenant()`'s value before forwarding — previously the body was forwarded
-///    verbatim, so whatever (if anything) the caller happened to put in its own `module_id`
-///    field silently decided where the write landed; a mutation from `module_id=command`
-///    could land in a tenant invisible to every `jennifer`-scoped read.
-/// 3. Audit-logs as `event_type = "graph-mutation"` via `AuditCaptureEntry`, recording both
-///    the caller's own module_id and the tenant actually written to.
+/// 1. Requires `X-Foundry-Module-ID` header → 400 if absent — this is both the caller's
+///    identity AND, as of this fix, the write scope. A mutation lands under the caller's
+///    own tenant; it is never redirected to a fixed default tenant (the prior behavior
+///    silently discarded caller identity on write — a confirmed DOCTRINE claim #48
+///    violation, see `BRIEF-datagraph-tenant-isolation.md`).
+/// 2. Parses the body as JSON and sets its `module_id` field to the caller's own
+///    `X-Foundry-Module-ID` before forwarding — this is enforcement, not trust: whatever
+///    the caller put in its own body's `module_id` field is overwritten with its verified
+///    header identity, so a caller cannot claim to write as a different archive.
+/// 3. Audit-logs as `event_type = "graph-mutation"` via `AuditCaptureEntry`, recording the
+///    caller's own module_id (== the tenant written to).
 /// 4. Returns service-content response verbatim.
 async fn graph_mutate(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
     body_bytes: Bytes,
 ) -> impl IntoResponse {
-    // 1. Module-ID is mandatory (caller identity — no longer the write scope).
+    // 1. Module-ID is mandatory — both caller identity and, now, the write scope.
     let caller_module_id = match headers
         .get("x-foundry-module-id")
         .and_then(|v| v.to_str().ok())
@@ -1724,13 +1681,13 @@ async fn graph_mutate(
         return err.into_response();
     }
 
-    // 2b. Overwrite/inject module_id in the outgoing body to the fixed write tenant.
-    let write_tenant = graph_write_tenant();
+    // 2b. Enforce module_id in the outgoing body to the caller's own verified identity —
+    // never the caller-supplied body value, never a fixed default tenant.
     let outgoing_body: Vec<u8> = match serde_json::from_slice::<serde_json::Value>(&body_bytes) {
         Ok(serde_json::Value::Object(mut map)) => {
             map.insert(
                 "module_id".to_string(),
-                serde_json::Value::String(write_tenant.clone()),
+                serde_json::Value::String(caller_module_id.clone()),
             );
             serde_json::to_vec(&serde_json::Value::Object(map)).unwrap_or_else(|_| body_bytes.to_vec())
         }
@@ -1739,7 +1696,7 @@ async fn graph_mutate(
 
     let url = format!("{}/v1/graph/mutate", state.service_content_endpoint);
 
-    // 3. Forward the (module_id-rewritten) body to service-content.
+    // 3. Forward the (module_id-enforced) body to service-content.
     let client = ReqwestClient::new();
     let sc_resp = match client
         .post(&url)
@@ -1777,7 +1734,7 @@ async fn graph_mutate(
         .to_string(),
         event_at: Utc::now(),
         captured_at: Utc::now(),
-        payload: serde_json::json!({ "caller_module_id": caller_module_id, "write_tenant": write_tenant }),
+        payload: serde_json::json!({ "caller_module_id": caller_module_id }),
         caller_request_id: None,
     };
     let _ = state.doorman.ledger().append_capture_entry(&entry);
