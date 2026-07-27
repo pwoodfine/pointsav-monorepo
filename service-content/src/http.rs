@@ -2,8 +2,9 @@
 // SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
 
 use axum::{
+    body::{to_bytes, Body},
     extract::{Query, Request, State},
-    http::StatusCode,
+    http::{Method, StatusCode},
     middleware::{self, Next},
     response::{Json, Response},
     routing::{get, post},
@@ -908,6 +909,46 @@ async fn issue_pair_token(
 
 // ── capability gate middleware ────────────────────────────────────────────────
 
+/// Pure scope-vs-target policy check for a verified capability, independent of
+/// any HTTP/router plumbing so it can be unit-tested directly.
+///
+/// `["*"]` in `archive_scope` is the operator-override wildcard
+/// (BRIEF-datagraph-tenant-isolation.md, Decisions Locked):
+/// - Honored ONLY for `user_scope == "ADMIN"` capabilities.
+/// - Never honored on the mutate route — the override is read-only even for
+///   the operator, full stop.
+///
+/// A non-wildcard scope must contain the request's target archive exactly.
+fn scope_permits_request(
+    archive_scope: &[String],
+    user_scope: &str,
+    target_module_id: Option<&str>,
+    is_mutate_route: bool,
+) -> Result<(), String> {
+    let is_wildcard = archive_scope.iter().any(|s| s == "*");
+
+    if is_wildcard && is_mutate_route {
+        return Err(
+            "wildcard archive_scope capability is read-only; not honored on /v1/graph/mutate"
+                .to_string(),
+        );
+    }
+    if is_wildcard && user_scope != "ADMIN" {
+        return Err("wildcard archive_scope requires an ADMIN-role capability".to_string());
+    }
+    if is_wildcard {
+        return Ok(());
+    }
+
+    match target_module_id {
+        Some(target) if archive_scope.iter().any(|s| s == target) => Ok(()),
+        Some(target) => Err(format!(
+            "capability archive_scope {archive_scope:?} does not cover target archive {target:?}"
+        )),
+        None => Err("could not determine target archive (module_id) for scope check".to_string()),
+    }
+}
+
 /// Verifies a forwarded `X-Foundry-Capability` header on WORM-touching routes.
 ///
 /// Requests with no header pass through unchanged — this preserves the current
@@ -926,12 +967,15 @@ async fn capability_gate(
     let Some(header_value) = req.headers().get("X-Foundry-Capability") else {
         return Ok(next.run(req).await);
     };
-    let header_str = header_value.to_str().map_err(|_| {
-        (
-            StatusCode::BAD_REQUEST,
-            "malformed X-Foundry-Capability header".to_string(),
-        )
-    })?;
+    let header_str = header_value
+        .to_str()
+        .map_err(|_| {
+            (
+                StatusCode::BAD_REQUEST,
+                "malformed X-Foundry-Capability header".to_string(),
+            )
+        })?
+        .to_string();
 
     let (payload_b64, _) = header_str.split_once('.').ok_or((
         StatusCode::UNAUTHORIZED,
@@ -968,7 +1012,7 @@ async fn capability_gate(
         format!("{from_instance} is not a paired peer"),
     ))?;
 
-    let verified = verify_capability(header_str, &public_key).map_err(|e| match e {
+    let verified = verify_capability(&header_str, &public_key).map_err(|e| match e {
         CapabilityError::Malformed => (StatusCode::BAD_REQUEST, e.to_string()),
         CapabilityError::BadSignature => (StatusCode::UNAUTHORIZED, e.to_string()),
         CapabilityError::Expired => (StatusCode::UNAUTHORIZED, e.to_string()),
@@ -979,6 +1023,51 @@ async fn capability_gate(
             StatusCode::CONFLICT,
             "capability nonce already used".to_string(),
         ));
+    }
+
+    // ── scope-vs-target (BRIEF-datagraph-tenant-isolation.md, Decisions Locked) ──
+    //
+    // A forwarded capability's `archive_scope` must actually cover the archive
+    // this request targets. Note what this does NOT implement yet: "grant-vs-
+    // forward" (distinguishing a capability granted directly to the caller from
+    // one relayed by a third instance) — no wire-format field exists to express
+    // that distinction today; this is an explicitly open item (see NEXT.md),
+    // not silently assumed safe. See `scope_permits_request` for the pure
+    // policy logic (unit-tested independently of the router/HTTP plumbing).
+    let is_mutate_route = req.method() == Method::POST && req.uri().path() == "/v1/graph/mutate";
+
+    let (req, target_module_id) = if is_mutate_route {
+        let (parts, body) = req.into_parts();
+        let bytes = to_bytes(body, 10 * 1024 * 1024).await.map_err(|e| {
+            (
+                StatusCode::BAD_REQUEST,
+                format!("failed to read request body: {e}"),
+            )
+        })?;
+        let target = serde_json::from_slice::<serde_json::Value>(&bytes)
+            .ok()
+            .and_then(|v| v.get("module_id").and_then(|m| m.as_str()).map(String::from));
+        (Request::from_parts(parts, Body::from(bytes)), target)
+    } else {
+        let target = req.uri().query().and_then(|q| {
+            q.split('&')
+                .find_map(|kv| kv.strip_prefix("module_id=").map(String::from))
+        });
+        (req, target)
+    };
+
+    if let Err(msg) = scope_permits_request(
+        &verified.archive_scope,
+        &verified.user_scope,
+        target_module_id.as_deref(),
+        is_mutate_route,
+    ) {
+        let status = if msg.starts_with("could not determine") {
+            StatusCode::BAD_REQUEST
+        } else {
+            StatusCode::FORBIDDEN
+        };
+        return Err((status, msg));
     }
 
     let endpoint = req.uri().path().to_string();
@@ -1028,10 +1117,15 @@ pub async fn run_server(
         capability_audit,
     });
 
-    // WORM-touching: graph mutation is gated by the capability middleware when
-    // an X-Foundry-Capability header is present (forwarded INTERFACE-peer
-    // requests); absent-header (local Doorman) calls pass through unchanged.
-    let worm_protected = Router::new()
+    // Capability-gated: both the read (`/v1/graph/context`) and write
+    // (`/v1/graph/mutate`) DataGraph proxy routes are gated by the capability
+    // middleware when an X-Foundry-Capability header is present (forwarded
+    // INTERFACE-peer / operator-override requests); absent-header (local
+    // Doorman) calls pass through unchanged. `/v1/graph/context` was
+    // previously ungated entirely — closed as part of the tenant-isolation
+    // fix (BRIEF-datagraph-tenant-isolation.md).
+    let capability_gated = Router::new()
+        .route("/v1/graph/context", get(graph_context))
         .route("/v1/graph/mutate", post(graph_mutate))
         .route_layer(middleware::from_fn_with_state(
             state.clone(),
@@ -1040,7 +1134,6 @@ pub async fn run_server(
 
     let app = Router::new()
         .route("/healthz", get(healthz))
-        .route("/v1/graph/context", get(graph_context))
         .route("/v1/graph/edges", get(graph_edges))
         .route("/v1/graph/delta", get(graph_delta))
         .route("/v1/graph/cleanup", get(graph_cleanup))
@@ -1050,7 +1143,7 @@ pub async fn run_server(
         .route("/v1/pair", post(pair_peer))
         .route("/v1/pair/token", get(issue_pair_token))
         .route("/v1/pairs", get(list_pairs))
-        .merge(worm_protected)
+        .merge(capability_gated)
         .merge(config_routes())
         .with_state(state);
 
@@ -1173,5 +1266,61 @@ mod tests {
     fn format_entity_block_no_relationships_section_when_no_edges() {
         let entities = vec![entity("Solo Entity", 0.9, None)];
         assert!(!format_entity_block(&entities, &[]).contains("## Relationships"));
+    }
+
+    // ── scope_permits_request (capability_gate scope-vs-target policy) ────────
+
+    #[test]
+    fn scope_permits_exact_match_on_read() {
+        let scope = vec!["project-totebox".to_string()];
+        assert!(scope_permits_request(&scope, "USER", Some("project-totebox"), false).is_ok());
+    }
+
+    #[test]
+    fn scope_permits_rejects_mismatched_target() {
+        let scope = vec!["project-totebox".to_string()];
+        let err = scope_permits_request(&scope, "USER", Some("project-editorial"), false)
+            .expect_err("mismatched target must be rejected");
+        assert!(err.contains("does not cover target archive"));
+    }
+
+    #[test]
+    fn scope_permits_rejects_undeterminable_target() {
+        let scope = vec!["project-totebox".to_string()];
+        let err = scope_permits_request(&scope, "USER", None, false)
+            .expect_err("missing target module_id must be rejected");
+        assert!(err.contains("could not determine target archive"));
+    }
+
+    #[test]
+    fn scope_permits_wildcard_admin_on_read() {
+        let scope = vec!["*".to_string()];
+        assert!(scope_permits_request(&scope, "ADMIN", Some("any-archive"), false).is_ok());
+    }
+
+    #[test]
+    fn scope_permits_wildcard_rejects_non_admin() {
+        let scope = vec!["*".to_string()];
+        let err = scope_permits_request(&scope, "USER", Some("any-archive"), false)
+            .expect_err("wildcard scope must require ADMIN role");
+        assert!(err.contains("requires an ADMIN-role capability"));
+    }
+
+    #[test]
+    fn scope_permits_wildcard_admin_rejected_on_mutate() {
+        // The operator override is read-only even for the operator — a wildcard
+        // scope must never be honored on the mutate route, regardless of role.
+        let scope = vec!["*".to_string()];
+        let err = scope_permits_request(&scope, "ADMIN", Some("any-archive"), true)
+            .expect_err("wildcard scope must never be honored on mutate");
+        assert!(err.contains("read-only"));
+    }
+
+    #[test]
+    fn scope_permits_exact_match_scope_still_enforced_on_mutate() {
+        // Non-wildcard scopes are unaffected by the mutate-route restriction —
+        // only the wildcard override is read-only.
+        let scope = vec!["project-totebox".to_string()];
+        assert!(scope_permits_request(&scope, "USER", Some("project-totebox"), true).is_ok());
     }
 }
