@@ -95,3 +95,8 @@ system-gateway-mba/operator_private.key
 system-gateway-mba/vault_identity.key
 system-gateway-mba/keys/gcp_node_mba_ed25519
 *.key
+
+# Canonical-mirror repos never carry real per-archive .agent/ state — that lives in
+# clones/<archive>/.agent/ only. Untracked .agent/ residue here previously caused
+# false-positive CRITICAL drift alerts in bin/foundry-health.sh (root-caused 2026-07-09).
+.agent/
