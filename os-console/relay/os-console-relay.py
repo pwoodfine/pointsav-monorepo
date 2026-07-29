@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
 
+import os
 import http.server
 import urllib.request
 import json
@@ -13,9 +14,10 @@ import ssl
 # Security Model: STRICT MACHINE-BASED AUTHENTICATION (Ed25519)
 # ==============================================================================
 
-# HARDCODED VAULT VECTOR: iMac (Linux Mint Host)
-IMAC_TARGET_URL = "http://10.0.0.101:8080/api/ingest"
-KEY_PATH = "/home/mathew/Foundry/factory-pointsav/pointsav-monorepo/system-gateway-mba/keys/gcp_node_mba_ed25519"
+# Deployment-specific — set these in the actual deployment's environment,
+# never hardcode a real vault target/key path in this generic source.
+IMAC_TARGET_URL = os.environ["MBA_RELAY_TARGET_URL"]
+KEY_PATH = os.environ["MBA_RELAY_KEY_PATH"]
 
 class MBARelay(http.server.BaseHTTPRequestHandler):
     def do_OPTIONS(self):
