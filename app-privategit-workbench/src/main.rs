@@ -1410,7 +1410,8 @@ fn build_zip(dir: &Path) -> Result<Vec<u8>> {
     use zip::{write::SimpleFileOptions, CompressionMethod, ZipWriter};
     let cursor = std::io::Cursor::new(Vec::new());
     let mut zip = ZipWriter::new(cursor);
-    let options = SimpleFileOptions::default().compression_method(CompressionMethod::Deflated);
+    let options =
+        SimpleFileOptions::default().compression_method(CompressionMethod::Deflated);
     zip_add_dir(&mut zip, dir, dir, options)?;
     let cursor = zip.finish()?;
     Ok(cursor.into_inner())

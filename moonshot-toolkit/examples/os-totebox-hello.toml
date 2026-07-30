@@ -8,12 +8,10 @@
 #
 # Produces build/system-image.bin (elfloader ELF, AArch64).
 # Boot with:
-#   qemu-system-aarch64 -machine virt,secure=off -cpu cortex-a53 -m 1G -display none \
-#     -serial file:/tmp/sel4-serial.log -kernel build/elfloader.elf \
+#   qemu-system-aarch64 -machine virt -cpu cortex-a53 -m 1G -display none \
+#     -serial file:/tmp/sel4-serial.log -kernel build/system-image.bin \
 #     && cat /tmp/sel4-serial.log
-# Note: virt,secure=off required — without it EL3 traps silently, no serial output.
-#       Use build/elfloader.elf (same bytes as build/system-image.bin).
-#       Use -m 1G (not 512M) — DTB reports 1 GiB RAM; mismatch causes Data Abort.
+# Note: use -m 1G (not 512M) — the DTB reports 1 GiB RAM; mismatch causes Data Abort.
 #
 # Gate: "Hello from os-totebox seL4 PD" appears on serial output.
 

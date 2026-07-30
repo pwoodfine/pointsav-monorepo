@@ -90,11 +90,7 @@ async fn page_es(
     render_slug(&state, &slug, Some("es"))
 }
 
-fn render_slug(
-    state: &AppStateInner,
-    slug: &str,
-    lang: Option<&str>,
-) -> Result<Markup, MarketingError> {
+fn render_slug(state: &AppStateInner, slug: &str, lang: Option<&str>) -> Result<Markup, MarketingError> {
     let page = content::load_page(&state.content_dir, slug, lang)?;
     let tenant = Tenant::by_module_id(&state.module_id);
     let (en_path, es_path) = slug_paths(slug);
@@ -150,10 +146,7 @@ async fn sitemap_xml(State(state): State<AppState>) -> Response {
 
 // ---------------------------------------------------------------- P5: MCP
 
-async fn mcp_rpc(
-    State(state): State<AppState>,
-    Json(req): Json<RpcRequest>,
-) -> Json<mcp::RpcResponse> {
+async fn mcp_rpc(State(state): State<AppState>, Json(req): Json<RpcRequest>) -> Json<mcp::RpcResponse> {
     Json(mcp::handle(&state, req))
 }
 

@@ -111,10 +111,7 @@ mod tests {
         )
         .unwrap();
         let map = load_redirects(dir.path());
-        assert_eq!(
-            map.get("/old-path").map(String::as_str),
-            Some("https://example.com/new")
-        );
+        assert_eq!(map.get("/old-path").map(String::as_str), Some("https://example.com/new"));
         assert!(load_redirects(tempfile::tempdir().unwrap().path()).is_empty());
     }
 }

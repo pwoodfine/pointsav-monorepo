@@ -50,11 +50,7 @@ impl SearchIndex {
         }
         writer.commit()?;
         let reader = index.reader()?;
-        Ok(Self {
-            index,
-            reader,
-            fields,
-        })
+        Ok(Self { index, reader, fields })
     }
 
     /// Run a query against title + body; returns up to `limit` slugs, ranked.

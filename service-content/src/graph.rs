@@ -150,7 +150,7 @@ impl LbugGraphStore {
             .ok()
             .and_then(|s| s.parse::<u64>().ok())
         {
-            Some(mb) => SystemConfig::default().buffer_pool_size(mb.saturating_mul(1024 * 1024)),
+            Some(mb) => SystemConfig::default().buffer_pool_size(mb * 1024 * 1024),
             None => SystemConfig::default(),
         };
         let db = Database::new(db_path, config)
@@ -448,9 +448,6 @@ impl GraphStore for LbugGraphStore {
         query: &str,
         limit: usize,
     ) -> Result<Vec<GraphEntity>> {
-        // Clamp caller-supplied limit (HTTP query param, unbounded) before it
-        // feeds `limit * 3` below — an unclamped huge value can overflow usize.
-        let limit = limit.min(50);
         let conn = self.conn()?;
         let q_lower = query.to_lowercase();
 
@@ -772,9 +769,6 @@ impl GraphStore for LbugGraphStore {
         hops: usize,
     ) -> Result<Vec<GraphEntity>> {
         let hops = hops.clamp(1, 4);
-        // Clamp caller-supplied limit (HTTP query param, unbounded) before it
-        // feeds `limit * 3` below — an unclamped huge value can overflow usize.
-        let limit = limit.min(50);
         // Seed: direct name-match entities (same logic as query_context Phase 1).
         let seeds = self.query_context(module_id, query, limit)?;
         if seeds.is_empty() {
@@ -918,6 +912,25 @@ impl GraphStore for LbugGraphStore {
             )
             .map_err(|e| anyhow!("execute query_entities_since: {}", e))?;
         rows_to_entities(result)
+    }
+}
+
+#[cfg(test)]
+impl LbugGraphStore {
+    fn get_entity_created_at(&self, module_id: &str, entity_name: &str) -> Result<Option<String>> {
+        let conn = self.conn()?;
+        let id = format!("{}__{}", module_id, normalize_entity_key(entity_name));
+        let mut stmt = conn
+            .prepare("MATCH (e:Entity {id: $id}) RETURN e.created_at")
+            .map_err(|e| anyhow!("prepare get_entity_created_at: {}", e))?;
+        let mut result = conn
+            .execute(&mut stmt, vec![("id", Value::String(id))])
+            .map_err(|e| anyhow!("execute get_entity_created_at: {}", e))?;
+        if let Some(row) = result.next() {
+            let s = val_to_string(&row[0]);
+            return Ok(if s.is_empty() { None } else { Some(s) });
+        }
+        Ok(None)
     }
 }
 

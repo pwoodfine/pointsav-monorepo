@@ -24,10 +24,7 @@ fn build_app(app_state: state::AppState, static_dir: PathBuf) -> Router {
         // Full-page routes
         .route("/", get(routes::home::home_handler))
         .route("/about", get(routes::about::about_handler))
-        .route(
-            "/disclaimers",
-            get(routes::disclaimers::disclaimers_handler),
-        )
+        .route("/disclaimers", get(routes::disclaimers::disclaimers_handler))
         .route("/tokens", get(routes::tokens::tokens_index_handler))
         .route(
             "/tokens/{name}",
@@ -219,10 +216,7 @@ mod route_tests {
             .await
             .unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
-        assert_eq!(
-            resp.headers().get("content-type").unwrap(),
-            "application/zip"
-        );
+        assert_eq!(resp.headers().get("content-type").unwrap(), "application/zip");
 
         // Key-plan IFC.
         let app = test_app().await;
@@ -271,10 +265,7 @@ mod route_tests {
         // /tokens — masthead + numbered section headers + real category link.
         let html = get_html(&app, "/tokens").await;
         assert!(html.contains("bim-cat-pagehead"), "/tokens masthead");
-        assert!(
-            html.contains("bim-tokens-sechead"),
-            "/tokens section header"
-        );
+        assert!(html.contains("bim-tokens-sechead"), "/tokens section header");
         assert!(html.contains("BIM Object Catalog"));
         assert!(html.contains(&format!(r#"href="/tokens/{cat_slug}""#)));
 
@@ -283,10 +274,7 @@ mod route_tests {
         assert!(html.contains("bim-cat-pagehead"), "detail masthead");
         assert!(html.contains("bim-cat-chip"), "family classification chip");
         assert!(html.contains("bim-spec-card"), "spec card retained");
-        assert!(
-            html.contains("bim-token-table"),
-            "entity data table retained"
-        );
+        assert!(html.contains("bim-token-table"), "entity data table retained");
         // Old chip class no longer emitted on the category page.
         assert!(!html.contains(r#"class="bim-chip bim-chip--accent""#));
 
@@ -294,14 +282,8 @@ mod route_tests {
         let html = get_html(&app, "/search").await;
         assert!(html.contains("bim-cat-pagehead"), "/search empty masthead");
         let html = get_html(&app, "/search?q=ifc").await;
-        assert!(
-            html.contains("bim-cat-pagehead"),
-            "/search results masthead"
-        );
-        assert!(
-            html.contains("bim-search-result"),
-            "search results rendered"
-        );
+        assert!(html.contains("bim-cat-pagehead"), "/search results masthead");
+        assert!(html.contains("bim-search-result"), "search results rendered");
         assert!(html.contains("Search results"));
 
         // /research index + a real research article.
@@ -331,16 +313,11 @@ mod route_tests {
             ("/disclaimers", state.disclaimers_page.as_ref()),
         ] {
             let html = get_html(&app, path).await;
-            assert!(
-                html.contains("bim-cat-pagehead"),
-                "{path} gained the masthead"
-            );
+            assert!(html.contains("bim-cat-pagehead"), "{path} gained the masthead");
 
             // Extract the <article> region actually served.
             let open = r#"<article class="bim-article">"#;
-            let start = html
-                .find(open)
-                .unwrap_or_else(|| panic!("{path} <article>"));
+            let start = html.find(open).unwrap_or_else(|| panic!("{path} <article>"));
             let end = html[start..]
                 .find("</article>")
                 .map(|i| i + start)

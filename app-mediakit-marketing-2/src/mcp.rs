@@ -41,8 +41,8 @@ pub struct RpcError {
 }
 
 #[allow(dead_code)] // standard JSON-RPC 2.0 error code; malformed JSON never
-                    // reaches this module (axum's Json extractor rejects it
-                    // first) — kept for documentation of the code space.
+                     // reaches this module (axum's Json extractor rejects it
+                     // first) — kept for documentation of the code space.
 const PARSE_ERROR: i32 = -32700;
 const METHOD_NOT_FOUND: i32 = -32601;
 const INVALID_PARAMS: i32 = -32602;
@@ -114,12 +114,7 @@ fn str_param(params: &Value, key: &str) -> Result<String, (i32, String)> {
         .get(key)
         .and_then(Value::as_str)
         .map(str::to_string)
-        .ok_or_else(|| {
-            (
-                INVALID_PARAMS,
-                format!("missing or non-string param: {key}"),
-            )
-        })
+        .ok_or_else(|| (INVALID_PARAMS, format!("missing or non-string param: {key}")))
 }
 
 fn opt_str_param(params: &Value, key: &str) -> Option<String> {
@@ -246,10 +241,7 @@ mod tests {
         let (_c, _s, state) = test_state();
         let resp = handle(
             &state,
-            req(
-                "validate_manifest",
-                json!({ "manifest_yaml": "not: [valid" }),
-            ),
+            req("validate_manifest", json!({ "manifest_yaml": "not: [valid" })),
         );
         assert_eq!(resp.result.unwrap()["valid"], false);
     }

@@ -57,11 +57,7 @@ undertaken to be updated except as required by law.</p>",
     } else {
         ""
     };
-    let html_theme_attr = if editor_route {
-        r#" data-theme="light""#
-    } else {
-        ""
-    };
+    let html_theme_attr = if editor_route { r#" data-theme="light""# } else { "" };
     let theme_preload_script = if editor_route {
         String::new()
     } else {
