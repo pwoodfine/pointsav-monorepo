@@ -1,0 +1,32 @@
+# SPDX-License-Identifier: FSL-1.1-ALv2
+# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
+title: Privacidad
+slug: privacy
+description: Cómo maneja este sitio los datos de los visitantes.
+lang: es
+sections:
+  - type: hero
+    headline: Privacidad
+
+  - type: prose
+    body: |
+      ## Este sitio no utiliza cookies
+
+      home.woodfinegroup.com no establece cookies ni ejecuta scripts de
+      análisis, publicidad o seguimiento de terceros de ningún tipo. No se
+      muestra un aviso de consentimiento de cookies porque no hay nada que
+      consentir.
+
+      ## Registros del servidor
+
+      Como cualquier servidor web, la infraestructura que sirve este sitio
+      mantiene registros de acceso estándar (URL solicitada, marca de
+      tiempo y dirección IP) con fines operativos y de seguridad. Estos
+      registros no se comparten con terceros ni se utilizan para crear
+      perfiles publicitarios.
+
+      ## Contacto
+
+      Las preguntas sobre esta política pueden enviarse a la dirección que
+      figura en la página de [Contáctenos](/page/contact).

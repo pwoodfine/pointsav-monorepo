@@ -1,0 +1,19 @@
+{
+  "body": {
+    "kind": "text",
+    "text": "#!/usr/bin/env bash\necho \"os-test-open installer stub\"\n"
+  },
+  "fixture": "src-install-script",
+  "headers": {
+    "connection": "close",
+    "content-type": "text/x-shellscript",
+    "transfer-encoding": "chunked"
+  },
+  "normalize": "raw",
+  "request": {
+    "method": "GET",
+    "path": "/releases/os-test-open/install.sh",
+    "port": 19212
+  },
+  "status": 200
+}

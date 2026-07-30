@@ -1,0 +1,22 @@
+{
+  "body": {
+    "json": {
+      "reason": "token-revoked",
+      "valid": false
+    },
+    "kind": "json"
+  },
+  "fixture": "src-verify-key-revoked",
+  "headers": {
+    "connection": "close",
+    "content-length": "40",
+    "content-type": "application/json"
+  },
+  "normalize": "raw",
+  "request": {
+    "method": "POST",
+    "path": "/verify-key",
+    "port": 19212
+  },
+  "status": 403
+}

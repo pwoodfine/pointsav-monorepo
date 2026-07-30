@@ -1,0 +1,21 @@
+{
+  "body": {
+    "json": {
+      "error": "product not found"
+    },
+    "kind": "json"
+  },
+  "fixture": "src-product-missing",
+  "headers": {
+    "connection": "close",
+    "content-length": "29",
+    "content-type": "application/json"
+  },
+  "normalize": "raw",
+  "request": {
+    "method": "GET",
+    "path": "/releases/nonexistent-product-xyz/",
+    "port": 19212
+  },
+  "status": 404
+}

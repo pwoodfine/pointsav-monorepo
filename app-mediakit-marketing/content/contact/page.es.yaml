@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: FSL-1.1-ALv2
+# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
+title: Contáctenos
+slug: contact
+description: Contacte a Woodfine Capital Projects.
+lang: es
+sections:
+  - type: hero
+    headline: Contáctenos
+    subhead: Para consultas sobre los desarrollos de Woodfine Capital Projects.
+
+  - type: prose
+    body: |
+      ## Póngase en contacto
+
+      Woodfine Capital Projects Inc. opera desde Vancouver y Nueva York.
+
+      Correo electrónico: [open.source@pointsav.com](mailto:open.source@pointsav.com)

@@ -1,0 +1,20 @@
+{
+  "body": {
+    "kind": "text",
+    "text": "os-test-licensed binary payload v0.3.1\n"
+  },
+  "fixture": "src-binary-licensed-bearer",
+  "headers": {
+    "connection": "close",
+    "content-disposition": "attachment; filename=\"os-test-licensed-0.3.1-x86_64-linux\"",
+    "content-type": "application/octet-stream",
+    "transfer-encoding": "chunked"
+  },
+  "normalize": "raw",
+  "request": {
+    "method": "GET",
+    "path": "/releases/os-test-licensed/0.3.1/x86_64-linux",
+    "port": 19211
+  },
+  "status": 200
+}

@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: FSL-1.1-ALv2
+# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
+title: Aviso Legal
+slug: disclaimer
+description: Aviso legal y aviso de marcas comerciales de PointSav Digital Systems.
+lang: es
+sections:
+  - type: hero
+    headline: Aviso Legal
+
+  - type: prose
+    body: |
+      **General.** El contenido de este sitio se proporciona únicamente con fines informativos generales y no constituye una oferta, solicitud ni recomendación en ninguna jurisdicción. Las descripciones de productos describen capacidades previstas y pueden cambiar sin previo aviso. Nada de lo aquí contenido debe interpretarse como asesoramiento financiero, legal, de inversión o técnico.
+
+      **Productos de software.** Los productos de software y las funciones de la plataforma descritos en este sitio están sujetos al Acuerdo de Servicios Marco y a la Licencia de Documentación correspondientes. El código fuente disponible bajo licencias de código abierto se rige por dichas licencias respectivas.
+
+      **Marcas comerciales.** Woodfine Capital Projects™, Woodfine Management Corp™, PointSav Digital Systems™, Totebox Orchestration™, Totebox Archive™ y Capability Geometry™ son marcas comerciales de Woodfine Capital Projects Inc., utilizadas en Canadá, los Estados Unidos, América Latina y Europa. Todas las demás marcas comerciales son propiedad de sus respectivos titulares.
+
+      © 2026 Woodfine Capital Projects Inc. Todos los derechos reservados.

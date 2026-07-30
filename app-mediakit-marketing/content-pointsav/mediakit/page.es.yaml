@@ -1,0 +1,29 @@
+# SPDX-License-Identifier: FSL-1.1-ALv2
+# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
+title: MediaKit
+slug: mediakit
+description: El motor que impulsa este sitio y las wikis de conocimiento de PointSav.
+lang: es
+sections:
+  - type: hero
+    headline: MediaKit
+    subhead: >-
+      La plataforma de motor compartida detrás de este sitio y las wikis de
+      conocimiento de PointSav — renderizada en el servidor, autoalojada,
+      sin rastreadores de terceros.
+
+  - type: prose
+    body: |
+      Este sitio es servido por **MediaKit**, una familia de motores basados en
+      Rust y renderizados en el servidor, construidos y operados por PointSav
+      Digital Systems. La misma familia de plataformas también impulsa las
+      wikis de conocimiento de PointSav en
+      [documentation.pointsav.com](https://documentation.pointsav.com/),
+      [projects.woodfinegroup.com](https://projects.woodfinegroup.com/) y
+      [corporate.woodfinegroup.com](https://corporate.woodfinegroup.com/).
+
+      El contenido se redacta como archivos versionados y rastreados con git,
+      y se renderiza en el servidor en cada solicitud — no hay un framework de
+      construcción de páginas del lado del cliente, y ningún script de
+      análisis o publicidad de terceros se ejecuta en este sitio.

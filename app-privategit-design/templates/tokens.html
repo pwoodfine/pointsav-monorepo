@@ -1,0 +1,120 @@
+<!--
+  SPDX-License-Identifier: AGPL-3.0-or-later
+  SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+-->
+
+<section class="tokens-preamble">
+<p class="tokens-preamble-lede">A design token is a named, versioned decision — a color, a
+spacing value, a type size — stored once and referenced everywhere it's used. Change the
+token, and every consumer updates together: this site's own CSS, a Figma file, a line of
+AI-generated code.</p>
+
+<p>The <strong>primitive</strong> tier below holds the raw values — colors, type sizes,
+spacing steps. The <strong>theme</strong> tier maps those primitives to semantic roles
+(<code>interactive-primary</code>, <code>surface-elevated</code>, and so on) that components
+and pages actually consume. Nothing here is illustrative — every value shown is read directly
+from this repository's own token bundle, the same source this site's own CSS consumes.</p>
+
+<p>What this enables beyond this site:</p>
+<ul>
+<li>One source of truth across design tools and code. See
+<a href="/designing/get-started/overview">Get Started — Designing</a> for the import path.</li>
+<li>AI code generators can query tokens, components, and research directly through this
+site's <code>/mcp</code> endpoint at decode time, so generated UI matches your brand without
+re-deciding the same questions every session.</li>
+<li>A customer-owned, self-hosted vault — fork the whole graph into your own Git history,
+signed by your own key.
+<a href="/bundles/tokens/download">Download everything below as a portable bundle</a>.</li>
+</ul>
+
+<div class="stat-panel tokens-hero__stats">
+<div class="stat-panel__item"><span class="stat-panel__value">{{ total_tokens }}</span><span class="stat-panel__label">Tokens</span></div>
+<div class="stat-panel__item"><span class="stat-panel__value">{{ total_categories }}</span><span class="stat-panel__label">Categories</span></div>
+<div class="stat-panel__item"><span class="stat-panel__value">{{ total_tiers }}</span><span class="stat-panel__label">Tiers</span></div>
+</div>
+
+<div class="get-tokens-strip">
+<div class="get-tokens-strip__snippet">
+<div class="get-tokens-strip__snippet-label">Get the current release</div>
+<div class="doc-code-block"><pre><code>curl -O https://design.pointsav.com/bundles/tokens/tokens.full.json</code></pre></div>
+</div>
+<div class="get-tokens-strip__figma">
+<div class="get-tokens-strip__figma-label">Or bring them into Figma</div>
+<p>Point the free <strong>Tokens Studio</strong> plugin at the same URL to sync this
+release's values directly into your Figma file — no export/import step, no manual
+re-entry.</p>
+</div>
+</div>
+</section>
+
+<h2 class="tokens-overview-heading">How the registry works</h2>
+
+<div class="card registry-callout">
+<div class="registry-callout__icon" aria-hidden="true">1&times;</div>
+<div>
+<h3>One registry, every surface</h3>
+<p>
+Every token on this page — its tier, its value — is read from the same
+<code>tokens.full.json</code> registry that answers the machine API and backs this site's
+own CSS. There is no separate CMS layer for tokens to drift out of sync with: the count in
+this page's stat strip and the swatches below come from the same source.
+</p>
+<p>
+The same registry file backs the MCP endpoint documented under
+<a href="/developing/mcp/overview">Developing</a> — an agent asking for the current value of
+<code>theme.semantic.interactive-primary</code> gets exactly what's below. On a self-hosted
+instance, that answer is served from your own infrastructure and never leaves it; consuming
+the tokens as files requires no instance at all.
+</p>
+</div>
+</div>
+
+<div class="tier-legend card-grid">
+<div class="card">
+<h3>Reference <span class="badge badge--brand">primitive</span></h3>
+<p>The raw palette. A hex value, a rem number, a duration, a breakpoint — no meaning
+attached to where or why it's used.</p>
+<code>primitive.color.primary-60: #234ed8</code>
+</div>
+<div class="card">
+<h3>System <span class="badge badge--brand">theme</span></h3>
+<p>Attaches intent. Says what a value <em>means</em>, so the reference token behind it
+can change — or swap for dark mode — without touching anything that consumes the
+meaning.</p>
+<code>theme.semantic.interactive-primary: {color.primary-60}</code>
+</div>
+</div>
+
+<nav class="domain-jump" aria-label="Jump to token tier">
+{% for tier in tiers %}
+<a href="#{{ tier.name }}">{{ tier.name | to_title }}</a>
+{% endfor %}
+</nav>
+
+<div class="tokens-gallery">
+{% for tier in tiers %}
+<section class="tg-tier" id="{{ tier.name }}">
+<h2>{{ tier.name | to_title }}</h2>
+{% for group in tier.groups %}
+<div class="tg-group">
+<h3>{{ group.name | to_title }}</h3>
+{% if tier.name == "primitive" and group.name == "color" %}<p class="tg-group-guidance"><a href="/elements/color/overview">Read the full color guidance &rarr;</a></p>{% endif %}
+{% if tier.name == "primitive" and group.name == "motion" %}<p class="tg-group-guidance"><a href="/elements/motion/overview">Read the full motion guidance &rarr;</a></p>{% endif %}
+{% if tier.name == "primitive" and group.name == "size" %}<p class="tg-group-guidance"><a href="/elements/spacing/overview">Read the full spacing guidance &rarr;</a></p>{% endif %}
+{% if tier.name == "primitive" and group.name == "typography" %}<p class="tg-group-guidance"><a href="/elements/typography/overview">Read the full typography guidance &rarr;</a></p>{% endif %}
+<div class="tg-entries">
+{% for e in group.entries %}
+<div class="tg-entry">
+{% if e.kind == "color" %}<span class="tg-swatch" style="background:{{ e.value }}"></span>{% endif %}
+<code class="tg-name" data-copy="{{ e.css_var }}" title="Click to copy {{ e.css_var }}">{{ e.path }}</code>
+<span class="tg-value">{{ e.value }}</span>
+{% if e.contrast_vs_white %}<span class="tg-contrast">{{ e.contrast_vs_white }} vs white</span>{% endif %}
+{% if e.description %}<p class="tg-desc">{{ e.description }}</p>{% endif %}
+</div>
+{% endfor %}
+</div>
+</div>
+{% endfor %}
+</section>
+{% endfor %}
+</div>

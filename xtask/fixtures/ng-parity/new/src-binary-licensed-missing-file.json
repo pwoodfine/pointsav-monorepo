@@ -1,0 +1,22 @@
+{
+  "body": {
+    "json": {
+      "error": "binary not found",
+      "note": "Real OS binaries ship with the build pipeline. Check back soon."
+    },
+    "kind": "json"
+  },
+  "fixture": "src-binary-licensed-missing-file",
+  "headers": {
+    "connection": "close",
+    "content-length": "101",
+    "content-type": "application/json"
+  },
+  "normalize": "raw",
+  "request": {
+    "method": "GET",
+    "path": "/releases/os-test-licensed/0.3.1/armv7-none",
+    "port": 19212
+  },
+  "status": 404
+}

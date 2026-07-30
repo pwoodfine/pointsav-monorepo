@@ -1,0 +1,980 @@
+/*
+ * SPDX-License-Identifier: FSL-1.1-ALv2
+ * SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+ */
+
+/* app-mediakit-marketing-2 — chrome stylesheet.
+ * Tokens: tokens.css (--m-* namespace). Fonts: fonts.css.
+ * Component/layout rules (masthead, hero, card grid, footer, drawer) land
+ * in P3 — this file wires the global reset + base element styles that the
+ * design tokens (P2) already commit us to.
+ */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  /* Structural fix for the audited sub-page horizontal-scroll bug: no
+     fixed-pixel widths survive this rewrite, and nothing may force the
+     viewport wider than its own box. */
+  overflow-x: clip;
+}
+
+body {
+  margin: 0;
+  background: var(--m-surface-page);
+  color: var(--m-ink);
+  font-family: var(--m-font-sans);
+  font-size: var(--m-text-base);
+  line-height: var(--m-lh-body);
+  overflow-x: clip;
+}
+
+::selection {
+  background: var(--m-selection-bg);
+  color: var(--m-selection-ink);
+}
+
+a {
+  color: var(--m-link);
+}
+a:hover {
+  color: var(--m-link-hover);
+}
+
+:focus-visible {
+  outline: var(--m-focus-ring-w) solid var(--m-focus-ring);
+  outline-offset: var(--m-focus-ring-offset);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ==========================================================================
+   Skip link
+   ========================================================================== */
+
+.m-skiplink {
+  position: absolute;
+  top: -100%;
+  left: var(--m-space-4);
+  z-index: var(--m-z-skiplink);
+  background: var(--m-skiplink-bg);
+  color: var(--m-skiplink-ink);
+  padding: var(--m-space-2) var(--m-space-4);
+  border-radius: var(--m-radius-control);
+  text-decoration: none;
+  font-weight: var(--m-weight-semibold);
+}
+.m-skiplink:focus {
+  top: var(--m-space-2);
+}
+
+/* ==========================================================================
+   Masthead — dark navy background (locked Sovereign Editorial direction)
+   ========================================================================== */
+
+.m-masthead {
+  position: sticky;
+  top: 0;
+  z-index: var(--m-z-masthead);
+  display: flex;
+  align-items: center;
+  gap: var(--m-space-6);
+  min-height: var(--m-masthead-h);
+  padding-inline: var(--m-gutter);
+  background: var(--m-masthead-bg);
+  color: var(--m-masthead-ink);
+  border-bottom: var(--m-masthead-border-b);
+}
+
+.m-masthead__wordmark {
+  font-family: var(--m-font-serif);
+  font-weight: var(--m-weight-bold);
+  font-size: var(--m-text-lg);
+  color: var(--m-masthead-ink);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.m-masthead__nav {
+  display: none; /* shown from --bp-nav up; hamburger covers mobile */
+  margin-left: auto;
+  gap: var(--m-space-6);
+  font-size: var(--m-nav-size);
+  letter-spacing: var(--m-nav-tracking);
+}
+.m-masthead__nav a {
+  color: var(--m-masthead-ink-muted);
+  text-decoration: none;
+  padding-block: var(--m-space-2);
+}
+.m-masthead__nav a:hover,
+.m-masthead__nav a:focus-visible {
+  color: var(--m-masthead-ink);
+}
+
+.m-masthead__burger {
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+  width: 44px;
+  height: 44px;
+  margin-left: auto;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+.m-masthead__burger-bar {
+  display: block;
+  width: 22px;
+  height: 2px;
+  background: var(--m-masthead-ink);
+}
+
+/* 60rem (960px) is content-driven, not arbitrary: PointSav's 6-link nav needs
+   ~918px minimum to sit on one row, so lowering this breakpoint would wrap or
+   overflow the masthead nav. The external destinations are instead made
+   drawer-free-reachable via the footer's Network column (see footer()). */
+@media (min-width: 60rem) {
+  .m-masthead__nav {
+    display: flex;
+    margin-left: auto;
+  }
+  .m-masthead__burger {
+    display: none;
+    margin-left: 0;
+  }
+}
+
+/* ==========================================================================
+   Mobile drawer — mirrors the wiki's proven pre-rendered slide-in pattern
+   ========================================================================== */
+
+.m-drawer-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: var(--m-z-scrim);
+  background: var(--m-surface-scrim);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--m-drawer-dur) var(--m-drawer-ease);
+}
+
+.m-drawer {
+  position: fixed;
+  inset-block: 0;
+  left: 0;
+  z-index: var(--m-z-drawer);
+  width: min(var(--m-drawer-w), 84vw);
+  background: var(--m-drawer-bg);
+  box-shadow: var(--m-shadow-drawer);
+  transform: translateX(-100%);
+  transition: transform var(--m-drawer-dur) var(--m-drawer-ease);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+/* JS toggles [hidden] off and adds this class; kept both so the drawer
+   degrades to "absent" rather than "visible but broken" without JS. */
+html:not(.js) .m-drawer,
+html:not(.js) .m-drawer-scrim {
+  display: none;
+}
+
+.m-drawer[data-open] {
+  transform: translateX(0);
+}
+.m-drawer-scrim[data-open] {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.m-drawer__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: var(--m-drawer-header-bg);
+  padding: var(--m-space-4) var(--m-space-6);
+  background: var(--m-drawer-header-bg);
+  color: var(--m-drawer-header-ink);
+  font-weight: var(--m-weight-semibold);
+}
+.m-drawer__close {
+  background: none;
+  border: none;
+  color: var(--m-drawer-header-ink);
+  font-size: var(--m-text-xl);
+  line-height: 1;
+  cursor: pointer;
+  width: 44px;
+  height: 44px;
+}
+
+.m-drawer__nav {
+  display: flex;
+  flex-direction: column;
+  padding: var(--m-space-4) var(--m-space-6);
+  gap: var(--m-space-1);
+}
+.m-drawer__nav a {
+  padding: var(--m-space-3) 0;
+  color: var(--m-ink);
+  text-decoration: none;
+  font-size: var(--m-text-md);
+  border-bottom: 1px solid var(--m-border);
+}
+
+@media (min-width: 60rem) {
+  .m-drawer,
+  .m-drawer-scrim {
+    display: none !important;
+  }
+}
+
+/* ==========================================================================
+   Hero band — brand-swapped background; real asset photography (when
+   present) carries visual weight, --m-hero-scrim keeps text legible over it.
+   ========================================================================== */
+
+.m-hero {
+  background: var(--m-hero-band-bg);
+  color: var(--m-hero-band-ink);
+  border-bottom: 1px solid var(--m-hero-band-rule);
+}
+.m-hero__inner {
+  max-width: var(--m-container-max);
+  margin-inline: auto;
+  padding: var(--m-space-band) var(--m-gutter);
+}
+.m-hero__headline {
+  font-family: var(--m-font-serif);
+  font-weight: var(--m-weight-bold);
+  font-size: var(--m-text-display);
+  line-height: var(--m-lh-display);
+  margin: 0 0 var(--m-space-4);
+  max-width: 24ch;
+}
+.m-hero__subhead {
+  font-family: var(--m-hero-lede-font);
+  font-size: var(--m-hero-lede-size);
+  line-height: var(--m-hero-lede-lh);
+  color: var(--m-hero-band-ink-muted);
+  max-width: var(--m-prose-max);
+  margin: 0;
+}
+
+/* ==========================================================================
+   Card grid — the keep-list signature: flat, navy top-rule, no shadow.
+   Fluid column count fixes the audited fixed-width mobile overflow bug —
+   no breakpoint ever forces a column narrower than 220px.
+   ========================================================================== */
+
+.m-card-grid {
+  max-width: var(--m-container-max);
+  margin-inline: auto;
+  padding: var(--m-space-band) var(--m-gutter);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--m-card-gap);
+}
+
+.m-card {
+  background: var(--m-card-bg);
+  border: var(--m-card-border);
+  border-top: var(--m-card-rule);
+  border-radius: var(--m-card-radius);
+  padding: var(--m-card-pad);
+}
+.m-card__title {
+  font-family: var(--m-font-sans);
+  font-weight: var(--m-weight-bold);
+  /* Stepped down from --m-text-lg (2026-07-02, FABLE polish audit): at
+     --m-text-lg + break-word, long titles ("Open Documentation", "Real
+     Property Infrastructure") hard-broke mid-word with no hyphen at
+     1440px -- CSS `hyphens: auto` does not hyphenate text that
+     `text-transform: uppercase` has already transformed, so break-word's
+     raw fallback was firing visibly. 1rem gives every title in both
+     tenants' content enough room to wrap at a real word boundary instead
+     (verified: zero mid-word breaks after this change, both tenants). */
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: var(--m-label-tracking);
+  color: var(--m-navy-700);
+  margin: 0 0 var(--m-space-2);
+  /* Operator-reported bug (2026-07-02): "the title bleeds into the side of
+     the box." No overflow-wrap/word-break/hyphens was ever set anywhere on
+     this rule, so a long unspaced compound word (e.g. "Partner-Governed")
+     at the grid's 220px column floor had no fallback and could overflow
+     the card's padding. `lang` is already set on <html>, so hyphens:auto
+     hyphenates correctly per-page-language (though see the font-size note
+     above -- uppercase text defeats hyphens:auto, so break-word alone is
+     the real safety net; hyphens:auto is kept for the rare non-uppercase
+     title). */
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+.m-card__title a {
+  color: inherit;
+  text-decoration: none;
+}
+.m-card__body {
+  color: var(--m-ink-secondary);
+  font-size: var(--m-text-sm);
+  line-height: var(--m-lh-body);
+  margin: 0;
+}
+
+/* Progressive disclosure for long content-card grids (2026-07-07 mobile
+   redesign) — the "show all N" reveal button. Ships `hidden` in the
+   server-rendered HTML (see card_grid() in ui.rs) and stays that way with
+   no JS: nothing is ever hidden and this dead button never appears, so the
+   page degrades to "everything visible," never to "content missing."
+   app.js un-hides it only on narrow viewports (<500px, where this grid's
+   fluid auto-fit columns are still a single column; at ~497px+ they become
+   2 columns and every card fits) and wires the reveal click. Wider
+   viewports keep every card visible via the grid's existing fluid
+   columns — nothing here ever runs there. */
+.m-card-grid__more {
+  grid-column: 1 / -1;
+  justify-self: center;
+  margin-top: var(--m-space-2);
+  padding: 0.7em 1.6em;
+  border: 1px solid var(--m-border-strong);
+  border-radius: var(--m-radius-control);
+  background: var(--m-card-bg);
+  color: var(--m-ink);
+  font-family: var(--m-font-sans);
+  font-size: var(--m-text-sm);
+  font-weight: var(--m-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: var(--m-label-tracking);
+  cursor: pointer;
+  /* Inline down-chevron (round 11) sits after the "View all" label with a
+     small flex gap, sized to the button's own font via the icon's 1em box
+     below. */
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+}
+/* `inline-flex` above overrides the browser's default `[hidden] { display:
+   none }` rule, so the server-rendered `hidden` attribute (see comment above)
+   would otherwise stop suppressing the button. Restore the suppression
+   explicitly. */
+.m-card-grid__more[hidden] {
+  display: none;
+}
+.m-card-grid__more:hover,
+.m-card-grid__more:focus-visible {
+  background: var(--m-surface-section);
+}
+.m-card-grid__more-icon {
+  display: block;
+  width: 1em;
+  height: 1em;
+  flex: none;
+}
+
+/* Cross-site handoff card (e.g. Woodfine's "Digital Systems" card pointing
+   at home.pointsav.com, or PointSav's "Real Property Infrastructure" card
+   pointing at home.woodfinegroup.com) — deliberately NOT styled like the
+   other cards in the grid, always-on filled navy + white text + a sibling
+   icon + kicker label, so it reads as "you are about to leave this site"
+   rather than as one more card among the seven around it (operator
+   feedback 2026-07-02: prior tinted-background/hover-only treatment "did
+   something different" too subtly). */
+.m-card--linked {
+  /* --m-card-linked-bg (not a raw --m-navy-700 reference) so this large
+     fill can be tenant-overridden independently of small text/links/CTAs
+     -- see the token definition in tokens.css for the contrast rationale. */
+  background: var(--m-card-linked-bg);
+  border: var(--m-card-linked-border);
+  border-top: var(--m-card-rule);
+}
+.m-card--linked .m-card__kicker {
+  display: flex;
+  align-items: center;
+  gap: var(--m-space-2);
+  font-family: var(--m-font-sans);
+  font-weight: var(--m-weight-bold);
+  font-size: var(--m-text-2xs, 0.6875rem);
+  text-transform: uppercase;
+  letter-spacing: var(--m-label-tracking);
+  color: var(--m-slate-300);
+  margin: 0 0 var(--m-space-2);
+}
+.m-card--linked .m-card__kicker-icon {
+  display: block;
+  width: 1.1em;
+  height: 1.1em;
+  flex: none;
+}
+.m-card--linked .m-card__title,
+.m-card--linked .m-card__body {
+  color: var(--m-white);
+}
+.m-card--linked:hover,
+.m-card--linked:focus-within {
+  background: var(--m-navy-900, #0d2c4d);
+}
+.m-card__link-glyph {
+  display: inline-block;
+  margin-left: 0.35em;
+  font-size: 0.85em;
+}
+
+/* Masthead/drawer/footer external-link glyph — FABLE competitive-benchmark
+   audit 2026-07-02: sighted visitors had no visual way to tell an on-site
+   page from an off-site network jump, only an aria-label suffix. Shared
+   across .m-masthead__nav, .m-drawer__nav, and .m-footer__nav since they
+   all render from the same render_nav() function. */
+.m-nav__external-glyph {
+  display: inline-block;
+  margin-left: 0.3em;
+  font-size: 0.8em;
+  opacity: 0.75;
+}
+
+/* Button-style card row (pure-navigation grids — Manifest / BIM Library /
+   Location Intelligence, Source / Documentation / Software). Compact,
+   accent-filled, centered — visually distinct from the content cards above.
+
+   Column count fixed 2026-07-07 (operator-approved): `auto-fit,
+   minmax(160px,1fr)` produced a 2-and-1 orphan wrap across the entire
+   375-547px band (measured live) — the exact same failure class already
+   fixed for the icon strip. Same fix: only ever 1 column (mobile) or
+   --m-button-count columns (desktop, the real card count, set inline per-
+   render in ui.rs) — no in-between count, so no algorithmic orphan is
+   possible. */
+.m-card-grid--buttons {
+  grid-template-columns: repeat(var(--m-button-cols, 1), 1fr);
+  gap: var(--m-space-3);
+}
+@media (min-width: 700px) {
+  .m-card-grid--buttons {
+    --m-button-cols: var(--m-button-count);
+  }
+}
+.m-card--button {
+  background: var(--m-button-card-bg);
+  border: none;
+  border-radius: var(--m-button-card-radius);
+  padding: var(--m-button-card-pad);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: var(--m-space-1);
+  transition: background var(--m-dur-base) var(--m-ease-standard);
+}
+.m-card--button:hover,
+.m-card--button:focus-within {
+  background: var(--m-button-card-bg-hover);
+}
+.m-card--button .m-card__title {
+  margin: 0;
+  font-size: var(--m-text-sm);
+}
+.m-card--button .m-card__title a {
+  color: var(--m-button-card-ink);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+}
+.m-card--button .m-card__link-glyph {
+  color: var(--m-button-card-ink);
+}
+/* Editorial caption (2026-07-07, operator-selected over no-caption) — one
+   short line under the label. Body text already renders for any card via
+   card_grid()'s shared body rendering; this just styles it for the
+   filled-accent button context (needs its own contrast, not the plain-card
+   --m-ink-secondary). */
+.m-card--button .m-card__body {
+  font-size: var(--m-text-2xs, 0.6875rem);
+  color: var(--m-button-card-ink);
+  opacity: 0.85;
+}
+.m-card__github-icon {
+  display: block;
+  width: 1.1em;
+  height: 1.1em;
+  flex: none;
+  fill: currentColor;
+}
+
+/* ==========================================================================
+   Icon strip — restores the "Development Classes" / capability graphics.
+   ========================================================================== */
+
+.m-icon-strip {
+  background: var(--m-icon-strip-bg);
+}
+.m-icon-strip__inner {
+  /* Full-bleed across the whole viewport (production runs this band edge-to-
+     edge, not capped to the content container) — the product-taxonomy icons
+     read as a poster-weight strip, not a clustered afterthought. */
+  max-width: none;
+  margin-inline: auto;
+  padding: var(--m-icon-strip-pad-y) var(--m-gutter);
+  /* Grid, not flex. FABLE visual review (2026-07-02) found that BOTH
+     flex-wrap AND `repeat(auto-fit, minmax(...))` grid produce an orphaned
+     single-item row whenever the fitted column count doesn't evenly divide
+     the item count (verified: Woodfine's 4 icons 3-and-1 split at 700px
+     under plain auto-fit; PointSav's 3 icons have no even middle split at
+     all — 3 is not divisible by 2). The only column counts that can never
+     orphan are 1 (mobile, one column) and the full item count (desktop,
+     one row) — so those are the only two states used, via --m-icon-count
+     (set inline per-render in ui.rs from icons.len()). No breakpoint size
+     jump either: --m-icon-strip-size is a single monotonic clamp(). */
+  display: grid;
+  --m-icon-strip-cols: 1;
+  grid-template-columns: repeat(var(--m-icon-strip-cols), 1fr);
+  gap: var(--m-icon-strip-gap);
+}
+@media (min-width: 700px) {
+  .m-icon-strip__inner {
+    --m-icon-strip-cols: var(--m-icon-count);
+  }
+}
+/* Mobile (<700px): icon-beside-caption, row layout (2026-07-07 mobile
+   redesign). Desktop/tablet (>=700px, round 10 reversal 2026-07-07):
+   icon-on-top, caption-below — the operator reviewed icon-beside-caption
+   live on desktop and asked for the pre-round-7 stacked treatment there
+   while keeping beside-caption for mobile. Same item markup at every
+   breakpoint (icon then caption in DOM order works for both row and
+   column flex-direction) — only this rule's flex-direction/alignment
+   changes; see the >=700px override below. */
+.m-icon-strip__item {
+  display: flex;
+  align-items: center;
+  gap: var(--m-icon-strip-text-gap);
+  text-align: left;
+  /* Grid items default to `min-width: auto`, which floors their size at
+     their content's intrinsic min size (here, the widest icon's natural
+     width at the fixed strip height) even when the grid track itself is
+     narrower. At >=700px this item is also a grid cell of
+     `.m-icon-strip__inner`'s `repeat(--m-icon-count, 1fr)` track — without
+     this override, a wide-ratio icon (e.g. ~2:1) can force its track past
+     1fr and overflow the viewport (observed ~700-915px with 4 icons).
+     `min-width: 0` lets the track — and this item — shrink to fit; the
+     icon's own `max-width: 100%` (below) then caps it proportionally. */
+  min-width: 0;
+}
+@media (min-width: 700px) {
+  .m-icon-strip__item {
+    /* Deliberate layout change at this breakpoint (not just a size change)
+       — unlike the reverted 2026-07-02 two-tier size hack, a visual
+       discontinuity here is expected and correct: row vs. column is a
+       different layout, not a size jump at fixed layout. */
+    flex-direction: column;
+    align-items: center;
+    /* Round 12: anchor the icon to the TOP of the grid cell, not the middle.
+       Grid stretches every cell in the row to the tallest sibling's height;
+       with `justify-content: center` a shorter item (1-line caption) centered
+       its icon+caption block within that stretched cell, pushing its icon DOWN
+       relative to a taller sibling (2-line caption) — an 11px icon-top / title-
+       top Y offset at 1440px even with a now-uniform icon box. flex-start pins
+       the icon to the cell top so row alignment holds regardless of how many
+       lines each caption wraps to. */
+    justify-content: flex-start;
+    text-align: center;
+  }
+  .m-icon-strip__text {
+    /* Un-stretch from the item's new column cross-axis so the caption
+       block shrinks to its own content width instead of spanning the
+       full grid column — matches the reference icon-on-top look instead
+       of a full-width left-edge-to-right-edge text block. */
+    align-items: center;
+    max-width: 32ch;
+  }
+}
+.m-icon-strip__img {
+  display: block;
+  flex-shrink: 0;
+  /* Round 12 (2026-07-07): UNIFORM fixed box + object-fit: contain.
+     Round 10 retrimmed each of the 7 SVGs to its own tight bounding box, so
+     native aspect ratios now span ~0.81:1 to ~2.02:1. Round 11 sized by a
+     fixed HEIGHT with native-ratio (auto) WIDTH — which preserved each icon's
+     ratio but gave each a DIFFERENT footprint, and that is exactly what the
+     operator flagged as misaligned: different rendered widths make the stacked
+     mobile list ragged (captions start at different X), and different rendered
+     heights make the desktop row uneven (icon tops / caption tops at different
+     Y). The fix, operator-approved to render some icons slightly smaller: give
+     every icon the SAME box — explicit width AND height (both from tokens) —
+     and center the artwork inside it with `object-fit: contain`, which scales
+     the SVG to fit without distortion and letterboxes the leftover space. Now
+     every icon's box is identical at a given breakpoint, so desktop rows align
+     (equal height) and mobile columns align (equal width) by construction.
+     `max-width: 100%` is the overflow guard: in the narrowest desktop grid
+     cells (Woodfine's 4-icon row in the ~700px band) the box width is capped to
+     the 1fr cell width instead of forcing the track wider than the viewport.
+     Because every cell in a `repeat(N, 1fr)` row is equal width, the cap hits
+     all icons identically — the box stays uniform and the row stays aligned;
+     height is never capped, so row-level top/height alignment is unconditional.
+     `min-width: 0` on the item (below) lets the track shrink so the cap can
+     apply. Box ratio (1.3:1) and rationale: see tokens.css --m-icon-strip-width. */
+  width: var(--m-icon-strip-width);
+  height: var(--m-icon-strip-size);
+  max-width: 100%;
+  object-fit: contain;
+  object-position: center;
+  /* Round 15 (2026-07-07): the optional per-icon `scale()` transform (see
+     IconTile::scale, round 13) defaults to scaling from the element's
+     CENTER, which pushes the bottom edge DOWN as well as the top edge up —
+     directly fighting round 14's bottom-anchoring fix. Measured on
+     PointSav's scaled Building Connectivity icon: its actual bottom edge
+     landed ~14-15px lower on the page than its unscaled siblings, despite
+     round 14's alignment fix being otherwise correct. Anchoring the
+     transform origin to the bottom means any scale grows the icon upward
+     from a fixed bottom edge instead, preserving alignment. Harmless when
+     no scale is set (transform-origin has no visible effect without a
+     transform to apply it to). */
+  transform-origin: center bottom;
+}
+@media (min-width: 700px) {
+  .m-icon-strip__img {
+    /* Round 14 (2026-07-07): CASCADE FIX. Round 13 added this exact
+       override but placed it inside the EARLIER `@media (min-width:700px)`
+       block above (the one with `.m-icon-strip__item`/`.m-icon-strip__text`)
+       — since that block appears BEFORE this file's base `.m-icon-strip__img`
+       rule, and both have equal specificity (single class selector), the
+       base rule's unconditional `object-position: center` (just above) won
+       the cascade at every width, silently no-opping the round-13 fix.
+       Confirmed via real pixel measurement (Pillow, not just bounding-box
+       arithmetic) that the ground line was NOT actually aligned live despite
+       round 13's own numeric self-check passing — that check only verified
+       the CSS *should* work per its declared values, not what the browser
+       actually rendered. This rule is placed AFTER the base rule specifically
+       so it wins the cascade at >=700px. See the base rule's comment above
+       for the actual alignment rationale (every Woodfine icon's ground line
+       sits at its own crop's bottom edge; bottom-anchoring here makes every
+       icon's rendered content touch the shared box's bottom edge too,
+       regardless of how much each one letterboxes). Mobile (<700px) keeps
+       the base rule's `center` — no cross-item baseline to align there. */
+    object-position: center bottom;
+  }
+}
+.m-icon-strip__text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--m-space-1);
+  min-width: 0;
+}
+.m-icon-strip__title {
+  margin: 0;
+  font-family: var(--m-font-sans);
+  font-weight: var(--m-weight-bold);
+  font-size: 1rem;
+  color: var(--m-ink);
+}
+.m-icon-strip__body {
+  margin: 0;
+  font-size: var(--m-text-sm);
+  line-height: var(--m-lh-body);
+  color: var(--m-ink-secondary);
+}
+/* Hairline rhythm between stacked mobile items (FABLE audit 2026-07-02) —
+   gives the 1-column stack visual separation without new layout logic;
+   desktop's single row (>=700px) needs no divider. */
+@media (max-width: 699px) {
+  .m-icon-strip__item:not(:first-child) {
+    /* --m-border resolves to the exact same grey as this section's own
+       background (--m-surface-section) -- zero contrast, invisible.
+       --m-border-strong is the token this site already uses whenever a
+       rule needs to actually show (footer, h1 underline). */
+    border-top: 1px solid var(--m-border-strong);
+    padding-top: var(--m-icon-strip-gap);
+  }
+}
+
+/* ==========================================================================
+   Prose sections
+   ========================================================================== */
+
+.m-prose {
+  max-width: var(--m-prose-max);
+  margin-inline: auto;
+  padding: var(--m-space-band) var(--m-gutter);
+}
+.m-prose h2 {
+  font-family: var(--m-font-serif);
+  font-size: var(--m-text-xl);
+}
+/* Lists — the numbered disclaimer clauses and any bulleted prose. Explicit
+   markers + item spacing (browser defaults were being inherited unstyled). */
+.m-prose ul,
+.m-prose ol {
+  padding-left: 1.5em;
+  margin: 0 0 var(--m-space-4);
+}
+.m-prose ul {
+  list-style: disc;
+}
+.m-prose ol {
+  list-style: decimal;
+}
+.m-prose li {
+  margin-bottom: 0.35em;
+}
+
+/* Data tables — wiki-parity styling for markdown-rendered tables. Applied
+   both to prose (the disclaimer's jurisdiction / exemption-framework table)
+   and to the footer disclosure accordion, which uses the same markdown
+   renderer. overflow-x:auto on the table itself gives narrow-viewport
+   horizontal scroll without any client JS (P3 locked: no bundler-pattern
+   client JS, so no table-wrapping script — the CSS does it directly). */
+.m-prose table,
+.m-footer__slot-body table {
+  display: block;
+  overflow-x: auto;
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--m-table-fs);
+  margin: 0 0 var(--m-space-4);
+}
+.m-prose th,
+.m-prose td,
+.m-footer__slot-body th,
+.m-footer__slot-body td {
+  border: 1px solid var(--m-table-border);
+  padding: var(--m-table-cell-pad);
+  text-align: left;
+  vertical-align: top;
+}
+.m-prose thead th,
+.m-footer__slot-body thead th {
+  background: var(--m-table-head-bg);
+  font-weight: var(--m-weight-semibold);
+}
+.m-prose tbody tr:nth-child(even),
+.m-footer__slot-body tbody tr:nth-child(even) {
+  background: var(--m-table-stripe);
+}
+
+/* ==========================================================================
+   Footer — three-tier: nav columns → on-page disclosure accordion → badge/
+   trademark/copyright base row. Light grey (#f8f9fa), matching the wiki's
+   footer surface exactly — operator call 2026-07-01.
+   ========================================================================== */
+
+.m-footer {
+  background: var(--m-footer-bg);
+  color: var(--m-footer-ink);
+  padding: var(--m-footer-pad-y) var(--m-gutter);
+}
+
+.m-footer__columns {
+  max-width: var(--m-container-max);
+  margin-inline: auto;
+  display: flex;
+  /* Operator-confirmed fix, 2026-07-07: Site and Network were already
+     side-by-side at every width (contrary to an initial assumption they
+     stacked on mobile) — the real problem was both columns clustering at
+     the left edge with unused space on the right, at mobile AND desktop.
+     One rule serves both breakpoints; no wrap/stacking logic needed. */
+  justify-content: space-between;
+  gap: var(--m-footer-col-gap);
+  padding-bottom: var(--m-space-8);
+}
+.m-footer__col-title {
+  font-size: var(--m-footer-heading-size);
+  text-transform: var(--m-label-transform);
+  letter-spacing: var(--m-label-tracking);
+  color: var(--m-footer-ink-muted);
+  margin: 0 0 var(--m-space-2);
+}
+.m-footer__nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--m-space-2);
+}
+.m-footer__nav a {
+  color: var(--m-footer-link);
+  text-decoration: none;
+  font-size: var(--m-text-sm);
+}
+.m-footer__nav a:hover,
+.m-footer__nav a:focus-visible {
+  color: var(--m-footer-link-hover);
+}
+
+/* Collapsed by default (<details> with no `open` attribute) — the content
+   still ships in the initial HTML (readable with JS off, fully indexable,
+   satisfies "clear and prominent"); collapsing it is what stops it from
+   reading as a second copy of the trademark paragraph below. Restores the
+   spirit of the retired site's "IMPORTANT INFORMATION ▾" accordion. */
+.m-footer__disclosure {
+  max-width: var(--m-container-max);
+  margin-inline: auto;
+  margin-bottom: var(--m-space-6);
+  border: var(--m-disclosure-border);
+  border-radius: var(--m-radius-control);
+}
+.m-footer__disclosure-summary {
+  cursor: pointer;
+  padding: var(--m-disclosure-pad);
+  color: var(--m-disclosure-summary-ink);
+  font-size: var(--m-disclosure-summary-size);
+  font-weight: var(--m-disclosure-summary-weight);
+  list-style: none;
+}
+.m-footer__disclosure-summary::-webkit-details-marker {
+  display: none;
+}
+.m-footer__disclosure-summary::after {
+  content: "\25be";
+  margin-left: var(--m-space-2);
+  display: inline-block;
+}
+.m-footer__disclosure[open] .m-footer__disclosure-summary::after {
+  transform: rotate(180deg);
+}
+.m-footer__slot {
+  padding: 0 var(--m-disclosure-pad) var(--m-disclosure-pad);
+}
+.m-footer__slot + .m-footer__slot {
+  padding-top: var(--m-slot-gap);
+  border-top: var(--m-slot-rule-top);
+}
+.m-footer__slot-label {
+  font-family: var(--m-slot-label-family);
+  font-size: var(--m-slot-label-size);
+  letter-spacing: var(--m-slot-label-tracking);
+  text-transform: var(--m-slot-label-transform);
+  color: var(--m-slot-label-ink);
+  margin: 0 0 var(--m-space-1);
+}
+.m-footer__slot-body {
+  font-size: var(--m-slot-body-size);
+  line-height: var(--m-slot-body-lh);
+  color: var(--m-slot-body-ink);
+  max-width: var(--m-slot-max-measure);
+}
+/* slot-body renders markdown (paragraphs, numbered lists, bold) — the
+   legal prose that used to be a separate always-visible page section. */
+.m-footer__slot-body p,
+.m-footer__slot-body ol {
+  margin: 0 0 var(--m-space-3);
+}
+.m-footer__slot-body p:last-child,
+.m-footer__slot-body ol:last-child {
+  margin-bottom: 0;
+}
+.m-footer__slot-body ol {
+  padding-left: 1.25em;
+}
+.m-footer__slot-body strong {
+  color: var(--m-ink-on-footer);
+}
+
+/* Force the "Important information" accordion open when printing (project-
+   knowledge relay, 2026-07-02) -- an auditor/printer gets the full
+   disclosure expanded on the paper copy even if it was collapsed on
+   screen. NOTE: a pure-CSS `display` override on the non-summary children
+   does NOT actually work for this -- tested directly (Chromium): the
+   children report `display: block` and a real intrinsic height, but the
+   parent <details> box does not grow to include them while the `open`
+   boolean attribute is absent, because the collapse behavior lives in an
+   internal UA rendering path CSS `display` on the children doesn't reach.
+   The `[open]` attribute has to actually be set, which app.js does via
+   beforeprint/afterprint -- this rule only hides the (now-meaningless)
+   toggle arrow while printing. */
+@media print {
+  .m-footer__disclosure-summary::after {
+    content: "";
+  }
+}
+
+.m-footer__base {
+  max-width: var(--m-container-max);
+  margin-inline: auto;
+  border-top: var(--m-footer-rule);
+  padding-top: var(--m-space-6);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--m-space-6);
+}
+.m-footer__cities {
+  font-size: var(--m-text-sm);
+  margin-bottom: var(--m-space-2);
+}
+.m-footer__copyright {
+  font-size: var(--m-footer-legal-size);
+  color: var(--m-footer-ink-muted);
+  margin: 0 0 var(--m-space-1);
+}
+/* Persistent one-line disclaimer (project-knowledge relay, 2026-07-02,
+   "Apollo Academy" pattern) — always visible whether the accordion above
+   is open or collapsed, so a screenshot/print is never bare of any
+   disclosure at all. Same muted legal-text styling as copyright/trademark
+   either side of it. */
+.m-footer__notice {
+  font-size: var(--m-footer-legal-size);
+  color: var(--m-footer-ink-muted);
+  max-width: var(--m-prose-max);
+  margin: 0 0 var(--m-space-1);
+  font-style: italic;
+}
+.m-footer__trademark {
+  font-size: var(--m-footer-legal-size);
+  color: var(--m-footer-ink-muted);
+  max-width: var(--m-prose-max);
+  margin: 0;
+}
+
+.m-footer__badges {
+  display: flex;
+  gap: var(--m-badge-row-gap);
+}
+
+/* ==========================================================================
+   "Powered by MediaKit" badge — a certification mark, not a themed
+   component. Byte-identical to the wiki's real badge (white pill) so the
+   mark is recognizable across the whole site family regardless of the
+   footer's own background color.
+   ========================================================================== */
+
+.m-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--m-badge-gap);
+  background: var(--m-badge-bg);
+  border: var(--m-badge-border);
+  border-radius: var(--m-badge-radius);
+  padding: var(--m-badge-pad);
+  text-decoration: none;
+  color: var(--m-badge-name-ink);
+}
+.m-badge__glyph {
+  color: var(--m-badge-name-ink);
+  display: inline-flex;
+  width: var(--m-badge-glyph-size);
+  height: var(--m-badge-glyph-size);
+}
+.m-badge__text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+.m-badge__label {
+  font-size: var(--m-badge-label-size);
+  letter-spacing: var(--m-badge-label-tracking);
+  text-transform: uppercase;
+  color: var(--m-badge-label-ink);
+}
+.m-badge__name {
+  font-size: var(--m-badge-name-size);
+  font-weight: var(--m-badge-name-weight);
+  color: var(--m-badge-name-ink);
+}

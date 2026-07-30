@@ -1,0 +1,22 @@
+{
+  "body": {
+    "json": {
+      "message": "Transaction not found or not a recognised USDC payment to this address.",
+      "status": "not_found"
+    },
+    "kind": "json"
+  },
+  "fixture": "mkt-license-notfound",
+  "headers": {
+    "connection": "close",
+    "content-length": "106",
+    "content-type": "application/json"
+  },
+  "normalize": "raw",
+  "request": {
+    "method": "GET",
+    "path": "/v1/license/0xtestunknowntx",
+    "port": 19213
+  },
+  "status": 404
+}
