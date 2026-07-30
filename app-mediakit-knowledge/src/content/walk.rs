@@ -219,10 +219,7 @@ fn detect_lang(path: &Path) -> Lang {
 /// final path component (file stem), e.g. `architecture/foo.md` → `foo`.
 fn path_slug(rel: &Path) -> String {
     let s = rel.to_string_lossy();
-    let s = s
-        .strip_suffix(".es.md")
-        .or_else(|| s.strip_suffix(".md"))
-        .unwrap_or(&s);
+    let s = s.strip_suffix(".es.md").or_else(|| s.strip_suffix(".md")).unwrap_or(&s);
     s.rsplit('/').next().unwrap_or(s).to_string()
 }
 
@@ -293,11 +290,7 @@ mod tests {
     fn builds_index_and_resolves_by_slug() {
         let tmp = tempfile::tempdir().unwrap();
         let root = tmp.path();
-        write(
-            root,
-            "architecture/zci.md",
-            "---\ntitle: ZCI\nslug: zero-container-inference\ncategory: architecture\n---\nBody\n",
-        );
+        write(root, "architecture/zci.md", "---\ntitle: ZCI\nslug: zero-container-inference\ncategory: architecture\n---\nBody\n");
         write(root, "architecture/zci.es.md", "---\ntitle: ZCI (es)\nslug: zero-container-inference\ncategory: architecture\n---\nCuerpo\n");
         write(root, "README.md", "not content");
 
@@ -341,10 +334,7 @@ mod tests {
             }],
         };
         let idx = ContentIndex::build(&mounts);
-        assert_eq!(
-            idx.resolve_alias("developer-guide-index"),
-            Some("guide-catalog")
-        );
+        assert_eq!(idx.resolve_alias("developer-guide-index"), Some("guide-catalog"));
         assert_eq!(idx.resolve_alias("old-catalog"), Some("guide-catalog"));
         assert_eq!(idx.resolve_alias("nope"), None);
     }

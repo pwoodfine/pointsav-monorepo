@@ -71,37 +71,6 @@ pub fn component_origin_label<'a>(
         .map(|(label, _)| label.as_str())
 }
 
-/// The `discover_component_groups` entry (label, slugs) that a given component slug
-/// belongs to — regardless of whether it's the generic (empty-label) group. Used by the
-/// component-detail sidebar (Phase: nav/sidebar structural rebuild) to scope the rail to
-/// just the current component's own category, matching the mockup's real per-page
-/// `doc-toc` (never the full mixed tree `component_origin_label`'s callers show).
-pub fn component_group_for_slug<'a>(
-    component_groups: &'a [(String, Vec<String>)],
-    slug: &str,
-) -> Option<&'a (String, Vec<String>)> {
-    component_groups
-        .iter()
-        .find(|(_, slugs)| slugs.iter().any(|s| s == slug))
-}
-
-/// A sidebar rail needs a plain noun heading ("GIS", "Knowledge Platform") and, for the
-/// 3 non-generic categories, a real link out to that domain's product-line page —
-/// distinct wording from `discover_component_groups`'s origin-badge label ("Also used on
-/// gis.woodfinegroup.com"), which reads correctly as a badge caption but not as a rail
-/// heading. The generic (empty-label) group has no product-line page to link to.
-pub fn sidebar_heading_for_group_label(label: &str) -> (&'static str, Option<&'static str>) {
-    if label.contains("gis.woodfinegroup.com") {
-        ("GIS", Some("/products/gis/overview"))
-    } else if label.contains("wiki engine") {
-        ("Knowledge Platform", Some("/products/knowledge-platform/overview"))
-    } else if label.contains("Org Chart") {
-        ("Org Charts", Some("/products/org-charts/overview"))
-    } else {
-        ("Components", None)
-    }
-}
-
 /// Human-readable "last modified" freshness for a vault file. Uses filesystem mtime, not
 /// git history — the deployed vault is a gitignored copy synced from the canonical
 /// `pointsav-design-system` repo, so git log against the running app's own vault
@@ -132,10 +101,6 @@ pub const SECTIONS: &[(&str, &str, Layout)] = &[
     ("designing", "overview", Layout::Flat),
     ("about", "overview", Layout::Flat),
     ("research", "overview", Layout::Flat),
-    ("products", "overview", Layout::Flat),
-    ("releases", "overview", Layout::Flat),
-    ("paper", "overview", Layout::Flat),
-    ("writing", "overview", Layout::Flat),
 ];
 
 pub fn default_tab(section: &str) -> &'static str {
@@ -234,7 +199,7 @@ pub fn discover_tabs(vault: &Path, section: &str, slug: &str) -> Vec<String> {
 /// like "Wiki Toc Sidebar" read as auto-title-cased file names, not curated nav, next to
 /// real prose labels. (bim/guid/3d/rs1/ifc removed 2026-07-04 — those were BIM-specific
 /// slugs, and BIM content no longer lives in this substrate.)
-const ACRONYM_WORDS: &[&str] = &["gis", "toc", "mcp"];
+const ACRONYM_WORDS: &[&str] = &["gis", "toc"];
 
 pub fn to_title(s: &str) -> String {
     s.split('-')

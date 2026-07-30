@@ -4,7 +4,7 @@
 // DESIGN-BUNDLE directory mounts — list, serve, and zip-download an entire
 // externally-owned directory (canonical-source-with-downstream-mount, DOCTRINE §IV.e).
 // The source directory is never copied; `state.bundle_mounts` only holds a path.
-use crate::{i18n::PageLang, render, schema, state::AppState, vault};
+use crate::{render, schema, state::AppState, vault};
 use axum::{
     extract::{Path, State},
     http::{header, StatusCode},
@@ -64,8 +64,6 @@ pub async fn list(Path(name): Path<String>, State(state): State<AppState>) -> Re
     };
     let files = list_bundle_files(dir);
     let title = vault::to_title(&name);
-    let file_count = files.len();
-    let path = format!("/bundles/{name}");
 
     let list_html = state
         .env
@@ -73,21 +71,15 @@ pub async fn list(Path(name): Path<String>, State(state): State<AppState>) -> Re
         .expect("bundle.html missing")
         .render(minijinja::context! {
             name => name,
-            file_count => file_count,
+            file_count => files.len(),
             files => files,
         })
         .expect("render bundle.html failed");
 
-    let nav_html = render::render_nav(&state.env, &state.component_groups, "", "");
+    let nav_html = render::render_nav(&state.env, &state.nav, &state.component_groups, vault::SECTIONS, "", "");
     Html(render::shell(
         &state.env,
-        &state.vault,
-        &state.component_groups,
-        &state.site_origin,
         &format!("{title} — PointSav Design System"),
-        &format!("Download the {title} bundle from the PointSav Design System — {file_count} files."),
-        &path,
-        &PageLang::en_only(),
         &nav_html,
         "",
         &title,
@@ -118,16 +110,10 @@ pub async fn file(
     let schema_type = schema::detect(&frontmatter);
     let content = schema::render(schema_type, &frontmatter, &body);
 
-    let nav_html = render::render_nav(&state.env, &state.component_groups, "", "");
+    let nav_html = render::render_nav(&state.env, &state.nav, &state.component_groups, vault::SECTIONS, "", "");
     Html(render::shell(
         &state.env,
-        &state.vault,
-        &state.component_groups,
-        &state.site_origin,
         &format!("{filename} — PointSav Design System"),
-        &format!("{filename}, from the {} bundle in the PointSav Design System.", vault::to_title(&name)),
-        &format!("/bundles/{name}/{filename}"),
-        &PageLang::en_only(),
         &nav_html,
         "",
         "",

@@ -262,16 +262,9 @@ mod tests {
             body_md: "This cites a source[^1].\n".into(),
         };
         let r = render_doc(&doc);
-        assert!(
-            r.html.contains("footnotes"),
-            "footnotes section: {}",
-            r.html
-        );
+        assert!(r.html.contains("footnotes"), "footnotes section: {}", r.html);
         assert!(r.html.contains("Yjs library."));
-        assert!(
-            !r.html.contains("[^1]"),
-            "marker should be resolved, not literal"
-        );
+        assert!(!r.html.contains("[^1]"), "marker should be resolved, not literal");
     }
 
     #[test]

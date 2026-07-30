@@ -55,6 +55,19 @@ impl Tenant {
         matches!(self, Tenant::Projects | Tenant::Corporate)
     }
 
+    /// The canonical Organization `@id` this instance's JSON-LD `publisher`/
+    /// `author` fields reference, per the cross-site SEO standard
+    /// (project-editorial's `BRIEF-seo-cross-site-strategy.md`): every
+    /// property references the brand's apex-domain Organization node by
+    /// `@id` rather than each declaring its own inline copy — the same split
+    /// as `is_woodfine()`, deliberately, so the two never drift apart.
+    pub fn organization_id(&self) -> &'static str {
+        match self {
+            Tenant::Documentation => "https://pointsav.com/#organization",
+            Tenant::Projects | Tenant::Corporate => "https://woodfinegroup.com/#organization",
+        }
+    }
+
     /// Maintaining entity of record (uppercased in the sitenotice by CSS).
     pub fn entity_name(&self) -> &'static str {
         match self {
@@ -94,9 +107,7 @@ impl Tenant {
     pub fn license_url(&self) -> &'static str {
         match self {
             Tenant::Documentation => "https://creativecommons.org/licenses/by/4.0/",
-            Tenant::Projects | Tenant::Corporate => {
-                "https://creativecommons.org/licenses/by-nd/4.0/"
-            }
+            Tenant::Projects | Tenant::Corporate => "https://creativecommons.org/licenses/by-nd/4.0/",
         }
     }
 
@@ -200,18 +211,12 @@ impl Tenant {
             Tenant::Projects => vec![
                 ("Corporate", "https://corporate.woodfinegroup.com/"),
                 ("Newsroom", "https://newsroom.woodfinegroup.com/"),
-                (
-                    "GitHub",
-                    "https://github.com/woodfine/woodfine-fleet-deployment",
-                ),
+                ("GitHub", "https://github.com/woodfine/woodfine-fleet-deployment"),
             ],
             Tenant::Corporate => vec![
                 ("Projects", "https://projects.woodfinegroup.com/"),
                 ("Newsroom", "https://newsroom.woodfinegroup.com/"),
-                (
-                    "GitHub",
-                    "https://github.com/woodfine/woodfine-fleet-deployment",
-                ),
+                ("GitHub", "https://github.com/woodfine/woodfine-fleet-deployment"),
             ],
         }
     }
@@ -220,10 +225,7 @@ impl Tenant {
     /// (`(label, url)`): PointSav ↔ Woodfine.
     pub fn other_org(&self) -> (&'static str, &'static str) {
         match self {
-            Tenant::Documentation => (
-                "Woodfine Capital Projects",
-                "https://home.woodfinegroup.com/",
-            ),
+            Tenant::Documentation => ("Woodfine Capital Projects", "https://home.woodfinegroup.com/"),
             Tenant::Projects | Tenant::Corporate => {
                 ("PointSav Digital Systems", "https://home.pointsav.com/")
             }
@@ -233,5 +235,20 @@ impl Tenant {
     /// Office cities for the footer line — mirrors the marketing footer.
     pub fn cities(&self) -> &'static [&'static str] {
         &["Vancouver", "New York"]
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn organization_id_matches_is_woodfine_split() {
+        for t in [Tenant::Documentation, Tenant::Projects, Tenant::Corporate] {
+            assert_eq!(t.is_woodfine(), t.organization_id().contains("woodfinegroup.com"));
+        }
+        assert_eq!(Tenant::Documentation.organization_id(), "https://pointsav.com/#organization");
+        assert_eq!(Tenant::Projects.organization_id(), "https://woodfinegroup.com/#organization");
+        assert_eq!(Tenant::Corporate.organization_id(), "https://woodfinegroup.com/#organization");
     }
 }

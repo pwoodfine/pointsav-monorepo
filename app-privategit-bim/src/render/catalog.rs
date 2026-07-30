@@ -261,7 +261,10 @@ fn build_objects(state: &AppState) -> Vec<Value> {
             row("Weight", weight);
             row("IFC 4.3 entity class", ifc_class.to_string());
             if !uni_pr.is_empty() {
-                row("Uniclass 2015 (Pr)", format!("{uni_pr} — {uni_pr_title}"));
+                row(
+                    "Uniclass 2015 (Pr)",
+                    format!("{uni_pr} — {uni_pr_title}"),
+                );
             }
 
             let search = format!(
@@ -429,8 +432,7 @@ fn build_compositions(state: &AppState, objects: &[Value]) -> Vec<Value> {
         }
         row("Uniclass 2015 (SL)", format!("SL — {space}"));
 
-        let search =
-            format!("{display_name} {internal_code} {category} {cat_label}").to_lowercase();
+        let search = format!("{display_name} {internal_code} {category} {cat_label}").to_lowercase();
 
         let mut e = Map::new();
         e.insert("id".into(), json!(internal_code));
@@ -631,12 +633,7 @@ fn render_object_card(o: &Value) -> String {
     } else {
         ""
     };
-    let glyph = group
-        .chars()
-        .next()
-        .unwrap_or('•')
-        .to_uppercase()
-        .to_string();
+    let glyph = group.chars().next().unwrap_or('•').to_uppercase().to_string();
 
     format!(
         r#"<button class="bim-cat-card" data-kind="object" data-id="{id}" data-mfr="{mfr}" data-uni="{uni_title}" data-search="{search}" aria-label="{name} — view specification">
@@ -672,10 +669,7 @@ fn render_composition_card(c: &Value) -> String {
     let space = s(c, "uniclass_space");
     let search = s(c, "search");
     let svg = s(c, "svg");
-    let has_zone = c
-        .get("has_zone_data")
-        .and_then(Value::as_bool)
-        .unwrap_or(false);
+    let has_zone = c.get("has_zone_data").and_then(Value::as_bool).unwrap_or(false);
     let layout = if has_zone { "modeled" } else { "floor" };
     let area_sf = int_of(c, "area_sf");
     let area_line = match area_sf {
@@ -685,8 +679,7 @@ fn render_composition_card(c: &Value) -> String {
     let note = if has_zone {
         String::new()
     } else {
-        r#"<span class="bim-cat-card__note">Floor-scale — no zone layout modeled</span>"#
-            .to_string()
+        r#"<span class="bim-cat-card__note">Floor-scale — no zone layout modeled</span>"#.to_string()
     };
 
     format!(
@@ -765,11 +758,7 @@ fn render_facet_group(title: &str, key: &str, items: &[(String, usize)]) -> Stri
 }
 
 fn render_object_facets(objects: &[Value]) -> String {
-    let uni = counted(
-        objects
-            .iter()
-            .map(|o| s(o, "uniclass_pr_title").to_string()),
-    );
+    let uni = counted(objects.iter().map(|o| s(o, "uniclass_pr_title").to_string()));
     let mfr = counted(objects.iter().map(|o| s(o, "manufacturer").to_string()));
     format!(
         "{}{}",
@@ -833,11 +822,7 @@ fn render_composition_facets(comps: &[Value]) -> String {
     let layout_items = {
         let modeled = comps
             .iter()
-            .filter(|c| {
-                c.get("has_zone_data")
-                    .and_then(Value::as_bool)
-                    .unwrap_or(false)
-            })
+            .filter(|c| c.get("has_zone_data").and_then(Value::as_bool).unwrap_or(false))
             .count();
         let floor = comps.len() - modeled;
         let mut v: Vec<(String, String, usize)> = Vec::new();

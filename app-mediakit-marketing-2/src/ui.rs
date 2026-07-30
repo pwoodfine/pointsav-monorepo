@@ -297,11 +297,7 @@ impl Tenant {
             // masthead and the button row, an unflagged duplication FABLE's
             // nav-priority audit caught 2026-07-02.
             nav_links: vec![
-                NavLink::external(
-                    "Design System",
-                    "Sistema de diseño",
-                    "https://design.pointsav.com/",
-                ),
+                NavLink::external("Design System", "Sistema de diseño", "https://design.pointsav.com/"),
                 // Restored 2026-07-02 — present on the retired production
                 // site's masthead nav, dropped when this chrome was rebuilt.
                 NavLink::external("Newsroom", "Sala de prensa", "https://pointsav.com/"),
@@ -317,17 +313,9 @@ impl Tenant {
             // combined), same rationale as Woodfine's — FABLE nav-priority
             // audit 2026-07-02.
             footer_network: vec![
-                NavLink::external(
-                    "Documentation",
-                    "Documentación",
-                    "https://documentation.pointsav.com/",
-                ),
+                NavLink::external("Documentation", "Documentación", "https://documentation.pointsav.com/"),
                 NavLink::external("Software", "Software", "https://software.pointsav.com/"),
-                NavLink::external(
-                    "Design System",
-                    "Sistema de diseño",
-                    "https://design.pointsav.com/",
-                ),
+                NavLink::external("Design System", "Sistema de diseño", "https://design.pointsav.com/"),
                 NavLink::external("Newsroom", "Sala de prensa", "https://pointsav.com/"),
                 NavLink::external("Source", "Código fuente", "https://github.com/pointsav"),
             ],
@@ -393,8 +381,7 @@ impl Tenant {
                 // before this is treated as final.
                 label: "Company and product disclosure",
                 label_es: "Divulgación de la empresa y del producto",
-                body:
-                    "**Corporate structure.** PointSav Digital Systems (\u{201c}PointSav\u{201d}) \
+                body: "**Corporate structure.** PointSav Digital Systems (\u{201c}PointSav\u{201d}) \
                     is a trade name of \
                     Woodfine Capital Projects Inc. (\u{201c}Woodfine\u{201d}). PointSav does not \
                     itself offer, sell, or solicit any security. Any securities offering \
@@ -491,11 +478,7 @@ impl Tenant {
 }
 
 fn render_nav(links: &[NavLink], class: &str, aria_label: &str, lang: &str) -> Markup {
-    let new_tab_suffix = t(
-        lang,
-        " (opens in new tab)",
-        " (se abre en una pestaña nueva)",
-    );
+    let new_tab_suffix = t(lang, " (opens in new tab)", " (se abre en una pestaña nueva)");
     html! {
         nav class=(class) aria-label=(aria_label) {
             @for link in links {
@@ -728,10 +711,7 @@ fn card_grid(columns: u8, cards: &[crate::content::Card], style: Option<&str>) -
     // the plain informational grid doesn't need it (its fluid auto-fit
     // columns were never the orphan-prone kind).
     let grid_style = if is_buttons {
-        format!(
-            "--m-grid-cols: {columns}; --m-button-count: {}",
-            cards.len()
-        )
+        format!("--m-grid-cols: {columns}; --m-button-count: {}", cards.len())
     } else {
         format!("--m-grid-cols: {columns}")
     };
@@ -884,11 +864,9 @@ fn render_section(section: &Section, seen_h1: &mut bool) -> Markup {
             };
             markup
         }
-        Section::CardGrid {
-            columns,
-            cards,
-            style,
-        } => card_grid(*columns, cards, style.as_deref()),
+        Section::CardGrid { columns, cards, style } => {
+            card_grid(*columns, cards, style.as_deref())
+        }
         Section::Prose { body } => prose(body),
         Section::IconStrip { icons } => icon_strip(icons),
     }
@@ -1041,15 +1019,7 @@ sections:
         )
         .unwrap();
         let page = load_page(dir.path(), "home", None).unwrap();
-        let html = page_shell(
-            &Tenant::woodfine(),
-            &page,
-            "woodfine",
-            "/",
-            Some("/es"),
-            None,
-        )
-        .into_string();
+        let html = page_shell(&Tenant::woodfine(), &page, "woodfine", "/", Some("/es"), None).into_string();
         assert_eq!(html.matches("<h1").count(), 1);
         assert!(html.contains("<h2"));
     }
@@ -1065,15 +1035,7 @@ sections:
         )
         .unwrap();
         let page = load_page(dir.path(), "home", None).unwrap();
-        let html = page_shell(
-            &Tenant::woodfine(),
-            &page,
-            "woodfine",
-            "/",
-            Some("/es"),
-            None,
-        )
-        .into_string();
+        let html = page_shell(&Tenant::woodfine(), &page, "woodfine", "/", Some("/es"), None).into_string();
         assert!(!html.contains("__bundler"));
         assert!(html.contains("<!DOCTYPE html>"));
         assert!(html.contains(r#"lang="en""#));
@@ -1128,13 +1090,8 @@ sections:
 
     #[test]
     fn nav_link_labels_localize_to_spanish() {
-        let html = render_nav(
-            &Tenant::woodfine().nav_links,
-            "m-masthead__nav",
-            "Primary",
-            "es",
-        )
-        .into_string();
+        let html = render_nav(&Tenant::woodfine().nav_links, "m-masthead__nav", "Primary", "es")
+            .into_string();
         assert!(html.contains("Contáctenos"));
         assert!(!html.contains("Contact Us"));
     }

@@ -4,31 +4,11 @@
 -->
 
 <!DOCTYPE html>
-<html lang="{{ lang }}">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{ title }}</title>
-<meta name="description" content="{{ description }}">
-<link rel="canonical" href="{{ site_origin }}{{ path }}">
-{% if alt_en_path %}
-<link rel="alternate" hreflang="en" href="{{ site_origin }}{{ alt_en_path }}">
-<link rel="alternate" hreflang="es" href="{{ site_origin }}{{ alt_es_path }}">
-<link rel="alternate" hreflang="x-default" href="{{ site_origin }}{{ alt_en_path }}">
-{% endif %}
-<meta property="og:type" content="website">
-<meta property="og:site_name" content="PointSav Design System">
-<meta property="og:title" content="{{ title }}">
-<meta property="og:description" content="{{ description }}">
-<meta property="og:url" content="{{ site_origin }}{{ path }}">
-<meta property="og:image" content="{{ site_origin }}/static/og-default.png">
-<meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="{{ title }}">
-<meta name="twitter:description" content="{{ description }}">
-<meta name="twitter:image" content="{{ site_origin }}/static/og-default.png">
-<script type="application/ld+json">
-{{ json_ld | safe }}
-</script>
 <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
 <link rel="stylesheet" href="/static/tokens.css">
 <link rel="stylesheet" href="/static/portal.css">
@@ -37,99 +17,21 @@
 </script>
 </head>
 <body>
-<a href="#main-content" class="skip-link">{{ skip_to_content }}</a>
-<header class="site-header">
-<div class="site-header__inner">
-<a href="/" class="site-header__wordmark">PointSav Design System</a>
-<nav class="site-nav" aria-label="Primary">
-<a href="/tokens">{{ nav_tokens }}</a>
-<a href="/components/button/usage">{{ nav_components }}</a>
-<!-- Restructured 2026-07-16 (IA coherence audit, Opus): the old single "More"
-     dropdown grouped 5 unrelated domains (Guidelines/Elements/Adoption/Agents/
-     Releases) behind one vague label -- the clearest "ad-hoc growth" tell per
-     real Carbon/Primer/Polaris precedent. Split into two honest groupings:
-     design guidance (this dropdown -- Accessibility + Elements, surfaced right
-     next to Tokens/Components rather than buried) and developer-facing docs
-     (Develop, below -- Self-host/Agents/Releases, a real Carbon-style "Get
-     started"/"Develop" bucket). -->
-<details class="site-nav__dropdown">
-<summary aria-controls="site-nav-guidelines-panel">{{ nav_guidelines }}</summary>
-<div class="site-nav__dropdown-panel" id="site-nav-guidelines-panel" role="group" aria-label="{{ nav_guidelines }}">
-<a href="/guidelines/accessibility/overview">{{ nav_accessibility }}</a>
-<a href="/elements/color/overview">{{ nav_elements }}</a>
-</div>
-</details>
-<details class="site-nav__dropdown">
-<summary aria-controls="site-nav-product-lines-panel">{{ nav_product_lines }}</summary>
-<div class="site-nav__dropdown-panel" id="site-nav-product-lines-panel" role="group" aria-label="{{ nav_product_lines }}">
-<a href="/products/knowledge-platform/overview">{{ nav_knowledge_platform }}</a>
-<a href="/products/gis/overview">GIS</a>
-<a href="/products/org-charts/overview">{{ nav_org_charts }}</a>
-</div>
-</details>
-<a href="/writing/writing/overview">{{ nav_writing }}</a>
-<a href="/paper/paper/overview">{{ nav_paper }}</a>
-<details class="site-nav__dropdown">
-<summary aria-controls="site-nav-develop-panel">{{ nav_more }}</summary>
-<div class="site-nav__dropdown-panel" id="site-nav-develop-panel" role="group" aria-label="{{ nav_more }}">
-<a href="/developing/install/overview">{{ nav_adoption }}</a>
-<a href="/developing/mcp/overview">{{ nav_agents }}</a>
-<a href="/releases/changelog/overview">{{ nav_releases }}</a>
-</div>
-</details>
-</nav>
-<!-- Backdrop — a <label> always toggles its own checkbox; clicking it closes
-     the drawer. Hidden above 1300px via portal.css .nav-toggle__overlay { display: none }. -->
-<label for="nav-toggle" class="nav-toggle__overlay" aria-hidden="true"></label>
-<div class="site-header__spacer"></div>
+<a href="#main-content" class="skip-link">Skip to main content</a>
+<header>
+<a href="/">PointSav Design System</a>
 <div class="header-search-wrap">
 <svg class="header-search-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
-<input type="search" id="header-search-q" class="header-search" placeholder="{{ search_placeholder }}" aria-label="{{ search_aria_label }}" autocomplete="off">
+<input type="search" id="header-search-q" class="header-search" placeholder="Search…" aria-label="Search the design system" autocomplete="off">
 <div id="search-autocomplete-dropdown" class="search-dropdown"></div>
 </div>
-<!-- 2026-07-16 fix (operator: "hamburger drops out of the NAV and goes to the
-     left on mobile"): lang-switch/theme-toggle/nav-toggle used to be three
-     independent flex children, each relying on the FIRST one's margin-left:auto
-     to drag the rest along once the row wraps -- flex-wrap breaks that
-     assumption (a wrapped item only carries itself, not later siblings) exactly
-     like home.pointsav.com's masthead hit and fixed 2026-07-13 (see
-     .m-masthead__controls in that repo's app.css). Same fix here: one real
-     wrapper div carries the ONLY margin-left:auto, so the group always moves
-     and right-aligns as a single atomic unit regardless of which row it lands
-     on. nav-toggle no longer needs to precede .site-nav in markup -- the
-     :has() selectors in portal.css now anchor on .site-header__inner instead
-     of requiring direct-sibling adjacency, so it's free to live here. -->
-<div class="site-header__controls">
-{% if toggle_href %}
-<a class="lang-switch" href="{{ toggle_href }}" hreflang="{% if lang == 'es' %}en{% else %}es{% endif %}" rel="alternate" aria-label="{{ toggle_label }}">
-<svg class="lang-switch-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M12 3a9 9 0 100 18 9 9 0 000-18zM3 12h18M12 3c2.5 2.6 3.75 5.6 3.75 9S14.5 18.4 12 21c-2.5-2.6-3.75-5.6-3.75-9S9.5 5.6 12 3z"/></svg>
-<span class="lang-switch-label">{{ toggle_label }}</span>
-</a>
-{% endif %}
-<button id="theme-toggle" class="theme-toggle" aria-label="{{ theme_toggle_aria_label }}" type="button">
+<button id="theme-toggle" class="theme-toggle" aria-label="Toggle dark mode" type="button">
 <svg class="icon-sun" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
 <svg class="icon-moon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg>
 </button>
-<div class="nav-toggle">
-<!-- aria-hidden intentionally dropped (2026-07-16 audit fix, inherited from the
-     mockup's own _chrome-snippet.html): aria-hidden doesn't remove an element
-     from keyboard tab order, only from the accessibility tree, so a screen-reader
-     user tabbing through the header landed on this checkbox with nothing
-     announced — a silent stop. The <label> below already carries the real
-     accessible name via aria-label; leaving the checkbox in the tree lets that
-     name and its checked state actually announce. -->
-<input type="checkbox" id="nav-toggle" class="nav-toggle__checkbox">
-<label for="nav-toggle" class="nav-toggle__btn" aria-label="{{ nav_toggle_aria_label }}">
-<span class="nav-toggle__bar"></span>
-<span class="nav-toggle__bar"></span>
-<span class="nav-toggle__bar"></span>
-</label>
-</div>
-</div>
-</div>
 </header>
 <div class="layout">
-{% if nav_html %}<nav class="sidebar" aria-label="Sections">{{ nav_html | safe }}</nav>{% endif %}
+<nav class="sidebar" aria-label="Sections">{{ nav_html | safe }}</nav>
 <main class="main" id="main-content">
 {{ tab_bar | safe }}
 {% if page_title %}<h1 class="page-title">{{ page_title }}</h1>
@@ -138,19 +40,13 @@
 {{ footer_html | safe }}
 </main>
 </div>
-{% if nav_html %}
 <script>
-(function(){
-var parts='{{ path }}'.split('/');
-var slug=parts[2]||'';
-var _es=new EventSource('/sidebar/sse?lang={{ lang }}&section=components&slug='+encodeURIComponent(slug));
+var _es=new EventSource('/sidebar/sse');
 _es.onmessage=function(e){var n=document.querySelector('nav.sidebar');if(n)n.innerHTML=e.data;};
-})();
 </script>
-{% endif %}
-<script defer src="/static/nav-dropdown.js"></script>
 <script defer src="/static/drawer.js"></script>
 <script defer src="/static/edit.js"></script>
+<script defer src="/static/ai.js"></script>
 <script defer src="/static/tokens-gallery.js"></script>
 <script defer src="/static/code-copy.js"></script>
 <script defer src="/static/search.js"></script>

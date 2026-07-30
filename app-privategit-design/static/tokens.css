@@ -81,14 +81,7 @@
                                         one documented action/link color */
   --cds-interactive: #234ed8;       /* interactive-primary -> color.primary-60 */
   --cds-focus: #234ed8;             /* focus-ring          -> color.primary-60 */
-  --cds-background-brand: #ffffff;  /* v3 masthead fix (2026-07-16): was #0e0f12 (the
-                                        old, pre-v3 dark masthead) — the approved v3
-                                        mockup's :root uses a white masthead in light
-                                        theme (shared.css:106, "was #0e0f12 site-wide").
-                                        This single stale value was the actual root
-                                        cause of "still looks like the old nav" —
-                                        confirmed via a real CSS-value diff audit, not
-                                        a missing-feature bug. */
+  --cds-background-brand: #0e0f12;  /* surface-inverse     -> color.neutral-100 */
   --cds-selected-background: #eef3ff; /* -> color.primary-10 */
   --cds-selected-text: #173ab1;     /* -> color.primary-70 (distinct from plain links) */
   --cds-sidebar-bg: #f5f6f8;        /* surface-subtle      -> color.neutral-10 */
@@ -107,17 +100,12 @@
      (.schema-badge--token, .schema-badge--research, .component-origin-badge) that bypassed
      --cds-* entirely; .schema-badge--bundle's invented #f2e8ff/#6929c4 violet (no primitive
      backing at all) is replaced with a tinted primary pairing instead of a new invented hue. */
-  /* positive/caution text fixed 2026-07-15 (real WCAG AA failures found during the
-     pointsav-design-system token-compliance audit -- 4.33:1 and 3.72:1 against
-     their own tinted backgrounds, same underlying color-scale regression found and
-     fixed in that repo's badge component). critical-text was already compliant
-     (critical-60, 6.32:1) and needed no change. */
   --cds-positive-bg: #e8f6ed;    /* -> color.positive-10 */
-  --cds-positive-text: #16602b;  /* -> color.positive-70 (was positive-60, 4.33:1 fail; now 6.87:1) */
+  --cds-positive-text: #26823f;  /* -> color.positive-60 */
   --cds-caution-bg: #fff5e1;     /* -> color.caution-10 */
-  --cds-caution-text: #7a520a;   /* -> color.caution-70 (was caution-60, 3.72:1 fail; now 6.38:1) */
+  --cds-caution-text: #a87514;   /* -> color.caution-60 */
   --cds-critical-bg: #fceaea;    /* -> color.critical-10 */
-  --cds-critical-text: #a52323;  /* -> color.critical-60 (already compliant, 6.32:1) */
+  --cds-critical-text: #a52323;  /* -> color.critical-60 */
 
   /* Type scale (P1.4 — dogfood the site's own tokens instead of hardcoded literals) */
   --cds-type-label: 0.75rem; /* was 0.6875rem (11px) — bumped for legibility (P2.6) */
@@ -134,12 +122,6 @@
   --cds-type-display: clamp(1.75rem, 1.3rem + 1.8vw, 2.5rem);
   --cds-font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --cds-font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
-  /* Added 2026-07-16 (nav-heading fix) — matches the mockup's real, deliberate
-     choice (shared.css:138): Source Serif 4, scoped to .site-header__wordmark only
-     (Phase 3b of the mockup's own history reverted it off h1/h2 site-wide — a
-     second UI-facing type family read as editorial/magazine, not "seasoned
-     enterprise," for anything beyond the one masthead heading). */
-  --cds-font-display: 'Source Serif 4', 'Serif Fallback', Georgia, serif;
 
   /* Spacing — full 13-step scale, values identical to dtcg-vault/tokens/primitive.json
      `size.space-*` (renumbered 2026-07-03; previous numbering skipped steps and didn't
@@ -218,10 +200,7 @@
   --cds-link-primary: #7392ff;      /* color.primary-40 */
   --cds-interactive: #7392ff;       /* color.primary-40 */
   --cds-focus: #7392ff;             /* color.primary-40 */
-  --cds-background-brand: #0e0f12;  /* v3 masthead fix (2026-07-16): was #000000 —
-                                        the mockup's dark theme keeps #0e0f12 ("dark
-                                        masthead — unchanged from live", shared.css:220),
-                                        distinct from real's prior pure-black value. */
+  --cds-background-brand: #000000;  /* color.black — distinct masthead vs. body bg */
   --cds-selected-background: #04165a; /* color.primary-90 */
   --cds-selected-text: #7392ff;     /* color.primary-40 */
   --cds-sidebar-bg: #1f2125;        /* color.neutral-90 */

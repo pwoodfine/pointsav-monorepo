@@ -1,0 +1,30 @@
+{
+    "contacts": [
+        {
+            "id": "WMC-001",
+            "name": "Target Alpha",
+            "linkedin_url": "https://www.linkedin.com/in/target-alpha",
+            "timezone": "America/New_York",
+            "communication_history": {}
+        },
+        {
+            "id": "WMC-002",
+            "name": "Target Beta",
+            "linkedin_url": "https://www.linkedin.com/in/target-beta",
+            "timezone": "Europe/London",
+            "communication_history": {
+                "CAMPAIGN_LINKEDIN_V1": {
+                    "status": "SENT",
+                    "timestamp": "2026-03-10T14:30:00Z"
+                }
+            }
+        },
+        {
+            "id": "WMC-003",
+            "name": "Target Gamma",
+            "linkedin_url": "https://www.linkedin.com/in/target-gamma",
+            "timezone": "America/Vancouver",
+            "communication_history": {}
+        }
+    ]
+}

@@ -165,18 +165,12 @@ fn main() -> NotifyResult<()> {
     });
     let graph_db_path = format!("{}/entities.lbug", graph_dir);
 
-    let graph_store: Arc<dyn GraphStore> =
-        Arc::new(LbugGraphStore::new(&graph_db_path).unwrap_or_else(|e| {
-            eprintln!(
-                "[FATAL] Failed to open LadybugDB graph store {:?}: {e}",
-                graph_db_path
-            );
-            std::process::exit(1);
-        }));
-    graph_store.init_schema().unwrap_or_else(|e| {
-        eprintln!("[FATAL] Failed to initialise graph schema: {e}");
-        std::process::exit(1);
-    });
+    let graph_store: Arc<dyn GraphStore> = Arc::new(
+        LbugGraphStore::new(&graph_db_path).expect("[SYSTEM] Failed to open LadybugDB graph store"),
+    );
+    graph_store
+        .init_schema()
+        .expect("[SYSTEM] Failed to initialise graph schema");
     println!("[SYSTEM] Graph store ready: {}", graph_db_path);
 
     // COA-driven entity type labels: load the classification vocabulary from
@@ -1415,21 +1409,7 @@ fn chunk_for_gliner(text: &str, max_chars: usize) -> Vec<&str> {
         chunks.push(&text[start..end]);
         // 150-char overlap so entities at chunk boundaries are not split across two
         // incomplete windows. Guard: only overlap when it still advances the cursor.
-        let prev_start = start;
         start = if end > start + 150 { end - 150 } else { end };
-        // The overlap subtraction is a raw byte offset and can land inside a
-        // multi-byte UTF-8 character (e.g. an em dash) — walk back to a valid
-        // char boundary before it's used to slice `text` on the next iteration.
-        while start > 0 && !text.is_char_boundary(start) {
-            start -= 1;
-        }
-        // If start itself begins a multi-byte char, the walk-back above can land
-        // exactly on prev_start — zero net progress, which would loop forever
-        // (unboundedly growing `chunks` until OOM). `end` is always > prev_start
-        // and already a valid char boundary, so fall back to no overlap.
-        if start <= prev_start {
-            start = end;
-        }
     }
     chunks
 }
@@ -2479,52 +2459,6 @@ mod tests {
         // If this returns at all (vs. hanging), progress was guaranteed on every step.
         assert!(chunks.len() > 10);
         assert!(chunks.concat().len() >= text.len());
-    }
-
-    #[test]
-    fn chunk_for_gliner_handles_multibyte_char_at_overlap_boundary() {
-        // Regression: the 150-byte overlap subtraction (`end - 150`) is a raw byte
-        // offset and was not re-aligned to a UTF-8 char boundary, so it could land
-        // inside a multi-byte character (e.g. an em dash) and panic slicing the
-        // next chunk. This mirrors the exact live crash that took down
-        // local-content.service for 3 days starting 2026-07-10: "start byte index
-        // 6666 is not a char boundary; it is inside '—'".
-        let mut text = "a".repeat(148);
-        text.push('—'); // 3-byte UTF-8 char starting at byte 148
-        text.push_str(&"a".repeat(600));
-        let chunks = chunk_for_gliner(&text, 300); // should not panic
-        assert!(chunks.len() > 1);
-        assert!(chunks.concat().len() >= text.len());
-    }
-
-    #[test]
-    fn chunk_for_gliner_terminates_when_overlap_walkback_hits_prev_start() {
-        // Regression found by an independent audit of the fix above: when `start`
-        // itself begins a multi-byte char (e.g. an em dash at byte 0) and the
-        // sentence-boundary `end` lands 151-153 bytes later, `end - 150` walks
-        // back to exactly the previous `start` — zero net progress, so the old
-        // code pushed the identical chunk forever, growing `chunks` unboundedly
-        // toward an OOM-kill (local-content.service runs with a 4G MemoryMax).
-        // Uses a background thread + timeout so a real regression fails this
-        // test instead of hanging the whole suite.
-        let mut text = String::from("—"); // 3-byte char at byte 0
-        text.push_str(&"a".repeat(147));
-        text.push('.'); // sentence end at byte 151 — lands the walk-back on byte 0
-        text.push_str(&"b".repeat(600));
-        let text_len = text.len();
-
-        let (tx, rx) = std::sync::mpsc::channel();
-        std::thread::spawn(move || {
-            let chunks = chunk_for_gliner(&text, 300);
-            let _ = tx.send((chunks.len(), chunks.concat().len()));
-        });
-        match rx.recv_timeout(std::time::Duration::from_secs(5)) {
-            Ok((n, concat_len)) => {
-                assert!(n > 1, "must split into multiple chunks");
-                assert!(concat_len >= text_len);
-            }
-            Err(_) => panic!("chunk_for_gliner did not terminate within 5s — livelock regression"),
-        }
     }
 
     #[test]

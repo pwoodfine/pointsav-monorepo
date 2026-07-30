@@ -1,23 +1,25 @@
-//! service-ingress — mTLS Phase A public ingress for os-console.
-//!
-//! Listens on 0.0.0.0:8443 (HTTPS/TLS 1.3). On first start, auto-generates a
-//! self-signed CA + server cert under ~/.config/service-ingress/ and prints the
-//! SHA-256 fingerprint so os-console can pin it.
-//!
-//! Path routing (all traffic fans out to localhost-only services):
-//!   /v1/proof/*      → http://127.0.0.1:9092  (service-content proofread)
-//!   /v1/content/*    → http://127.0.0.1:9092  (service-content generic)
-//!   /v1/search/*     → http://127.0.0.1:9092  (service-content search endpoint)
-//!   /doorman/*       → http://127.0.0.1:9080  (Doorman)
-//!   /health          → 200 OK {"status":"ok"}
-//!
-//! Config file (optional): ~/.config/service-ingress/config.toml
-//!   [listen]
-//!   port = 8443
-//!   [upstream]
-//!   content = "http://127.0.0.1:9092"
-//!   doorman = "http://127.0.0.1:9080"
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
 
+/// service-ingress — mTLS Phase A public ingress for os-console.
+///
+/// Listens on 0.0.0.0:8443 (HTTPS/TLS 1.3). On first start, auto-generates a
+/// self-signed CA + server cert under ~/.config/service-ingress/ and prints the
+/// SHA-256 fingerprint so os-console can pin it.
+///
+/// Path routing (all traffic fans out to localhost-only services):
+///   /v1/proof/*      → http://127.0.0.1:9092  (service-content proofread)
+///   /v1/content/*    → http://127.0.0.1:9092  (service-content generic)
+///   /v1/search/*     → http://127.0.0.1:9092  (service-content search endpoint)
+///   /doorman/*       → http://127.0.0.1:9080  (Doorman)
+///   /health          → 200 OK {"status":"ok"}
+///
+/// Config file (optional): ~/.config/service-ingress/config.toml
+///   [listen]
+///   port = 8443
+///   [upstream]
+///   content = "http://127.0.0.1:9092"
+///   doorman = "http://127.0.0.1:9080"
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -172,16 +174,13 @@ async fn proxy(State(cfg): State<Arc<IngressConfig>>, req: Request) -> Response 
     };
 
     let target = format!("{}{}", upstream, path);
-    let _target_uri: Uri = match target.parse() {
-        Ok(u) => u,
-        Err(e) => {
-            eprintln!("service-ingress: bad upstream URI {target}: {e}");
-            return StatusCode::BAD_GATEWAY.into_response();
-        }
-    };
+    if let Err(e) = target.parse::<Uri>() {
+        eprintln!("service-ingress: bad upstream URI {target}: {e}");
+        return StatusCode::BAD_GATEWAY.into_response();
+    }
 
     let client = reqwest::Client::new();
-    let method: reqwest::Method = req.method().clone();
+    let method = req.method().clone();
 
     let body_bytes = match axum::body::to_bytes(req.into_body(), 16 * 1024 * 1024).await {
         Ok(b) => b,

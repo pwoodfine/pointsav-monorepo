@@ -14,7 +14,7 @@ use git2::{DiffOptions, Repository, Sort};
 
 /// One revision of an article.
 pub struct Revision {
-    pub sha: String, // full oid, for diff links
+    pub sha: String,       // full oid, for diff links
     pub short_sha: String,
     pub author: String,
     pub date_iso: String, // YYYY-MM-DD
@@ -62,7 +62,10 @@ pub fn file_history(repo_root: &Path, rel: &Path, limit: usize) -> Vec<Revision>
             continue;
         }
         let author = commit.author();
-        let subject = commit.summary().unwrap_or("").to_string();
+        let subject = commit
+            .summary()
+            .unwrap_or("")
+            .to_string();
         out.push(Revision {
             sha: oid.to_string(),
             short_sha: oid.to_string().chars().take(8).collect(),

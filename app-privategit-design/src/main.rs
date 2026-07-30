@@ -5,7 +5,6 @@ mod ai;
 mod component_meta;
 mod component_preview;
 mod config;
-mod i18n;
 mod mcp;
 mod render;
 mod routes;
@@ -98,7 +97,6 @@ async fn main() {
         bundle_mounts: Arc::new(cfg.bundle_mounts),
         static_dir: cfg.static_dir,
         component_groups,
-        site_origin: Arc::new(cfg.site_origin),
     };
 
     let app = routes::build_router(state).layer(CompressionLayer::new());

@@ -2581,10 +2581,13 @@ async fn audit_tenant_concurrency_cap_per_tenant_independent() {
 // boundary for all DataGraph access; every call audit-logged).
 // ===========================================================================
 
-/// POST /v1/graph/query happy path — proxies to service-content scoped to the
-/// caller's own X-Foundry-Module-ID (single tenant, no cross-tenant merge — see
-/// `BRIEF-datagraph-tenant-isolation.md`). One upstream call, mock's two-entity
-/// array comes back verbatim (well under the requested limit of 5).
+/// POST /v1/graph/query happy path — proxies to service-content and merges
+/// results across every fixed read-tenant (default: jennifer, woodfine, mathew —
+/// see `graph_read_tenants()`), NOT scoped to the caller's own X-Foundry-Module-ID
+/// (that header identifies the caller, not the read scope, as of the Phase C
+/// tenant-scoping fix). The mock doesn't distinguish module_id in its query
+/// param, so the same two-entity array comes back once per configured tenant —
+/// 3 tenants × 2 entities = 6 raw merged rows, truncated to the requested limit (5).
 #[tokio::test]
 async fn graph_query_proxies_to_service_content_returns_200() {
     let mock_sc = MockServer::start().await;
@@ -2640,8 +2643,8 @@ async fn graph_query_proxies_to_service_content_returns_200() {
     );
     assert_eq!(
         body.as_array().unwrap().len(),
-        2,
-        "expected the mock's 2-entity response verbatim (single-tenant scoped, no merge)"
+        5,
+        "expected 5 entities: 3 tenants x 2-entity mock response = 6 raw, truncated to the requested limit of 5"
     );
 }
 
@@ -2696,11 +2699,11 @@ async fn graph_mutate_proxies_to_service_content_returns_200() {
     );
 }
 
-/// POST /v1/graph/query scopes strictly to the caller's own X-Foundry-Module-ID —
-/// asserts on the actual outgoing module_id query param captured by the mock,
-/// not just the response body. Exactly one upstream call, no fixed-tenant merge.
+/// POST /v1/graph/query queries every fixed read-tenant regardless of the
+/// caller's own X-Foundry-Module-ID — asserts on the actual outgoing
+/// module_id query params captured by the mock, not just the response body.
 #[tokio::test]
-async fn graph_query_scopes_to_caller_module_id() {
+async fn graph_query_reads_fixed_tenants_not_caller_module_id() {
     let mock_sc = MockServer::start().await;
 
     Mock::given(method("GET"))
@@ -2716,8 +2719,8 @@ async fn graph_query_scopes_to_caller_module_id() {
         .method("POST")
         .uri("/v1/graph/query")
         .header("content-type", "application/json")
-        // caller identifies as "command" — must be exactly what's queried,
-        // no merge with any other tenant.
+        // caller identifies as "command" — an archive-scoped module_id that has
+        // no DataGraph content of its own; must not be what's actually queried.
         .header("x-foundry-module-id", "command")
         .body(Body::from(
             serde_json::json!({"q": "woodfine", "limit": 5}).to_string(),
@@ -2728,7 +2731,6 @@ async fn graph_query_scopes_to_caller_module_id() {
     assert_eq!(resp.status(), StatusCode::OK);
 
     let received = mock_sc.received_requests().await.expect("request recording enabled");
-    assert_eq!(received.len(), 1, "expected exactly one upstream query call, no cross-tenant merge");
     let queried_module_ids: Vec<String> = received
         .iter()
         .map(|r| {
@@ -2740,19 +2742,20 @@ async fn graph_query_scopes_to_caller_module_id() {
         })
         .collect();
 
-    assert_eq!(
-        queried_module_ids,
-        vec!["command".to_string()],
-        "caller's own module_id must be the sole read scope; queried: {queried_module_ids:?}"
+    assert!(
+        !queried_module_ids.contains(&"command".to_string()),
+        "caller's own module_id must never be used as the read scope; queried: {queried_module_ids:?}"
+    );
+    assert!(
+        queried_module_ids.contains(&"jennifer".to_string()),
+        "expected 'jennifer' among the fixed read tenants queried; got: {queried_module_ids:?}"
     );
 }
 
-/// POST /v1/graph/mutate enforces the outgoing module_id to the caller's own
-/// verified X-Foundry-Module-ID header — a mismatched claim in the caller's own
-/// body must be overwritten, not trusted, and must never land on some other
-/// fixed default tenant.
+/// POST /v1/graph/mutate rewrites the outgoing module_id to the fixed write
+/// tenant, regardless of what the caller put in their own mutation payload.
 #[tokio::test]
-async fn graph_mutate_enforces_caller_module_id() {
+async fn graph_mutate_rewrites_module_id_to_fixed_write_tenant() {
     let mock_sc = MockServer::start().await;
 
     Mock::given(method("POST"))
@@ -2764,11 +2767,10 @@ async fn graph_mutate_enforces_caller_module_id() {
     let state = app_state_with_service_content(mock_sc.uri());
     let app = router(state);
 
-    // Caller's own mutation payload dishonestly claims a different module_id
-    // ("someone-elses-archive") than its verified header identity ("command") —
-    // the header identity must win.
+    // Caller's own mutation payload claims module_id "command" — must be
+    // overwritten before reaching service-content.
     let req_body = serde_json::json!({
-        "module_id": "someone-elses-archive",
+        "module_id": "command",
         "entities": [{"entity_name": "Test Entity", "classification": "company", "confidence": 0.9}]
     });
 
@@ -2788,8 +2790,8 @@ async fn graph_mutate_enforces_caller_module_id() {
     let forwarded_body: serde_json::Value =
         serde_json::from_slice(&received[0].body).expect("forwarded body must be valid JSON");
     assert_eq!(
-        forwarded_body["module_id"], "command",
-        "outgoing module_id must be enforced to the caller's own verified header identity; got: {forwarded_body}"
+        forwarded_body["module_id"], "jennifer",
+        "outgoing module_id must be rewritten to the fixed write tenant; got: {forwarded_body}"
     );
 }
 

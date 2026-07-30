@@ -6,14 +6,6 @@
 # Build from monorepo root:
 #   cargo run --manifest-path moonshot-toolkit/Cargo.toml -- build moonshot-toolkit/examples/os-totebox.toml
 #
-# Boot (Phase H1 — watchdog-pd as rootserver):
-#   qemu-system-aarch64 -machine virt,secure=off -cpu cortex-a53 -m 1G -display none \
-#     -serial file:/tmp/sel4-serial.log -kernel build/elfloader.elf \
-#     && cat /tmp/sel4-serial.log
-# Note: virt,secure=off required — without it EL3 traps silently, no serial output.
-#       Phase H1: only watchdog-pd runs (first PD = seL4 rootserver). Remaining 6
-#       PD ELFs compile but require Microkit protection domain manager to run concurrently.
-#
 # Validate + plan (no compiler needed):
 #   cargo run --manifest-path moonshot-toolkit/Cargo.toml -- validate moonshot-toolkit/examples/os-totebox.toml
 #   cargo run --manifest-path moonshot-toolkit/Cargo.toml -- plan    moonshot-toolkit/examples/os-totebox.toml

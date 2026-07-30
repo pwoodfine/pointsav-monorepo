@@ -6,7 +6,6 @@ pub mod browse;
 pub mod bundle;
 pub mod edit;
 pub mod search;
-pub mod seo;
 pub mod sse;
 
 use crate::state::AppState;
@@ -21,14 +20,10 @@ pub fn build_router(state: AppState) -> Router {
 
     Router::new()
         .route("/healthz", get(healthz))
-        .route("/robots.txt", get(seo::robots_txt))
-        .route("/sitemap.xml", get(seo::sitemap_xml))
         .route("/", get(browse::index))
-        .route("/es", get(browse::index_es))
         .route("/tokens", get(browse::tokens_gallery_page))
         .route("/adoption", get(browse::adoption_page))
         .route("/elements/:slug/download", get(browse::bundle_download))
-        .route("/components/:slug/recipe.json", get(browse::component_recipe))
         .route("/:section/:slug", get(browse::item_redirect))
         .route("/:section/:slug/:tab", get(browse::item_tab))
         .route("/tokens/search", get(search::token_search))

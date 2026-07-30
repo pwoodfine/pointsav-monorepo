@@ -13,6 +13,40 @@
    class="language-…">, <h2>/<h3>, <blockquote>, <ul>/<ol>, inline <code>.
    ========================================================================== */
 
+/* --- Breadcrumb (Home › Category › Article) -------------------------------- */
+.k-breadcrumb {
+  margin-bottom: var(--k-space-3);
+}
+.k-breadcrumb__list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--k-space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--k-text-xs);
+  color: var(--k-ink-muted);
+}
+.k-breadcrumb__item {
+  display: flex;
+  align-items: center;
+  gap: var(--k-space-1);
+}
+.k-breadcrumb__link {
+  color: var(--k-ink-muted);
+}
+.k-breadcrumb__link:hover {
+  color: var(--k-link-hover);
+}
+.k-breadcrumb__sep {
+  color: var(--k-border);
+}
+.k-breadcrumb__item[aria-current="page"] {
+  color: var(--k-ink-secondary);
+  font-weight: var(--k-weight-medium);
+}
+
 /* --- Article shell -------------------------------------------------------- */
 .k-article {
   padding-block: var(--k-space-4) var(--k-space-7);

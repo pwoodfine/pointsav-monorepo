@@ -8,10 +8,6 @@ version = "0.1.0"
 edition = "2021"
 description = "Universal Deterministic Asset Extractor for os-totebox"
 
-[[bin]]
-name = "service-extraction"
-path = "src/main.rs"
-
 [dependencies]
 notify = "8.2.0"
 tokio = { version = "1.0", features = ["full"] }
