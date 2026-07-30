@@ -1,6 +1,3 @@
-// SPDX-License-Identifier: FSL-1.1-ALv2
-// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 //! Phase S3 — fleet watch + automated WireGuard peer-table + WORM ledger.
 //!
 //! Polls service-vm-fleet every 30s. For each node in the approved-nodes registry

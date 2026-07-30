@@ -1,6 +1,3 @@
-# SPDX-License-Identifier: AGPL-3.0-or-later
-# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 # Workplace*Memo — Makefile
 # Common development and build tasks.
 # Requires: make, npm, cargo, curl, base64

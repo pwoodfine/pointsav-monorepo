@@ -1,14 +1,11 @@
-// SPDX-License-Identifier: FSL-1.1-ALv2
-// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
-//! Compile-time embedded static assets (CSS, JS, fonts, SVG).
+//! Embedded static assets — CSS, JS, fonts.
 //!
-//! In release builds the `static/` tree is baked into the binary, so the
-//! engine has no runtime filesystem dependency for its assets. In debug
-//! builds rust-embed reads from disk, allowing live CSS/JS edits.
+//! In release builds, assets are baked into the binary. In debug
+//! builds, rust-embed reads from disk for live edit. Single-binary
+//! constraint preserved.
 
 use rust_embed::Embed;
 
 #[derive(Embed)]
 #[folder = "static/"]
-pub struct StaticAssets;
+pub struct StaticAsset;

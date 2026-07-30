@@ -1,7 +1,4 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: FSL-1.1-ALv2
-# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 # ==============================================================================
 # Script: compile_binary.sh (Workspace-Aware Compile)
 # Product: os-infrastructure (Node 1 - Muscle)

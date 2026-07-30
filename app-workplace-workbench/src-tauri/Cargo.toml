@@ -1,22 +1,24 @@
-# SPDX-License-Identifier: AGPL-3.0-or-later
-# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+[workspace]
 
 [package]
 name = "workplace-workbench"
 version = "0.1.0"
 description = "WebView shell for the PointSav privategit development workbench"
 authors = ["PointSav Digital Systems"]
-license = "AGPL-3.0-or-later"
+license = "Apache-2.0"
 repository = ""
 edition = "2021"
 rust-version = "1.70"
 
 [build-dependencies]
-tauri-build = { version = "1.5", features = [] }
+tauri-build = { version = "2", features = [] }
 
 [dependencies]
 # Tauri v1 — required for macOS 10.13 High Sierra compatibility.
 # Tauri v2 requires macOS 10.15+.
-tauri = { version = "1.7", features = ["window-all"] }
+tauri = { version = "2", features = [] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+# Shared get_X/set_X/has_X_config JSON config-store logic — see
+# ../../workplace-shell-chrome/README.md for why/what.
+workplace-shell-chrome = { path = "../../workplace-shell-chrome" }

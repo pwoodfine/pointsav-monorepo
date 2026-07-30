@@ -31,8 +31,6 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-use tokio::sync::OwnedSemaphorePermit;
-
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use slm_core::{ChatMessage, ComputeRequest, ComputeResponse, GrammarConstraint, Tier};
@@ -236,25 +234,12 @@ pub struct YoYoTierClient {
     pub circuit: Arc<CircuitBreaker>,
     /// GCP zone for this node (from `SLM_YOYO_GCP_ZONE`). Surfaced in /readyz.
     pub zone: Option<String>,
-    /// Concurrency cap: at most `SLM_TIER_B_CONCURRENT` (default 4) requests
-    /// in flight simultaneously. `try_acquire_owned()` fast-fails when full,
-    /// returning TierUnavailable so the router falls back to Tier A rather
-    /// than queuing indefinitely inside the remote Ollama process.
-    concurrency_sem: Option<Arc<tokio::sync::Semaphore>>,
 }
 
 impl YoYoTierClient {
     pub fn new(config: YoYoTierConfig, bearer: Arc<dyn BearerTokenProvider>) -> Self {
-        let health_up = Arc::new(AtomicBool::new(false));
+        let health_up = Arc::new(AtomicBool::new(true));
         let health_down_since_secs = Arc::new(AtomicU64::new(0));
-        // In-memory only by default — matches every existing call site
-        // (including the ~190 unit tests in this module) exactly as before.
-        // Production wires persistence explicitly via `with_persistent_circuit`
-        // below; baking persistence into `new()` itself made every test in
-        // this file share one relative-path state file across the whole test
-        // binary run, so one test's Open breaker poisoned every test after it
-        // (discovered running this fix's own test suite — 12 unrelated tests
-        // failed with TierBCircuitOpen until this was made opt-in).
         let circuit = Arc::new(CircuitBreaker::new());
 
         // Spawn background health probe if a tokio runtime is available.
@@ -287,29 +272,7 @@ impl YoYoTierClient {
             health_down_since_secs,
             circuit,
             zone,
-            concurrency_sem: None,
         }
-    }
-
-    /// Attach a concurrency semaphore (production only).
-    /// When full, `complete()` returns `TierUnavailable` immediately rather
-    /// than queuing inside the remote Ollama process indefinitely.
-    pub fn with_concurrency_sem(mut self, sem: Arc<tokio::sync::Semaphore>) -> Self {
-        self.concurrency_sem = Some(sem);
-        self
-    }
-
-    /// Swap the in-memory circuit breaker for one that persists its state to
-    /// `path` across process restarts (production only — call this, not
-    /// `new()` alone, wherever the breaker's Open/Closed state must survive a
-    /// `systemctl restart`). Safe to call right after `new()`: nothing has
-    /// cloned the `Arc<CircuitBreaker>` yet at this point (the health-probe
-    /// task spawned inside `new()` only holds `health_up`/`health_down_since_secs`,
-    /// not `circuit` — the only other clone happens per-request inside
-    /// `complete()`, well after construction).
-    pub fn with_persistent_circuit(mut self, path: std::path::PathBuf) -> Self {
-        self.circuit = Arc::new(CircuitBreaker::new_with_persistence(path));
-        self
     }
 
     /// Returns seconds since the health probe last transitioned to down,
@@ -363,18 +326,6 @@ impl YoYoTierClient {
             tracing::Span::current().record("circuit_open", true);
             return Err(DoormanError::TierBCircuitOpen);
         }
-
-        // Concurrency cap: fast-fail when all Tier B slots are occupied.
-        // Held for the lifetime of this call; released on return.
-        let _concurrency_permit: Option<OwnedSemaphorePermit> =
-            if let Some(ref sem) = self.concurrency_sem {
-                match sem.clone().try_acquire_owned() {
-                    Ok(p) => Some(p),
-                    Err(_) => return Err(DoormanError::TierUnavailable(Tier::Yoyo)),
-                }
-            } else {
-                None
-            };
 
         let started = Instant::now();
         let span = tracing::Span::current();
@@ -675,17 +626,15 @@ async fn run_health_probe(
                 );
                 // Record the timestamp only on the first transition to down
                 // (when health_down_since_secs is still 0).
-                health_down_since_secs
-                    .compare_exchange(
-                        0,
-                        SystemTime::now()
-                            .duration_since(UNIX_EPOCH)
-                            .unwrap_or_default()
-                            .as_secs(),
-                        Ordering::Relaxed,
-                        Ordering::Relaxed,
-                    )
-                    .ok();
+                health_down_since_secs.compare_exchange(
+                    0,
+                    SystemTime::now()
+                        .duration_since(UNIX_EPOCH)
+                        .unwrap_or_default()
+                        .as_secs(),
+                    Ordering::Relaxed,
+                    Ordering::Relaxed,
+                ).ok();
                 health_up.store(false, Ordering::Relaxed);
             } else {
                 debug!(
@@ -1322,12 +1271,9 @@ mod tests {
         );
     }
 
-    /// health_up starts false (pessimistic init — closes the 30 s startup window
-    /// where drain dispatch could fire before the first health probe). The first
-    /// successful /health probe sets it true. The atomic can also be flipped
-    /// manually (used in tests and the health-probe task).
+    /// health_up starts true; can be manually flipped and back.
     #[test]
-    fn health_up_atomic_default_false() {
+    fn health_up_atomic_default_true() {
         let server_uri = "http://127.0.0.1:1".to_string(); // unreachable; no probe spawned in sync test
         let client = YoYoTierClient::new(
             YoYoTierConfig {
@@ -1336,15 +1282,7 @@ mod tests {
             },
             Arc::new(StaticBearer::new("tok")),
         );
-        assert!(
-            !client.health_up.load(Ordering::Relaxed),
-            "pessimistic init: starts false"
-        );
-        client.health_up.store(true, Ordering::Relaxed);
-        assert!(
-            client.health_up.load(Ordering::Relaxed),
-            "can be set true after a probe succeeds"
-        );
+        assert!(client.health_up.load(Ordering::Relaxed));
         client.health_up.store(false, Ordering::Relaxed);
         assert!(!client.health_up.load(Ordering::Relaxed));
     }

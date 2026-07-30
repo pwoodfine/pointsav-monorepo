@@ -1,27 +1,26 @@
-# SPDX-License-Identifier: AGPL-3.0-or-later
-# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+[workspace]
 
 [package]
 name = "workplace-presentation"
 version = "0.1.0"
 description = "Sovereign offline presentation tool — PointSav Digital Systems"
 authors = ["PointSav Digital Systems"]
-license = "AGPL-3.0-or-later"
+license = "EUPL-1.2"
 repository = ""
 edition = "2021"
 rust-version = "1.70"
 
 [build-dependencies]
-tauri-build = { version = "1.5", features = [] }
+tauri-build = { version = "2", features = [] }
 
 [dependencies]
-# Tauri v1 — required for macOS 10.13 High Sierra compatibility.
-tauri = { version = "1.7", features = [
-  "dialog-open",
-  "dialog-save",
-  "fs-read-file",
-  "fs-write-file",
-  "fs-exists",
-  "path-all",
-  "shell-open"
-] }
+# Tauri v2 (migrated 2026-07-14). v1.x is unbuildable on this host — Ubuntu 24.04
+# dropped webkit2gtk-4.0; v2 uses the 4.1/soup3 stack. macOS floor: 10.15+.
+# Unlike the other 5 crates, presentation does ALL privileged work from the
+# FRONTEND (src/app.js) via the plugin JS globals — t.dialog.open/save and
+# t.fs.readFile/readTextFile/writeTextFile — so both plugins are needed AND their
+# capabilities are frontend-gated (see capabilities/default.json). shell-open had
+# no consumer and was dropped.
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"

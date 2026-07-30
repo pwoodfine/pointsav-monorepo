@@ -1,7 +1,4 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: AGPL-3.0-or-later
-# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 # Purpose: Setup Desktop Hot-Zone and symlink the pointsav-input command.
 echo "🏛️  POINTSAV CONSOLE: INSTALLING..."
 SCRIPT_SRC="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)"

@@ -1,6 +1,3 @@
-// SPDX-License-Identifier: FSL-1.1-ALv2
-// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 //! Runtime configuration. Per-instance via env/args so one binary serves
 //! multiple tenants (the model the live deployment already uses: two systemd
 //! units pointing the same binary at two content dirs). Env var names mirror

@@ -1,6 +1,3 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 /// NetBSD 10.1 — canonical compat-bottom version for all os-* image builders.
 /// Image builds use NetBSD's own `build.sh tools` to get `nbmakefs` + `nbinstallboot`
 /// running on the Ubuntu GCP host. FFS2 is the canonical filesystem.

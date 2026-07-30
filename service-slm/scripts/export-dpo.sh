@@ -1,7 +1,4 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: AGPL-3.0-or-later
-# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 # export-dpo.sh — Export promoted apprenticeship tuples as DPO training pairs.
 #
 # Phase 1 (P1-1.9) of learning-loop-master-plan-2026-05-18.md.

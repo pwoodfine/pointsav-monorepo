@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Workplace PDF</title>
+  <style>
+    :root {
+      --bg: #1e1e2e;
+      --bg-panel: #313244;
+      --border: #45475a;
+      --text: #cdd6f4;
+      --text-dim: #a6adc8;
+      --accent: #89b4fa;
+      --danger: #f38ba8;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      height: 100%;
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    #app {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+    #toolbar {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 0.75rem;
+      background: var(--bg-panel);
+      border-bottom: 1px solid var(--border);
+      flex: 0 0 auto;
+      user-select: none;
+    }
+    #toolbar .spacer { flex: 1; }
+    #toolbar .group {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+    button {
+      font-family: inherit;
+      font-size: 0.85rem;
+      padding: 0.35rem 0.75rem;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      cursor: pointer;
+    }
+    button:hover:not(:disabled) { border-color: var(--accent); }
+    button:disabled { opacity: 0.4; cursor: default; }
+    button.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: var(--bg);
+      font-weight: 600;
+    }
+    #page-label, #zoom-label {
+      font-size: 0.85rem;
+      color: var(--text-dim);
+      min-width: 6.5rem;
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+    }
+    #zoom-label { min-width: 3.5rem; }
+    #file-label {
+      font-size: 0.85rem;
+      color: var(--text-dim);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 28ch;
+    }
+    #viewer {
+      flex: 1 1 auto;
+      overflow: auto;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 1.5rem;
+    }
+    #page-image {
+      display: block;
+      background: #fff;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.45);
+      max-width: none;
+    }
+    #empty-state {
+      margin: auto;
+      text-align: center;
+      color: var(--text-dim);
+    }
+    #empty-state .icon { font-size: 3rem; margin-bottom: 0.75rem; }
+    #empty-state p { margin: 0 0 1.25rem; }
+    #status-bar {
+      flex: 0 0 auto;
+      padding: 0.25rem 0.75rem;
+      font-size: 0.78rem;
+      color: var(--text-dim);
+      background: var(--bg-panel);
+      border-top: 1px solid var(--border);
+      min-height: 1.5rem;
+    }
+    #error-banner {
+      display: none;
+      flex: 0 0 auto;
+      padding: 0.5rem 0.75rem;
+      font-size: 0.85rem;
+      background: rgba(243, 139, 168, 0.12);
+      color: var(--danger);
+      border-bottom: 1px solid var(--danger);
+      align-items: center;
+      gap: 0.75rem;
+    }
+    #error-banner.visible { display: flex; }
+    #error-banner .message { flex: 1; word-break: break-word; }
+    #error-banner button { border-color: var(--danger); color: var(--danger); }
+
+    /* Print: hide the app chrome; emit the pre-rendered pages, one per sheet. */
+    #print-area { display: none; }
+    @media print {
+      #app { display: none; }
+      #print-area { display: block; }
+      #print-area img {
+        display: block;
+        width: 100%;
+        page-break-after: always;
+        break-after: page;
+      }
+      #print-area img:last-child {
+        page-break-after: auto;
+        break-after: auto;
+      }
+      html, body { background: #fff; }
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="error-banner" role="alert">
+      <span class="message" id="error-message"></span>
+      <button id="error-dismiss" type="button" aria-label="Dismiss error message">Dismiss</button>
+    </div>
+    <div id="toolbar" role="toolbar" aria-label="PDF viewer toolbar">
+      <button id="open-btn" class="primary" type="button" title="Open a PDF (Cmd/Ctrl+O)" aria-label="Open a PDF file">Open PDF</button>
+      <span id="file-label"></span>
+      <span class="spacer"></span>
+      <div class="group" role="group" aria-label="Page navigation">
+        <button id="prev-btn" type="button" disabled title="Previous page (Left arrow / PageUp)" aria-label="Previous page">&#8592; Prev</button>
+        <span id="page-label" aria-live="polite" aria-atomic="true">No document</span>
+        <button id="next-btn" type="button" disabled title="Next page (Right arrow / PageDown)" aria-label="Next page">Next &#8594;</button>
+      </div>
+      <span class="spacer"></span>
+      <div class="group" role="group" aria-label="Zoom controls">
+        <button id="zoom-out-btn" type="button" disabled title="Zoom out (-)" aria-label="Zoom out">&#8722;</button>
+        <span id="zoom-label" aria-live="polite" aria-atomic="true">100%</span>
+        <button id="zoom-in-btn" type="button" disabled title="Zoom in (+)" aria-label="Zoom in">+</button>
+      </div>
+      <button id="print-btn" type="button" disabled title="Print (Cmd/Ctrl+P)" aria-label="Print document">Print</button>
+    </div>
+    <div id="viewer">
+      <div id="empty-state">
+        <div class="icon" aria-hidden="true">&#128196;</div>
+        <p>No document open.</p>
+        <button id="empty-open-btn" class="primary" type="button" aria-label="Open a PDF file">Open a PDF</button>
+      </div>
+      <img id="page-image" alt="Rendered PDF page" hidden />
+    </div>
+    <div id="status-bar" role="status" aria-live="polite" aria-atomic="true"></div>
+  </div>
+  <div id="print-area"></div>
+  <script src="main.js"></script>
+</body>
+</html>

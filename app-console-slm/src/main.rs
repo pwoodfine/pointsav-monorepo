@@ -1,6 +1,3 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 // app-console-slm: Sovereign operator console for Foundry AI infrastructure.
 // Sprint 4a: `status` subcommand — live Doorman + corpus snapshot.
 // Sprint 4b (deferred): `watch` (repeat), `admin` subcommands.

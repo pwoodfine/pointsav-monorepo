@@ -1,6 +1,3 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 // Serial output for seL4 Protection Domains via DebugPutChar.
 //
 // Requires KernelPrinting=ON in the seL4 kernel cmake config.

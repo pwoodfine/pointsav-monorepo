@@ -1,7 +1,4 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: AGPL-3.0-or-later
-# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 # run-micro-sandbox.sh — run a command inside a Micro-class cgroup sandbox.
 #
 # Simulates the $7/mo e2-micro fleet default: 1 GiB RAM, 25% vCPU.

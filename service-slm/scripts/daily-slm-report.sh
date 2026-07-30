@@ -1,7 +1,4 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: AGPL-3.0-or-later
-# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 # daily-slm-report.sh — Daily status snapshot of the SLM training + DataGraph substrate.
 #
 # Produces a concise Markdown report covering:

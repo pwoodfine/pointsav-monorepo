@@ -1,6 +1,3 @@
-# SPDX-License-Identifier: FSL-1.1-ALv2
-# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 # ==============================================================================
 # PointSav os-infrastructure Build System
 # Target: Node 1 (Mesh Edge Anchor)

@@ -1,7 +1,3 @@
-// SPDX-License-Identifier: FSL-1.1-ALv2
-// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
-
 //! moonshot-parser — span-based source tokenizer.
 //!
 //! Replaces tree-sitter and the hand-rolled JavaScript regex tokenizer in
@@ -352,6 +348,3 @@ mod tests {
         assert!(full.iter().any(|t| t.kind == TokenKind::Comment));
     }
 }
-
-#[cfg(feature = "wasm")]
-pub mod wasm;

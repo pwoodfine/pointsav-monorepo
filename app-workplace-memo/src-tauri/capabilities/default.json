@@ -1,0 +1,10 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Migrated from the v1 allowlist (dialog/fs/path/window/shell). The frontend (src/js/*.js) only calls our own #[tauri::command] functions via invoke() — it never touches __TAURI__.fs/shell/path/dialog. All file I/O and the open/save pickers are Rust-side (open_file/save_file via DialogExt). So only core:default is needed; the tauri-plugin-dialog plugin must still be registered in main.rs. The v1 fs scope ($APPDATA/**, $HOME/**) had no frontend consumer and is intentionally not reproduced.",
+  "local": true,
+  "windows": ["main"],
+  "permissions": [
+    "core:default"
+  ]
+}

@@ -1,6 +1,3 @@
-// SPDX-License-Identifier: FSL-1.1-ALv2
-// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 //! The typed Section component vocabulary — the contract an AI author writes
 //! against, and the only set of building blocks a page may be composed from.
 //!
@@ -106,8 +103,6 @@ pub enum Section {
     Feature(FeatureSection),
     /// A standalone full-width image with optional caption.
     Media(MediaSection),
-    /// A row of labelled icons (e.g. a category/class overview strip).
-    IconStrip(IconStripSection),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -162,13 +157,6 @@ pub struct MediaSection {
     pub image: Image,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct IconStripSection {
-    #[serde(default)]
-    pub heading: Option<String>,
-    pub icons: Vec<Image>,
-}
-
 impl Section {
     /// Human-readable kind label (used in diffs, MCP listings, logs).
     pub fn kind(&self) -> &'static str {
@@ -179,7 +167,6 @@ impl Section {
             Section::CardGrid(_) => "card-grid",
             Section::Feature(_) => "feature",
             Section::Media(_) => "media",
-            Section::IconStrip(_) => "icon-strip",
         }
     }
 
@@ -241,21 +228,6 @@ impl Section {
             Section::Media(m) => html! {
                 section class="section section-media" { (m.image.render("media-figure")) }
             },
-            Section::IconStrip(s) => html! {
-                section class="section section-icon-strip" {
-                    @if let Some(heading) = &s.heading {
-                        h2 class="icon-strip-heading" { (heading) }
-                    }
-                    div class="icon-strip" {
-                        @for icon in &s.icons {
-                            figure class="icon-strip-item" {
-                                img src=(icon.src) alt=(icon.alt) loading="lazy";
-                                figcaption { (icon.alt) }
-                            }
-                        }
-                    }
-                }
-            },
         }
     }
 }
@@ -291,11 +263,6 @@ pub fn section_catalog() -> serde_json::Value {
             "required": ["image{src,alt}"],
             "optional": ["image.caption"],
             "note": "Standalone full-width image with optional caption."
-        },
-        "icon-strip": {
-            "required": ["icons[]{src,alt}"],
-            "optional": ["heading"],
-            "note": "A row of labelled icons (e.g. a category/class overview strip)."
         }
     })
 }
@@ -380,31 +347,5 @@ mod tests {
         assert!(html.contains("feature-media-right"));
         assert!(html.contains("<strong>markdown</strong>"));
         assert_eq!(s.kind(), "feature");
-    }
-
-    #[test]
-    fn icon_strip_renders_heading_and_visible_labels() {
-        let s = Section::IconStrip(IconStripSection {
-            heading: Some("Development Classes".into()),
-            icons: vec![
-                Image {
-                    src: "/static/graphics/woodfine/class-1.svg".into(),
-                    alt: "Professional Centres".into(),
-                    caption: None,
-                },
-                Image {
-                    src: "/static/graphics/woodfine/class-2.svg".into(),
-                    alt: "Tech Industrial".into(),
-                    caption: None,
-                },
-            ],
-        });
-        let html = s.render().into_string();
-        assert!(html.contains("icon-strip-heading"));
-        assert!(html.contains("Development Classes"));
-        // Labels must be visible text, not just alt-text on the <img>.
-        assert!(html.contains("<figcaption>Professional Centres</figcaption>"));
-        assert!(html.contains("<figcaption>Tech Industrial</figcaption>"));
-        assert_eq!(s.kind(), "icon-strip");
     }
 }

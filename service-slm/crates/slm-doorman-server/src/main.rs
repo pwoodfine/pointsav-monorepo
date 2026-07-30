@@ -81,7 +81,7 @@ use slm_doorman_server::queue::{
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use anyhow::Context;
 use slm_doorman::tier::{
@@ -245,17 +245,13 @@ async fn main() -> anyhow::Result<()> {
         // Sprint 3C: hold queue when all Tier B nodes have been circuit-open
         // for longer than this threshold. Briefs stay in queue/ until circuit
         // closes. Env var: SLM_HOLD_THRESHOLD_SECS (default 3600 = 1 h).
-        // When all Tier B nodes are circuit-open or health-probe-down for longer
-        // than this threshold, the drain worker holds the queue (no dispatch).
-        // Not bypassed by SLM_TIER_A_FIRST — see Sprint 3C hold below.
+        // Bypassed when SLM_TIER_A_FIRST=true — Tier A is the primary so there
+        // is no need to wait for Tier B to recover before dispatching briefs.
         let hold_threshold_secs: u64 = std::env::var("SLM_HOLD_THRESHOLD_SECS")
             .ok()
             .and_then(|s| s.parse().ok())
             .unwrap_or(3600);
-        // Read for consistency; the drain worker no longer uses this value
-        // directly (Sprint 3C hold and yoyo_node_ready guard replaced the
-        // old tier_a_first bypass). Doorman config reads it again at startup.
-        let _tier_a_first: bool = std::env::var("SLM_TIER_A_FIRST")
+        let tier_a_first: bool = std::env::var("SLM_TIER_A_FIRST")
             .ok()
             .map(|v| v.eq_ignore_ascii_case("true") || v == "1")
             .unwrap_or(false);
@@ -283,25 +279,14 @@ async fn main() -> anyhow::Result<()> {
             .and_then(|s| s.parse().ok())
             .unwrap_or(16 * 1024);
 
-        // Number of concurrent drain workers. The queue uses file-level locking
-        // (QueueLockFailed → 2s back-off) so N workers race safely — each grabs
-        // a different lease file. With Tier B GPU, 4 workers × 227s/item ≈ 18h
-        // to drain 1,128 items; 1 worker ≈ 71h. Default 1 for safe rollout;
-        // set SLM_DRAIN_CONCURRENCY=4 in systemd override once Tier B is stable.
-        let drain_concurrency: usize = std::env::var("SLM_DRAIN_CONCURRENCY")
-            .ok()
-            .and_then(|s| s.parse::<usize>().ok())
-            .unwrap_or(1)
-            .max(1);
-
-        for drain_worker_num in 0..drain_concurrency {
+        // Clone only what the drain worker needs.
         let drain_cfg = queue_cfg.clone();
         let drain_doorman_arc = Arc::clone(&state);
 
         tokio::spawn(async move {
-            // Worker identifier — PID + worker number makes lease filenames
-            // unique across Doorman restarts and concurrent workers.
-            let worker_id = format!("drain-{}-{}", std::process::id(), drain_worker_num);
+            // Worker identifier — use the process PID so lease filenames are
+            // unique across Doorman restarts without any coordination.
+            let worker_id = format!("drain-{}", std::process::id());
             info!(
                 %worker_id,
                 drain_interval_secs,
@@ -315,12 +300,6 @@ async fn main() -> anyhow::Result<()> {
                      capture continues writing to queue/ for later GPU processing"
                 );
             }
-
-            // Rate-limits the Tier-B-offline hold log (see `should_log_hold`) and
-            // remembers whether the worker was holding last iteration, so a
-            // "resumed draining" transition log can fire exactly once on recovery.
-            let mut last_hold_log: Option<Instant> = None;
-            const HOLD_LOG_REPEAT_INTERVAL: Duration = Duration::from_secs(300);
 
             loop {
                 // SLM_DRAIN_PAUSED: unconditional pause — never dequeue, never
@@ -361,40 +340,9 @@ async fn main() -> anyhow::Result<()> {
                         effectively_down && long_enough
                     })
                 {
-                    if should_log_hold(last_hold_log, Instant::now(), HOLD_LOG_REPEAT_INTERVAL) {
-                        info!(
-                            hold_threshold_secs,
-                            "drain worker: all Tier B nodes offline (circuit or health) — holding queue"
-                        );
-                        last_hold_log = Some(Instant::now());
-                    }
-                    tokio::time::sleep(drain_interval).await;
-                    continue;
-                } else if last_hold_log.is_some() {
                     info!(
-                        %worker_id,
-                        "drain worker: Tier B available again — resuming queue drain"
-                    );
-                    last_hold_log = None;
-                }
-
-                // Drain-target guard: hold if the specific "trainer" node is
-                // circuit-open or health-probe-down. The Sprint 3C hold above
-                // handles the all-nodes-down case; this guard handles the
-                // targeted-node case independently of the global tier_a_first
-                // setting. Checked before dequeue so no lease is acquired during
-                // the hold — the brief stays untouched in queue/.
-                //
-                // Does not close the 5-failure startup window (allow_request()
-                // is optimistic until the circuit opens), but closes the
-                // steady-state gap where select_tier() would fall to Tier A
-                // after the circuit has opened.
-                if !drain_doorman_arc.doorman.yoyo_node_ready("trainer") {
-                    tracing::debug!(
-                        target: "slm_doorman_server",
-                        %worker_id,
-                        "drain worker: trainer node not ready (circuit-open or health-down) \
-                         — holding queue to protect Tier A inference slots"
+                        hold_threshold_secs,
+                        "drain worker: all Tier B nodes offline (circuit or health) — holding queue"
                     );
                     tokio::time::sleep(drain_interval).await;
                     continue;
@@ -407,10 +355,6 @@ async fn main() -> anyhow::Result<()> {
                     }
                     Ok(Some(leased)) => {
                         let brief_id = leased.entry.brief.brief_id.clone();
-                        // Set inside the LocalSaturated match arm below; read by the
-                        // retry-counter block to exempt pure slot-contention retries
-                        // from the shared attempts budget (see comment there).
-                        let mut is_local_saturated_retry = false;
 
                         // Payload size gate: poison oversized briefs immediately so
                         // they never reach OLMo or the dispatch path.
@@ -476,24 +420,9 @@ async fn main() -> anyhow::Result<()> {
                         // Only dispatch if apprenticeship is enabled.
                         let outcome = if let Some(cfg) = drain_doorman_arc.apprenticeship.as_ref() {
                             use slm_doorman::ApprenticeshipDispatcher;
-                            // The drain queue exists specifically to use Tier B for
-                            // enrichment when it is available. Override tier_a_first
-                            // (which is normally true to protect real-time paths from
-                            // accruing GPU charges) and pin the yoyo node to "trainer"
-                            // so briefs reach the L4 GPU rather than any offline default
-                            // node. The hold-check above already ensures Tier B is healthy
-                            // before this dispatcher is created.
-                            let mut drain_cfg = cfg.clone();
-                            drain_cfg.tier_a_first = false;
-                            // All drain items go to Tier B regardless of body size:
-                            // the queue exists for Tier B enrichment, and brief bodies
-                            // are 100–400 chars while the default threshold is 8,000 —
-                            // without this override nothing ever routes to Yoyo.
-                            drain_cfg.brief_tier_b_threshold_chars = 0;
-                            drain_cfg.yoyo_dispatch_label = Some("trainer".to_string());
                             let dispatcher = ApprenticeshipDispatcher::with_cache(
                                 &drain_doorman_arc.doorman,
-                                drain_cfg,
+                                cfg.clone(),
                                 Arc::clone(&drain_doorman_arc.brief_cache),
                             );
                             // Pass the actual_diff from the queue entry so the
@@ -540,19 +469,6 @@ async fn main() -> anyhow::Result<()> {
                                     ) {
                                         ReleaseOutcome::Poison
                                     } else {
-                                        // Tier A slot contention (LocalSaturated) is a
-                                        // known, self-imposed, transient admission-control
-                                        // rejection (router.rs classifies it PolicyDenied),
-                                        // not a real failure — real Tier A inference runs
-                                        // 17-60 min (see local.rs's 1800s timeout) while the
-                                        // shared attempts budget below is only 30s x 5 = 150s.
-                                        // Without this exemption, any period of Tier A
-                                        // activity poisons the brief regardless of whether
-                                        // the underlying task is actually broken.
-                                        is_local_saturated_retry = matches!(
-                                            e,
-                                            slm_doorman::DoormanError::LocalSaturated
-                                        );
                                         ReleaseOutcome::Retry
                                     }
                                 }
@@ -567,16 +483,39 @@ async fn main() -> anyhow::Result<()> {
                             ReleaseOutcome::Retry
                         };
 
-                        // Retry counter: escalate Retry → Poison once a brief has been
-                        // retried too many times (except pure Tier A slot-contention,
-                        // which is exempt — see escalate_retry_outcome's doc comment).
+                        // Retry counter: escalate Retry → Poison once a brief
+                        // has been retried too many times. Prevents a single
+                        // persistently-failing brief from blocking the serial
+                        // drain queue indefinitely.
                         let outcome = if outcome == ReleaseOutcome::Retry {
-                            escalate_retry_outcome(
-                                &drain_cfg,
-                                &brief_id,
-                                is_local_saturated_retry,
-                                max_retries,
+                            let attempts = slm_doorman_server::queue::bump_attempts(
+                                &drain_cfg, &brief_id,
                             )
+                            .unwrap_or_else(|e| {
+                                tracing::warn!(
+                                    brief_id = %brief_id,
+                                    error = %e,
+                                    "drain worker: attempts counter I/O error; treating as 1"
+                                );
+                                1
+                            });
+                            if attempts >= max_retries {
+                                tracing::warn!(
+                                    brief_id = %brief_id,
+                                    attempts,
+                                    max_retries,
+                                    "drain worker: max retries reached — poisoning brief"
+                                );
+                                ReleaseOutcome::Poison
+                            } else {
+                                tracing::info!(
+                                    brief_id = %brief_id,
+                                    attempts,
+                                    max_retries,
+                                    "drain worker: brief retry {attempts}/{max_retries}"
+                                );
+                                ReleaseOutcome::Retry
+                            }
                         } else {
                             outcome
                         };
@@ -615,8 +554,7 @@ async fn main() -> anyhow::Result<()> {
                     }
                 }
             }
-        }); // end tokio::spawn
-        } // end for drain_worker_num in 0..drain_concurrency
+        });
 
         // ── Reaper task ───────────────────────────────────────────────────
         let reap_interval = Duration::from_secs(60);
@@ -724,74 +662,6 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Rate-limits the drain worker's "holding queue" log line while all Tier B
-/// nodes remain offline. `SLM_DRAIN_CONCURRENCY=4` + `SLM_QUEUE_DRAIN_INTERVAL_SEC=1`
-/// (intentional config for fast backlog draining once Tier B is healthy) means
-/// 4 workers would otherwise each re-log this line every ~1s — appropriate
-/// during active draining, pure log spam during a sustained multi-hour hold.
-/// Returns `true` on first entering hold (`last_logged` is `None`) or once
-/// `interval` has elapsed since the last log; `false` otherwise.
-fn should_log_hold(last_logged: Option<Instant>, now: Instant, interval: Duration) -> bool {
-    match last_logged {
-        None => true,
-        Some(t) => now.duration_since(t) >= interval,
-    }
-}
-
-/// Decides the final `ReleaseOutcome` for a brief already classified as
-/// `Retry`, applying the shared attempts-budget escalation (Retry -> Poison
-/// once `attempts >= max_retries`) — with one exception: pure Tier A
-/// slot-contention (`DoormanError::LocalSaturated`, `is_local_saturated_retry
-/// = true`) never counts against this budget. `LocalSaturated` is a known,
-/// self-imposed, transient admission-control rejection (`router.rs`
-/// classifies it `PolicyDenied`), not a real failure — real Tier A inference
-/// runs 17-60 min (see `local.rs`'s 1800s timeout) while the shared attempts
-/// budget is only `drain_interval * max_retries` (30s x 5 = 150s by default).
-/// Without this exemption, any period of Tier A activity poisons the brief
-/// regardless of whether the underlying task is actually broken. The brief
-/// simply re-queues and is retried again next drain cycle, indefinitely,
-/// until it either succeeds or hits a genuine (non-contention) failure.
-fn escalate_retry_outcome(
-    cfg: &QueueConfig,
-    brief_id: &str,
-    is_local_saturated_retry: bool,
-    max_retries: u32,
-) -> ReleaseOutcome {
-    if is_local_saturated_retry {
-        tracing::debug!(
-            brief_id = %brief_id,
-            "drain worker: Tier A slot contention — retrying without \
-             counting against attempts budget"
-        );
-        return ReleaseOutcome::Retry;
-    }
-    let attempts = slm_doorman_server::queue::bump_attempts(cfg, brief_id).unwrap_or_else(|e| {
-        tracing::warn!(
-            brief_id = %brief_id,
-            error = %e,
-            "drain worker: attempts counter I/O error; treating as 1"
-        );
-        1
-    });
-    if attempts >= max_retries {
-        tracing::warn!(
-            brief_id = %brief_id,
-            attempts,
-            max_retries,
-            "drain worker: max retries reached — poisoning brief"
-        );
-        ReleaseOutcome::Poison
-    } else {
-        tracing::info!(
-            brief_id = %brief_id,
-            attempts,
-            max_retries,
-            "drain worker: brief retry {attempts}/{max_retries}"
-        );
-        ReleaseOutcome::Retry
-    }
-}
-
 fn build_doorman() -> anyhow::Result<Doorman> {
     let force_broker = std::env::var("SLM_FORCE_BROKER_MODE")
         .map(|v| matches!(v.trim(), "true" | "1"))
@@ -812,64 +682,16 @@ fn build_doorman() -> anyhow::Result<Doorman> {
         info!("SLM_TIER_A_FIRST=true: Tier A is the confident primary; Tier B used only when explicitly hinted and circuit closed");
     }
 
-    // ── Admission control semaphores ─────────────────────────────────────────
-    // SLM_LOCAL_CONCURRENT (default 2): total OLMo slots across all callers.
-    // SLM_BACKGROUND_CONCURRENT (default 1): cap for extraction + drain only;
-    //   ensures at least one slot is always free for interactive callers.
-    // SLM_TIER_B_CONCURRENT (default 4): GPU handles more concurrency than CPU.
-    let local_concurrent = std::env::var("SLM_LOCAL_CONCURRENT")
-        .ok()
-        .and_then(|s| s.parse::<usize>().ok())
-        .unwrap_or(2);
-    let background_concurrent = std::env::var("SLM_BACKGROUND_CONCURRENT")
-        .ok()
-        .and_then(|s| s.parse::<usize>().ok())
-        .unwrap_or(1);
-    let tier_b_concurrent = std::env::var("SLM_TIER_B_CONCURRENT")
-        .ok()
-        .and_then(|s| s.parse::<usize>().ok())
-        .unwrap_or(4);
-    info!(
-        local_concurrent,
-        background_concurrent,
-        tier_b_concurrent,
-        "admission control semaphores initialised"
-    );
-    let total_sem = Arc::new(tokio::sync::Semaphore::new(local_concurrent));
-    let background_sem = Arc::new(tokio::sync::Semaphore::new(background_concurrent));
-    let tier_b_sem = Arc::new(tokio::sync::Semaphore::new(tier_b_concurrent));
-
     let local = if force_broker {
         info!("SLM_FORCE_BROKER_MODE=true: Tier A disabled; all inference routes to Yo-Yo");
         None
     } else {
-        let local_endpoint = std::env::var("SLM_LOCAL_ENDPOINT")
-            .unwrap_or_else(|_| "http://127.0.0.1:8080".to_string());
-        let local_default_model = std::env::var("SLM_LOCAL_MODEL")
-            .unwrap_or_else(|_| "olmo-3-7b-instruct".to_string());
-        // Surfaces SLM_LOCAL_MODEL resolution at boot — this is a response-metadata/
-        // audit-ledger LABEL only (llama-server ignores the request's "model" field
-        // for routing), but it has drifted silently before: 3 separate env sources
-        // (main unit Environment=, EnvironmentFile=, and a drop-in override) can each
-        // set this var, and a `daemon-reload` without a following `restart` leaves an
-        // already-running process on a stale value that `systemctl show` no longer
-        // reflects (confirmed live 2026-07-03: process env still said
-        // OLMo-2-1124-7B-Instruct-Q4_K_M.gguf while the drop-in and `systemctl show`
-        // both correctly resolved to OLMo-3-7B-Instruct). Logging it here makes that
-        // class of drift visible in journalctl without manual /proc/<pid>/environ
-        // inspection.
-        info!(
-            default_model = %local_default_model,
-            endpoint = %local_endpoint,
-            "Local tier (Tier A) model label resolved at startup"
-        );
-        Some(
-            LocalTierClient::new(LocalTierConfig {
-                endpoint: local_endpoint,
-                default_model: local_default_model,
-            })
-            .with_semaphores(Arc::clone(&total_sem), Arc::clone(&background_sem)),
-        )
+        Some(LocalTierClient::new(LocalTierConfig {
+            endpoint: std::env::var("SLM_LOCAL_ENDPOINT")
+                .unwrap_or_else(|_| "http://127.0.0.1:8080".to_string()),
+            default_model: std::env::var("SLM_LOCAL_MODEL")
+                .unwrap_or_else(|_| "olmo-3-7b-instruct".to_string()),
+        }))
     };
 
     let mut yoyo = std::collections::HashMap::new();
@@ -880,9 +702,7 @@ fn build_doorman() -> anyhow::Result<Doorman> {
         "SLM_YOYO_MODEL",
         "SLM_YOYO_BEARER",
         "SLM_YOYO_HOURLY_USD",
-    )
-    .map(|c| c.with_concurrency_sem(Arc::clone(&tier_b_sem)))
-    {
+    ) {
         yoyo.insert("default".to_string(), client);
     }
 
@@ -892,9 +712,7 @@ fn build_doorman() -> anyhow::Result<Doorman> {
         "SLM_YOYO_TRAINER_MODEL",
         "SLM_YOYO_TRAINER_BEARER",
         "SLM_YOYO_TRAINER_HOURLY_USD",
-    )
-    .map(|c| c.with_concurrency_sem(Arc::clone(&tier_b_sem)))
-    {
+    ) {
         info!("Yo-Yo 'trainer' node configured");
         yoyo.insert("trainer".to_string(), client);
     }
@@ -904,9 +722,7 @@ fn build_doorman() -> anyhow::Result<Doorman> {
         "SLM_YOYO_GRAPH_MODEL",
         "SLM_YOYO_GRAPH_BEARER",
         "SLM_YOYO_GRAPH_HOURLY_USD",
-    )
-    .map(|c| c.with_concurrency_sem(Arc::clone(&tier_b_sem)))
-    {
+    ) {
         info!("Yo-Yo 'graph' node configured");
         yoyo.insert("graph".to_string(), client);
     }
@@ -1065,30 +881,18 @@ fn build_yoyo_client(
                 );
                 std::process::exit(1);
             }
-            // Persist circuit-breaker state across restarts (fixes the bug
-            // where every `systemctl restart local-doorman` reset a
-            // genuinely-open breaker back to "healthy" regardless of Tier
-            // B's real state, letting fresh batches through to a target
-            // that was still down). `SLM_CIRCUIT_STATE_PATH` overrides the
-            // default; relative paths resolve against the service's
-            // WorkingDirectory (/var/lib/local-doorman per the systemd unit).
-            let circuit_state_path = std::env::var("SLM_CIRCUIT_STATE_PATH")
-                .unwrap_or_else(|_| "circuit_breaker_state.json".to_string());
-            Some(
-                YoYoTierClient::new(
-                    YoYoTierConfig {
-                        endpoint,
-                        default_model: std::env::var(env_model)
-                            .unwrap_or_else(|_| "Olmo-3-1125-32B-Think".to_string()),
-                        contract_version: slm_doorman::YOYO_CONTRACT_VERSION.to_string(),
-                        pricing: PricingConfig { yoyo_hourly_usd },
-                        zone: std::env::var("SLM_YOYO_GCP_ZONE").ok(),
-                        health_path,
-                    },
-                    bearer,
-                )
-                .with_persistent_circuit(std::path::PathBuf::from(circuit_state_path)),
-            )
+            Some(YoYoTierClient::new(
+                YoYoTierConfig {
+                    endpoint,
+                    default_model: std::env::var(env_model)
+                        .unwrap_or_else(|_| "Olmo-3-1125-32B-Think".to_string()),
+                    contract_version: slm_doorman::YOYO_CONTRACT_VERSION.to_string(),
+                    pricing: PricingConfig { yoyo_hourly_usd },
+                    zone: std::env::var("SLM_YOYO_GCP_ZONE").ok(),
+                    health_path,
+                },
+                bearer,
+            ))
         }
         _ => None,
     }
@@ -1326,100 +1130,4 @@ fn init_tracing() {
         .with(filter)
         .with(fmt::layer())
         .init();
-}
-
-#[cfg(test)]
-mod escalate_retry_outcome_tests {
-    use super::*;
-
-    fn tmp_cfg(label: &str) -> QueueConfig {
-        let dir = std::env::temp_dir().join(format!(
-            "slm-doorman-escalate-test-{label}-{}",
-            std::process::id()
-        ));
-        let _ = std::fs::remove_dir_all(&dir);
-        std::fs::create_dir_all(dir.join("queue-attempts")).unwrap();
-        QueueConfig::with_base_dir(dir)
-    }
-
-    #[test]
-    fn local_saturated_retry_never_bumps_attempts_or_poisons() {
-        let cfg = tmp_cfg("saturated");
-        // Call it more times than max_retries would normally allow — a pure
-        // slot-contention retry must never escalate to Poison, no matter how
-        // many times it happens.
-        for _ in 0..10 {
-            let outcome = escalate_retry_outcome(&cfg, "brief-a", true, 5);
-            assert_eq!(outcome, ReleaseOutcome::Retry);
-        }
-        // Confirm the attempts sidecar was genuinely never touched — this is
-        // the actual behavioral guarantee, not just the return value.
-        let attempts_file = cfg.base_dir.join("queue-attempts").join("brief-a.attempts");
-        assert!(
-            !attempts_file.exists(),
-            "LocalSaturated retries must not write to the attempts sidecar"
-        );
-    }
-
-    #[test]
-    fn genuine_retry_still_escalates_to_poison_after_max_retries() {
-        let cfg = tmp_cfg("genuine");
-        let mut last = ReleaseOutcome::Retry;
-        for _ in 0..5 {
-            last = escalate_retry_outcome(&cfg, "brief-b", false, 5);
-        }
-        assert_eq!(
-            last,
-            ReleaseOutcome::Poison,
-            "a genuinely failing brief must still poison after max_retries — \
-             the LocalSaturated exemption must not weaken this"
-        );
-    }
-
-    #[test]
-    fn genuine_retry_does_not_poison_before_max_retries() {
-        let cfg = tmp_cfg("genuine-early");
-        let outcome = escalate_retry_outcome(&cfg, "brief-c", false, 5);
-        assert_eq!(outcome, ReleaseOutcome::Retry);
-    }
-}
-
-#[cfg(test)]
-mod should_log_hold_tests {
-    use super::*;
-
-    #[test]
-    fn first_entry_into_hold_always_logs() {
-        assert!(should_log_hold(None, Instant::now(), Duration::from_secs(300)));
-    }
-
-    #[test]
-    fn does_not_relog_before_interval_elapses() {
-        let now = Instant::now();
-        assert!(!should_log_hold(
-            Some(now),
-            now + Duration::from_secs(1),
-            Duration::from_secs(300)
-        ));
-    }
-
-    #[test]
-    fn relogs_once_interval_has_elapsed() {
-        let now = Instant::now();
-        assert!(should_log_hold(
-            Some(now),
-            now + Duration::from_secs(301),
-            Duration::from_secs(300)
-        ));
-    }
-
-    #[test]
-    fn relogs_exactly_at_interval_boundary() {
-        let now = Instant::now();
-        assert!(should_log_hold(
-            Some(now),
-            now + Duration::from_secs(300),
-            Duration::from_secs(300)
-        ));
-    }
 }

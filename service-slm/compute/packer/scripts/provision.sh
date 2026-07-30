@@ -1,7 +1,4 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: AGPL-3.0-or-later
-# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 # Packer provisioner for the slm-yoyo GCE image.
 # Installs: CUDA 12, Python 3.12, vLLM >= 0.12, Nginx TLS reverse proxy,
 # llama.cpp (built from source for our own quantization), training libs

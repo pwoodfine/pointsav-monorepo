@@ -1,14 +1,8 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 use std::sync::mpsc;
 use std::thread;
-use std::time::Instant;
 
-use app_console_keys::motion::{self, Anim};
 use app_console_keys::session::SessionState;
 use app_console_keys::{Cartridge, CartridgeAction, FKey};
-use app_console_keys::{IntentArgs, IntentId, IntentScope, IntentSpec, MouseAffordance};
 use crossterm::event::{Event, KeyCode, KeyModifiers};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
@@ -35,7 +29,7 @@ use crate::pdf::{self, PdfPageData};
 use crate::proofreader::{self, ProofreadResponse, DEFAULT_PROTOCOL_IDX, PROTOCOLS};
 use crate::search::{self, SearchResult};
 
-const PATIENCE_RING: &[&str] = &["◌", "◎", "⊙", "●", "⊙", "◎"];
+const SPINNER: &[&str] = &["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 
 /// A hyperlink position recorded during render — consumed by flush_hyperlinks().
 struct HyperlinkTarget {
@@ -93,15 +87,12 @@ enum ContentState {
         #[allow(dead_code)]
         protocol_idx: usize,
         rx: mpsc::Receiver<anyhow::Result<ProofreadResponse>>,
-        wait_since: Instant,
+        spinner: usize,
     },
     Results {
         response: ProofreadResponse,
         original: String,
         scroll: u16,
-        born_at: Instant,
-        /// Wall-clock time the result landed (HH:MM UTC) — shown in egress-witness strip.
-        witness_at: String,
     },
     DraftingNew {
         title: String,
@@ -167,17 +158,6 @@ pub struct ContentCartridge {
     active_tab_idx: usize,
     // Last search query — restored from session.toml at startup.
     last_search: String,
-    // mTLS Phase A: PEM cert bytes for the service-ingress server (None = system CA pool).
-    tls_cert_pem: Option<Vec<u8>>,
-}
-
-fn format_hhmm_utc() -> String {
-    use std::time::{SystemTime, UNIX_EPOCH};
-    let secs = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_secs();
-    format!("{:02}:{:02}", (secs % 86400) / 3600, (secs % 3600) / 60)
 }
 
 impl ContentCartridge {
@@ -195,7 +175,6 @@ impl ContentCartridge {
             None,
             None,
             None,
-            None,
         )
     }
 
@@ -207,10 +186,9 @@ impl ContentCartridge {
         slm_endpoint: impl Into<String>,
         drafts_outbound_path: impl Into<String>,
         content_endpoint: impl Into<String>,
-        _initial_query: Option<String>,
-        _initial_selected: Option<usize>,
-        _initial_scroll: Option<u16>,
-        tls_cert_pem: Option<Vec<u8>>,
+        initial_query: Option<String>,
+        initial_selected: Option<usize>,
+        initial_scroll: Option<u16>,
     ) -> Self {
         let slm = slm_endpoint.into();
         let content_ep: String = content_endpoint.into();
@@ -255,23 +233,22 @@ impl ContentCartridge {
             TextArea::default()
         };
         ta.set_placeholder_text(PLACEHOLDER);
-        let initial_state = match saved_session.content_query.as_deref() {
-            Some(q) if !q.is_empty() => {
-                let ep = content_ep.clone();
-                let query_str = q.to_string();
-                let (tx, rx) = mpsc::channel();
-                thread::spawn(move || {
-                    let _ = tx.send(search::fetch_search(&ep, &query_str));
-                });
-                ContentState::SearchResults {
-                    query: q.to_string(),
-                    results: vec![],
-                    search_rx: Some(rx),
-                    selected: 0,
-                    scroll: 0,
-                }
+        let initial_state = if let Some(ref q) = initial_query {
+            let ep = content_ep.clone();
+            let query_str = q.clone();
+            let (tx, rx) = mpsc::channel();
+            thread::spawn(move || {
+                let _ = tx.send(search::fetch_search(&ep, &query_str));
+            });
+            ContentState::SearchResults {
+                query: q.clone(),
+                results: vec![],
+                search_rx: Some(rx),
+                selected: initial_selected.unwrap_or(0),
+                scroll: initial_scroll.unwrap_or(0),
             }
-            _ => ContentState::Input { protocol_idx },
+        } else {
+            ContentState::Input { protocol_idx }
         };
         Self {
             username: username.into(),
@@ -293,8 +270,7 @@ impl ContentCartridge {
             restored_hint,
             tabs: vec![TabSnapshot::fresh_input()],
             active_tab_idx: 0,
-            last_search: saved_session.content_query.unwrap_or_default(),
-            tls_cert_pem,
+            last_search: saved_session.content_query,
         }
     }
 
@@ -321,19 +297,12 @@ impl ContentCartridge {
     fn save_session(&self) {
         use app_console_keys::SessionState;
         let state = match &self.state {
-            ContentState::SearchResults {
-                query,
-                selected,
-                scroll,
-                ..
-            } => SessionState {
-                content_query: Some(query.clone()),
-                content_selected: Some(*selected),
-                content_scroll: Some(*scroll),
+            ContentState::SearchResults { query, .. } => SessionState {
+                content_query: query.clone(),
             },
             _ => SessionState::default(),
         };
-        state.save(&SessionState::default_path());
+        state.save();
     }
 
     fn reset_textarea(&mut self, protocol_idx: usize) {
@@ -417,19 +386,10 @@ impl ContentCartridge {
         frame.render_widget(List::new(items), inner);
     }
 
-    fn render_submitting(frame: &mut Frame, area: Rect, elapsed_ms: u64, truecolor: bool) {
-        let t = motion::pulse(elapsed_ms, 2800);
-        let ring =
-            PATIENCE_RING[((t * PATIENCE_RING.len() as f32) as usize).min(PATIENCE_RING.len() - 1)];
-        let border_color = if truecolor {
-            let v = 80 + (t * 175.0) as u8;
-            Color::Rgb(0, v, v)
-        } else {
-            Color::Cyan
-        };
+    fn render_submitting(frame: &mut Frame, area: Rect, spinner: usize) {
         let outer = Block::default()
             .borders(Borders::ALL)
-            .border_style(Style::default().fg(border_color))
+            .border_style(Style::default().fg(Color::Cyan))
             .title(" F4: Content — Proofreading... ");
         let inner = outer.inner(area);
         frame.render_widget(outer, area);
@@ -442,23 +402,19 @@ impl ContentCartridge {
         frame.render_widget(
             Paragraph::new(format!(
                 "  {} Sending to service-proofreader — please wait (up to 300s)…",
-                ring,
+                SPINNER[spinner % SPINNER.len()]
             ))
             .style(Style::default().fg(Color::Yellow)),
             mid,
         );
     }
 
-    #[allow(clippy::too_many_arguments)]
     fn render_results(
         frame: &mut Frame,
         area: Rect,
         response: &ProofreadResponse,
         original: &str,
         scroll: u16,
-        born_ms: u64,
-        truecolor: bool,
-        witness_at: &str,
     ) {
         use similar::{ChangeTag, TextDiff};
 
@@ -468,37 +424,20 @@ impl ContentCartridge {
             format!("  [DEGRADED: {}]", response.degraded.join(", "))
         };
         let title = format!(
-            " F4: Content — Results{}    [A: accept  R: reject  ↑↓: scroll  Esc: back] ",
+            " F4: Content — Results{}    [A: accept  R: reject  Esc: back  ↑↓: scroll] ",
             degraded_str
         );
 
-        let pop_t = Anim::verdict_pop().value(born_ms);
-        let border_style = if truecolor {
-            let base = 80u8;
-            let bright = 255u8;
-            let v = base + (pop_t * (bright - base) as f32) as u8;
-            Style::default().fg(Color::Rgb(0, v, 60))
-        } else if born_ms < 200 {
-            Style::default()
-                .fg(Color::Green)
-                .add_modifier(Modifier::BOLD)
-        } else {
-            Style::default().fg(Color::Green)
-        };
         let outer = Block::default()
             .borders(Borders::ALL)
-            .border_style(border_style)
+            .border_style(Style::default().fg(Color::Green))
             .title(title.as_str());
         let inner = outer.inner(area);
         frame.render_widget(outer, area);
 
         let chunks = Layout::default()
             .direction(Direction::Vertical)
-            .constraints([
-                Constraint::Length(1),
-                Constraint::Fill(1),
-                Constraint::Length(1),
-            ])
+            .constraints([Constraint::Length(1), Constraint::Fill(1)])
             .split(inner);
 
         // Info line
@@ -551,18 +490,6 @@ impl ContentCartridge {
                 &mut sb_state,
             );
         }
-
-        // Egress-witness strip — shows which Doorman tier reviewed this draft.
-        frame.render_widget(
-            Paragraph::new(Line::from(vec![
-                Span::styled(
-                    "  ⬡ Witnessed by Doorman · Local · ",
-                    Style::default().fg(Color::DarkGray),
-                ),
-                Span::styled(witness_at, Style::default().fg(Color::Cyan)),
-            ])),
-            chunks[2],
-        );
     }
 
     fn render_error(frame: &mut Frame, area: Rect, message: &str) {
@@ -958,7 +885,6 @@ impl ContentCartridge {
             let tenant = self.tenant.clone();
             let endpoint = self.proof_endpoint.clone();
             let text_clone = text.clone();
-            let cert = self.tls_cert_pem.clone();
             let (tx, rx) = mpsc::channel();
             thread::spawn(move || {
                 let _ = tx.send(proofreader::submit_proofread(
@@ -966,14 +892,13 @@ impl ContentCartridge {
                     &protocol,
                     &tenant,
                     &endpoint,
-                    cert.as_deref(),
                 ));
             });
             self.state = ContentState::Submitting {
                 original: text,
                 protocol_idx,
                 rx,
-                wait_since: Instant::now(),
+                spinner: 0,
             };
             return CartridgeAction::Consumed;
         }
@@ -1108,15 +1033,8 @@ impl ContentCartridge {
                     let rid = response.request_id.clone();
                     let tenant = self.tenant.clone();
                     let endpoint = self.proof_endpoint.clone();
-                    let cert = self.tls_cert_pem.clone();
                     thread::spawn(move || {
-                        let _ = proofreader::post_verdict(
-                            &rid,
-                            &tenant,
-                            "accept",
-                            &endpoint,
-                            cert.as_deref(),
-                        );
+                        let _ = proofreader::post_verdict(&rid, &tenant, "accept", &endpoint);
                     });
                 }
                 self.reset_textarea(DEFAULT_PROTOCOL_IDX);
@@ -1126,15 +1044,8 @@ impl ContentCartridge {
                     let rid = response.request_id.clone();
                     let tenant = self.tenant.clone();
                     let endpoint = self.proof_endpoint.clone();
-                    let cert = self.tls_cert_pem.clone();
                     thread::spawn(move || {
-                        let _ = proofreader::post_verdict(
-                            &rid,
-                            &tenant,
-                            "reject",
-                            &endpoint,
-                            cert.as_deref(),
-                        );
+                        let _ = proofreader::post_verdict(&rid, &tenant, "reject", &endpoint);
                     });
                 }
                 self.reset_textarea(DEFAULT_PROTOCOL_IDX);
@@ -1159,6 +1070,10 @@ impl ContentCartridge {
             KeyCode::Esc | KeyCode::Char('q') => {
                 if let ContentState::SearchResults { ref query, .. } = self.state {
                     self.last_search = query.clone();
+                    let session = SessionState {
+                        content_query: query.clone(),
+                    };
+                    session.save();
                 }
                 self.reset_textarea(DEFAULT_PROTOCOL_IDX);
                 self.save_session();
@@ -1584,16 +1499,6 @@ impl Cartridge for ContentCartridge {
         }
     }
 
-    fn accept_transfer(&mut self, text: String) {
-        let mut ta = TextArea::default();
-        ta.set_placeholder_text(PLACEHOLDER);
-        ta.insert_str(&text);
-        self.textarea = ta;
-        self.state = ContentState::Input {
-            protocol_idx: DEFAULT_PROTOCOL_IDX,
-        };
-    }
-
     fn set_graphics_caps(
         &mut self,
         kitty: bool,
@@ -1616,8 +1521,6 @@ impl Cartridge for ContentCartridge {
                         response: resp,
                         original: original.clone(),
                         scroll: 0,
-                        born_at: Instant::now(),
-                        witness_at: format_hhmm_utc(),
                     }),
                     Ok(Err(e)) => Some(ContentState::Error {
                         message: e.to_string(),
@@ -1664,7 +1567,10 @@ impl Cartridge for ContentCartridge {
             }
         }
 
-        // Patience ring: wait_since drives elapsed_ms at render time — no tick needed.
+        // Tick spinner
+        if let ContentState::Submitting { spinner, .. } = &mut self.state {
+            *spinner = spinner.wrapping_add(1);
+        }
 
         // Drain search results — take() frees the borrow so we can act on self.state freely
         let search_rx_opt = if let ContentState::SearchResults { search_rx, .. } = &mut self.state {
@@ -1737,8 +1643,8 @@ impl Cartridge for ContentCartridge {
         enum Cmd {
             Input(usize),
             Picker(usize),
-            Submitting(u64),
-            Results(ProofreadResponse, String, u16, u64, String),
+            Submitting(usize),
+            Results(ProofreadResponse, String, u16),
             Drafting(String, String, bool, Option<String>, u16),
             Search(String, Vec<SearchResult>, usize, u16, bool),
             Pdf(String, u32, u32),
@@ -1748,22 +1654,12 @@ impl Cartridge for ContentCartridge {
         let cmd = match &self.state {
             ContentState::Input { protocol_idx } => Cmd::Input(*protocol_idx),
             ContentState::PickProtocol { selected, .. } => Cmd::Picker(*selected),
-            ContentState::Submitting { wait_since, .. } => {
-                Cmd::Submitting(wait_since.elapsed().as_millis() as u64)
-            }
+            ContentState::Submitting { spinner, .. } => Cmd::Submitting(*spinner),
             ContentState::Results {
                 response,
                 original,
                 scroll,
-                born_at,
-                witness_at,
-            } => Cmd::Results(
-                response.clone(),
-                original.clone(),
-                *scroll,
-                born_at.elapsed().as_millis() as u64,
-                witness_at.clone(),
-            ),
+            } => Cmd::Results(response.clone(), original.clone(), *scroll),
             ContentState::DraftingNew {
                 title,
                 buffer,
@@ -1815,19 +1711,10 @@ impl Cartridge for ContentCartridge {
         match cmd {
             Cmd::Input(pidx) => self.render_input(frame, render_area, pidx),
             Cmd::Picker(sel) => Self::render_picker(frame, render_area, sel, self.selection_bg()),
-            Cmd::Submitting(elapsed_ms) => {
-                Self::render_submitting(frame, render_area, elapsed_ms, self.truecolor)
+            Cmd::Submitting(sp) => Self::render_submitting(frame, render_area, sp),
+            Cmd::Results(resp, orig, sc) => {
+                Self::render_results(frame, render_area, &resp, &orig, sc)
             }
-            Cmd::Results(resp, orig, sc, born_ms, wit) => Self::render_results(
-                frame,
-                render_area,
-                &resp,
-                &orig,
-                sc,
-                born_ms,
-                self.truecolor,
-                &wit,
-            ),
             Cmd::Drafting(t, buf, done, err, sc) => {
                 Self::render_drafting(frame, render_area, &t, &buf, done, err.as_deref(), sc)
             }
@@ -1937,137 +1824,6 @@ impl Cartridge for ContentCartridge {
             let _ = stdout
                 .execute(MoveTo(h.col, h.row))
                 .and_then(|s| s.execute(Print(osc8)));
-        }
-    }
-
-    fn intent_scope(&self) -> Option<&'static str> {
-        Some("content")
-    }
-
-    fn intents(&self) -> Vec<IntentSpec> {
-        vec![
-            IntentSpec::new(
-                "content.submit",
-                "Submit for proofreading",
-                IntentScope::Cartridge("content"),
-            )
-            .key("ctrl-s")
-            .mouse(MouseAffordance::CLICK),
-            IntentSpec::new(
-                "content.accept",
-                "Accept proofreading result",
-                IntentScope::Cartridge("content"),
-            )
-            .key("a")
-            .mouse(MouseAffordance::CLICK),
-            IntentSpec::new(
-                "content.reject",
-                "Reject proofreading result",
-                IntentScope::Cartridge("content"),
-            )
-            .key("r")
-            .mouse(MouseAffordance::CLICK),
-            IntentSpec::new(
-                "content.pick_protocol",
-                "Select language protocol",
-                IntentScope::Cartridge("content"),
-            )
-            .key("tab")
-            .mouse(MouseAffordance::CLICK),
-        ]
-    }
-
-    fn dispatch(&mut self, id: IntentId, _args: &IntentArgs) -> CartridgeAction {
-        match id.0 {
-            "content.submit" => {
-                if let ContentState::Input { protocol_idx } = self.state {
-                    let text = self.textarea.lines().join("\n");
-                    if text.trim().is_empty() {
-                        return CartridgeAction::None;
-                    }
-                    let text = text.trim().to_string();
-                    let protocol = PROTOCOLS[protocol_idx].0.to_string();
-                    let tenant = self.tenant.clone();
-                    let endpoint = self.proof_endpoint.clone();
-                    let cert = self.tls_cert_pem.clone();
-                    let text_clone = text.clone();
-                    let (tx, rx) = mpsc::channel();
-                    thread::spawn(move || {
-                        let _ = tx.send(proofreader::submit_proofread(
-                            &text_clone,
-                            &protocol,
-                            &tenant,
-                            &endpoint,
-                            cert.as_deref(),
-                        ));
-                    });
-                    self.state = ContentState::Submitting {
-                        original: text,
-                        protocol_idx,
-                        rx,
-                        wait_since: Instant::now(),
-                    };
-                    CartridgeAction::Consumed
-                } else {
-                    CartridgeAction::None
-                }
-            }
-            "content.accept" => {
-                if let ContentState::Results { response, .. } = &self.state {
-                    let rid = response.request_id.clone();
-                    let tenant = self.tenant.clone();
-                    let endpoint = self.proof_endpoint.clone();
-                    let cert = self.tls_cert_pem.clone();
-                    thread::spawn(move || {
-                        let _ = proofreader::post_verdict(
-                            &rid,
-                            &tenant,
-                            "accept",
-                            &endpoint,
-                            cert.as_deref(),
-                        );
-                    });
-                }
-                self.reset_textarea(DEFAULT_PROTOCOL_IDX);
-                CartridgeAction::Consumed
-            }
-            "content.reject" => {
-                if let ContentState::Results { response, .. } = &self.state {
-                    let rid = response.request_id.clone();
-                    let tenant = self.tenant.clone();
-                    let endpoint = self.proof_endpoint.clone();
-                    let cert = self.tls_cert_pem.clone();
-                    thread::spawn(move || {
-                        let _ = proofreader::post_verdict(
-                            &rid,
-                            &tenant,
-                            "reject",
-                            &endpoint,
-                            cert.as_deref(),
-                        );
-                    });
-                }
-                self.reset_textarea(DEFAULT_PROTOCOL_IDX);
-                CartridgeAction::Consumed
-            }
-            "content.pick_protocol" => {
-                if let ContentState::Input { protocol_idx } = self.state {
-                    let saved: Vec<String> = self
-                        .textarea
-                        .lines()
-                        .iter()
-                        .map(|s| s.to_string())
-                        .collect();
-                    self.state = ContentState::PickProtocol {
-                        saved_text: saved,
-                        selected: protocol_idx,
-                    };
-                    CartridgeAction::Consumed
-                } else {
-                    CartridgeAction::None
-                }
-            }
-            _ => CartridgeAction::None,
         }
     }
 }

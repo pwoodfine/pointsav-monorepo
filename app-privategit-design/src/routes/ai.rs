@@ -1,6 +1,3 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 // D5 — AI bridge: POST /ai/session streams AI completions as SSE.
 // X-Model header selects adapter: "doorman" (local OLMo) or "claude" (ClaudeCloud).
 // X-Api-Key header provides the Claude API credential; never stored server-side.

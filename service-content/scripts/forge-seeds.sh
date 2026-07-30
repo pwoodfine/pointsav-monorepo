@@ -1,7 +1,4 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: AGPL-3.0-or-later
-# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 # Generates the JSON Seed Vault using live Woodfine/PointSav definitions
 
 # Resolve target directory from env var or default to adjacent seeds/ directory

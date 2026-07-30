@@ -1,6 +1,3 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 use chrono::Utc;
 use std::collections::HashMap;
 use system_vm_fleet_types::{FleetStatus, NodeHeartbeat, NodeId, NodeRecord, VmId, VmRecord};

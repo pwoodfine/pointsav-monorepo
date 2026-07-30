@@ -1,7 +1,4 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: AGPL-3.0-or-later
-# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 # Yo-Yo stability gate (Phase 0 G4 hardening).
 #
 # Defers the expensive weights-prep + model load until the VM has survived a

@@ -1,8 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 use crate::config::Config;
-use crate::content::{self, CategoryMeta, PageContent};
 use crate::schema::dtcg;
 use serde_json::Value;
 use std::{collections::HashMap, path::Path, sync::Arc};
@@ -14,15 +10,8 @@ pub struct AppState {
     pub tokens: Arc<HashMap<String, Value>>,
     pub token_count: usize,
     pub components_count: usize,
+    #[allow(dead_code)]
     pub research_count: usize,
-    pub categories: Arc<Vec<CategoryMeta>>,
-    pub about_page: Arc<PageContent>,
-    pub disclaimers_page: Arc<PageContent>,
-    /// Counsel-owned "Important Information" band content — a short,
-    /// single-paragraph summary, distinct from the full `disclaimers_page`
-    /// long-form. `None` when the file is absent; `page_shell` supplies the
-    /// safe issuer-aware default in that case (never a hard failure).
-    pub important_information: Option<Arc<str>>,
     pub events_tx: broadcast::Sender<String>,
 }
 
@@ -32,17 +21,6 @@ impl AppState {
         let token_count = count_entities(&tokens);
         let components_count = count_ifc_files(&config.library_dir.join("key-plans"));
         let research_count = count_md_files(&config.vault_dir.join("research"));
-
-        let site_content_dir = config.library_dir.join("site-content");
-        let categories = content::load_categories(&tokens, &site_content_dir);
-        let about_page = content::load_page(&site_content_dir, "about")
-            .ok_or("site-content/pages/about.md not found")?;
-        let disclaimers_page = content::load_page(&site_content_dir, "disclaimers")
-            .ok_or("site-content/pages/disclaimers.md not found")?;
-        let important_information =
-            content::load_simple_page(&site_content_dir, "important-information")
-                .map(|html| Arc::from(html.as_str()));
-
         let (events_tx, _) = broadcast::channel::<String>(64);
         Ok(Self {
             config: Arc::new(config.clone()),
@@ -50,10 +28,6 @@ impl AppState {
             token_count,
             components_count,
             research_count,
-            categories: Arc::new(categories),
-            about_page: Arc::new(about_page),
-            disclaimers_page: Arc::new(disclaimers_page),
-            important_information,
             events_tx,
         })
     }
@@ -94,10 +68,7 @@ pub fn spawn_file_watcher(state: AppState, config: &Config) {
     use notify::{RecursiveMode, Watcher};
 
     let watcher_tx = state.events_tx.clone();
-    let watch_dirs = vec![
-        config.design_system_dir.join("tokens").join("bim"),
-        config.library_dir.join("site-content"),
-    ];
+    let watch_dir = config.design_system_dir.join("tokens").join("bim");
 
     tokio::spawn(async move {
         let (inner_tx, mut inner_rx) = tokio::sync::mpsc::channel::<String>(8);
@@ -119,10 +90,9 @@ pub fn spawn_file_watcher(state: AppState, config: &Config) {
                     return;
                 }
             };
-        for dir in &watch_dirs {
-            if let Err(e) = watcher.watch(dir, RecursiveMode::Recursive) {
-                eprintln!("warn: file watcher watch failed for {dir:?}: {e}");
-            }
+        if let Err(e) = watcher.watch(&watch_dir, RecursiveMode::Recursive) {
+            eprintln!("warn: file watcher watch failed: {e}");
+            return;
         }
         while let Some(path_str) = inner_rx.recv().await {
             let msg = format!(

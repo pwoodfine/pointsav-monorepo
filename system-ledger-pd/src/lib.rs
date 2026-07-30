@@ -1,6 +1,3 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 //! system-ledger-pd — seL4 Microkit Protection Domain wrapping InMemoryLedger.
 //!
 //! # Transport

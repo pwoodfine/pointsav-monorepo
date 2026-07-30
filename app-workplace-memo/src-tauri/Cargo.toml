@@ -1,12 +1,9 @@
-# SPDX-License-Identifier: AGPL-3.0-or-later
-# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 [package]
 name = "workplace-memo"
 version = "0.1.0"
 description = "Sovereign local-first document editor — PointSav Digital Systems"
 authors = ["PointSav Digital Systems"]
-license = "AGPL-3.0-or-later"
+license = "EUPL-1.2"
 repository = ""
 edition = "2021"
 rust-version = "1.70"
@@ -14,22 +11,17 @@ rust-version = "1.70"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [build-dependencies]
-tauri-build = { version = "1.5", features = [] }
+tauri-build = { version = "2", features = [] }
 
 [dependencies]
-# Tauri v1 — required for macOS 10.13 High Sierra compatibility.
-# Tauri v2 requires macOS 10.15+.
-# When upgrading the development machine, bump to tauri = "2" and
-# update tauri-build, tauri-plugin-fs, tauri-plugin-dialog accordingly.
-tauri = { version = "1.7", features = [
-  "dialog-open",
-  "dialog-save",
-  "fs-read-file",
-  "fs-write-file",
-  "fs-exists",
-  "path-all",
-  "shell-open"
-] }
+# Tauri v2 (migrated 2026-07-14). v1.x is unbuildable on this host — Ubuntu 24.04
+# dropped webkit2gtk-4.0; v2 uses the 4.1/soup3 stack. macOS floor: 10.15+.
+# Only tauri-plugin-dialog is needed: the frontend calls our own #[tauri::command]
+# functions exclusively (no __TAURI__.fs/shell/path JS), and file I/O + the picker
+# are all Rust-side. The old fs-*/path-all/shell-open features were never used by
+# the actual code.
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
 
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

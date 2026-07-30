@@ -1,6 +1,3 @@
-// SPDX-License-Identifier: FSL-1.1-ALv2
-// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 //! The AI-proposal review queue — the human approval gate (SYS-ADR-10).
 //!
 //! An AI author never writes to the content tree. It proposes a manifest,

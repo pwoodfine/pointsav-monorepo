@@ -1,10 +1,5 @@
-<!--
-  SPDX-License-Identifier: AGPL-3.0-or-later
-  SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
--->
-
 {% if tabs | length > 1 %}
-<nav class="tab-bar" aria-label="Views">
+<nav class="tab-bar">
 {% for tab in tabs %}
 <a href="/{{ section }}/{{ slug }}/{{ tab }}"{% if tab == active_tab %} class="active"{% endif %}>{{ tab | to_title }}</a>
 {% endfor %}

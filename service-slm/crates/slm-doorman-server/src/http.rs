@@ -245,19 +245,6 @@ struct ChatCompletionsBody {
     session_context: Option<slm_core::SessionContext>,
 }
 
-/// Default module_id for callers that omit `X-Foundry-Module-ID`. Configurable via
-/// `SLM_DEFAULT_MODULE_ID` so the default scope can point at the live data namespace
-/// instead of the empty `foundry` scope (the dead-default-scope no-op, where graph-context
-/// injection silently returns nothing). Falls back to `foundry` on an unset/invalid value.
-fn default_module_id() -> ModuleId {
-    let raw = std::env::var("SLM_DEFAULT_MODULE_ID").unwrap_or_default();
-    let id = if raw.trim().is_empty() { "foundry" } else { raw.trim() };
-    ModuleId::from_str(id).unwrap_or_else(|e| {
-        tracing::warn!("invalid SLM_DEFAULT_MODULE_ID {id:?} ({e}); falling back to 'foundry'");
-        ModuleId::from_str("foundry").expect("compile-time-valid default moduleId")
-    })
-}
-
 async fn chat_completions(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
@@ -269,13 +256,7 @@ async fn chat_completions(
     {
         Some(s) => ModuleId::from_str(s)
             .map_err(|e| ApiError::bad_request(format!("invalid X-Foundry-Module-ID: {e}")))?,
-        None => {
-            tracing::warn!(
-                "request omitted X-Foundry-Module-ID; using default module scope \
-                 (set SLM_DEFAULT_MODULE_ID to your live data namespace)"
-            );
-            default_module_id()
-        }
+        None => ModuleId::from_str("foundry").expect("compile-time-valid default moduleId"),
     };
     let request_id = match headers
         .get("x-foundry-request-id")
@@ -303,14 +284,6 @@ async fn chat_completions(
         .get("x-foundry-yoyo-label")
         .and_then(|v| v.to_str().ok())
         .map(|s| s.to_string());
-    // Background hint: set by service-content Tier A extraction calls so they
-    // route through complete_background() and can be preempted when interactive
-    // chat arrives. Interactive callers must NOT set this header.
-    let is_background = headers
-        .get("x-foundry-background")
-        .and_then(|v| v.to_str().ok())
-        .map(|s| s.eq_ignore_ascii_case("true"))
-        .unwrap_or(false);
     let req = ComputeRequest {
         request_id,
         module_id,
@@ -331,23 +304,6 @@ async fn chat_completions(
         stop_sequences: None,
         session_context: body.session_context,
     };
-
-    // Background extraction callers bypass the express-lane gate and graph
-    // context injection; they route directly to complete_background() which
-    // preempts itself when an interactive request arrives.
-    if is_background {
-        let resp = state
-            .doorman
-            .route_local_background(&req)
-            .await
-            .map_err(ApiError::from)?;
-        let tier_str = resp.tier_used.as_str().to_string();
-        let mut resp_headers = HeaderMap::new();
-        if let Ok(v) = tier_str.parse() {
-            resp_headers.insert("x-foundry-tier-used", v);
-        }
-        return Ok((resp_headers, Json(resp)));
-    }
 
     // Express-lane concurrency gate (SLM_BATCH_SLOTS). Returns 429 when all
     // slots are in use; caller should retry. The permit is held for the
@@ -485,29 +441,8 @@ async fn shadow(
     //
     // See `queue::ShadowQueueEntry` and `queue::enqueue_shadow()` added in
     // this iter.
-    // Auto-populate acceptance_test from diff headers if the caller left it
-    // empty. Empty acceptance_test means OLMo has no self-evaluation criteria,
-    // driving the ~21% empty-attempt rate in shadow tuples.
-    let enriched_brief = if wire.brief.acceptance_test.is_empty() && !wire.actual_diff.is_empty() {
-        let changed: Vec<&str> = wire.actual_diff.lines()
-            .filter(|l| l.starts_with("diff --git"))
-            .filter_map(|l| l.split(" b/").nth(1))
-            .collect();
-        if !changed.is_empty() {
-            let mut b = wire.brief.clone();
-            b.acceptance_test = format!(
-                "Diff must cover all hunks for: {}. Include diff --git, --- a/, +++ b/ headers.",
-                changed.join(", ")
-            );
-            b
-        } else {
-            wire.brief.clone()
-        }
-    } else {
-        wire.brief.clone()
-    };
     let shadow_entry = crate::queue::ShadowQueueEntry {
-        brief: enriched_brief,
+        brief: wire.brief.clone(),
         actual_diff: wire.actual_diff.clone(),
     };
     let entry =
@@ -609,9 +544,8 @@ const BATCH_MAX_ITEMS: usize = 10;
 /// Routing strategy:
 ///   1. Try Tier B (Yo-Yo "trainer", OLMo 3 32B-Think + JsonSchema grammar) — highest quality.
 ///   2. If Tier B circuit is open or unavailable, fall back to Tier A (local OLMo 3 7B Instruct).
-///      Tier A also applies a JsonSchema grammar constraint (fixed 2026-06-28, commit
-///      da56ebf2 — OLMo 3 7B handles JsonSchema reliably; the pre-fill-only anchoring
-///      this comment used to describe was replaced by grammar sampling).
+///      Tier A uses no grammar constraint (unreliable on CPU at 7B scale); relies on pre-fill
+///      assistant message (`[{"`) in the extraction system prompt to anchor JSON array format.
 ///      Tier A result is lower quality than Tier B but far better than empty `[]` during outages.
 ///
 /// Response is always HTTP 200:
@@ -658,9 +592,6 @@ async fn extract(State(state): State<Arc<AppState>>, raw: Bytes) -> impl IntoRes
     };
 
     // 4. Build ComputeRequest targeting Yo-Yo "trainer" with JsonSchema grammar.
-    // Clone schema before moving into tier_b_req so the Tier A fallback path can also
-    // apply a grammar constraint (OLMo 3 7B on CPU handles JsonSchema reliably).
-    let schema_for_tier_a = req.schema.clone();
     let request_id = RequestId::new();
     let tier_b_req = ComputeRequest {
         request_id,
@@ -710,12 +641,9 @@ async fn extract(State(state): State<Arc<AppState>>, raw: Bytes) -> impl IntoRes
                 matches!(&tier_b_result, Err(DoormanError::TierUnavailable(_)));
 
             if tier_b_unavailable {
-                // Tier B offline — fall back to Tier A (OLMo 3 7B on CPU).
-                // Grammar constraint applied: OLMo 3 7B handles JsonSchema reliably.
-                // Pre-fill removed — grammar sampling anchors JSON array format.
-                // Uses route_local_background() so the background_sem cap applies:
-                // at most SLM_BACKGROUND_CONCURRENT extraction fallbacks in flight,
-                // leaving at least one OLMo slot free for interactive callers.
+                // Tier B offline — fall back to Tier A (OLMo 7B, no grammar).
+                // Grammar constraint is unreliable on CPU at 7B scale; pre-fill
+                // anchors JSON array format instead.
                 let tier_a_req = ComputeRequest {
                     request_id: RequestId::new(),
                     module_id: module_id.clone(),
@@ -729,16 +657,20 @@ async fn extract(State(state): State<Arc<AppState>>, raw: Bytes) -> impl IntoRes
                             role: "user".to_string(),
                             content: req.text,
                         },
+                        ChatMessage {
+                            role: "assistant".to_string(),
+                            content: "[{\"".to_string(),
+                        },
                     ],
                     complexity: Complexity::Medium,
                     tier_hint: Some(Tier::Local),
                     stream: false,
-                    max_tokens: Some(1024),
+                    max_tokens: Some(512),
                     temperature: Some(0.1),
                     sanitised_outbound: true,
                     tier_c_label: None,
                     yoyo_label: None,
-                    grammar: Some(GrammarConstraint::JsonSchema(schema_for_tier_a)),
+                    grammar: None,
                     speculation: None,
                     graph_context_enabled: None,
                     tools: None,
@@ -747,7 +679,7 @@ async fn extract(State(state): State<Arc<AppState>>, raw: Bytes) -> impl IntoRes
                 };
                 state
                     .doorman
-                    .route_local_background(&tier_a_req)
+                    .route(&tier_a_req)
                     .await
                     .map(|r| (r, "tier_a_fallback"))
             } else {
@@ -820,14 +752,6 @@ async fn extract(State(state): State<Arc<AppState>>, raw: Bytes) -> impl IntoRes
             true,
             Some("all-tiers-unavailable".to_string()),
         ),
-        Err(DoormanError::LocalSaturated) => (
-            vec![],
-            "deferred".to_string(),
-            "none".to_string(),
-            false,
-            true,
-            Some("oose-saturated".to_string()),
-        ),
         Err(DoormanError::RequestTimeout) => (
             vec![],
             "deferred".to_string(),
@@ -875,7 +799,6 @@ async fn extract(State(state): State<Arc<AppState>>, raw: Bytes) -> impl IntoRes
         "yoyo-label-unconfigured" => DeferReason::YoyoLabelUnconfigured,
         "yoyo-transient" => DeferReason::YoyoTransient,
         "all-tiers-unavailable" => DeferReason::AllTiersUnavailable,
-        "oose-saturated" => DeferReason::OoseSaturated,
         "tier-a-failed" => DeferReason::TierAFailed,
         "parse-error" => DeferReason::ParseError,
         "timeout" => DeferReason::Timeout,
@@ -1117,7 +1040,6 @@ async fn batch_extract(State(state): State<Arc<AppState>>, raw: Bytes) -> impl I
             "yoyo-label-unconfigured" => DeferReason::YoyoLabelUnconfigured,
             "yoyo-transient" => DeferReason::YoyoTransient,
             "all-tiers-unavailable" => DeferReason::AllTiersUnavailable,
-            "oose-saturated" => DeferReason::OoseSaturated,
             "tier-a-failed" => DeferReason::TierAFailed,
             "parse-error" => DeferReason::ParseError,
             "timeout" => DeferReason::Timeout,
@@ -1542,25 +1464,18 @@ fn default_graph_query_limit() -> u32 {
 
 /// `POST /v1/graph/query` — proxy to service-content `/v1/graph/context`.
 ///
-/// 1. Requires `X-Foundry-Module-ID` header → 400 if absent — this is both the caller's
-///    identity for audit purposes AND, as of this fix, the read scope itself. Each archive
-///    reads only its own tenant; there is no cross-tenant merge and no fixed default list.
-///    Cross-archive reads are the `app-orchestration-graph` federation gateway's job, not
-///    this proxy's (see `BRIEF-datagraph-tenant-isolation.md` — the prior merge-across-a-
-///    hardcoded-3-tenant-list behavior was a confirmed DOCTRINE claim #48 violation).
+/// 1. Requires `X-Foundry-Module-ID` header → 400 if absent.
 /// 2. Parses `{"q": "...", "limit": N}` body.
-/// 3. Queries `{service_content_endpoint}/v1/graph/context?q=…&module_id=…&limit=…` with
-///    `module_id` set to the caller's own `X-Foundry-Module-ID` — single tenant, no merge.
+/// 3. Forwards to `{service_content_endpoint}/v1/graph/context?q=…&module_id=…&limit=…`.
 /// 4. Audit-logs as `event_type = "graph-query"` via `AuditCaptureEntry`.
-/// 5. Returns the upstream result verbatim (truncated to `body.limit`), status mirrors the
-///    upstream response.
+/// 5. Returns service-content response verbatim.
 async fn graph_query(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
     Json(body): Json<GraphQueryBody>,
 ) -> impl IntoResponse {
-    // 1. Module-ID is mandatory — both caller identity and, now, the read scope.
-    let caller_module_id = match headers
+    // 1. Module-ID is mandatory.
+    let module_id = match headers
         .get("x-foundry-module-id")
         .and_then(|v| v.to_str().ok())
     {
@@ -1577,94 +1492,69 @@ async fn graph_query(
         return err.into_response();
     }
 
-    // 3. Query only the caller's own tenant — no cross-tenant merge.
-    let client = ReqwestClient::new();
     let url = format!(
         "{}/v1/graph/context?q={}&module_id={}&limit={}",
         state.service_content_endpoint,
         urlencoding_encode(&body.q),
-        urlencoding_encode(&caller_module_id),
+        urlencoding_encode(&module_id),
         body.limit,
     );
-    let sc_resp = client.get(&url).send().await;
 
-    let (status, rows): (StatusCode, Vec<serde_json::Value>) = match sc_resp {
-        Ok(r) => {
-            let sc_status = StatusCode::from_u16(r.status().as_u16()).unwrap_or(StatusCode::BAD_GATEWAY);
-            if !sc_status.is_success() {
-                (sc_status, Vec::new())
-            } else {
-                // Log a parse failure distinctly from a genuinely empty result — a malformed
-                // upstream body silently becoming [] (indistinguishable from "no matches") was
-                // a separate Phase C audit finding.
-                match r.json::<serde_json::Value>().await {
-                    Ok(serde_json::Value::Array(mut rows)) => {
-                        rows.truncate(body.limit as usize);
-                        (StatusCode::OK, rows)
-                    }
-                    Ok(other) => {
-                        tracing::warn!(
-                            "graph_query: tenant {caller_module_id:?} returned non-array JSON, treating as empty: {other}"
-                        );
-                        (StatusCode::OK, Vec::new())
-                    }
-                    Err(e) => {
-                        tracing::warn!(
-                            "graph_query: tenant {caller_module_id:?} response failed to parse as JSON, treating as empty: {e}"
-                        );
-                        (StatusCode::OK, Vec::new())
-                    }
-                }
-            }
+    // 3. Forward to service-content.
+    let client = ReqwestClient::new();
+    let sc_resp = match client.get(&url).send().await {
+        Ok(r) => r,
+        Err(_) => {
+            let err: ApiError = DoormanError::GraphProxyServiceUnavailable.into();
+            return err.into_response();
         }
-        Err(_) => (StatusCode::BAD_GATEWAY, Vec::new()),
     };
-    let any_success = status.is_success();
+
+    let sc_status = sc_resp.status();
+    let sc_body: serde_json::Value = match sc_resp.json().await {
+        Ok(v) => v,
+        Err(_) => serde_json::Value::Array(vec![]),
+    };
 
     // 4. Audit-log (non-fatal — proxy succeeds even if ledger write fails).
     let entry = AuditCaptureEntry {
         entry_type: ENTRY_TYPE_AUDIT_CAPTURE.to_string(),
         audit_id: RequestId::new().to_string(),
-        module_id: slm_core::ModuleId::from_str(&caller_module_id)
+        module_id: slm_core::ModuleId::from_str(&module_id)
             .unwrap_or_else(|_| slm_core::ModuleId::from_str("unknown").unwrap()),
         event_type: "graph-query".to_string(),
         source: format!("graph-proxy:{}", body.q),
-        status: if any_success { "ok" } else { "upstream-error" }.to_string(),
+        status: if sc_status.is_success() {
+            "ok"
+        } else {
+            "upstream-error"
+        }
+        .to_string(),
         event_at: Utc::now(),
         captured_at: Utc::now(),
-        payload: serde_json::json!({
-            "q": body.q, "limit": body.limit,
-            "caller_module_id": caller_module_id,
-        }),
+        payload: serde_json::json!({ "q": body.q, "limit": body.limit, "module_id": module_id }),
         caller_request_id: None,
     };
     let _ = state.doorman.ledger().append_capture_entry(&entry);
 
-    // 5. Return the tenant-scoped result set, mirroring the upstream status.
-    (status, Json(serde_json::Value::Array(rows))).into_response()
+    // 5. Return service-content response.
+    let status = StatusCode::from_u16(sc_status.as_u16()).unwrap_or(StatusCode::BAD_GATEWAY);
+    (status, Json(sc_body)).into_response()
 }
 
 /// `POST /v1/graph/mutate` — proxy to service-content `/v1/graph/mutate`.
 ///
-/// 1. Requires `X-Foundry-Module-ID` header → 400 if absent — this is both the caller's
-///    identity AND, as of this fix, the write scope. A mutation lands under the caller's
-///    own tenant; it is never redirected to a fixed default tenant (the prior behavior
-///    silently discarded caller identity on write — a confirmed DOCTRINE claim #48
-///    violation, see `BRIEF-datagraph-tenant-isolation.md`).
-/// 2. Parses the body as JSON and sets its `module_id` field to the caller's own
-///    `X-Foundry-Module-ID` before forwarding — this is enforcement, not trust: whatever
-///    the caller put in its own body's `module_id` field is overwritten with its verified
-///    header identity, so a caller cannot claim to write as a different archive.
-/// 3. Audit-logs as `event_type = "graph-mutation"` via `AuditCaptureEntry`, recording the
-///    caller's own module_id (== the tenant written to).
+/// 1. Requires `X-Foundry-Module-ID` header → 400 if absent.
+/// 2. Forwards body verbatim to service-content.
+/// 3. Audit-logs as `event_type = "graph-mutation"` via `AuditCaptureEntry`.
 /// 4. Returns service-content response verbatim.
 async fn graph_mutate(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
     body_bytes: Bytes,
 ) -> impl IntoResponse {
-    // 1. Module-ID is mandatory — both caller identity and, now, the write scope.
-    let caller_module_id = match headers
+    // 1. Module-ID is mandatory.
+    let module_id = match headers
         .get("x-foundry-module-id")
         .and_then(|v| v.to_str().ok())
     {
@@ -1681,27 +1571,14 @@ async fn graph_mutate(
         return err.into_response();
     }
 
-    // 2b. Enforce module_id in the outgoing body to the caller's own verified identity —
-    // never the caller-supplied body value, never a fixed default tenant.
-    let outgoing_body: Vec<u8> = match serde_json::from_slice::<serde_json::Value>(&body_bytes) {
-        Ok(serde_json::Value::Object(mut map)) => {
-            map.insert(
-                "module_id".to_string(),
-                serde_json::Value::String(caller_module_id.clone()),
-            );
-            serde_json::to_vec(&serde_json::Value::Object(map)).unwrap_or_else(|_| body_bytes.to_vec())
-        }
-        _ => body_bytes.to_vec(),
-    };
-
     let url = format!("{}/v1/graph/mutate", state.service_content_endpoint);
 
-    // 3. Forward the (module_id-enforced) body to service-content.
+    // 3. Forward body to service-content.
     let client = ReqwestClient::new();
     let sc_resp = match client
         .post(&url)
         .header("Content-Type", "application/json")
-        .body(outgoing_body)
+        .body(body_bytes.to_vec())
         .send()
         .await
     {
@@ -1722,7 +1599,7 @@ async fn graph_mutate(
     let entry = AuditCaptureEntry {
         entry_type: ENTRY_TYPE_AUDIT_CAPTURE.to_string(),
         audit_id: RequestId::new().to_string(),
-        module_id: slm_core::ModuleId::from_str(&caller_module_id)
+        module_id: slm_core::ModuleId::from_str(&module_id)
             .unwrap_or_else(|_| slm_core::ModuleId::from_str("unknown").unwrap()),
         event_type: "graph-mutation".to_string(),
         source: "graph-proxy".to_string(),
@@ -1734,7 +1611,7 @@ async fn graph_mutate(
         .to_string(),
         event_at: Utc::now(),
         captured_at: Utc::now(),
-        payload: serde_json::json!({ "caller_module_id": caller_module_id }),
+        payload: serde_json::json!({ "module_id": module_id }),
         caller_request_id: None,
     };
     let _ = state.doorman.ledger().append_capture_entry(&entry);
@@ -2151,13 +2028,7 @@ async fn anthropic_messages(
     {
         Some(s) => ModuleId::from_str(s)
             .map_err(|e| ApiError::bad_request(format!("invalid X-Foundry-Module-ID: {e}")))?,
-        None => {
-            tracing::warn!(
-                "request omitted X-Foundry-Module-ID; using default module scope \
-                 (set SLM_DEFAULT_MODULE_ID to your live data namespace)"
-            );
-            default_module_id()
-        }
+        None => ModuleId::from_str("foundry").expect("compile-time-valid default moduleId"),
     };
     let request_id = RequestId::new();
     let model = body.model.clone();
@@ -2297,10 +2168,6 @@ impl From<DoormanError> for ApiError {
             // Extract handler 120 s deadline. Caught before this conversion
             // in /v1/extract, but must be covered for exhaustiveness.
             DoormanError::RequestTimeout => StatusCode::SERVICE_UNAVAILABLE,
-            // Tier A admission control: all OLMo slots occupied. Fast-failed
-            // before any queuing in llama-server. 429 TOO_MANY_REQUESTS with
-            // Retry-After: 2 — caller should back off briefly and retry.
-            DoormanError::LocalSaturated => StatusCode::TOO_MANY_REQUESTS,
             // Flow gate closed (operator kill switch). 503 with Retry-After;
             // the operator deliberately paused this tier. Caller should retry
             // after the gate re-opens.

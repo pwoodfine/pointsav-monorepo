@@ -1,6 +1,3 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 /*
  * console_hello.c — os-console Phase H1 seL4 rootserver, hello milestone.
  *
@@ -53,7 +50,7 @@ static const char banner[] =
     "=== os-console seL4 rootserver ===\r\n"
     "Hello from os-console seL4 PD\r\n"
     "moonshot-toolkit Phase H1 milestone\r\n"
-    "Capability Geometry: this PD is isolated by the seL4 capability DAG\r\n"
+    "Geometric Protection: this PD is isolated by seL4 capability tokens\r\n"
     "===================================\r\n"
     "\r\n";
 

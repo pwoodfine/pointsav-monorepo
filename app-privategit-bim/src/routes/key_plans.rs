@@ -1,18 +1,27 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 use axum::{
     extract::{Path, State},
-    response::{IntoResponse, Redirect, Response},
+    http::HeaderMap,
+    response::{Html, IntoResponse, Response},
 };
 
-use crate::state::AppState;
+use crate::{render, state::AppState};
 
-/// `/key-plans` is now folded into the unified home catalog's Compositions
-/// tab. Redirect legacy links/bookmarks to `/` (302). The download sub-route
-/// below is unchanged.
-pub async fn key_plans_handler() -> Redirect {
-    Redirect::to("/")
+pub async fn key_plans_handler(headers: HeaderMap, State(state): State<AppState>) -> Html<String> {
+    let content = render::card::render_key_plans(&state);
+    if is_fragment(&headers) {
+        Html(content)
+    } else {
+        Html(render::shell::page_shell(
+            "Key Plans",
+            "/key-plans",
+            &content,
+            &state,
+        ))
+    }
+}
+
+pub async fn kp_fragment(State(state): State<AppState>) -> Html<String> {
+    Html(render::card::render_key_plans(&state))
 }
 
 pub async fn kp_download_handler(
@@ -46,4 +55,8 @@ pub async fn kp_download_handler(
         }
         Err(_) => (axum::http::StatusCode::NOT_FOUND, "file not found").into_response(),
     }
+}
+
+fn is_fragment(headers: &HeaderMap) -> bool {
+    headers.get("x-fragment").is_some()
 }

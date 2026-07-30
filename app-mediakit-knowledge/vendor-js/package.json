@@ -1,0 +1,26 @@
+{
+  "name": "app-mediakit-knowledge-vendor",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Vendor build for the SAA editor — CodeMirror 6 + extensions bundled into static/vendor/cm-saa.bundle.js. Out-of-tree; no NPM in the Rust build path. See README.md.",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "dependencies": {
+    "@codemirror/autocomplete": "^6.18.0",
+    "@codemirror/commands": "^6.8.0",
+    "@codemirror/lang-markdown": "^6.3.0",
+    "@codemirror/language": "^6.10.0",
+    "@codemirror/lint": "^6.8.0",
+    "@codemirror/state": "^6.5.0",
+    "@codemirror/view": "^6.36.0",
+    "yjs": "^13.6.0",
+    "y-codemirror.next": "^0.3.0",
+    "y-websocket": "^2.0.0",
+    "y-protocols": "^1.0.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0"
+  }
+}

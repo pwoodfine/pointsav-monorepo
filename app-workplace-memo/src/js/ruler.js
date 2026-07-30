@@ -1,6 +1,3 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 /**
  * Workplace*Memo — ruler.js
  * Draws the document ruler with margin indicators and draggable handles.

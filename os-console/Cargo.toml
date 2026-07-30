@@ -1,8 +1,4 @@
-# SPDX-License-Identifier: AGPL-3.0-or-later
-# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 [package]
-license = "AGPL-3.0-or-later"
 name = "os-console"
 version = "0.1.0"
 edition = "2021"
@@ -12,6 +8,9 @@ description = "os-console — keyboard-native terminal interface for the Totebox
 name = "os-console"
 path = "src/main.rs"
 
+[features]
+ssh-server = ["dep:rand", "dep:ratatui"]
+
 [dependencies]
 app-console-keys = { path = "../app-console-keys" }
 app-console-content = { path = "../app-console-content" }
@@ -20,9 +19,10 @@ app-console-system = { path = "../app-console-system" }
 app-console-email = { path = "../app-console-email" }
 app-console-slm = { path = "../app-console-slm" }
 app-console-people = { path = "../app-console-people" }
-app-console-search = { path = "../app-console-search" }
 system-gateway-mba = { path = "../system-gateway-mba" }
 anyhow = "1"
 ctrlc = "3"
 tokio = { version = "1", features = ["full"] }
 russh = { version = "0.60" }
+rand = { version = "0.10", optional = true }
+ratatui = { version = "0.29", optional = true }

@@ -30,14 +30,6 @@ use tracing::{debug, warn};
 const GRAPH_CIRCUIT_THRESHOLD: u32 = 3;
 /// Seconds the circuit stays open before the next probe attempt.
 const GRAPH_CIRCUIT_OPEN_SECS: u64 = 120;
-/// Multi-hop depth requested from `service-content`'s `/v1/graph/context`.
-/// `service-content` already supports this (`query_context_transitive`,
-/// clamped 1-4 hops server-side) — the Doorman just never asked for it
-/// before, implicitly requesting `hops=0` (seed entities only, no
-/// relation-following). One hop is a low-risk default: it broadens context
-/// to directly-related entities without the response-size growth of deeper
-/// traversal.
-const DEFAULT_CONTEXT_HOPS: usize = 1;
 
 /// One entity row returned by the `service-content` graph API.
 #[derive(Debug, Deserialize)]
@@ -47,38 +39,7 @@ struct GraphEntityRow {
     role_vector: Option<String>,
     location_vector: Option<String>,
     contact_vector: Option<String>,
-    /// Present on the wire (service-content's `GraphEntity` always has it) but
-    /// not previously captured here — rendered as of the 2026-07-06 ontology
-    /// audit's retrieval-stage guardrail (see `MIN_RENDER_CONFIDENCE`).
-    #[serde(default = "default_confidence")]
-    confidence: f64,
-    #[serde(default)]
-    source_doc: Option<String>,
 }
-
-fn default_confidence() -> f64 {
-    // Matches service-content's own GraphEntity — if this field is ever
-    // missing on the wire (e.g. an older service-content build pre-dating
-    // this field), treat as maximally trusted rather than silently filtering
-    // everything out via MIN_RENDER_CONFIDENCE.
-    1.0
-}
-
-/// One `RelatedTo` edge row returned by `service-content`'s
-/// `GET /v1/graph/edges`. Mirrors `service-content::graph::RelatedToEdge`.
-#[derive(Debug, Deserialize)]
-struct RelatedToEdgeRow {
-    src_entity_name: String,
-    tgt_entity_name: String,
-    relation_type: String,
-}
-
-/// Retrieval-stage guardrail: entities below this confidence are excluded
-/// from the rendered `[ENTITY CONTEXT]` block entirely. Mirrors
-/// `service-content::http::MIN_RENDER_CONFIDENCE` — kept as a duplicated
-/// constant rather than a shared crate dependency since these are two
-/// separate services rendering the same kind of data independently.
-const MIN_RENDER_CONFIDENCE: f64 = 0.5;
 
 /// HTTP client for `service-content`'s `GET /v1/graph/context` endpoint.
 ///
@@ -164,7 +125,6 @@ impl GraphContextClient {
                 ("q", query),
                 ("module_id", module_id),
                 ("limit", &limit.to_string()),
-                ("hops", &DEFAULT_CONTEXT_HOPS.to_string()),
             ])
             .send()
             .await;
@@ -205,24 +165,10 @@ impl GraphContextClient {
                 self.consecutive_failures.store(0, Ordering::Relaxed);
                 self.circuit_open_until_secs.store(0, Ordering::Relaxed);
 
-                // Retrieval-stage guardrail: exclude low-confidence entities from
-                // the rendered context entirely, not just down-weight them.
-                let entities: Vec<GraphEntityRow> = entities
-                    .into_iter()
-                    .filter(|e| e.confidence >= MIN_RENDER_CONFIDENCE)
-                    .collect();
                 if entities.is_empty() {
                     return None;
                 }
-
-                // Best-effort edge fetch — the induced subgraph of relations among
-                // these entities. Non-fatal and independent of the circuit breaker
-                // above: a failure here degrades to entity-only rendering rather
-                // than affecting the main entity fetch's success/failure tracking.
-                let names: Vec<&str> = entities.iter().map(|e| e.entity_name.as_str()).collect();
-                let edges = self.fetch_edges(module_id, &names).await;
-
-                let mut ctx = entities
+                let ctx = entities
                     .iter()
                     .map(|e| {
                         let mut parts = vec![format!("{} ({})", e.entity_name, e.classification)];
@@ -235,63 +181,11 @@ impl GraphContextClient {
                         if let Some(c) = &e.contact_vector {
                             parts.push(format!("contact: {}", c));
                         }
-                        parts.push(format!("confidence: {:.2}", e.confidence));
-                        if let Some(src) = &e.source_doc {
-                            parts.push(format!("source: {src}"));
-                        }
                         parts.join("; ")
                     })
                     .collect::<Vec<_>>()
                     .join("\n");
-                if !edges.is_empty() {
-                    ctx.push_str("\n\nRelationships:\n");
-                    for edge in &edges {
-                        ctx.push_str(&format!(
-                            "{} --[{}]--> {}\n",
-                            edge.src_entity_name, edge.relation_type, edge.tgt_entity_name
-                        ));
-                    }
-                }
                 Some(ctx)
-            }
-        }
-    }
-
-    /// Best-effort fetch of the induced subgraph of `RelatedTo` edges among
-    /// `entity_names`, from `service-content`'s `GET /v1/graph/edges`. Returns
-    /// an empty vec on any failure (network error, non-2xx, parse error) —
-    /// deliberately does not affect the circuit breaker or return `None`,
-    /// since missing relationship data should degrade to entity-only
-    /// rendering, not fail the whole context fetch.
-    async fn fetch_edges(&self, module_id: &str, entity_names: &[&str]) -> Vec<RelatedToEdgeRow> {
-        if entity_names.is_empty() {
-            return Vec::new();
-        }
-        let url = format!("{}/v1/graph/edges", self.endpoint);
-        let entities_param = entity_names.join(",");
-        let resp = self
-            .http
-            .get(&url)
-            .query(&[("module_id", module_id), ("entities", &entities_param)])
-            .send()
-            .await;
-        match resp {
-            Ok(r) if r.status().is_success() => r.json().await.unwrap_or_default(),
-            Ok(r) => {
-                debug!(
-                    target: "slm_doorman::graph",
-                    status = %r.status(),
-                    "service-content edges endpoint returned non-2xx status"
-                );
-                Vec::new()
-            }
-            Err(e) => {
-                debug!(
-                    target: "slm_doorman::graph",
-                    error = %e,
-                    "service-content edges endpoint unavailable"
-                );
-                Vec::new()
             }
         }
     }
@@ -410,159 +304,6 @@ mod tests {
             result.is_none(),
             "unavailable service must produce None (non-fatal); got Some"
         );
-    }
-
-    /// Retrieval-stage guardrail: an entity below MIN_RENDER_CONFIDENCE must not
-    /// appear in the rendered context at all, even though it was returned by
-    /// service-content — the high-confidence entity still renders normally.
-    #[tokio::test]
-    async fn fetch_context_filters_low_confidence_entities() {
-        let server = MockServer::start().await;
-        Mock::given(method("GET"))
-            .and(path("/v1/graph/context"))
-            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
-                {
-                    "entity_name": "Untrusted Noise Entity",
-                    "classification": "Company",
-                    "role_vector": null,
-                    "location_vector": null,
-                    "contact_vector": null,
-                    "module_id": "woodfine",
-                    "confidence": 0.2
-                },
-                {
-                    "entity_name": "PointSav Digital Systems",
-                    "classification": "Company",
-                    "role_vector": null,
-                    "location_vector": null,
-                    "contact_vector": null,
-                    "module_id": "woodfine",
-                    "confidence": 0.9
-                }
-            ])))
-            .mount(&server)
-            .await;
-
-        let client = GraphContextClient::new(server.uri());
-        let ctx = client
-            .fetch_context("woodfine", "entities", 5)
-            .await
-            .expect("expected Some context — one entity is above threshold");
-        assert!(!ctx.contains("Untrusted Noise Entity"));
-        assert!(ctx.contains("PointSav Digital Systems"));
-    }
-
-    /// If every returned entity is below MIN_RENDER_CONFIDENCE, fetch_context
-    /// must return None (same as if service-content had returned no entities
-    /// at all) rather than an empty/degenerate context string.
-    #[tokio::test]
-    async fn fetch_context_returns_none_when_all_entities_below_confidence_threshold() {
-        let server = MockServer::start().await;
-        Mock::given(method("GET"))
-            .and(path("/v1/graph/context"))
-            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
-                {
-                    "entity_name": "Untrusted",
-                    "classification": "Company",
-                    "role_vector": null,
-                    "location_vector": null,
-                    "contact_vector": null,
-                    "module_id": "woodfine",
-                    "confidence": 0.1
-                }
-            ])))
-            .mount(&server)
-            .await;
-
-        let client = GraphContextClient::new(server.uri());
-        let result = client.fetch_context("woodfine", "entities", 5).await;
-        assert!(result.is_none());
-    }
-
-    /// `fetch_context` fetches the induced edge set from `/v1/graph/edges` and
-    /// renders a "Relationships" section alongside the entity list.
-    #[tokio::test]
-    async fn fetch_context_renders_relationships_from_edges_endpoint() {
-        let server = MockServer::start().await;
-        Mock::given(method("GET"))
-            .and(path("/v1/graph/context"))
-            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
-                {
-                    "entity_name": "PointSav Digital Systems",
-                    "classification": "Company",
-                    "role_vector": null,
-                    "location_vector": null,
-                    "contact_vector": null,
-                    "module_id": "woodfine",
-                    "confidence": 0.9
-                },
-                {
-                    "entity_name": "Woodfine Capital Projects",
-                    "classification": "Company",
-                    "role_vector": null,
-                    "location_vector": null,
-                    "contact_vector": null,
-                    "module_id": "woodfine",
-                    "confidence": 0.9
-                }
-            ])))
-            .mount(&server)
-            .await;
-        Mock::given(method("GET"))
-            .and(path("/v1/graph/edges"))
-            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
-                {
-                    "src_entity_name": "PointSav Digital Systems",
-                    "tgt_entity_name": "Woodfine Capital Projects",
-                    "relation_type": "subsidiary_of"
-                }
-            ])))
-            .mount(&server)
-            .await;
-
-        let client = GraphContextClient::new(server.uri());
-        let ctx = client
-            .fetch_context("woodfine", "entities", 5)
-            .await
-            .expect("expected Some context");
-        assert!(ctx.contains("Relationships:"));
-        assert!(ctx.contains("PointSav Digital Systems --[subsidiary_of]--> Woodfine Capital Projects"));
-    }
-
-    /// If the edges endpoint is unavailable/errors, `fetch_context` must still
-    /// succeed with entity-only rendering — the edge fetch is best-effort and
-    /// must not fail (or empty out) the whole context.
-    #[tokio::test]
-    async fn fetch_context_degrades_gracefully_when_edges_endpoint_fails() {
-        let server = MockServer::start().await;
-        Mock::given(method("GET"))
-            .and(path("/v1/graph/context"))
-            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
-                {
-                    "entity_name": "Solo Entity",
-                    "classification": "Company",
-                    "role_vector": null,
-                    "location_vector": null,
-                    "contact_vector": null,
-                    "module_id": "woodfine",
-                    "confidence": 0.9
-                }
-            ])))
-            .mount(&server)
-            .await;
-        Mock::given(method("GET"))
-            .and(path("/v1/graph/edges"))
-            .respond_with(ResponseTemplate::new(500))
-            .mount(&server)
-            .await;
-
-        let client = GraphContextClient::new(server.uri());
-        let ctx = client
-            .fetch_context("woodfine", "entities", 5)
-            .await
-            .expect("expected Some context despite edges endpoint failure");
-        assert!(ctx.contains("Solo Entity"));
-        assert!(!ctx.contains("Relationships:"));
     }
 
     // ── Circuit breaker ───────────────────────────────────────────────────────

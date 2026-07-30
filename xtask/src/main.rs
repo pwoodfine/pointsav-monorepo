@@ -1,18 +1,12 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
-//! xtask — build-time content gate (cargo xtask check-content) plus the
-//! privategit NG-rewrite characterization harness (cargo xtask characterize).
+//! xtask — build-time content gate (cargo xtask check-content).
 //!
 //! Usage:
 //!   cargo xtask check-content <path1> [path2] ...
-//!   cargo xtask <path1> [path2] ...             (bare invocation, same as check-content)
-//!   cargo xtask characterize …                  (HTTP characterization harness)
 //!
-//! check-content walks all Markdown files in the given mount paths, collects
-//! every slug, then checks all [[wikilinks]] against the slug set. Reports
-//! dead links and missing required frontmatter fields. Exits 1 if any dead
-//! links or missing required fields are found.
+//! Walks all Markdown files in the given mount paths, collects every slug,
+//! then checks all [[wikilinks]] against the slug set. Reports dead links
+//! and missing required frontmatter fields. Exits 1 if any dead links or
+//! missing required fields are found.
 //!
 //! This is the Phase 5 hard-promote gate (L18 + L29): an unresolved [[slug]]
 //! across the mount set BLOCKS promote. The gate must pass before
@@ -22,10 +16,6 @@
 //! logic from `app-mediakit-knowledge/src/check.rs` inline rather than
 //! importing it, to avoid a circular or cross-crate dependency at build time.
 
-mod characterize;
-mod deposit;
-mod fsl_clock;
-
 use std::collections::{BTreeMap, HashSet};
 use std::path::{Path, PathBuf};
 
@@ -33,27 +23,6 @@ fn main() {
     let args: Vec<String> = std::env::args().collect();
     // First arg is the binary name; remaining args are mount paths.
     let subcommand = args.get(1).map(|s| s.as_str());
-    if subcommand == Some("characterize") {
-        if let Err(e) = characterize::run(&args[2..]) {
-            eprintln!("[-] FATAL: {e}");
-            std::process::exit(1);
-        }
-        return;
-    }
-    if subcommand == Some("fsl-clock") {
-        if let Err(e) = fsl_clock::run(&args[2..]) {
-            eprintln!("[-] FATAL: {e}");
-            std::process::exit(1);
-        }
-        return;
-    }
-    if subcommand == Some("deposit") {
-        if let Err(e) = deposit::run(&args[2..]) {
-            eprintln!("[-] FATAL: {e}");
-            std::process::exit(1);
-        }
-        return;
-    }
     let paths: Vec<PathBuf> = if subcommand == Some("check-content") {
         args[2..].iter().map(PathBuf::from).collect()
     } else if args.len() > 1 && subcommand != Some("check-content") {
@@ -62,9 +31,6 @@ fn main() {
     } else {
         eprintln!("Usage: cargo xtask check-content <path1> [path2] ...");
         eprintln!("       cargo xtask <path1> [path2] ...");
-        eprintln!("       cargo xtask characterize …  (characterization harness)");
-        eprintln!("       cargo xtask fsl-clock <products.yaml>  (FSL conversion clock)");
-        eprintln!("       cargo xtask deposit …       (release binary + manifest deposit)");
         std::process::exit(2);
     };
 

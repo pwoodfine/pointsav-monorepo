@@ -1,7 +1,4 @@
 #!/bin/bash
-# SPDX-License-Identifier: AGPL-3.0-or-later
-# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 # Nightly batch driver for jennifer-2 .md file migration through the LLM inference loop.
 #
 # Health gate uses /readyz (NOT /health — that endpoint doesn't exist in slm-doorman-server).

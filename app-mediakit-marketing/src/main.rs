@@ -1,6 +1,3 @@
-// SPDX-License-Identifier: FSL-1.1-ALv2
-// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 //! Marketing platform engine — binary entry.
 //!
 //! `app-mediakit-marketing serve --content-dir <dir>` renders a tenant's
@@ -111,7 +108,6 @@ async fn serve(cfg: Config) -> Result<()> {
     if let Some(title) = cfg.site_title.clone() {
         brand.site_title = title;
     }
-    brand.google_verify = std::env::var("SERVICE_MARKETING_GOOGLE_VERIFY").ok();
     let tokens_css = tokens::load_tokens(cfg.tokens_css_path.as_deref());
     let pending = Queue::open(&cfg.state_dir)?;
 

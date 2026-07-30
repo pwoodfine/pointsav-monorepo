@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+#[cfg(feature = "ssh-server")]
+mod ssh_server;
 
 mod mba_client;
 mod metrics;
+mod tunnel;
 
 fn main() -> anyhow::Result<()> {
     inner_main()
@@ -33,36 +34,43 @@ fn pairing_server_alive() -> bool {
     matches!(stream.read_exact(&mut buf), Ok(())) && buf.starts_with(b"HTTP/1.")
 }
 
+#[cfg(feature = "ssh-server")]
+fn inner_main() -> anyhow::Result<()> {
+    let rt = tokio::runtime::Runtime::new()?;
+    rt.block_on(ssh_server::run())
+}
+
+#[cfg(not(feature = "ssh-server"))]
 fn inner_main() -> anyhow::Result<()> {
     use app_console_content::cartridge::ContentCartridge;
     use app_console_email::EmailCartridge;
     use app_console_input::InputCartridge;
     use app_console_keys::{pairing, AppConsoleKeys, ConsoleConfig};
     use app_console_people::PeopleCartridge;
-    use app_console_search::cartridge::SearchCartridge;
     use app_console_slm::SlmCartridge;
     use app_console_system::SystemCartridge;
 
     let cfg = ConsoleConfig::load();
     let p = &cfg.profile;
 
-    // Port list for SSH port-forward tunnel.
-    let ssh_forwards: &[(u16, u16)] = &[
+    // Port list used by both tunnel paths.
+    let tunnel_forwards: &[(u16, u16)] = &[
         (9080, 9080), // Doorman
         (9081, 9081), // service-content
         (9092, 9092), // service-proofreader (F4)
-        (9106, 9106), // service-input (F12)
+        (9100, 9100), // service-input (F12)
         (9093, 9093), // service-email (F3)
         (9205, 9205), // pairing-server (F11)
         (2222, 2222), // MBA SSH
     ];
 
-    // Spawn system SSH port-forward tunnel when gce_host is configured.
+    // Start embedded SSH tunnel if gce_host is configured
     let mut _ssh_child: Option<std::process::Child> = None;
     if !p.gce_host.is_empty() {
-        // Check if the pairing server is actually reachable — not just whether the port is bound.
-        // A stale SSH child from a previous run can hold port 9205 open while the underlying
-        // SSH connection is dead, causing all HTTP requests to fail silently.
+        // Check if the pairing server is actually reachable through an existing tunnel —
+        // not just whether the port is bound. A stale SSH child from a previous run can
+        // hold port 9205 open while the underlying SSH connection is dead, causing all
+        // HTTP requests to fail silently.
         if !pairing_server_alive() {
             // Kill any stale SSH holding port 9205 before spawning fresh.
             let _ = std::process::Command::new("pkill")
@@ -70,6 +78,35 @@ fn inner_main() -> anyhow::Result<()> {
                 .status();
             std::thread::sleep(std::time::Duration::from_millis(400));
 
+            tunnel::spawn_tunnel(tunnel::TunnelConfig {
+                gce_host: p.gce_host.clone(),
+                gce_port: p.gce_ssh_port,
+                username: p.gce_user.clone(),
+                key_path: p.ssh_key_path.clone(),
+                forwards: tunnel_forwards.to_vec(),
+            });
+            // Wait up to 5s for russh to bind ports.
+            let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+            loop {
+                if std::net::TcpStream::connect("127.0.0.1:9205").is_ok() {
+                    break;
+                }
+                if std::time::Instant::now() >= deadline {
+                    break;
+                }
+                std::thread::sleep(std::time::Duration::from_millis(250));
+            }
+            if std::net::TcpStream::connect("127.0.0.1:9205").is_ok() {
+                eprintln!("os-console: tunnel: russh bound port 9205");
+            } else {
+                eprintln!("os-console: tunnel: russh did not bind port 9205 within 5s");
+            }
+        } else {
+            eprintln!("os-console: tunnel: existing tunnel alive — skipping spawn");
+        }
+
+        // Russh didn't bind ports — fall back to system ssh.
+        if !pairing_server_alive() {
             let mut cmd = std::process::Command::new("ssh");
             cmd.arg("-N")
                 .arg("-o")
@@ -82,7 +119,7 @@ fn inner_main() -> anyhow::Result<()> {
                 .arg(p.gce_ssh_port.to_string())
                 .arg("-i")
                 .arg(&p.ssh_key_path);
-            for &(local_port, remote_port) in ssh_forwards {
+            for &(local_port, remote_port) in tunnel_forwards {
                 cmd.arg("-L")
                     .arg(format!("{local_port}:localhost:{remote_port}"));
             }
@@ -113,12 +150,10 @@ fn inner_main() -> anyhow::Result<()> {
             } else {
                 eprintln!("os-console: tunnel: system ssh did not bind port 9205 within 15s");
             }
-        } else {
-            eprintln!("os-console: tunnel: existing tunnel alive — skipping spawn");
         }
     }
 
-    // Attempt MBA peer-to-peer link (5s timeout).
+    // Attempt MBA peer-to-peer link (5s timeout)
     let rt = tokio::runtime::Runtime::new()?;
     let mba = rt.block_on(async {
         tokio::time::timeout(
@@ -128,14 +163,12 @@ fn inner_main() -> anyhow::Result<()> {
                 p.totebox_ssh_port,
                 &p.username,
                 &p.ssh_key_path,
-                &p.totebox_known_host_key,
             ),
         )
         .await
         .unwrap_or_else(|_| mba_client::MbaResult {
             active: false,
             fingerprint: "(connection timed out)".into(),
-            tofu_server_fingerprint: None,
         })
     });
     drop(rt);
@@ -144,10 +177,6 @@ fn inner_main() -> anyhow::Result<()> {
     chassis.set_pair_base_url(p.pair_endpoint.clone());
 
     if mba.active {
-        // Auto-pin the server key on first TOFU so all future connections are verified.
-        if let Some(ref server_fp) = mba.tofu_server_fingerprint {
-            mba_client::pin_server_key(server_fp);
-        }
         chassis.set_mba_active();
     } else {
         // MBA inactive — start zero-jargon pairing flow
@@ -184,7 +213,6 @@ fn inner_main() -> anyhow::Result<()> {
         let port = p.totebox_ssh_port;
         let username = p.username.clone();
         let key_path = p.ssh_key_path.clone();
-        let known_host_key = p.totebox_known_host_key.clone();
         std::thread::spawn(move || {
             let mut delay = std::time::Duration::from_secs(2);
             let max_delay = std::time::Duration::from_secs(60);
@@ -197,20 +225,13 @@ fn inner_main() -> anyhow::Result<()> {
                         rt.block_on(async {
                             tokio::time::timeout(
                                 std::time::Duration::from_secs(5),
-                                mba_client::connect_mba(
-                                    &host,
-                                    port,
-                                    &username,
-                                    &key_path,
-                                    &known_host_key,
-                                ),
+                                mba_client::connect_mba(&host, port, &username, &key_path),
                             )
                             .await
                             .unwrap_or_else(|_| {
                                 mba_client::MbaResult {
                                     active: false,
                                     fingerprint: "(timeout)".into(),
-                                    tofu_server_fingerprint: None,
                                 }
                             })
                         })
@@ -226,51 +247,29 @@ fn inner_main() -> anyhow::Result<()> {
         chassis.set_mba_reconnect_rx(reconnect_rx);
     }
 
-    // mTLS Phase A: when tls_endpoint is configured, route all HTTP calls through
-    // the service-ingress HTTPS endpoint instead of the SSH-tunnel localhost ports.
-    let (effective_proof, effective_content) = if !p.tls_endpoint.is_empty() {
-        (p.tls_endpoint.clone(), p.tls_endpoint.clone())
-    } else {
-        (p.proof_endpoint.clone(), p.content_endpoint.clone())
-    };
-    let tls_cert_pem: Option<Vec<u8>> = if !p.tls_cert_pem_path.is_empty() {
-        std::fs::read(&p.tls_cert_pem_path).ok()
-    } else {
-        None
-    };
-
     chassis.register(Box::new(PeopleCartridge::new_for(&p.people_endpoint)));
     chassis.register(Box::new(EmailCartridge::new_for(
         &p.email_endpoint,
         p.plain_mode,
     )));
-    let content_session = app_console_keys::SessionState::load();
     chassis.register(Box::new(ContentCartridge::new_for(
         &p.username,
         &p.tenant,
-        &effective_proof,
+        &p.proof_endpoint,
         &p.slm_endpoint,
         &p.drafts_outbound_path,
-        &effective_content,
-        content_session.content_query,
-        content_session.content_selected,
-        content_session.content_scroll,
-        tls_cert_pem.clone(),
+        &p.content_endpoint,
+        None,
+        None,
+        None,
     )));
     chassis.register(Box::new(InputCartridge::new_for(
         &p.username,
         &p.tenant,
         &p.ingest_endpoint,
     )));
-    chassis.register(Box::new(SearchCartridge::new_for(
-        &effective_content,
-        tls_cert_pem,
-    )));
     chassis.register(Box::new(SlmCartridge::new(&p.slm_endpoint, p.plain_mode)));
-    chassis.register(Box::new(SystemCartridge::new(
-        &p.pair_endpoint,
-        &p.content_endpoint,
-    )));
+    chassis.register(Box::new(SystemCartridge::new(&p.pair_endpoint)));
     metrics::spawn_metrics_server(p.metrics_port);
     let _ = ctrlc::set_handler(|| {
         app_console_keys::request_shutdown();

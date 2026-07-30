@@ -1,7 +1,4 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: AGPL-3.0-or-later
-# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 # capture-edit.sh — git post-commit hook for apprenticeship corpus capture.
 #
 # Wires the `actual_diff` field of POST /v1/shadow (§7C step 3).

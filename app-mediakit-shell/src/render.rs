@@ -1,6 +1,3 @@
-// SPDX-License-Identifier: FSL-1.1-ALv2
-// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 //! Markdown rendering for `prose` sections.
 //!
 //! Prose is the one place a manifest carries free text rather than typed

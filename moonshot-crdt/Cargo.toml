@@ -1,20 +1,8 @@
-# SPDX-License-Identifier: FSL-1.1-ALv2
-# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
-
 [package]
-license = "FSL-1.1-ALv2"
 name = "moonshot-crdt"
 version = "0.1.0"
 edition = "2021"
 
 [workspace]
 
-[lib]
-crate-type = ["cdylib", "rlib"]
-
 [dependencies]
-wasm-bindgen = { version = "0.2", optional = true }
-
-[features]
-wasm = ["wasm-bindgen"]

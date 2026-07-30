@@ -1,7 +1,4 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: AGPL-3.0-or-later
-# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 # TARGET: Tier 1 Monorepo (iMac) -> Spoke Factory
 # PAYLOAD: service-vpn
 # VENDOR: PointSav Digital Systems

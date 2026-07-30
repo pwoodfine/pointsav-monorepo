@@ -1,109 +1,112 @@
-MULTI-LICENSE NOTICE
-Version 1.1 — Effective 2026-05-24
-Copyright © 2026 Woodfine Capital Projects Inc. All rights reserved.
+# Functional Source License, Version 1.1, Apache 2.0 Future License
 
-This repository contains code under multiple licenses. Each source file
-carries an SPDX-License-Identifier header identifying the license
-applicable to that file, per the REUSE Software Specification.
+Abbreviation: FSL-1.1-Apache-2.0
 
---------------------------------------------------------------------------------
-PER-DIRECTORY LICENSING
---------------------------------------------------------------------------------
+Copyright 2026 PointSav Digital Systems
 
-Licensing is assigned at the directory level. The authoritative mapping
-is maintained in:
+## Terms and Conditions
 
-  https://github.com/pointsav/factory-release-engineering/blob/main/mapping/repo-license-map.yaml
+### Licensor ("We")
 
-Directories under AGPL-3.0-or-later:
+The party offering the Software under these Terms and Conditions.
 
-  os-console/        — platform console
-  os-privategit/     — private git module
-  os-totebox/        — core platform
-  os-workplace/      — workplace module
-  service-*/         — all platform services
-  system-*/          — all platform systems
-  tool-*/            — all platform tools
-  moonshot-*/        — experimental and speculative work
-  app-console-*/     — applications extending os-console
-  app-privategit-*/  — applications extending os-privategit
-  app-totebox-*/     — applications extending os-totebox
-  app-workplace-*/   — applications extending os-workplace
-  foundry-nodeclass/ — workspace node classification library
-  scripts/           — workspace build and automation scripts
-  slm/               — language model module configuration
-  docs/              — internal technical documentation
+### The Software
 
-Directories under FSL-1.1-ALv2 (Functional Source License 1.1 with
-Apache-2.0 future license):
+The "Software" is each version of the software that we make available under
+these Terms and Conditions, as indicated by our inclusion of these Terms and
+Conditions with the Software.
 
-  os-infrastructure/   — infrastructure module
-  os-interface/        — interface module (renames to os-orchestration)
-  os-mediakit/         — media kit module
-  os-network-admin/    — network administration module
-  app-mediakit-*/      — applications extending os-mediakit
-  app-network-*/       — applications extending os-network-admin
-  templates/           — HTML/CSS shell templates for app-mediakit surfaces
+### License Grant
 
-Directories carrying upstream third-party licenses:
+Subject to your compliance with this License Grant and the Patents,
+Redistribution and Trademark clauses below, we hereby grant you the right to
+use, copy, modify, create derivative works, publish, and distribute the
+Software for any Permitted Purpose identified below.
 
-  vendor-virtio/     — virtio driver stubs; see vendor-virtio/README.md for SPDX
-  vendor-wireguard/  — WireGuard tooling; see vendor-wireguard/README.md for SPDX
+### Permitted Purpose
 
-The full AGPL-3.0-or-later text is available at:
-  https://github.com/pointsav/factory-release-engineering/blob/main/licenses/AGPL-3.0.txt
+A Permitted Purpose is any purpose other than a Competing Use. A Competing
+Use means making the Software available to others in a commercial product or
+service that:
 
-The full FSL-1.1-ALv2 text is available at:
-  https://github.com/pointsav/factory-release-engineering/blob/main/licenses/FSL-1.1-Apache-2.0.txt
+1. substitutes for the Software;
 
---------------------------------------------------------------------------------
-LOCAL-ONLY DIRECTORIES (not tracked in this repository)
---------------------------------------------------------------------------------
+2. substitutes for any other product or service we offer using the Software
+   that exists as of the date we make the Software available; or
 
-The following directories exist on operator machines but are gitignored and
-never committed to this repository:
+3. offers the same or substantially similar functionality as the Software.
 
-  app-infrastructure-*/  — per-deployment infrastructure instances
-  vendor-azure-auth/     — Microsoft Azure authentication libraries
-  vendor-gpu-drivers/    — GPU driver packages
-  vendor-linux-systemd/  — systemd library bindings
-  vendor-microsoft-graph/— Microsoft Graph SDK
-  vendor-phi3-mini/      — Phi-3 Mini model weights
-  vendor-sel4-kernel/    — seL4 microkernel source
-  vendor-slm-engine/     — local language model engine
-  discovery-queue/       — operator-local transaction queue
+Permitted Purposes specifically include using the Software:
 
---------------------------------------------------------------------------------
-COMMERCIAL ALTERNATIVE
---------------------------------------------------------------------------------
+1. for your internal use and access;
 
-Customers who cannot accept the terms of AGPLv3 or who require use of
-FSL-licensed code before its Delayed Open Source Publication window
-expires may obtain a PointSav Commercial License. Contact
-corporate.secretary@woodfinegroup.com for details.
+2. for non-commercial education;
 
---------------------------------------------------------------------------------
-POLICIES AND GOVERNANCE
---------------------------------------------------------------------------------
+3. for non-commercial research; and
 
-Repository-wide policies apply regardless of per-directory licensing:
+4. in connection with professional services that you provide to a licensee
+   using the Software in accordance with these Terms and Conditions.
 
-  - CODE_OF_CONDUCT.md  — Contributor Covenant 2.1
-  - CONTRIBUTING.md     — contribution workflow and CLA requirements
-  - SECURITY.md         — vulnerability disclosure policy
-  - TRADEMARK.md        — trademark and trade-dress policy
+### Patents
 
-All of these are propagated from factory-release-engineering and should
-not be edited in this repository. Propose changes upstream.
+To the extent your use for a Permitted Purpose would necessarily infringe our
+patents, the license grant above includes a license under our patents. If you
+make a claim against any party that the Software infringes or contributes to
+the infringement of any patent, then your patent license to the Software ends
+immediately.
 
---------------------------------------------------------------------------------
-NO SINGLE-LICENSE WARRANTY
---------------------------------------------------------------------------------
+### Redistribution
 
-This notice describes the intended per-directory licensing. If an
-individual source file lacks an SPDX-License-Identifier header, or if
-the header is inconsistent with this notice, the conflict shall be
-resolved in favor of the source-file header when present, and in favor
-of this notice when the source-file header is absent. When both are
-absent, the file is unlicensed and may not be used, copied, modified,
-or distributed.
+The Terms and Conditions apply to all copies, modifications and derivatives
+of the Software.
+
+If you redistribute any copies, modifications or derivatives of the Software,
+you must include a copy of or a link to these Terms and Conditions and not
+remove any copyright notices provided in or with the Software.
+
+### Disclaimer
+
+THE SOFTWARE IS PROVIDED "AS IS" AND WITHOUT WARRANTIES OF ANY KIND,
+INCLUDING WITHOUT LIMITATION WARRANTIES OF FITNESS FOR A PARTICULAR PURPOSE,
+MERCHANTABILITY, TITLE OR NON-INFRINGEMENT.
+
+IN NO EVENT WILL WE HAVE ANY LIABILITY TO YOU ARISING OUT OF OR RELATED TO
+THE SOFTWARE, INCLUDING INDIRECT, SPECIAL, INCIDENTAL OR CONSEQUENTIAL
+DAMAGES, EVEN IF WE HAVE BEEN INFORMED OF THEIR POSSIBILITY IN ADVANCE.
+
+### Trademarks
+
+Except for displaying the License Details and identifying us as the origin of
+the Software, you have no right under these Terms and Conditions to use our
+trademarks, trade names, service marks or product names.
+
+## Grant of Future License
+
+We hereby irrevocably grant you an additional license to use the Software
+under the Apache License, Version 2.0 that is effective on the second
+anniversary of the date we make the Software available. On or after that
+date, you may use the Software under the Apache License, Version 2.0, in
+which case the following will apply:
+
+Licensor hereby grants you a license to the Software under the Apache
+License, Version 2.0, a copy of which is available at
+https://www.apache.org/licenses/LICENSE-2.0.
+
+---
+
+## Pricing
+
+The Software is offered for a one-time license fee of $19.00 CAD. This
+license is perpetual for the purchaser; no recurring subscription is
+required.
+
+Tier differentiation (D2/D3 direct-hold, Enterprise, Reporting Issuer)
+applies to documentation, onboarding, and services depth, not to the
+software, license, or price. Audit-firm partnership, implementation, custom
+adapters, and training are available as separate professional services.
+
+---
+
+## SPDX
+
+SPDX-License-Identifier: FSL-1.1-Apache-2.0

@@ -1,7 +1,4 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: AGPL-3.0-or-later
-# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 # export-sft.sh — Export apprenticeship queue entries as SFT training pairs.
 #
 # Companion to export-dpo.sh. Where export-dpo.sh needs operator-signed

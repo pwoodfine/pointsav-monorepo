@@ -1,0 +1,22 @@
+# /etc/local-knowledge/corporate.toml
+# Knowledge platform — Woodfine Corporate instance
+# Template: copy to /etc/local-knowledge/corporate.toml on target host
+# Operator: update paths to match actual content-repo checkout location
+#
+# Blueprint set: TOPIC only (no GUIDEs on projects or corporate instances)
+# Brand: woodfine (loads tokens-woodfine.css after tokens.css)
+# Port: 9095 (local; nginx reverse-proxies to corporate.woodfinegroup.com)
+
+[site]
+title     = "Woodfine Corporate"
+brand     = "woodfine"
+bind      = "127.0.0.1:9095"
+state_dir = "/var/lib/local-knowledge/state-corporate"
+
+[[mount]]
+path          = "/srv/foundry/clones/project-editorial/media-knowledge-corporate"
+role          = "primary"
+blueprint_set = ["TOPIC"]
+
+[citations]
+path = "/srv/foundry/citations.yaml"

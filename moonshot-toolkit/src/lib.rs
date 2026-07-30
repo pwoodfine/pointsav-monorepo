@@ -1,6 +1,3 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 //! moonshot-toolkit — Rust-only build orchestrator for Foundry's
 //! seL4 unikernel images.
 //!

@@ -1,7 +1,4 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: AGPL-3.0-or-later
-# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 # Yo-Yo #1 nightly pipeline — two mandatory phases.
 #
 # Phase 1 (DataGraph, 2h): vLLM UP → jennifer-datagraph-rebuild.sh → REST API extraction

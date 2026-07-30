@@ -1,6 +1,3 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 //! BuildPlan — deterministic content-addressed manifest derived
 //! from a [`SystemSpec`].
 //!
@@ -216,7 +213,6 @@ mod tests {
             channels: vec![],
             memory_regions: vec![],
             irq_delivery: vec![],
-            build: Default::default(),
         }
     }
 
@@ -241,7 +237,6 @@ mod tests {
             channels: vec![],
             memory_regions: vec![],
             irq_delivery: vec![],
-            build: Default::default(),
         }
     }
 
@@ -257,7 +252,6 @@ mod tests {
             channels: vec![],
             memory_regions: vec![],
             irq_delivery: vec![],
-            build: Default::default(),
         }
     }
 
@@ -268,7 +262,6 @@ mod tests {
             channels: vec![],
             memory_regions: vec![],
             irq_delivery: vec![],
-            build: Default::default(),
         };
         let r = BuildPlan::from_spec(&spec);
         assert_eq!(r, Err(PlanGenerationError::EmptySpec));

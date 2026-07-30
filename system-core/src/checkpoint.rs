@@ -1,6 +1,3 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 //! C2SP signed-note checkpoint primitive — the apex-cosigning substrate.
 //!
 //! Per `~/Foundry/conventions/system-substrate-doctrine.md` §4: the

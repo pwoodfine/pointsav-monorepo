@@ -1,37 +1,34 @@
 {
-  "package": {
-    "productName": "Workplace Workbench",
-    "version": "0.1.0"
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "macOS": {
+      "minimumSystemVersion": "10.15"
+    },
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "copyright": "© 2026 PointSav Digital Systems",
+    "category": "Developer Tools",
+    "shortDescription": "PointSav privategit development workbench",
+    "longDescription": "Native desktop shell for the PointSav privategit development workbench. Loads the locally-running HTTP server in a native macOS window."
   },
-  "tauri": {
-    "allowlist": {
-      "all": false,
-      "window": {
-        "all": true
-      }
-    },
-    "bundle": {
-      "active": true,
-      "targets": "all",
-      "identifier": "systems.pointsav.workplace-workbench",
-      "icon": [
-        "icons/32x32.png",
-        "icons/128x128.png",
-        "icons/128x128@2x.png",
-        "icons/icon.icns",
-        "icons/icon.ico"
-      ],
-      "copyright": "© 2026 PointSav Digital Systems",
-      "category": "Developer Tools",
-      "shortDescription": "PointSav privategit development workbench",
-      "longDescription": "Native desktop shell for the PointSav privategit development workbench. Loads the locally-running HTTP server in a native macOS window.",
-      "macOS": {
-        "minimumSystemVersion": "10.13"
-      }
-    },
-    "security": {
-      "csp": "default-src 'self'; connect-src http://127.0.0.1:*; script-src 'self' 'unsafe-inline' http://127.0.0.1:*; style-src 'self' 'unsafe-inline' http://127.0.0.1:*; img-src 'self' data: http://127.0.0.1:*; font-src 'self' data: http://127.0.0.1:*"
-    },
+  "build": {
+    "beforeDevCommand": "",
+    "beforeBuildCommand": "",
+    "frontendDist": "../src"
+  },
+  "productName": "Workplace Workbench",
+  "mainBinaryName": "Workplace Workbench",
+  "version": "0.1.0",
+  "identifier": "systems.pointsav.workplace-workbench",
+  "plugins": {},
+  "app": {
+    "withGlobalTauri": true,
     "windows": [
       {
         "label": "main",
@@ -45,24 +42,12 @@
         "fullscreen": false,
         "center": true,
         "decorations": true,
-        "transparent": false
+        "transparent": false,
+        "useHttpsScheme": true
       }
     ],
-    "updater": {
-      "active": false
+    "security": {
+      "csp": "default-src 'self'; connect-src ipc: http://ipc.localhost http://127.0.0.1:*; script-src 'self' 'unsafe-inline' http://127.0.0.1:*; style-src 'self' 'unsafe-inline' http://127.0.0.1:*; img-src 'self' data: http://127.0.0.1:*; font-src 'self' data: http://127.0.0.1:*"
     }
-  },
-  "build": {
-    "beforeDevCommand": "",
-    "beforeBuildCommand": "",
-    "devPath": "../src",
-    "distDir": "../src",
-    "withGlobalTauri": true
-  },
-  "_notes": {
-    "tauri-version": "v1.x — required for macOS 10.13 High Sierra. Upgrade to v2 when dev machine targets macOS 10.15+.",
-    "url-loading": "index.html reads the configured port via __TAURI__.invoke('get_workbench_url') and navigates to it. The workbench HTTP server (app-privategit-workbench) must be running independently.",
-    "csp": "Allows all localhost ports. Narrow to the specific port when the workbench port is fixed.",
-    "icons": "Copy icons from app-workplace-memo/src-tauri/icons/ before first macOS build."
   }
 }

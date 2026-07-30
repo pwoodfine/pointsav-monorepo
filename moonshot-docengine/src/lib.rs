@@ -1,6 +1,3 @@
-// SPDX-License-Identifier: FSL-1.1-ALv2
-// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 //! moonshot-docengine — source-anchored document model.
 //!
 //! Replaces ProseMirror / Lexical / TipTap and the hand-rolled JavaScript markdown
@@ -663,6 +660,3 @@ mod tests {
         }
     }
 }
-
-#[cfg(feature = "wasm")]
-pub mod wasm;

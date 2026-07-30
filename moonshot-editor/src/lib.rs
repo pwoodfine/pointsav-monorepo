@@ -1,7 +1,3 @@
-// SPDX-License-Identifier: FSL-1.1-ALv2
-// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
-
 //! moonshot-editor — file-tree virtualization core.
 //!
 //! Replaces react-arborist / react-window (tree virtualization) and the current
@@ -335,6 +331,3 @@ mod tests {
         assert_eq!(top.start, 0);
     }
 }
-
-#[cfg(feature = "wasm")]
-pub mod wasm;

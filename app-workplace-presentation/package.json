@@ -1,0 +1,22 @@
+{
+  "name": "workplace-presentation",
+  "version": "0.1.0",
+  "description": "Sovereign offline presentation tool — PointSav Digital Systems",
+  "author": "PointSav Digital Systems",
+  "licence": "EUPL-1.2",
+  "private": true,
+  "scripts": {
+    "tauri": "tauri",
+    "dev": "tauri dev",
+    "build": "tauri build"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@tauri-apps/api": "1.6.0",
+    "@tauri-apps/cli": "1.6.3"
+  },
+  "_notes": {
+    "tauri-version": "Tauri v1.7.x is used for macOS 10.13 High Sierra compatibility. Tauri v2 requires macOS 10.15+. When the development machine is upgraded, bump @tauri-apps/cli and @tauri-apps/api to 2.x and update src-tauri/Cargo.toml accordingly.",
+    "runtime-api-access": "The frontend (src/) does not import '@tauri-apps/api' at runtime — it calls the window.__TAURI__ global exposed by tauri.conf.json's build.withGlobalTauri, since there is no bundler in this project (distDir serves src/ directly). @tauri-apps/api is kept as a devDependency for editor typing/IntelliSense and to match the versions already pinned in package-lock.json."
+  }
+}

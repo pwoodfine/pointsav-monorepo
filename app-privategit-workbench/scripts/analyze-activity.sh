@@ -1,7 +1,4 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: AGPL-3.0-or-later
-# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 # Print recent workbench activity logs for Claude to analyze.
 # Usage: ./analyze-activity.sh [N_files]   default: last 3 log files
 LOG_DIR="/srv/foundry/infrastructure/local-workbench/logs"

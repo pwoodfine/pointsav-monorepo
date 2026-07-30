@@ -1,0 +1,16 @@
+[package]
+name = "sovereign-splinter"
+version = "3.0.0"
+edition = "2021"
+authors = ["PointSav Digital Systems"]
+description = "Leapfrog 2030 Analog Shatter Protocol. Eradicates legacy wrappers."
+
+[workspace]
+
+[dependencies]
+mailparse = "0.14"
+uuid = { version = "1.4", features = ["v4", "v5"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+chrono = "0.4"
+html2text = "0.6"

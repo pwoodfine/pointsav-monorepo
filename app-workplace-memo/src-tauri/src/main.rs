@@ -1,6 +1,3 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 // Workplace*Memo — Sovereign Document Editor
 // Copyright © 2026 PointSav Digital Systems
 // Licensed under the European Union Public Licence v1.2 (EUPL-1.2)
@@ -8,8 +5,8 @@
 // Prevents a console window from appearing on Windows in release builds.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::path::PathBuf;
-use tauri::{api::dialog, Manager};
+use tauri::Manager;
+use tauri_plugin_dialog::DialogExt;
 
 // ─── IPC Commands ────────────────────────────────────────────────────────────
 //
@@ -20,15 +17,21 @@ use tauri::{api::dialog, Manager};
 /// Open a native OS file picker and return the contents of the selected
 /// .html document file as a UTF-8 string.
 #[tauri::command]
-async fn open_file(window: tauri::Window) -> Result<Option<String>, String> {
-    let file_path = dialog::blocking::FileDialogBuilder::new()
+async fn open_file(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    // v2: dialog moved to tauri-plugin-dialog (DialogExt). The async command runs
+    // off the main thread, so blocking_pick_file() is safe here (the plugin
+    // re-dispatches UI work to the main thread internally).
+    let file_path = app
+        .dialog()
+        .file()
         .set_title("Open Document")
         .add_filter("Workplace Memo Documents", &["html"])
         .add_filter("All Files", &["*"])
-        .pick_file();
+        .blocking_pick_file();
 
     match file_path {
-        Some(path) => {
+        Some(fp) => {
+            let path = fp.into_path().map_err(|e| e.to_string())?;
             let content = std::fs::read_to_string(&path)
                 .map_err(|e| format!("Failed to read file: {}", e))?;
             Ok(Some(content))
@@ -40,21 +43,24 @@ async fn open_file(window: tauri::Window) -> Result<Option<String>, String> {
 /// Open a native OS save picker and write the provided HTML content to disk.
 /// Returns the path where the file was saved, or None if the user cancelled.
 #[tauri::command]
-async fn save_file(content: String, suggested_name: Option<String>) -> Result<Option<String>, String> {
-    let mut builder = dialog::blocking::FileDialogBuilder::new()
+async fn save_file(app: tauri::AppHandle, content: String, suggested_name: Option<String>) -> Result<Option<String>, String> {
+    let mut builder = app
+        .dialog()
+        .file()
         .set_title("Save Document")
         .add_filter("Workplace Memo Documents", &["html"]);
 
     if let Some(name) = suggested_name {
-        builder = builder.set_file_name(&name);
+        builder = builder.set_file_name(name);
     } else {
         builder = builder.set_file_name("document.html");
     }
 
-    let save_path = builder.save_file();
+    let save_path = builder.blocking_save_file();
 
     match save_path {
-        Some(mut path) => {
+        Some(fp) => {
+            let mut path = fp.into_path().map_err(|e| e.to_string())?;
             // Ensure the file has a .html extension
             if path.extension().is_none() || path.extension().unwrap() != "html" {
                 path.set_extension("html");
@@ -82,10 +88,10 @@ async fn save_file(content: String, suggested_name: Option<String>) -> Result<Op
 #[tauri::command]
 fn get_app_data_dir(app_handle: tauri::AppHandle) -> Result<String, String> {
     app_handle
-        .path_resolver()
+        .path()
         .app_data_dir()
         .map(|p| p.to_string_lossy().to_string())
-        .ok_or_else(|| "Could not resolve app data directory".to_string())
+        .map_err(|_| "Could not resolve app data directory".to_string())
 }
 
 /// Read a font file from the application data directory and return it as a
@@ -114,9 +120,9 @@ async fn read_font_file(
     }
 
     let app_data_dir = app_handle
-        .path_resolver()
+        .path()
         .app_data_dir()
-        .ok_or_else(|| "Could not resolve app data directory".to_string())?;
+        .map_err(|_| "Could not resolve app data directory".to_string())?;
 
     let fonts_dir = app_data_dir.join("fonts");
     let font_path = fonts_dir.join(&filename);
@@ -141,6 +147,7 @@ async fn read_font_file(
 
 fn main() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             open_file,
             save_file,
@@ -149,7 +156,8 @@ fn main() {
         ])
         .setup(|app| {
             // Create the fonts directory in app data on first run
-            if let Some(app_data_dir) = app.path_resolver().app_data_dir() {
+            // v2: path_resolver() -> path(), and app_data_dir() returns Result.
+            if let Ok(app_data_dir) = app.path().app_data_dir() {
                 let fonts_dir = app_data_dir.join("fonts");
                 if !fonts_dir.exists() {
                     std::fs::create_dir_all(&fonts_dir).ok();

@@ -1,9 +1,5 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 pub mod bundle;
 pub mod component;
-pub mod marketing;
 pub mod research;
 pub mod token;
 
@@ -15,7 +11,6 @@ pub enum SchemaType {
     Token,
     Research,
     Bundle,
-    Marketing,
     Unknown,
 }
 
@@ -31,7 +26,6 @@ pub fn detect(frontmatter: &HashMap<String, String>) -> SchemaType {
         Some(s) if s.contains("token") => SchemaType::Token,
         Some(s) if s.contains("research") => SchemaType::Research,
         Some(s) if s.contains("bundle") => SchemaType::Bundle,
-        Some(s) if s.contains("marketing") => SchemaType::Marketing,
         _ => SchemaType::Unknown,
     }
 }
@@ -48,7 +42,6 @@ pub fn render(schema: SchemaType, frontmatter: &HashMap<String, String>, body: &
         SchemaType::Token => token::render(fm, body),
         SchemaType::Research => research::render(fm, body),
         SchemaType::Bundle => bundle::render(fm, body),
-        SchemaType::Marketing => marketing::render(fm, body),
         SchemaType::Unknown => crate::render::render_markdown(body),
     }
 }

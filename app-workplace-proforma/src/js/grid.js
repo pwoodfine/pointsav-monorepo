@@ -1,6 +1,3 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 /**
  * Workplace*Proforma — grid.js
  * Grid rendering, cell selection, inline editing.
@@ -133,18 +130,28 @@ window.WorkplaceGrid = (function () {
     const rows = sheet.rows    || 50;
 
     // Header row: corner + column letters A, B, C, ...
+    // ARIA grid pattern: table has role="grid" (index.html); each <tr> gets
+    // role="row", and header cells get role="columnheader"/"rowheader" so
+    // assistive tech announces this as a real spreadsheet grid rather than a
+    // generic table. Additive only — no change to layout, selection, or
+    // editing behaviour.
     const thead = document.createElement('thead');
     const headRow = document.createElement('tr');
+    headRow.setAttribute('role', 'row');
 
     const corner = document.createElement('th');
     corner.className = 'row-header';
     corner.textContent = '';
+    corner.setAttribute('role', 'columnheader');
+    corner.setAttribute('scope', 'col');
     headRow.appendChild(corner);
 
     for (let c = 0; c < cols; c++) {
       const h = document.createElement('th');
       h.className = 'col-header';
       h.textContent = WorkplaceEngine.colIndexToLetter(c);
+      h.setAttribute('role', 'columnheader');
+      h.setAttribute('scope', 'col');
       headRow.appendChild(h);
     }
     thead.appendChild(headRow);
@@ -154,15 +161,20 @@ window.WorkplaceGrid = (function () {
     const tbody = document.createElement('tbody');
     for (let r = 0; r < rows; r++) {
       const tr = document.createElement('tr');
+      tr.setAttribute('role', 'row');
 
       const rn = document.createElement('td');
       rn.className = 'row-num';
       rn.textContent = r + 1;
+      rn.setAttribute('role', 'rowheader');
+      rn.setAttribute('scope', 'row');
       tr.appendChild(rn);
 
       for (let c = 0; c < cols; c++) {
         const td = document.createElement('td');
         td.className = 'cell';
+        td.setAttribute('role', 'gridcell');
+        td.setAttribute('aria-selected', 'false');
         const ref = WorkplaceEngine.coord(c, r);
         td.dataset.coord = ref;
 
@@ -200,11 +212,15 @@ window.WorkplaceGrid = (function () {
   }
 
   function refreshSelection() {
-    grid.querySelectorAll('td.cell.selected').forEach(td => td.classList.remove('selected'));
+    grid.querySelectorAll('td.cell.selected').forEach(td => {
+      td.classList.remove('selected');
+      td.setAttribute('aria-selected', 'false');
+    });
     const ref = WorkplaceEngine.coord(selected.col, selected.row);
     const td = grid.querySelector(`td[data-coord="${ref}"]`);
     if (td) {
       td.classList.add('selected');
+      td.setAttribute('aria-selected', 'true');
       // Scroll the selected cell into view if it's outside the viewport
       td.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     }
@@ -274,6 +290,11 @@ window.WorkplaceGrid = (function () {
   document.addEventListener('keydown', (e) => {
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
     if (document.querySelector('.dropdown:not(.hidden)')) return;
+    // Keyboard-shortcut help overlay (app.js) is modal — suppress grid
+    // navigation/editing while it's open so arrow keys/typing don't silently
+    // move the selection or start an edit underneath it.
+    if (document.getElementById('shortcut-overlay') &&
+        !document.getElementById('shortcut-overlay').classList.contains('hidden')) return;
 
     const mod = e.metaKey || e.ctrlKey;
     if (mod) return;

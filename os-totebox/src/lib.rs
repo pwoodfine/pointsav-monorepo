@@ -1,7 +1,3 @@
-// SPDX-License-Identifier: FSL-1.1-ALv2
-// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
-
 /// os-totebox — NetBSD 10.1 compat-bottom image builder metadata.
 ///
 /// The guest VM image for `vm-intelligence` (8 GiB RAM, OLMo 7B, Doorman,

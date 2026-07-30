@@ -13,11 +13,6 @@
 pub mod drain;
 pub mod http;
 pub mod idle_monitor;
-/// Three-priority in-flight request scheduler (P0/P1/P2 slot reservation).
-/// P2 (training) is admitted only when ALL inference slots are free, preventing
-/// training requests from competing with extraction. Wire into `AppState` when
-/// GRPO training requests begin routing through the Doorman.
-pub mod scheduler;
 /// Brief Queue Substrate (apprenticeship-substrate.md §7C).
 ///
 /// File-backed durable queue that decouples brief acceptance from
@@ -270,7 +265,6 @@ pub mod test_helpers {
             doctrine_version: "0.0.1".to_string(),
             tenant: "test-tenant".to_string(),
             tier_a_first: false,
-            yoyo_dispatch_label: None,
         };
 
         let brief_cache = Arc::new(BriefCache::default());

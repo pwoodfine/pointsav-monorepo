@@ -1,7 +1,4 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: AGPL-3.0-or-later
-# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 """
 test_tier_ab_deep.py — Deep Tier A / Tier B extraction quality test.
 
