@@ -1,0 +1,13 @@
+[package]
+name = "spatial-crm"
+version = "1.0.0"
+edition = "2021"
+authors = ["PointSav Digital Systems"]
+description = "Deterministic spatial and identity extraction engine."
+
+[workspace]
+
+[dependencies]
+regex = "1.10"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"

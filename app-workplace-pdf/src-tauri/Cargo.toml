@@ -1,0 +1,48 @@
+# Exclude this crate from the parent monorepo workspace.
+# Each app-workplace-* is an independent Tauri application with its own
+# dependency tree, even though it lives inside the monorepo.
+[workspace]
+
+[package]
+name = "workplace-pdf"
+version = "0.1.0"
+description = "Sovereign desktop PDF viewer and print tool — PointSav Digital Systems"
+authors = ["PointSav Digital Systems"]
+license = "Apache-2.0"
+repository = ""
+edition = "2021"
+rust-version = "1.70"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+# Tauri v2 (migrated 2026-07-14). v1.x is unbuildable on this host — Ubuntu 24.04
+# dropped webkit2gtk-4.0; v2 uses the 4.1/soup3 stack. macOS floor: 10.15+.
+# Dialog is a Rust-side file picker via tauri-plugin-dialog (no JS capability).
+# window-print is GONE in v2 — the frontend now uses DOM window.print() (see
+# src/main.js printDocument + CLAUDE.md print note; needs macOS verification).
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# PDF engine: idiomatic Rust binding to Google PDFium (Apache 2.0) via FFI.
+# Development binds dynamically at runtime — libpdfium.so/.dylib is searched in
+# $PDFIUM_DYNAMIC_LIB_PATH, the executable directory, ../Frameworks (macOS
+# bundle), then ./pdfium/ (see src/main.rs init_pdfium). For the shipped macOS
+# build, CLAUDE.md requires static linking: enable the "static" feature and link
+# libpdfium.a instead. NOTE (0.9.x): the library binding is a process-wide
+# OnceCell — bind exactly once; see the pdf-worker thread in src/main.rs.
+pdfium-render = "0.9"
+
+# PNG encoding of rendered page bitmaps. Must stay on the same major version as
+# pdfium-render's default `image_latest` feature (image 0.25) so that
+# PdfBitmap::as_image()'s DynamicImage type matches.
+image = "0.25"
+base64 = "0.22"
+
+[features]
+# This feature is used for production builds or when `devPath` points to the filesystem
+# DO NOT REMOVE!!
+custom-protocol = ["tauri/custom-protocol"]

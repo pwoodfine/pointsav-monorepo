@@ -1,6 +1,3 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 //! foundry-nodeclass — runtime node-class detection for the Totebox fleet.
 //!
 //! Classifies the host as one of three node classes and exposes the capability

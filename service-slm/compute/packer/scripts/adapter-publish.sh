@@ -1,7 +1,4 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: AGPL-3.0-or-later
-# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 # Yo-Yo adapter-publish trigger.
 #
 # Invoked by lora-training.service via `systemctl start adapter-publish.service`

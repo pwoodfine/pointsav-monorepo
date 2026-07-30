@@ -1,35 +1,37 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 // Workplace*Workbench — privategit development workbench shell
 // Copyright © 2026 PointSav Digital Systems
 // Licensed under the Apache License, Version 2.0
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::fs;
 use std::path::PathBuf;
 use tauri::Manager;
 
 const DEFAULT_PORT: u16 = 3000;
 const CONFIG_FILENAME: &str = "workbench-config.json";
 
+/// On-disk shape of `workbench-config.json`. Read/written via the shared
+/// `workplace-shell-chrome` crate — see that crate's README for why this
+/// moved out of a hand-rolled `fs`/`serde_json` pair (2026-07-14 retrofit,
+/// closing the duplication documented in
+/// `DESIGN-RESEARCH-workplace-shell-chrome.draft.md`).
+#[derive(serde::Serialize, serde::Deserialize)]
+struct WorkbenchConfig {
+    port: u16,
+}
+
 fn load_port(app_data_dir: &PathBuf) -> u16 {
-    let config_path = app_data_dir.join(CONFIG_FILENAME);
-    let Ok(content) = fs::read_to_string(&config_path) else {
-        return DEFAULT_PORT;
-    };
-    let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) else {
-        return DEFAULT_PORT;
-    };
-    json["port"].as_u64().unwrap_or(DEFAULT_PORT as u64) as u16
+    workplace_shell_chrome::load_config::<WorkbenchConfig>(app_data_dir, CONFIG_FILENAME)
+        .map(|cfg| cfg.port)
+        .unwrap_or(DEFAULT_PORT)
 }
 
 #[tauri::command]
 fn get_workbench_url(app_handle: tauri::AppHandle) -> String {
     let port = app_handle
-        .path_resolver()
+        .path()
         .app_data_dir()
+        .ok()
         .map(|dir| load_port(&dir))
         .unwrap_or(DEFAULT_PORT);
     format!("http://127.0.0.1:{}", port)
@@ -38,21 +40,36 @@ fn get_workbench_url(app_handle: tauri::AppHandle) -> String {
 #[tauri::command]
 fn set_workbench_port(app_handle: tauri::AppHandle, port: u16) -> Result<(), String> {
     let dir = app_handle
-        .path_resolver()
+        .path()
         .app_data_dir()
+        .ok()
         .ok_or("Cannot resolve app data directory")?;
-    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-    let config = serde_json::json!({ "port": port });
-    fs::write(dir.join(CONFIG_FILENAME), config.to_string()).map_err(|e| e.to_string())?;
-    Ok(())
+    workplace_shell_chrome::save_config(&dir, CONFIG_FILENAME, &WorkbenchConfig { port })
+}
+
+/// True once `workbench-config.json` exists in the app data dir — used by the
+/// frontend to decide whether to show the first-run port-configuration dialog.
+#[tauri::command]
+fn has_workbench_config(app_handle: tauri::AppHandle) -> bool {
+    app_handle
+        .path()
+        .app_data_dir()
+        .ok()
+        .map(|dir| workplace_shell_chrome::has_config(&dir, CONFIG_FILENAME))
+        .unwrap_or(false)
 }
 
 fn main() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![get_workbench_url, set_workbench_port])
+        .invoke_handler(tauri::generate_handler![
+            get_workbench_url,
+            set_workbench_port,
+            has_workbench_config
+        ])
         .setup(|app| {
-            if let Some(dir) = app.path_resolver().app_data_dir() {
-                fs::create_dir_all(&dir).ok();
+            // v2: path_resolver() -> path(), and app_data_dir() returns Result, not Option.
+            if let Ok(dir) = app.path().app_data_dir() {
+                workplace_shell_chrome::ensure_app_data_dir(&dir).ok();
             }
             Ok(())
         })

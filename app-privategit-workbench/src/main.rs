@@ -1,6 +1,3 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 use anyhow::{anyhow, Context, Result};
 use axum::{
     body::Bytes,
@@ -17,26 +14,17 @@ use std::{
     collections::HashMap,
     convert::Infallible,
     fs,
-    io::{Cursor, Write},
+    io::Write,
     net::SocketAddr,
     path::{Path, PathBuf},
     process::{Command, Stdio},
-    sync::{mpsc, Arc, Mutex},
+    sync::{mpsc, Arc},
     thread,
     time::{Duration, UNIX_EPOCH},
 };
 use tokio::net::TcpListener;
 use tokio::sync::broadcast;
 use tokio_stream::{wrappers::BroadcastStream, StreamExt as _};
-use walkdir::WalkDir;
-
-mod mcp;
-mod schema_bim;
-mod schema_files;
-mod schema_gis;
-mod schema_presentation;
-mod schema_proforma;
-mod schema_schedule;
 
 const SPA_HTML: &str = include_str!("assets/index.html");
 
@@ -90,7 +78,6 @@ struct AppState {
     spa_html: Arc<String>,
     events_tx: broadcast::Sender<String>,
     log_dir: Option<PathBuf>,
-    pending_edits: mcp::PendingEdits,
 }
 
 // ---------------------------------------------------------------------------
@@ -221,19 +208,6 @@ struct FileResponse {
 }
 
 #[derive(Serialize)]
-struct DirEntry {
-    name: String,
-    is_dir: bool,
-    mtime: u64,
-    size: u64,
-}
-
-#[derive(Serialize)]
-struct DirResponse {
-    entries: Vec<DirEntry>,
-}
-
-#[derive(Serialize)]
 struct ErrorBody {
     error: String,
 }
@@ -266,30 +240,11 @@ fn log_activity(log_dir: &Option<PathBuf>, action: &str, path: &str, meta: serde
 }
 
 /// GET /file?path=<url_path>
-/// - Empty path  → {entries: [{name, is_dir:true}]} listing all configured roots
-/// - Directory   → {entries: [{name, is_dir}]} listing directory contents
-/// - File        → {content, mtime, writable}
 async fn get_file(
     State(state): State<AppState>,
     headers: HeaderMap,
     Query(q): Query<FileQuery>,
 ) -> Response {
-    // Empty path — return all configured roots as top-level directory entries.
-    if q.path.trim_matches('/').is_empty() {
-        let mut entries: Vec<DirEntry> = state
-            .roots
-            .iter()
-            .map(|r| DirEntry {
-                name: r.url_prefix.trim_end_matches('/').to_string(),
-                is_dir: true,
-                mtime: 0,
-                size: 0,
-            })
-            .collect();
-        entries.sort_by(|a, b| a.name.cmp(&b.name));
-        return Json(DirResponse { entries }).into_response();
-    }
-
     if headers.get("x-wb-source").and_then(|v| v.to_str().ok()) == Some("user") {
         let ext = q.path.rsplit('.').next().unwrap_or("").to_string();
         log_activity(
@@ -307,39 +262,8 @@ async fn get_file(
     if !fs_path.exists() {
         return err(StatusCode::NOT_FOUND, "file not found");
     }
-
-    // Directory — list contents.
-    if fs_path.is_dir() {
-        let rd = match fs::read_dir(&fs_path) {
-            Ok(r) => r,
-            Err(e) => return err(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()),
-        };
-        let mut entries: Vec<DirEntry> = rd
-            .filter_map(|de| {
-                let de = de.ok()?;
-                let name = de.file_name().to_string_lossy().to_string();
-                if name.starts_with('.') {
-                    return None;
-                }
-                let meta = de.metadata().ok()?;
-                let is_dir = meta.is_dir();
-                let mtime = meta
-                    .modified()
-                    .ok()
-                    .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
-                    .map(|d| d.as_secs())
-                    .unwrap_or(0);
-                let size = if is_dir { 0 } else { meta.len() };
-                Some(DirEntry {
-                    name,
-                    is_dir,
-                    mtime,
-                    size,
-                })
-            })
-            .collect();
-        entries.sort_by(|a, b| b.is_dir.cmp(&a.is_dir).then(a.name.cmp(&b.name)));
-        return Json(DirResponse { entries }).into_response();
+    if !fs_path.is_file() {
+        return err(StatusCode::BAD_REQUEST, "not a file");
     }
 
     let meta = match fs::metadata(&fs_path) {
@@ -1610,187 +1534,6 @@ pre {{ background: #f6f8fa; border: 1px solid #e1e4e8; border-radius: 6px;
 }
 
 // ---------------------------------------------------------------------------
-// GET /section — AST-aware block snap
-// ---------------------------------------------------------------------------
-
-#[derive(Deserialize)]
-struct SectionQuery {
-    path: String,
-    offset: u64,
-}
-
-/// GET /section?path=<url_path>&offset=<byte_offset>
-/// Returns the block boundaries that contain `offset` in the given text file.
-async fn get_section(State(state): State<AppState>, Query(q): Query<SectionQuery>) -> Response {
-    use moonshot_docengine::{Document, Span};
-
-    let (fs_path, _writable) = match resolve_path(&state.roots, &q.path) {
-        Ok(v) => v,
-        Err(e) => return err(StatusCode::BAD_REQUEST, e.to_string()),
-    };
-
-    if !fs_path.is_file() {
-        return err(StatusCode::NOT_FOUND, "file not found");
-    }
-
-    let src = match fs::read_to_string(&fs_path) {
-        Ok(s) => s,
-        Err(e) => return err(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()),
-    };
-
-    let offset = (q.offset as usize).min(src.len());
-    let doc = Document::parse(&src);
-    let sel = Span::new(offset, offset);
-    let snapped = doc.section_span(sel);
-    let content = src
-        .get(snapped.start..snapped.end)
-        .unwrap_or("")
-        .to_string();
-    let block_kind = doc
-        .block_at(snapped.start)
-        .and_then(|i| doc.blocks().get(i))
-        .map(|b| format!("{:?}", b.kind))
-        .unwrap_or_else(|| "Unknown".to_string());
-
-    Json(serde_json::json!({
-        "start": snapped.start,
-        "end": snapped.end,
-        "content": content,
-        "block_kind": block_kind,
-    }))
-    .into_response()
-}
-
-// ---------------------------------------------------------------------------
-// GET /download — recursive ZIP download of a directory
-// ---------------------------------------------------------------------------
-
-/// GET /download?path=<url_path>
-/// Zips the directory at the given path and returns it as a download.
-/// Read-only paths are allowed (ZIP is a read operation).
-async fn zip_download(State(state): State<AppState>, Query(q): Query<FileQuery>) -> Response {
-    if q.path.trim_matches('/').is_empty() {
-        return err(StatusCode::BAD_REQUEST, "path is required");
-    }
-    let (fs_path, _writable) = match resolve_path(&state.roots, &q.path) {
-        Ok(v) => v,
-        Err(e) => return err(StatusCode::BAD_REQUEST, e.to_string()),
-    };
-    if !fs_path.exists() {
-        return err(StatusCode::NOT_FOUND, "path not found");
-    }
-    if !fs_path.is_dir() {
-        return err(StatusCode::BAD_REQUEST, "path is not a directory");
-    }
-
-    let dir_name = fs_path
-        .file_name()
-        .and_then(|n| n.to_str())
-        .unwrap_or("download")
-        .to_string();
-
-    let result = tokio::task::spawn_blocking(move || -> Result<Vec<u8>> {
-        let buf = Cursor::new(Vec::new());
-        let mut zip = zip::ZipWriter::new(buf);
-        let options = zip::write::SimpleFileOptions::default()
-            .compression_method(zip::CompressionMethod::Deflated);
-
-        for entry in WalkDir::new(&fs_path).into_iter().filter_map(|e| e.ok()) {
-            let path = entry.path();
-            let rel = match path.strip_prefix(&fs_path) {
-                Ok(r) => r,
-                Err(_) => continue,
-            };
-            if rel == Path::new("") {
-                continue;
-            }
-            // Skip hidden files/dirs
-            if rel
-                .components()
-                .any(|c| c.as_os_str().to_str().unwrap_or("").starts_with('.'))
-            {
-                continue;
-            }
-
-            let zip_path = rel.to_string_lossy().to_string();
-            if path.is_dir() {
-                zip.add_directory(format!("{}/", zip_path), options)?;
-            } else {
-                zip.start_file(&zip_path, options)?;
-                let bytes = fs::read(path)?;
-                use std::io::Write as _;
-                zip.write_all(&bytes)?;
-            }
-        }
-
-        let result = zip.finish()?;
-        Ok(result.into_inner())
-    })
-    .await;
-
-    match result {
-        Ok(Ok(bytes)) => {
-            let cd = format!("attachment; filename=\"{}.zip\"", dir_name);
-            let mut headers = HeaderMap::new();
-            headers.insert("content-type", "application/zip".parse().unwrap());
-            headers.insert("content-disposition", cd.parse().unwrap());
-            (StatusCode::OK, headers, Bytes::from(bytes)).into_response()
-        }
-        Ok(Err(e)) => err(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()),
-        Err(e) => err(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("zip task panicked: {}", e),
-        ),
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Raw binary file serving (PDFs, images)
-// ---------------------------------------------------------------------------
-
-/// GET /raw?path=<url_path>
-/// Serves a file as raw bytes with inferred content-type. Used for binary
-/// files (PDFs, images) that the /file endpoint cannot serve as JSON text.
-async fn get_raw(State(state): State<AppState>, Query(q): Query<FileQuery>) -> Response {
-    let (fs_path, _writable) = match resolve_path(&state.roots, &q.path) {
-        Ok(v) => v,
-        Err(e) => return err(StatusCode::BAD_REQUEST, e.to_string()),
-    };
-    if !fs_path.exists() || fs_path.is_dir() {
-        return err(StatusCode::NOT_FOUND, "not found");
-    }
-    let ext = fs_path
-        .extension()
-        .and_then(|e| e.to_str())
-        .unwrap_or("")
-        .to_lowercase();
-    let content_type = match ext.as_str() {
-        "pdf" => "application/pdf",
-        "png" => "image/png",
-        "jpg" | "jpeg" => "image/jpeg",
-        "gif" => "image/gif",
-        "svg" => "image/svg+xml",
-        "webp" => "image/webp",
-        "html" => "text/html; charset=utf-8",
-        "md" => "text/markdown; charset=utf-8",
-        "json" | "geojson" => "application/json",
-        "js" => "text/javascript; charset=utf-8",
-        "css" => "text/css; charset=utf-8",
-        "rs" | "toml" | "yaml" | "yml" | "txt" | "sh" | "tjp" | "ifc" => {
-            "text/plain; charset=utf-8"
-        }
-        _ => "application/octet-stream",
-    };
-    let bytes = match tokio::fs::read(&fs_path).await {
-        Ok(b) => b,
-        Err(e) => return err(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()),
-    };
-    let mut headers = HeaderMap::new();
-    headers.insert("content-type", content_type.parse().unwrap());
-    (StatusCode::OK, headers, Bytes::from(bytes)).into_response()
-}
-
-// ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 
@@ -1888,7 +1631,6 @@ async fn main() -> Result<()> {
         spa_html: Arc::new(spa_html),
         events_tx,
         log_dir,
-        pending_edits: Arc::new(Mutex::new(HashMap::new())),
     };
 
     let app = Router::new()
@@ -1907,30 +1649,6 @@ async fn main() -> Result<()> {
         .route("/pdf", get(get_pdf))
         .route("/zip", get(get_zip))
         .route("/events", get(get_events))
-        .route("/mcp", post(mcp::mcp_handler))
-        .route("/section", get(get_section))
-        .route(
-            "/api/presentation/files",
-            get(schema_presentation::list_files),
-        )
-        .route("/api/presentation/render", get(schema_presentation::render))
-        .route("/api/schedule/files", get(schema_schedule::list_files))
-        .route(
-            "/api/schedule/syntax-hints",
-            get(schema_schedule::syntax_hints),
-        )
-        .route("/api/gis/files", get(schema_gis::list_files))
-        .route("/api/gis/feature-count", get(schema_gis::feature_count))
-        .route("/api/bim/files", get(schema_bim::list_files))
-        .route("/api/bim/parse", get(schema_bim::parse_file))
-        .route("/api/bim/instances", get(schema_bim::list_instances))
-        .route("/api/bim/create", post(schema_bim::create))
-        .route("/api/files", get(schema_files::list_files))
-        .route("/api/files/create", post(schema_files::create))
-        .route("/api/proforma/files", get(schema_proforma::list_files))
-        .route("/api/proforma/create", post(schema_proforma::create))
-        .route("/download", get(zip_download))
-        .route("/raw", get(get_raw))
         .with_state(state);
 
     let addr: SocketAddr = config.bind.parse().context("parsing bind address")?;

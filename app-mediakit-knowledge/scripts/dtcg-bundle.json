@@ -1,0 +1,329 @@
+{
+  "$schema": "https://schemas.designtokens.org/2025-10-01/draft.json",
+  "$description": "PointSav design system — knowledge-wiki baseline three-tier DTCG token bundle. Additive: no existing Carbon-derived primitive in primitive.json is replaced. Adds knowledge-wiki primitives, semantic layer (surface, text, interactive, border, knowledge.*), and component layer (home-*, article.*). Master co-sign (original): master-claude 2026-04-30T17:00Z — (A) namespace approved; (B) FLI-banner=neutral; (C) font.family.heading=system-stack. Master co-sign (F-conditions): master@claude-code 2026-05-07 — F-1: wiki.*→knowledge.*; F-2: freshness-ribbon tokens removed; F-3: system-stack fonts applied.",
+  "$version": "0.0.1",
+  "$cites": ["dtcg-w3c", "carbon-v10", "wikimedia-codex"],
+
+  "primitive": {
+    "$description": "Additive primitive tokens — not in primitive.json. Named after their value, not their use.",
+
+    "color": {
+      "$type": "color",
+      "brand": {
+        "blue": {
+          "50": { "$value": "#edf5ff", "$description": "Carbon blue-10 equivalent" },
+          "60": { "$value": "#0f62fe", "$description": "PointSav primary blue — Carbon interactive-01 equivalent" },
+          "70": { "$value": "#0043ce" },
+          "80": { "$value": "#002d9c" }
+        },
+        "teal": {
+          "50": { "$value": "#d9fbfb" },
+          "60": { "$value": "#009d9a", "$description": "PointSav direct-source / featured-pin accent" }
+        }
+      },
+      "link": {
+        "default": { "$value": "#3366cc", "$description": "Wikipedia/Codex encyclopedic-standard link blue (Codex --color-progressive: #36c)" },
+        "visited": { "$value": "#795cb2" },
+        "hover": { "$value": "#447ff5" },
+        "active": { "$value": "#0043ce" },
+        "redlink": { "$value": "#cc3333", "$description": "Wikipedia red-link convention — article not yet written" }
+      },
+      "cluster": {
+        "$description": "GIS cluster-grade colour ramp — 5-step single-hue blue ramp. Master co-sign: master@claude-code 2026-05-07T04:35Z. WCAG AA verified on white and OpenFreeMap liberty basemap.",
+        "degree1": { "$value": "#c8ddf7", "$description": "Degree-1 lone Primary — lightest; requires text label supplement (colour alone insufficient at this lightness)" },
+        "degree2": { "$value": "#7fb8f0", "$description": "Degree-2 cluster fill" },
+        "degree3": { "$value": "#3b90e8", "$description": "Degree-3 cluster fill" },
+        "degree4": { "$value": "#1661c2", "$description": "Degree-4 cluster fill" },
+        "degree5": { "$value": "#0a3070", "$description": "Degree-5 full cluster — deepest; visually dominant at national zoom" }
+      },
+      "status": {
+        "success": {
+          "base": { "$value": "#26823f" },
+          "bg": { "$value": "#e8f6ed" }
+        },
+        "warn": {
+          "base": { "$value": "#b45309" },
+          "bg": { "$value": "#fef3c7" }
+        },
+        "info": {
+          "base": { "$value": "#234ed8" },
+          "bg": { "$value": "#eef3ff" }
+        },
+        "error": {
+          "base": { "$value": "#b91c1c" },
+          "bg": { "$value": "#fee2e2" }
+        }
+      }
+    },
+    "font": {
+      "family": {
+        "$type": "fontFamily",
+        "body": { "$value": "Georgia, 'Times New Roman', Times, serif", "$description": "System-stack serif. Linux Libertine deferred to v0.5.0+ when self-hosted asset pipeline is mature. (F-3 system-stack discipline 2026-05-07)" },
+        "heading": { "$value": "Charter, 'Bitstream Charter', Georgia, serif", "$description": "System-stack serif for headings — no self-hosted variable font at this stage. (Master co-sign decision C 2026-04-30; F-3 2026-05-07)" },
+        "sans": { "$value": "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif", "$description": "System-stack sans-serif. IBM Plex Sans deferred to when self-hosted. (F-3 2026-05-07)" },
+        "mono": { "$value": "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace", "$description": "System-stack mono. IBM Plex Mono deferred to when self-hosted. (F-3 2026-05-07)" },
+        "kbd": { "$value": "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" },
+        "display": { "$value": "'Oswald', ui-sans-serif, system-ui, sans-serif", "$description": "Display / wordmark face — proto-platform-document jury winner 2026-05-25. Loaded via Google Fonts; fallback chain is system sans. Used for .brand__wordmark and hero headings." },
+        "platform-body": { "$value": "'Nunito Sans', ui-sans-serif, system-ui, sans-serif", "$description": "Platform UI body face — proto-platform-document jury winner 2026-05-25. Loaded via Google Fonts. Used for nav, utility row, sidebar, meta, and all chrome text." },
+        "platform-serif": { "$value": "'Roboto Slab', ui-serif, Georgia, serif", "$description": "Platform serif face — proto-platform-document jury winner 2026-05-25. Loaded via Google Fonts. Used for article prose headings (H2–H4) and blockquote attribution." }
+      },
+      "size": {
+        "$type": "dimension",
+        "1": { "$value": "0.6875rem", "$description": "11px — fine print, legal" },
+        "2": { "$value": "0.75rem", "$description": "12px — captions, footnote labels, badge glyphs" },
+        "3": { "$value": "0.875rem", "$description": "14px — footnote body, kbd, small" },
+        "4": { "$value": "1rem", "$description": "16px — body copy default" },
+        "5": { "$value": "1.125rem", "$description": "18px — reading-mode body (Codex: reading text-heavy articles)" },
+        "6": { "$value": "1.25rem", "$description": "20px — lead sentence / lede" },
+        "7": { "$value": "1.5rem", "$description": "24px — H4, sub-section" },
+        "8": { "$value": "1.75rem", "$description": "28px — H3" },
+        "9": { "$value": "2rem", "$description": "32px — H2" },
+        "10": { "$value": "2.25rem", "$description": "36px — H1 article title" },
+        "11": { "$value": "2.625rem" },
+        "12": { "$value": "3rem" },
+        "13": { "$value": "3.75rem" },
+        "14": { "$value": "4.25rem" }
+      },
+      "weight": {
+        "$type": "fontWeight",
+        "light": { "$value": 300 },
+        "regular": { "$value": 400 },
+        "semibold": { "$value": 600 },
+        "bold": { "$value": 700 }
+      }
+    },
+    "line": {
+      "height": {
+        "$type": "number",
+        "body": { "$value": 1.6, "$description": "Codex: 1.6× font size for reading paragraphs" },
+        "tight": { "$value": 1.2 },
+        "lede": { "$value": 1.45 },
+        "kbd": { "$value": 1.4 },
+        "caption": { "$value": 1.3 }
+      }
+    },
+    "space": {
+      "$type": "dimension",
+      "025": { "$value": "0.125rem", "$description": "2px — micro-spacing" },
+      "05": { "$value": "0.25rem", "$description": "4px" },
+      "1": { "$value": "0.5rem", "$description": "8px" },
+      "2": { "$value": "1rem", "$description": "16px" },
+      "4": { "$value": "2rem", "$description": "32px" },
+      "8": { "$value": "4rem", "$description": "64px" },
+      "16": { "$value": "8rem", "$description": "128px" },
+      "32": { "$value": "16rem", "$description": "256px" }
+    },
+    "radius": {
+      "$type": "dimension",
+      "none": { "$value": "0" },
+      "xs": { "$value": "2px", "$description": "encyclopedia register — minimal" },
+      "sm": { "$value": "4px" },
+      "md": { "$value": "8px" }
+    },
+    "motion": {
+      "duration": {
+        "$type": "duration",
+        "instant": { "$value": "0ms" },
+        "fast": { "$value": "75ms" },
+        "base": { "$value": "150ms" },
+        "slow": { "$value": "300ms" }
+      },
+      "easing": {
+        "$type": "cubicBezier",
+        "standard": { "$value": [0.2, 0, 0.38, 0.9] },
+        "accelerate": { "$value": [0.4, 0, 1, 1] },
+        "decelerate": { "$value": [0, 0, 0.38, 0.9] }
+      }
+    },
+    "density": {
+      "$type": "number",
+      "compact": { "$value": 0.75, "$description": "24px row grid (0.75 × 32px)" },
+      "comfortable": { "$value": 1, "$description": "32px row grid (baseline)" },
+      "spacious": { "$value": 1.5, "$description": "48px row grid (1.5 × 32px)" }
+    },
+
+    "color-dark": {
+      "$type": "color",
+      "$description": "Dark-mode primitive palette — proto-platform-document design winner (jury 2026-05-25). Mirrors --bg/--fg CSS vars defined in html[data-theme=dark] block in style.css.",
+      "paper-1": { "$value": "#111A2C", "$description": "Dark elevated surface (--bg-elevated in dark mode)" },
+      "paper-2": { "$value": "#0B1220", "$description": "Dark base background (--bg in dark mode)" },
+      "paper-3": { "$value": "#16213A", "$description": "Dark subtle surface (--bg-subtle in dark mode)" },
+      "paper-hover": { "$value": "#1C2A45", "$description": "Dark hover state (--bg-hover in dark mode)" },
+      "ink-1": { "$value": "#F3F6FA", "$description": "Dark primary text (--fg-1 in dark mode)" },
+      "ink-2": { "$value": "#C9D1DC", "$description": "Dark secondary text (--fg-2 in dark mode)" },
+      "ink-3": { "$value": "#94A3B8", "$description": "Dark tertiary text (--fg-3 in dark mode)" },
+      "ink-4": { "$value": "#64748B", "$description": "Dark muted text (--fg-4 in dark mode)" },
+      "rule": { "$value": "#1F2C44", "$description": "Dark border (--border in dark mode)" },
+      "rule-strong": { "$value": "#2E3E5C", "$description": "Dark strong border (--border-strong in dark mode)" },
+      "link": { "$value": "#7AAEEA", "$description": "Dark mode link colour (--link in dark mode)" }
+    },
+
+    "layout": {
+      "$type": "dimension",
+      "$description": "Three-row header geometry + content-width constraints — proto-platform-document system (jury winner 2026-05-25). These values are the source of truth; style.css :root vars are generated from this namespace.",
+      "sidebar-w": { "$value": "272px", "$description": "Article sidebar (TOC rail) width" },
+      "toc-w": { "$value": "248px", "$description": "Standalone TOC panel width" },
+      "utility-h": { "$value": "32px", "$description": "Top utility row height" },
+      "brand-h": { "$value": "72px", "$description": "Brand / wordmark row height" },
+      "nav-h": { "$value": "48px", "$description": "Site navigation row height" },
+      "header-h": { "$value": "152px", "$description": "Total three-row header height (32+72+48)" },
+      "content-max": { "$value": "1440px", "$description": "Maximum content area width" },
+      "reading-max": { "$value": "760px", "$description": "Comfortable reading line width" }
+    },
+
+    "accent-gold": {
+      "$type": "color",
+      "$description": "Brand accent gold — from proto-platform-document --accent token (jury winner 2026-05-25). Used for wordmark underline, ledger stripe accent, and decorative brand moments.",
+      "base": { "$value": "#C7A961", "$description": "PointSav accent gold — WCAG AA on --navy-deep (#0F3258): 4.52:1" }
+    }
+  },
+
+  "semantic": {
+    "$description": "Semantic tokens — named for why, not what. References primitives via alias syntax. Dark-mode is implemented entirely at this tier.",
+
+    "surface": {
+      "$type": "color",
+      "background": { "$value": "#f5f6f8", "$description": "→ primitive.color.neutral-10 in primitive.json" },
+      "layer": { "$value": "#ffffff" },
+      "layer-accent": { "$value": "#e6e8ec", "$description": "→ primitive.color.neutral-20 in primitive.json" },
+      "layer-hover": { "$value": "#cdd1d8", "$description": "→ primitive.color.neutral-30 in primitive.json" },
+      "inverse": { "$value": "#1f2125", "$description": "→ primitive.color.neutral-90 in primitive.json" }
+    },
+    "text": {
+      "$type": "color",
+      "primary": { "$value": "#0e0f12", "$description": "→ primitive.color.neutral-100 in primitive.json" },
+      "secondary": { "$value": "#4a4f59", "$description": "→ primitive.color.neutral-70 in primitive.json" },
+      "tertiary": { "$value": "#666c78", "$description": "→ primitive.color.neutral-60 in primitive.json; was #878d99 (neutral-50, 3.21:1 — WCAG AA fail, fixed 2026-05-23)" },
+      "placeholder": { "$value": "#aab0bb", "$description": "→ primitive.color.neutral-40 in primitive.json" },
+      "on-color": { "$value": "#ffffff" },
+      "disabled": { "$value": "#cdd1d8", "$description": "→ primitive.color.neutral-30 in primitive.json" }
+    },
+    "interactive": {
+      "$type": "color",
+      "link": { "$value": "{primitive.color.link.default}" },
+      "link-visited": { "$value": "{primitive.color.link.visited}" },
+      "link-hover": { "$value": "{primitive.color.link.hover}" },
+      "link-redlink": { "$value": "{primitive.color.link.redlink}" },
+      "focus-ring": { "$value": "{primitive.color.brand.blue.60}" },
+      "button-primary": { "$value": "{primitive.color.brand.blue.60}" }
+    },
+    "border": {
+      "$type": "color",
+      "subtle": { "$value": "#e6e8ec", "$description": "→ primitive.color.neutral-20 in primitive.json" },
+      "strong": { "$value": "#666c78", "$description": "→ primitive.color.neutral-60 in primitive.json; was #878d99 (neutral-50, WCAG 1.4.11 fail, fixed 2026-05-23)" },
+      "interactive": { "$value": "{primitive.color.brand.blue.60}" },
+      "disabled": { "$value": "#cdd1d8", "$description": "→ primitive.color.neutral-30 in primitive.json" }
+    },
+    "knowledge": {
+      "$type": "color",
+      "$description": "Knowledge-wiki semantic namespace. Renamed wiki.* → knowledge.* per Master co-sign F-1 condition 2026-05-07 to match canonical product name (app-mediakit-knowledge). Original wiki.* namespace approval from Master co-sign decision A, 2026-04-30 still stands as the architectural rationale.",
+      "hatnote": {
+        "bg": { "$value": "#e6e8ec", "$description": "→ semantic.surface.layer-accent" },
+        "border": { "$value": "#e6e8ec", "$description": "→ semantic.border.subtle" }
+      },
+      "lead": {
+        "bg": { "$value": "#ffffff", "$description": "→ semantic.surface.layer" }
+      },
+      "toc": {
+        "bg": { "$value": "#e6e8ec", "$description": "→ semantic.surface.layer-accent" }
+      },
+      "references": {
+        "bg": { "$value": "#e6e8ec", "$description": "→ semantic.surface.layer-accent" }
+      },
+      "redlink": {
+        "color": { "$value": "{primitive.color.link.redlink}" }
+      },
+      "editpencil": {
+        "color": { "$value": "#666c78", "$description": "→ semantic.text.tertiary; was #878d99, fixed 2026-05-23" }
+      },
+      "featured-pin": {
+        "bg": { "$value": "{primitive.color.brand.teal.50}" },
+        "accent": { "$value": "{primitive.color.brand.teal.60}" }
+      },
+      "editorial": {
+        "$description": "Hybrid UI editorial layer — added per DESIGN-COMPETITION-JURY-REPORT 2026-05-24. These tokens parameterise the reading surface (lead/body sizes, line-height), article geometry (max-width, TOC width), and status semantics (featured/stub/draft) for the article and home views. Mirrored in static/style.css as --ed-* and component-scoped CSS custom properties.",
+        "reading-lead-size": { "$value": "19px", "$type": "dimension" },
+        "reading-lead-lh":   { "$value": "1.75", "$type": "number" },
+        "reading-body-size": { "$value": "17px", "$type": "dimension" },
+        "reading-body-lh":   { "$value": "1.70", "$type": "number" },
+        "article-max":       { "$value": "720px", "$type": "dimension" },
+        "toc-width":         { "$value": "240px", "$type": "dimension" },
+        "status-featured":   { "$value": "#10B981", "$type": "color" },
+        "status-stub":       { "$value": "#F59E0B", "$type": "color" },
+        "status-draft":      { "$value": "#6B7280", "$type": "color" }
+      }
+    }
+  },
+
+  "component": {
+    "$description": "Component tokens — named for the component and the design decision within it. References semantic tokens only; never primitive tokens directly.",
+
+    "home-grid": {
+      "gap": { "$type": "dimension", "$value": "1rem", "$description": "→ primitive.space.2" },
+      "card-padding": { "$type": "dimension", "$value": "1rem", "$description": "→ primitive.space.2" },
+      "card-radius": { "$type": "dimension", "$value": "2px", "$description": "→ primitive.radius.xs" },
+      "card-border-width": { "$type": "dimension", "$value": "1px" },
+      "card-border-color": { "$type": "color", "$value": "#e6e8ec", "$description": "→ semantic.border.subtle" },
+      "card-surface": { "$type": "color", "$value": "#ffffff", "$description": "→ semantic.surface.layer" },
+      "breakpoint-3-to-2": { "$type": "dimension", "$value": "960px" },
+      "breakpoint-2-to-1": { "$type": "dimension", "$value": "640px" },
+      "card-min-height": { "$type": "dimension", "$value": "120px" }
+    },
+    "home-featured": {
+      "accent-width": { "$type": "dimension", "$value": "4px" },
+      "accent-color": { "$type": "color", "$value": "{primitive.color.brand.teal.60}", "$description": "→ semantic.knowledge.featured-pin.accent" },
+      "padding": { "$type": "dimension", "$value": "2rem", "$description": "→ primitive.space.4" },
+      "lead-paraphrase-max-chars": { "$type": "number", "$value": 280, "$description": "Wikipedia TFA blurb is 909–1009 chars; 280 is shorter for documentation register" }
+    },
+    "home-recent": {
+      "date-column-width": { "$type": "dimension", "$value": "6rem" },
+      "item-padding-y": { "$type": "dimension", "$value": "0.5rem", "$description": "→ primitive.space.1" }
+    },
+    "article": {
+      "lead": {
+        "line-length-max-chars": { "$type": "number", "$value": 75, "$description": "Codex: no longer than 75 characters; literature consensus 45–75ch with 66 ideal" },
+        "first-sentence-bold": { "$type": "number", "$value": 1, "$description": "Boolean as number per DTCG" },
+        "paragraph-spacing": { "$type": "dimension", "$value": "1rem", "$description": "→ primitive.space.2" }
+      },
+      "toc": {
+        "collapsed-default": { "$type": "number", "$value": 0 },
+        "position-left-rail": { "$type": "number", "$value": 1 },
+        "max-depth": { "$type": "number", "$value": 3 },
+        "indent-step": { "$type": "dimension", "$value": "1rem", "$description": "→ primitive.space.2" },
+        "bg": { "$type": "color", "$value": "#e6e8ec", "$description": "→ semantic.knowledge.toc.bg" }
+      },
+      "section": {
+        "heading-edit-pencil-color": { "$type": "color", "$value": "#666c78", "$description": "→ semantic.knowledge.editpencil.color; was #878d99, fixed 2026-05-23" },
+        "heading-edit-pencil-opacity-default": { "$type": "number", "$value": 0 },
+        "heading-edit-pencil-opacity-hover": { "$type": "number", "$value": 1 }
+      },
+      "references": {
+        "backlink-bracket-color": { "$type": "color", "$value": "#4a4f59", "$description": "→ semantic.text.secondary" },
+        "citation-badge-academic-bg": { "$type": "color", "$value": "{primitive.color.brand.blue.60}" },
+        "citation-badge-regulator-bg": { "$type": "color", "$value": "{primitive.color.status.success.base}" },
+        "citation-badge-industry-bg": { "$type": "color", "$value": "#e6e8ec", "$description": "→ semantic.surface.layer-accent" },
+        "citation-badge-direct-source-bg": { "$type": "color", "$value": "{primitive.color.brand.teal.60}" },
+        "footnote-arrow-rotation": { "$type": "number", "$value": 180 }
+      },
+      "research-trail": {
+        "done-color": { "$type": "color", "$value": "{primitive.color.status.success.base}" },
+        "suggested-color": { "$type": "color", "$value": "{primitive.color.brand.blue.60}" },
+        "open-question-color": { "$type": "color", "$value": "{primitive.color.status.warn.base}" },
+        "trail-bg": { "$type": "color", "$value": "#e6e8ec", "$description": "Chrome posture (collapsed-default). If §7(f) ruling is body-content posture, change to semantic.surface.layer. → semantic.surface.layer-accent" },
+        "trail-border": { "$type": "color", "$value": "#e6e8ec", "$description": "→ semantic.border.subtle" }
+      },
+      "fli-banner": {
+        "$description": "BCSC forward-looking-information disclosure banner. Master co-sign decision B (2026-04-30): NEUTRAL, not amber. Process-discipline signal, not error/warning condition. Amber miscommunicates the posture as 'caution/danger'. Visual discoverability via structural differentiation (left-border + disclosure icon), not status-colour alarm.",
+        "bg": { "$type": "color", "$value": "#e6e8ec", "$description": "Neutral surface — semantic.surface.layer-accent. NOT semantic.status.warn.bg (amber)." },
+        "border": { "$type": "color", "$value": "{primitive.color.brand.blue.60}", "$description": "Informational blue accent — left-border treatment. NOT amber warn." },
+        "icon": { "$type": "color", "$value": "{primitive.color.brand.blue.60}", "$description": "Informational blue disclosure icon." },
+        "padding": { "$type": "dimension", "$value": "1rem", "$description": "→ primitive.space.2" }
+      },
+      "density-toggle": {
+        "compact-multiplier": { "$type": "number", "$value": 0.75, "$description": "→ primitive.density.compact" },
+        "comfortable-multiplier": { "$type": "number", "$value": 1, "$description": "→ primitive.density.comfortable (baseline)" },
+        "spacious-multiplier": { "$type": "number", "$value": 1.5, "$description": "→ primitive.density.spacious" }
+      }
+    }
+  }
+}

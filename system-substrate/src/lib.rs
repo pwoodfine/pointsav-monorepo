@@ -1,6 +1,3 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 //! system-substrate — transport-agnostic capability invocation substrate.
 //!
 //! Defines the [`CapabilityInvoker`] trait and [`VerdictWire`] wire type.

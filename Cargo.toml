@@ -3,22 +3,15 @@ resolver = "2"
 members = [
     "service-people",
     "service-content",
-    "service-email",
     "app-console-content",
     "tool-acs-miner",
     "tool-buildingwidth",
     "tool-floorplate",
     "app-console-input",
     "system-gateway-mba",
-    # "service-fs" — Tokio MCP-server skeleton compiles clean inside
-    # its own directory (cargo check + 3 ledger unit tests pass,
-    # 2026-04-26). Re-add to members blocked on workspace-tier
-    # openssl-sys breakage in an existing member (pre-existing Layer
-    # 1 audit finding; not the Tokio rewrite's fault). Tracked as a
-    # NEXT.md item in service-fs/ pending repo-tier cleanup.
+    "service-fs",
     "system-security",
     "xtask",
-    "console-core",
     "app-console-keys",
     "app-console-system",
     "app-console-email",
@@ -26,9 +19,7 @@ members = [
     "app-console-people",
     "os-console",
     "app-privategit-marketplace",
-    "app-privategit-marketplace-2",
     "app-privategit-source",
-    "app-privategit-source-2",
     "os-privategit",
     "tool-wallet",
     "app-privategit-workbench",
@@ -57,36 +48,11 @@ members = [
     # Marketing platform: shared chrome chassis + the marketing app
     "app-mediakit-shell",
     "app-mediakit-marketing",
-    # Cross-archive DataGraph federation gateway (Phase 1 scaffold; port 9181)
-    "app-orchestration-graph",
-    # Marketing platform rewrite (parallel crate; swaps in at plan P8)
-    "app-mediakit-marketing-2",
-    # Food-service platform engine (foodservice.woodfinegroup.com)
-    "app-mediakit-foodservice",
     # Design system browser (port 9094)
     "app-privategit-design",
     # Sovereign replacement stubs (wired into app-privategit-design)
     "moonshot-fs-watch",
     "moonshot-index",
-    # os-console F5 Search cartridge
-    "app-console-search",
-    # mTLS Phase A public ingress
-    "service-ingress",
-]
-exclude = [
-    # system-core and system-ledger declare their own [workspace] (standalone-extractable
-    # pattern; see .agent/rules/cleanup-log.md open question). Exclude prevents
-    # multi-workspace-root error when used as path dependencies from within this workspace.
-    "system-core",
-    "system-ledger",
-    # Held-out crates that physically nest under the workspace root
-    # but are deliberately not workspace members.
-    # - service-fs: see members comment above
-    # - vendor-sel4-fs: Reserved-folder bare-metal crate; different
-    #   runtime model (its .cargo/config.toml targets
-    #   x86_64-unknown-none)
-    "service-fs",
-    "vendor-sel4-fs",
 ]
 
 [profile.dev]
@@ -109,16 +75,6 @@ strip = "symbols"
 # app-mediakit-marketing is a runtime HTTP server — speed-optimised, like the
 # knowledge engine, not the bare-metal size-optimised workspace default.
 [profile.release.package.app-mediakit-marketing]
-opt-level = 3
-strip = "symbols"
-
-# app-mediakit-marketing-2 (rewrite) — same rationale as the crate it replaces.
-[profile.release.package.app-mediakit-marketing-2]
-opt-level = 3
-strip = "symbols"
-
-# app-mediakit-foodservice is a runtime HTTP server — same speed-optimised profile.
-[profile.release.package.app-mediakit-foodservice]
 opt-level = 3
 strip = "symbols"
 

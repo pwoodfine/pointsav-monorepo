@@ -1,8 +1,3 @@
-<!--
-  SPDX-License-Identifier: AGPL-3.0-or-later
-  SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
--->
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -23,6 +18,8 @@
     .status {
       text-align: center;
       font-size: 1.1rem;
+      max-width: 420px;
+      padding: 1rem;
     }
     .spinner {
       width: 32px;
@@ -34,22 +31,160 @@
       margin: 0 auto 1rem;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
+    .error-icon {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+    }
+    .error-detail {
+      color: #a6adc8;
+      font-size: 0.85rem;
+      margin: 0.5rem 0 1.25rem;
+    }
+    .actions {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: center;
+    }
+    button, .link-button {
+      font-family: inherit;
+      font-size: 0.9rem;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      border: 1px solid #45475a;
+      background: #313244;
+      color: #cdd6f4;
+      cursor: pointer;
+    }
+    button.primary {
+      background: #89b4fa;
+      color: #1e1e2e;
+      border-color: #89b4fa;
+      font-weight: 600;
+    }
+    button:hover { filter: brightness(1.1); }
+    .setup-form input {
+      font-family: inherit;
+      font-size: 1rem;
+      padding: 0.5rem 0.75rem;
+      border-radius: 6px;
+      border: 1px solid #45475a;
+      background: #11111b;
+      color: #cdd6f4;
+      width: 100px;
+      text-align: center;
+      margin-bottom: 1rem;
+    }
+    .setup-form label {
+      display: block;
+      margin-bottom: 0.5rem;
+      color: #a6adc8;
+      font-size: 0.85rem;
+    }
   </style>
 </head>
 <body>
-  <div class="status">
+  <div class="status" id="status">
     <div class="spinner"></div>
     <p id="msg">Connecting to workbench…</p>
   </div>
   <script type="module">
-    const { invoke } = window.__TAURI__.tauri;
-    try {
-      const url = await invoke('get_workbench_url');
-      document.getElementById('msg').textContent = `Opening ${url}`;
-      window.location.href = url;
-    } catch (e) {
-      document.getElementById('msg').textContent = `Error: ${e}`;
+    // Tauri v2: invoke moved from __TAURI__.tauri to __TAURI__.core, and the
+    // appWindow singleton was replaced by window.getCurrentWindow(). Destructuring
+    // the old __TAURI__.tauri here would throw a TypeError before any UI renders —
+    // i.e. a blank white window on an otherwise clean build.
+    const { invoke } = window.__TAURI__.core;
+    const appWindow = window.__TAURI__.window.getCurrentWindow();
+    const statusEl = document.getElementById('status');
+    const CONNECT_TIMEOUT_MS = 3000;
+
+    function setTitle(suffix) {
+      // withGlobalTauri (tauri.conf.json app.withGlobalTauri) exposes the window API
+      // directly to the frontend — no extra IPC command needed. setTitle is a window
+      // *setter*, which core:default does not grant: capabilities/default.json must
+      // list core:window:allow-set-title or this is denied at runtime.
+      appWindow.setTitle(suffix ? `Workplace Workbench — ${suffix}` : 'Workplace Workbench').catch(() => {});
     }
+
+    function renderConnecting(url) {
+      setTitle('Connecting…');
+      statusEl.innerHTML = `
+        <div class="spinner"></div>
+        <p>Connecting to workbench at <strong>${url}</strong>…</p>
+      `;
+    }
+
+    function renderSetupForm(defaultPort) {
+      setTitle('Setup');
+      statusEl.innerHTML = `
+        <div class="setup-form">
+          <p><strong>First-run setup</strong></p>
+          <label for="port-input">Workbench server port (app-privategit-workbench)</label>
+          <input id="port-input" type="number" min="1" max="65535" value="${defaultPort}" />
+          <div class="actions">
+            <button class="primary" id="save-btn">Save &amp; Connect</button>
+          </div>
+        </div>
+      `;
+      document.getElementById('save-btn').addEventListener('click', async () => {
+        const port = parseInt(document.getElementById('port-input').value, 10);
+        if (!port || port < 1 || port > 65535) return;
+        await invoke('set_workbench_port', { port });
+        await connect();
+      });
+    }
+
+    function renderError(url, detail) {
+      setTitle('Disconnected');
+      statusEl.innerHTML = `
+        <div class="error-icon">⚠</div>
+        <p>Could not reach the workbench server.</p>
+        <p class="error-detail">${url} — ${detail}</p>
+        <div class="actions">
+          <button class="primary" id="retry-btn">Retry</button>
+          <button id="change-port-btn">Change port</button>
+        </div>
+      `;
+      document.getElementById('retry-btn').addEventListener('click', connect);
+      document.getElementById('change-port-btn').addEventListener('click', async () => {
+        const url = await invoke('get_workbench_url');
+        const port = new URL(url).port || '3000';
+        renderSetupForm(port);
+      });
+    }
+
+    async function checkReachable(url) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), CONNECT_TIMEOUT_MS);
+      try {
+        // no-cors: we only care whether something answers on the port, not
+        // the response body/headers — the real navigation below does the rest.
+        await fetch(url, { mode: 'no-cors', signal: controller.signal });
+        return { ok: true };
+      } catch (e) {
+        return { ok: false, detail: e.name === 'AbortError' ? 'timed out' : 'connection refused' };
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+
+    async function connect() {
+      const hasConfig = await invoke('has_workbench_config');
+      if (!hasConfig) {
+        renderSetupForm(3000);
+        return;
+      }
+      const url = await invoke('get_workbench_url');
+      renderConnecting(url);
+      const result = await checkReachable(url);
+      if (result.ok) {
+        setTitle('Connected');
+        window.location.href = url;
+      } else {
+        renderError(url, result.detail);
+      }
+    }
+
+    connect();
   </script>
 </body>
 </html>

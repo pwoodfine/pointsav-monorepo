@@ -48,8 +48,7 @@ pub struct AdapterEntry {
     /// On-disk path to the adapter weights (relative to FOUNDRY_ROOT).
     pub weights_path: String,
     /// Eval result against the held-out set: `pass` | `fail` | `pending`.
-    /// `scripts/score-gate.sh` writes this field (successor to the retired
-    /// `bin/eval-adapter.sh`, 2026-07-06).
+    /// `bin/eval-adapter.sh` writes this field.
     #[serde(default = "default_eval_pending")]
     pub eval_result: String,
     /// Eval-pass percentage (0.0-1.0) when `eval_result == "pass"` or

@@ -1,7 +1,4 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: AGPL-3.0-or-later
-# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 # Bootstrap installer for service-slm Doorman as systemd unit
 # Idempotent: safe to run multiple times. Suitable for Master scope VM sysadmin.
 set -euo pipefail

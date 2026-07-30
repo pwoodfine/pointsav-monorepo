@@ -1,6 +1,3 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 // D5 — AI bridge: upstream model trait + adapters.
 // POST /ai/session relays to DoormanOlmo (local) or ClaudeCloud (remote via X-Api-Key header).
 

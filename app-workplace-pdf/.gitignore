@@ -1,0 +1,13 @@
+# Rust build output
+src-tauri/target/
+
+# Node build/deps
+node_modules/
+
+# PDFium runtime binaries — fetched from
+# https://github.com/bblanchon/pdfium-binaries (Apache 2.0); too large to
+# commit. Provenance + checksums: src-tauri/pdfium/README.md
+src-tauri/pdfium/*.so
+src-tauri/pdfium/*.dylib
+src-tauri/pdfium/*.dll
+src-tauri/pdfium/*.a

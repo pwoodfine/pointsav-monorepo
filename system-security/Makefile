@@ -1,6 +1,3 @@
-# SPDX-License-Identifier: AGPL-3.0-or-later
-# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 SDK_PATH ?= $(error Set SDK_PATH to your Microkit SDK directory, e.g. SDK_PATH=~/microkit-sdk-2.1.0 make)
 BOARD    := x86_64_generic
 CONFIG   := debug

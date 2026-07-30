@@ -1,6 +1,3 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 use jsonschema::Validator;
 use serde_json::{json, Value};
 use std::sync::OnceLock;

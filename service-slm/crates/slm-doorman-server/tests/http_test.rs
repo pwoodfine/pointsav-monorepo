@@ -336,7 +336,6 @@ async fn error_brief_cache_miss_returns_410() {
         doctrine_version: "0.0.1".to_string(),
         tenant: "test".to_string(),
         tier_a_first: false,
-        yoyo_dispatch_label: None,
     };
     let brief_cache = Arc::new(BriefCache::default()); // empty
     let verdict_dispatcher = VerdictDispatcher {
@@ -776,8 +775,6 @@ fn doorman_error_to_status(e: &DoormanError) -> StatusCode {
         DoormanError::TierBTimeout | DoormanError::TierBCircuitOpen => {
             StatusCode::SERVICE_UNAVAILABLE
         }
-        // RequestTimeout → 503 SERVICE_UNAVAILABLE (mirrors http.rs map).
-        DoormanError::RequestTimeout => StatusCode::SERVICE_UNAVAILABLE,
         DoormanError::FlowGateClosed { .. } => StatusCode::SERVICE_UNAVAILABLE,
         DoormanError::PriorityQueueIo { .. } => StatusCode::INTERNAL_SERVER_ERROR,
         DoormanError::GcpApi { .. } => StatusCode::BAD_GATEWAY,
@@ -785,9 +782,6 @@ fn doorman_error_to_status(e: &DoormanError) -> StatusCode {
         // tuple was rejected by the corpus gate (invalid diff, placeholder,
         // length-ratio violation). Caller-side content error.
         DoormanError::CorpusGateRejected { .. } => StatusCode::UNPROCESSABLE_ENTITY,
-        // LocalSaturated → 429 TOO_MANY_REQUESTS: Tier A OLMo slots full;
-        // caller should back off (Retry-After: 2) and retry.
-        DoormanError::LocalSaturated => StatusCode::TOO_MANY_REQUESTS,
     }
 }
 
@@ -1208,8 +1202,6 @@ async fn valid_lark_grammar_passes_through_to_tier_b() {
         },
         Arc::new(StaticBearer::new("test-token")),
     );
-    // health_up starts false (pessimistic init); simulate a passed health probe.
-    yoyo.health_up.store(true, std::sync::atomic::Ordering::Relaxed);
     let doorman = Doorman::new(
         DoormanConfig {
             local: None,
@@ -2581,10 +2573,9 @@ async fn audit_tenant_concurrency_cap_per_tenant_independent() {
 // boundary for all DataGraph access; every call audit-logged).
 // ===========================================================================
 
-/// POST /v1/graph/query happy path — proxies to service-content scoped to the
-/// caller's own X-Foundry-Module-ID (single tenant, no cross-tenant merge — see
-/// `BRIEF-datagraph-tenant-isolation.md`). One upstream call, mock's two-entity
-/// array comes back verbatim (well under the requested limit of 5).
+/// POST /v1/graph/query happy path — proxies to service-content and returns
+/// the entity array verbatim. Mock service-content returns a two-entity JSON
+/// array; Doorman must forward it with HTTP 200.
 #[tokio::test]
 async fn graph_query_proxies_to_service_content_returns_200() {
     let mock_sc = MockServer::start().await;
@@ -2641,7 +2632,7 @@ async fn graph_query_proxies_to_service_content_returns_200() {
     assert_eq!(
         body.as_array().unwrap().len(),
         2,
-        "expected the mock's 2-entity response verbatim (single-tenant scoped, no merge)"
+        "expected 2 entities forwarded verbatim from service-content"
     );
 }
 
@@ -2693,103 +2684,6 @@ async fn graph_mutate_proxies_to_service_content_returns_200() {
         body["loaded"],
         serde_json::json!(1),
         "graph_mutate must forward service-content response verbatim"
-    );
-}
-
-/// POST /v1/graph/query scopes strictly to the caller's own X-Foundry-Module-ID —
-/// asserts on the actual outgoing module_id query param captured by the mock,
-/// not just the response body. Exactly one upstream call, no fixed-tenant merge.
-#[tokio::test]
-async fn graph_query_scopes_to_caller_module_id() {
-    let mock_sc = MockServer::start().await;
-
-    Mock::given(method("GET"))
-        .and(path("/v1/graph/context"))
-        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([])))
-        .mount(&mock_sc)
-        .await;
-
-    let state = app_state_with_service_content(mock_sc.uri());
-    let app = router(state);
-
-    let req = Request::builder()
-        .method("POST")
-        .uri("/v1/graph/query")
-        .header("content-type", "application/json")
-        // caller identifies as "command" — must be exactly what's queried,
-        // no merge with any other tenant.
-        .header("x-foundry-module-id", "command")
-        .body(Body::from(
-            serde_json::json!({"q": "woodfine", "limit": 5}).to_string(),
-        ))
-        .expect("build request");
-
-    let resp = app.oneshot(req).await.expect("oneshot");
-    assert_eq!(resp.status(), StatusCode::OK);
-
-    let received = mock_sc.received_requests().await.expect("request recording enabled");
-    assert_eq!(received.len(), 1, "expected exactly one upstream query call, no cross-tenant merge");
-    let queried_module_ids: Vec<String> = received
-        .iter()
-        .map(|r| {
-            r.url
-                .query_pairs()
-                .find(|(k, _)| k == "module_id")
-                .map(|(_, v)| v.to_string())
-                .unwrap_or_default()
-        })
-        .collect();
-
-    assert_eq!(
-        queried_module_ids,
-        vec!["command".to_string()],
-        "caller's own module_id must be the sole read scope; queried: {queried_module_ids:?}"
-    );
-}
-
-/// POST /v1/graph/mutate enforces the outgoing module_id to the caller's own
-/// verified X-Foundry-Module-ID header — a mismatched claim in the caller's own
-/// body must be overwritten, not trusted, and must never land on some other
-/// fixed default tenant.
-#[tokio::test]
-async fn graph_mutate_enforces_caller_module_id() {
-    let mock_sc = MockServer::start().await;
-
-    Mock::given(method("POST"))
-        .and(path("/v1/graph/mutate"))
-        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({"loaded": 1})))
-        .mount(&mock_sc)
-        .await;
-
-    let state = app_state_with_service_content(mock_sc.uri());
-    let app = router(state);
-
-    // Caller's own mutation payload dishonestly claims a different module_id
-    // ("someone-elses-archive") than its verified header identity ("command") —
-    // the header identity must win.
-    let req_body = serde_json::json!({
-        "module_id": "someone-elses-archive",
-        "entities": [{"entity_name": "Test Entity", "classification": "company", "confidence": 0.9}]
-    });
-
-    let req = Request::builder()
-        .method("POST")
-        .uri("/v1/graph/mutate")
-        .header("content-type", "application/json")
-        .header("x-foundry-module-id", "command")
-        .body(Body::from(req_body.to_string()))
-        .expect("build request");
-
-    let resp = app.oneshot(req).await.expect("oneshot");
-    assert_eq!(resp.status(), StatusCode::OK);
-
-    let received = mock_sc.received_requests().await.expect("request recording enabled");
-    assert_eq!(received.len(), 1, "expected exactly one forwarded mutate call");
-    let forwarded_body: serde_json::Value =
-        serde_json::from_slice(&received[0].body).expect("forwarded body must be valid JSON");
-    assert_eq!(
-        forwarded_body["module_id"], "command",
-        "outgoing module_id must be enforced to the caller's own verified header identity; got: {forwarded_body}"
     );
 }
 

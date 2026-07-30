@@ -1,7 +1,4 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: AGPL-3.0-or-later
-# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 """
 © 2026 PointSav Digital Systems AG
 Module: SEC EDGAR Mandate Extractor V11.1 (Micro-Batch Deep Scan)

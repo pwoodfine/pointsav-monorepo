@@ -1,7 +1,4 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: FSL-1.1-ALv2
-# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 # PointSav Digital Systems | V6.4 Omni-Matrix Engine (Typographic & Temporal Core)
 import os
 import csv

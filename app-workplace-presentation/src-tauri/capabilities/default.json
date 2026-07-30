@@ -1,0 +1,24 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Unlike the other 5 app-workplace crates, presentation's frontend (src/app.js) calls the dialog and fs plugin JS APIs DIRECTLY (t.dialog.open/save, t.fs.readFile/readTextFile/writeTextFile), so these are frontend-gated permissions, not just Rust-side plugin registration. The fs scope mirrors the v1 allowlist scope ($HOME/**, $APPDATA/**). LIMITATION (unverified without a runtime pass): a file the user picks OUTSIDE $HOME/$APPDATA (e.g. /tmp, an external volume) will be denied by fs scope even though the dialog allowed picking it — v2's fs plugin does not auto-grant dialog-picked paths.",
+  "local": true,
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "dialog:allow-open",
+    "dialog:allow-save",
+    {
+      "identifier": "fs:allow-read-file",
+      "allow": [{ "path": "$HOME/**" }, { "path": "$APPDATA/**" }]
+    },
+    {
+      "identifier": "fs:allow-read-text-file",
+      "allow": [{ "path": "$HOME/**" }, { "path": "$APPDATA/**" }]
+    },
+    {
+      "identifier": "fs:allow-write-text-file",
+      "allow": [{ "path": "$HOME/**" }, { "path": "$APPDATA/**" }]
+    }
+  ]
+}

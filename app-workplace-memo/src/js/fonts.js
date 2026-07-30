@@ -1,6 +1,3 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 /**
  * Workplace*Memo — fonts.js
  * Font panel: displays available fonts, handles @font-face registration

@@ -1,15 +1,7 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 mod config_http;
 mod entity_filter;
-mod entity_hints;
-mod er;
 mod graph;
 mod http;
-mod pairing;
-#[cfg(test)]
-mod pipeline_tests;
 mod taxonomy;
 
 use graph::{GraphEntity, GraphStore, LbugGraphStore};
@@ -18,7 +10,7 @@ use serde_json::Value;
 use std::fs;
 use std::io::{BufRead, Write};
 use std::path::Path;
-use std::sync::mpsc::{RecvTimeoutError, SyncSender};
+use std::sync::mpsc::RecvTimeoutError;
 use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
@@ -29,19 +21,6 @@ enum ExtractResult {
     DeferTransient,
     DeferCircuitOpen,
     Failed,
-}
-
-/// Job queued for the async Tier A (OLMo 7B) training pass.
-/// Every document processed by Tier 0 (GLiNER) is also queued here so the
-/// (GLiNER output, OLMo output) delta can be written as a DPO training pair.
-/// The worker runs at background priority and never blocks the drain loop.
-struct TierAJob {
-    corpus_text: String,
-    worm_id: String,
-    module_id: String,
-    tier_0_entities: Vec<serde_json::Value>,
-    feedback_dir: String,
-    doorman_endpoint: String,
 }
 
 // Classification vocabulary defined in entity_filter::ALLOWED_CLASSIFICATIONS — single source of truth.
@@ -59,9 +38,6 @@ Omit:\n\
   - Programming languages, file formats, and protocol names (Rust, JSON, HTTP) unless they name a specific product.\n\
   - Shell environment variables and config symbols: $VAR_NAME, SLM_DATA_DIR, FOUNDRY_ARCHIVE_NAME — OMIT.\n\
   - Code identifiers: backtick-quoted terms (`ghi_kwh_m2_yr`), snake_case names without spaces (service_content), file paths (./build.sh, src/main.rs, create-snapshot.sh), call expressions (log(x), ops(slm), func()), and build tool commands (cargo, npm, make, git). OMIT ALL, including any project name appearing as a CLI argument (-p slm-doorman-server, --crate service-content).\n\
-  - Systemd unit names ending in .service or .timer: local-content.service, llama-server.service, lora-update.timer, nightly-build.timer — these are process managers, not projects. OMIT.\n\
-  - Mailbox message identifiers: hyphenated all-lowercase slugs containing an 8-digit date segment (e.g. command-20260520-stage6-rebase-required, project-totebox-20260622-stage6-d9-d8-p8-fixes). These are message IDs, not entities. OMIT.\n\
-  - Operational status phrases joined by \" + \": \"service-content rebuilt + deployed\", \"Yo-Yo env IP update + Doorman restart\" — these describe events, not named entities. OMIT.\n\
   - Commit-message prefixes of the form type(scope): ops(slm), feat(cache), fix(auth), chore(db) — these are NOT projects or accounts. OMIT.\n\
   - Statistical notation (α, β, γ, R², p-value) and mathematical symbols.\n\
   - Laws, regulations, and dates.\n\
@@ -76,11 +52,11 @@ Country names: when a country appears as an entity, classify it as Location, NEV
 Hard constraint: entity_name must be a short proper noun or proper-noun phrase. Maximum eight words.\n\
 A token that looks like a proper noun is not automatically an entity. If it is a licence, a format, a generic descriptor, or a code identifier, omit it rather than forcing it into Company or Location.\n\
 If an entity does not clearly fit one category, omit it rather than guessing.\n\
-Return only a JSON array. Each element MUST have \"classification\" and \"entity_name\". You MAY add \"role_vector\" (a person's stated title or role), \"location_vector\" (a stated place of work or residence), or \"contact_vector\" (a stated email or phone) — but ONLY when the text explicitly states that attribute for that entity. Omit the field otherwise. NEVER invent a vector value; an absent attribute is omitted, not guessed.\n\
+Return only a JSON array. Each element must have exactly two fields: \"classification\" and \"entity_name\".\n\
 \n\
 Examples:\n\
 Text: Jennifer Woodfine is managing director at Woodfine Management Corp. in Vancouver, Canada.\n\
-Output: [{\"classification\":\"Person\",\"entity_name\":\"Jennifer Woodfine\",\"role_vector\":\"managing director\"},{\"classification\":\"Company\",\"entity_name\":\"Woodfine Management Corp.\"},{\"classification\":\"Location\",\"entity_name\":\"Vancouver\"}]\n\
+Output: [{\"classification\":\"Person\",\"entity_name\":\"Jennifer Woodfine\"},{\"classification\":\"Company\",\"entity_name\":\"Woodfine Management Corp.\"},{\"classification\":\"Location\",\"entity_name\":\"Vancouver\"}]\n\
 \n\
 Text: The cluster contains service-fs, not service-research. Let me explore the actual structure.\n\
 Output: [{\"classification\":\"Project\",\"entity_name\":\"service-fs\"}]\n\
@@ -165,28 +141,13 @@ fn main() -> NotifyResult<()> {
     });
     let graph_db_path = format!("{}/entities.lbug", graph_dir);
 
-    let graph_store: Arc<dyn GraphStore> =
-        Arc::new(LbugGraphStore::new(&graph_db_path).unwrap_or_else(|e| {
-            eprintln!(
-                "[FATAL] Failed to open LadybugDB graph store {:?}: {e}",
-                graph_db_path
-            );
-            std::process::exit(1);
-        }));
-    graph_store.init_schema().unwrap_or_else(|e| {
-        eprintln!("[FATAL] Failed to initialise graph schema: {e}");
-        std::process::exit(1);
-    });
+    let graph_store: Arc<dyn GraphStore> = Arc::new(
+        LbugGraphStore::new(&graph_db_path).expect("[SYSTEM] Failed to open LadybugDB graph store"),
+    );
+    graph_store
+        .init_schema()
+        .expect("[SYSTEM] Failed to initialise graph schema");
     println!("[SYSTEM] Graph store ready: {}", graph_db_path);
-
-    // COA-driven entity type labels: load the classification vocabulary from
-    // entity_types.csv before any entity filtering runs. Additive — falls
-    // back to the compile-time ALLOWED_CLASSIFICATIONS if the CSV is absent.
-    entity_filter::init_ontology_classifications(&ontology_dir);
-
-    // Closed relation-type vocabulary (subject/object class constraints for
-    // RelatedTo edges). Fail-open if absent — see init_relation_ontology doc.
-    entity_filter::init_relation_ontology(&ontology_dir);
 
     // ── Startup taxonomy load ─────────────────────────────────────────────────
     match taxonomy::load_taxonomy_from_dir(&ontology_dir) {
@@ -196,8 +157,7 @@ fn main() -> NotifyResult<()> {
             match graph_store.upsert_entities("__taxonomy__", &entities) {
                 Ok(n) => println!(
                     "[TAXONOMY] Loaded: {} archetypes, {} coa-profiles, {} domains, \
-                     {} glossary-terms, {} themes, {} topics, {} guides, {} entity-classes \
-                     → {} entities upserted",
+                     {} glossary-terms, {} themes, {} topics, {} guides → {} entities upserted",
                     bundle.archetypes.len(),
                     bundle.coa.len(),
                     bundle.domains.len(),
@@ -205,7 +165,6 @@ fn main() -> NotifyResult<()> {
                     bundle.themes.len(),
                     bundle.topics.len(),
                     bundle.guides.len(),
-                    bundle.entity_classes.len(),
                     n
                 ),
                 Err(e) => println!("[TAXONOMY] Graph write failed: {}", e),
@@ -214,12 +173,6 @@ fn main() -> NotifyResult<()> {
         }
         Err(e) => println!("[TAXONOMY] Load failed (non-fatal): {}", e),
     }
-
-    // KoGNER entity-hint injection: sample a few known entities per classification
-    // from the graph (now seeded with taxonomy) so GLiNER's label descriptions carry
-    // concrete examples. Free quality improvement, no model change. Must run after
-    // the taxonomy load above and before the drain loop begins.
-    entity_hints::init_entity_hints(&graph_store, &module_id);
 
     // ── HTTP server (dedicated thread + own tokio runtime) ───────────────────
     // Cannot use reqwest::blocking inside a #[tokio::main] context (nested
@@ -230,7 +183,6 @@ fn main() -> NotifyResult<()> {
     let doorman_for_http = doorman_endpoint.clone();
     let ontology_for_http = ontology_dir.clone();
     let corpus_dir_for_http = corpus_dir.clone();
-    let graph_dir_for_http = graph_dir.clone();
     std::thread::spawn(move || {
         let rt = tokio::runtime::Runtime::new().expect("Failed to build HTTP tokio runtime");
         rt.block_on(http::run_server(
@@ -239,7 +191,6 @@ fn main() -> NotifyResult<()> {
             doorman_for_http,
             ontology_for_http,
             corpus_dir_for_http,
-            graph_dir_for_http,
         ));
     });
 
@@ -292,244 +243,12 @@ fn main() -> NotifyResult<()> {
             processed_ledgers.len()
         );
     }
-    let tier_progress_path = Arc::new(Path::new(&graph_dir).join("tier_progress.jsonl"));
-    let backpressure_threshold: u64 = std::env::var("SERVICE_CONTENT_QUEUE_BACKPRESSURE_THRESHOLD")
-        .ok()
-        .and_then(|s| s.parse().ok())
-        .unwrap_or(50);
-    let mut tier_b_enrichment_queue: std::collections::VecDeque<String> =
-        load_tier_b_pending(&tier_progress_path)
-            .into_iter()
-            .filter(|f| Path::new(&corpus_dir).join(f).exists())
-            .collect();
-    if !tier_b_enrichment_queue.is_empty() {
-        println!(
-            "[SYSTEM] {} doc(s) with tier_a_done=true, tier_b_done=false — queued for Tier B enrichment on recovery.",
-            tier_b_enrichment_queue.len()
-        );
-    }
     let max_defer_retries: u32 = std::env::var("SLM_MAX_DEFER_RETRIES")
         .ok()
         .and_then(|s| s.parse().ok())
         .unwrap_or(10);
     let mut deferred_counts: std::collections::HashMap<String, u32> =
         std::collections::HashMap::new();
-    // Per-file backoff: (retry_not_before, current_delay_ms).
-    // Sequence: 5s → 10s → 20s → 40s → 80s → 120s with ±25% deterministic jitter.
-    let mut backoff_state: std::collections::HashMap<String, (std::time::Instant, u64)> =
-        std::collections::HashMap::new();
-    let dead_letter_dir = format!("{}/dead-letter", corpus_dir);
-    if let Err(e) = std::fs::create_dir_all(&dead_letter_dir) {
-        eprintln!(
-            "[WARN] Could not create dead-letter dir {}: {}",
-            dead_letter_dir, e
-        );
-    }
-
-    // ── Async Tier A training queue ───────────────────────────────────────────
-    // Every document processed by Tier 0 (GLiNER Found or Empty) is enqueued
-    // here for a secondary OLMo 7B extraction pass.  The worker does two things
-    // per document:
-    //   1. Write a DPO training pair (GLiNER=chosen teacher, OLMo=rejected student)
-    //   2. Write source-grounded OLMo entities to the graph — since we are already
-    //      paying for the OLMo call, the marginal cost of a graph upsert is negligible.
-    //      OLMo may find entities GLiNER missed; on GlinerOutcome::Empty docs these
-    //      are the only entities in the graph at all.
-    // Guard: OLMo entities are only written if the entity name appears verbatim in
-    // the corpus text (source grounding), preventing hallucinated names from polluting
-    // the graph.  Written at confidence 0.65 (vs GLiNER's 0.75).
-    // Bounded: 200 jobs ≈ 2 MB pending corpus. A full channel silently drops
-    // the DPO job (drain continues). Prevents unbounded growth when OLMo is slow.
-    let (tier_a_tx, tier_a_rx) = std::sync::mpsc::sync_channel::<TierAJob>(200);
-    {
-        let gs_worker = Arc::clone(&graph_store);
-        thread::spawn(move || {
-            for job in tier_a_rx {
-                // Single combined OLMo call: entity extraction + open IE relation triples.
-                let (tier_a_ents, tier_a_rels) =
-                    call_tier_a_combined(&job.corpus_text, &job.doorman_endpoint, &job.worm_id);
-
-                // 1. DPO training pair (entity comparison only — same format as before)
-                if write_gliner_olmo_dpo_pair(
-                    &job.worm_id,
-                    &job.corpus_text,
-                    &job.tier_0_entities,
-                    &tier_a_ents,
-                    &job.feedback_dir,
-                ) {
-                    println!(
-                        "[TIER-A-TRAIN] DPO pair written — {} (gliner:{} olmo:{} entities)",
-                        job.worm_id,
-                        job.tier_0_entities.len(),
-                        tier_a_ents.len(),
-                    );
-                }
-
-                let corpus_lower = job.corpus_text.to_lowercase();
-
-                // 2. Write source-grounded OLMo entities to graph
-                if !tier_a_ents.is_empty() {
-                    let grounded: Vec<serde_json::Value> = tier_a_ents
-                        .iter()
-                        .filter(|e| {
-                            e.get("entity_name")
-                                .and_then(|v| v.as_str())
-                                .map(|name| corpus_lower.contains(&name.to_lowercase()))
-                                .unwrap_or(false)
-                        })
-                        .cloned()
-                        .collect();
-                    if !grounded.is_empty() {
-                        let mut ge = raw_entities_to_graph(&grounded, &job.module_id, 0.65);
-                        for e in &mut ge {
-                            e.source_doc = Some(job.worm_id.clone());
-                        }
-                        match gs_worker.upsert_entities(&job.module_id, &ge) {
-                            Ok(n) => {
-                                if n > 0 {
-                                    println!(
-                                        "[TIER-A] {} new entities written to graph — {} (olmo, grounded)",
-                                        n, job.worm_id
-                                    );
-                                }
-                            }
-                            Err(e) => {
-                                eprintln!("[TIER-A] Graph write failed for {}: {}", job.worm_id, e)
-                            }
-                        }
-                    }
-                }
-
-                // 3. Write source-grounded relation triples to RelatedTo
-                if !tier_a_rels.is_empty() {
-                    use crate::graph::RelatedToEdge;
-                    // name (lowercased) -> classification, for the closed relation-type
-                    // vocabulary check below.
-                    let entity_classes: std::collections::HashMap<String, String> = tier_a_ents
-                        .iter()
-                        .filter_map(|e| {
-                            let name = e.get("entity_name")?.as_str()?.to_lowercase();
-                            let cls = e.get("classification")?.as_str()?.to_string();
-                            Some((name, cls))
-                        })
-                        .collect();
-                    let edges: Vec<RelatedToEdge> = tier_a_rels
-                        .iter()
-                        .filter_map(|r| {
-                            let subj = r.get("subject")?.as_str()?;
-                            let pred = r.get("predicate")?.as_str()?;
-                            let obj = r.get("object")?.as_str()?;
-                            // Source-grounding: both endpoints must appear verbatim in corpus
-                            if !corpus_lower.contains(&subj.to_lowercase())
-                                || !corpus_lower.contains(&obj.to_lowercase())
-                            {
-                                return None;
-                            }
-                            // Closed relation-type vocabulary (ontology/relation_types.csv):
-                            // reject edges whose predicate + endpoint classes don't match a
-                            // known rule. Fail-open when either endpoint's class is unknown
-                            // (not present in this batch's extracted entities) or the
-                            // predicate isn't yet in the vocabulary — see
-                            // entity_filter::validate_relation_edge doc comment.
-                            if let (Some(sc), Some(oc)) = (
-                                entity_classes.get(&subj.to_lowercase()),
-                                entity_classes.get(&obj.to_lowercase()),
-                            ) {
-                                if !entity_filter::validate_relation_edge(pred, sc, oc) {
-                                    return None;
-                                }
-                            }
-                            Some(RelatedToEdge {
-                                src_entity_name: subj.to_string(),
-                                tgt_entity_name: obj.to_string(),
-                                relation_type: pred.to_string(),
-                            })
-                        })
-                        .collect();
-                    if !edges.is_empty() {
-                        match gs_worker.upsert_edges(&job.module_id, &edges) {
-                            Ok(n) => {
-                                if n > 0 {
-                                    println!(
-                                        "[TIER-A] {} relation triples written — {} (open IE)",
-                                        n, job.worm_id
-                                    );
-                                }
-                            }
-                            Err(e) => eprintln!(
-                                "[TIER-A] Relation write failed for {}: {}",
-                                job.worm_id, e
-                            ),
-                        }
-                    }
-                }
-
-                // 3. Write source-grounded relation triples to RelatedTo
-                if !tier_a_rels.is_empty() {
-                    use crate::graph::RelatedToEdge;
-                    // name (lowercased) -> classification, for the closed relation-type
-                    // vocabulary check below.
-                    let entity_classes: std::collections::HashMap<String, String> = tier_a_ents
-                        .iter()
-                        .filter_map(|e| {
-                            let name = e.get("entity_name")?.as_str()?.to_lowercase();
-                            let cls = e.get("classification")?.as_str()?.to_string();
-                            Some((name, cls))
-                        })
-                        .collect();
-                    let edges: Vec<RelatedToEdge> = tier_a_rels
-                        .iter()
-                        .filter_map(|r| {
-                            let subj = r.get("subject")?.as_str()?;
-                            let pred = r.get("predicate")?.as_str()?;
-                            let obj = r.get("object")?.as_str()?;
-                            // Source-grounding: both endpoints must appear verbatim in corpus
-                            if !corpus_lower.contains(&subj.to_lowercase())
-                                || !corpus_lower.contains(&obj.to_lowercase())
-                            {
-                                return None;
-                            }
-                            // Closed relation-type vocabulary (ontology/relation_types.csv):
-                            // reject edges whose predicate + endpoint classes don't match a
-                            // known rule. Fail-open when either endpoint's class is unknown
-                            // (not present in this batch's extracted entities) or the
-                            // predicate isn't yet in the vocabulary — see
-                            // entity_filter::validate_relation_edge doc comment.
-                            if let (Some(sc), Some(oc)) = (
-                                entity_classes.get(&subj.to_lowercase()),
-                                entity_classes.get(&obj.to_lowercase()),
-                            ) {
-                                if !entity_filter::validate_relation_edge(pred, sc, oc) {
-                                    return None;
-                                }
-                            }
-                            Some(RelatedToEdge {
-                                src_entity_name: subj.to_string(),
-                                tgt_entity_name: obj.to_string(),
-                                relation_type: pred.to_string(),
-                            })
-                        })
-                        .collect();
-                    if !edges.is_empty() {
-                        match gs_worker.upsert_edges(&job.module_id, &edges) {
-                            Ok(n) => {
-                                if n > 0 {
-                                    println!(
-                                        "[TIER-A] {} relation triples written — {} (open IE)",
-                                        n, job.worm_id
-                                    );
-                                }
-                            }
-                            Err(e) => eprintln!(
-                                "[TIER-A] Relation write failed for {}: {}",
-                                job.worm_id, e
-                            ),
-                        }
-                    }
-                }
-            }
-        });
-    }
 
     // ── Parallel startup drain ────────────────────────────────────────────────
     // Collects unprocessed CORPUS files, then processes them with N concurrent
@@ -547,50 +266,21 @@ fn main() -> NotifyResult<()> {
             .unwrap_or(4)
             .max(1);
 
-        // Optional env var: comma-separated module IDs whose CORPUS files drain first.
-        // Uses a 1024-byte header scan — fast heuristic, no full JSON parse.
-        let priority_ids: std::collections::HashSet<String> =
-            std::env::var("CORPUS_PRIORITY_MODULE_IDS")
-                .unwrap_or_default()
-                .split(',')
-                .map(str::trim)
-                .filter(|s| !s.is_empty())
-                .map(str::to_string)
-                .collect();
-
-        let corpus_files: Vec<std::path::PathBuf> = fs::read_dir(Path::new(&corpus_dir))
-            .into_iter()
-            .flatten()
-            .flatten()
-            .map(|e| e.path())
-            .filter(|p| p.extension().and_then(|s| s.to_str()) == Some("json"))
-            .filter(|p| {
-                p.file_name()
-                    .and_then(|n| n.to_str())
-                    .map(|n| n.starts_with("CORPUS_") && !processed_ledgers.contains(n))
-                    .unwrap_or(false)
-            })
-            .collect();
-
-        // Partition into priority-first if CORPUS_PRIORITY_MODULE_IDS is set.
-        let queue_deque: VecDeque<std::path::PathBuf> = if priority_ids.is_empty() {
-            corpus_files.into()
-        } else {
-            let is_priority = |p: &std::path::PathBuf| -> bool {
-                use std::io::Read;
-                let mut buf = [0u8; 1024];
-                let Ok(mut f) = std::fs::File::open(p) else {
-                    return false;
-                };
-                let n = f.read(&mut buf).unwrap_or(0);
-                let head = std::str::from_utf8(&buf[..n]).unwrap_or("");
-                priority_ids.iter().any(|id| head.contains(id.as_str()))
-            };
-            let (hi, lo): (Vec<_>, Vec<_>) = corpus_files.into_iter().partition(is_priority);
-            hi.into_iter().chain(lo).collect()
-        };
-
-        let queue: Arc<Mutex<VecDeque<std::path::PathBuf>>> = Arc::new(Mutex::new(queue_deque));
+        let queue: Arc<Mutex<VecDeque<std::path::PathBuf>>> = Arc::new(Mutex::new(
+            fs::read_dir(Path::new(&corpus_dir))
+                .into_iter()
+                .flatten()
+                .flatten()
+                .map(|e| e.path())
+                .filter(|p| p.extension().and_then(|s| s.to_str()) == Some("json"))
+                .filter(|p| {
+                    p.file_name()
+                        .and_then(|n| n.to_str())
+                        .map(|n| n.starts_with("CORPUS_") && !processed_ledgers.contains(n))
+                        .unwrap_or(false)
+                })
+                .collect(),
+        ));
 
         let done_files: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
         let defer_files: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
@@ -614,9 +304,6 @@ fn main() -> NotifyResult<()> {
                 Arc::clone(&defer_files),
                 Arc::clone(&circ_files),
             );
-            let tp = Arc::clone(&tier_progress_path);
-            let bpt = backpressure_threshold;
-            let tx_clone = tier_a_tx.clone();
             handles.push(thread::spawn(move || loop {
                 let Some(path) = q.lock().unwrap().pop_front() else {
                     break;
@@ -625,33 +312,7 @@ fn main() -> NotifyResult<()> {
                     Some(n) => n.to_string(),
                     None => continue,
                 };
-                let mut tier_b_used = false;
-                let result = process_corpus(
-                    &path,
-                    &cd,
-                    &de,
-                    &mid,
-                    &gs,
-                    &fd,
-                    &mut tier_b_used,
-                    bpt,
-                    Some(&tx_clone),
-                );
-                if matches!(result, ExtractResult::Success) {
-                    write_tier_progress(
-                        &tp,
-                        serde_json::json!({
-                            "corpus_filename": fname,
-                            "tier_a_done": true,
-                            "tier_b_done": tier_b_used,
-                            "processed_at": std::time::SystemTime::now()
-                                .duration_since(std::time::UNIX_EPOCH)
-                                .unwrap_or_default()
-                                .as_secs(),
-                        }),
-                    );
-                }
-                match result {
+                match process_corpus(&path, &cd, &de, &mid, &gs, &fd) {
                     ExtractResult::Success | ExtractResult::Failed => {
                         let _g = ll.lock().unwrap();
                         append_processed_ledger(&lp, &fname);
@@ -718,33 +379,14 @@ fn main() -> NotifyResult<()> {
                                 // Mark in-flight in deferred to prevent double-fire
                                 // if the watcher emits multiple events for the same write.
                                 deferred_ledgers.push(filename.clone());
-                                let mut tier_b_used = false;
-                                let watcher_result = process_corpus(
+                                match process_corpus(
                                     &path,
                                     &crm_dir,
                                     &doorman_endpoint,
                                     &module_id,
                                     &graph_store,
                                     &feedback_dir,
-                                    &mut tier_b_used,
-                                    backpressure_threshold,
-                                    Some(&tier_a_tx),
-                                );
-                                if matches!(watcher_result, ExtractResult::Success) {
-                                    write_tier_progress(
-                                        &tier_progress_path,
-                                        serde_json::json!({
-                                            "corpus_filename": filename,
-                                            "tier_a_done": true,
-                                            "tier_b_done": tier_b_used,
-                                            "processed_at": std::time::SystemTime::now()
-                                                .duration_since(std::time::UNIX_EPOCH)
-                                                .unwrap_or_default()
-                                                .as_secs(),
-                                        }),
-                                    );
-                                }
-                                match watcher_result {
+                                ) {
                                     ExtractResult::Success | ExtractResult::Failed => {
                                         deferred_ledgers.retain(|f| f != &filename);
                                         append_processed_ledger(&processed_ledgers_path, &filename);
@@ -773,46 +415,17 @@ fn main() -> NotifyResult<()> {
                     );
                 }
                 let retry_queue: Vec<String> = std::mem::take(&mut deferred_ledgers);
-                let now = std::time::Instant::now();
                 for filename in retry_queue {
-                    // Respect per-file backoff — push back if window not elapsed.
-                    if let Some((retry_not_before, _)) = backoff_state.get(&filename) {
-                        if now < *retry_not_before {
-                            deferred_ledgers.push(filename);
-                            continue;
-                        }
-                    }
                     let path = Path::new(&corpus_dir).join(&filename);
-                    let mut tier_b_used = false;
-                    let retry_result = process_corpus(
+                    match process_corpus(
                         &path,
                         &crm_dir,
                         &doorman_endpoint,
                         &module_id,
                         &graph_store,
                         &feedback_dir,
-                        &mut tier_b_used,
-                        backpressure_threshold,
-                        Some(&tier_a_tx),
-                    );
-                    if matches!(retry_result, ExtractResult::Success) {
-                        write_tier_progress(
-                            &tier_progress_path,
-                            serde_json::json!({
-                                "corpus_filename": filename,
-                                "tier_a_done": true,
-                                "tier_b_done": tier_b_used,
-                                "processed_at": std::time::SystemTime::now()
-                                    .duration_since(std::time::UNIX_EPOCH)
-                                    .unwrap_or_default()
-                                    .as_secs(),
-                            }),
-                        );
-                    }
-                    match retry_result {
+                    ) {
                         ExtractResult::Success | ExtractResult::Failed => {
-                            backoff_state.remove(&filename);
-                            deferred_counts.remove(&filename);
                             append_processed_ledger(&processed_ledgers_path, &filename);
                             processed_ledgers.insert(filename);
                         }
@@ -825,61 +438,13 @@ fn main() -> NotifyResult<()> {
                             let count = deferred_counts.entry(filename.clone()).or_insert(0);
                             *count += 1;
                             if *count >= max_defer_retries {
-                                // Dead-letter quarantine: move file out of corpus dir so it is
-                                // not re-queued. Do NOT add to processed_ledger — the file
-                                // failed to process and must remain operator-recoverable.
-                                let src = Path::new(&corpus_dir).join(&filename);
-                                // Append failure reason before the extension so operators can
-                                // batch-replay dead-letters by failure category without reading logs.
-                                let dead_filename = {
-                                    let stem = Path::new(&filename)
-                                        .file_stem()
-                                        .and_then(|s| s.to_str())
-                                        .unwrap_or(&filename);
-                                    let ext = Path::new(&filename)
-                                        .extension()
-                                        .and_then(|s| s.to_str())
-                                        .map(|e| format!(".{e}"))
-                                        .unwrap_or_default();
-                                    format!("{stem}_FAILED_transient{ext}")
-                                };
-                                let dst = Path::new(&dead_letter_dir).join(&dead_filename);
-                                match std::fs::rename(&src, &dst) {
-                                    Ok(()) => eprintln!(
-                                        "[WARN] {} quarantined after {} retries → dead-letter/{} — replay by copying back to corpus dir",
-                                        filename, count, dead_filename
-                                    ),
-                                    Err(e) => {
-                                        eprintln!(
-                                            "[WARN] {} max retries reached but rename failed ({}); adding to processed_ledger as fallback",
-                                            filename, e
-                                        );
-                                        append_processed_ledger(&processed_ledgers_path, &filename);
-                                        processed_ledgers.insert(filename.clone());
-                                    }
-                                }
-                                backoff_state.remove(&filename);
-                                deferred_counts.remove(&filename);
-                            } else {
-                                // Exponential backoff: 5s → 10s → 20s → 40s → 80s → 120s.
-                                // Deterministic ±25% jitter keyed on filename byte-sum.
-                                let exponent = (*count).saturating_sub(1).min(4);
-                                let base_ms: u64 = (5_000u64 << exponent).min(120_000);
-                                let char_sum: u32 = filename.bytes().map(|b| b as u32).sum();
-                                let jitter_num = char_sum % 100; // 0..99
-                                                                 // jitter_factor: 0.75 to 1.25
-                                let jittered_ms = base_ms * (150 + jitter_num as u64 / 2) / 200;
-                                let delay_ms = jittered_ms.clamp(5_000, 120_000);
-                                let retry_not_before =
-                                    std::time::Instant::now() + Duration::from_millis(delay_ms);
-                                backoff_state
-                                    .insert(filename.clone(), (retry_not_before, delay_ms));
-                                println!(
-                                    "[DEFER] {} retry #{} in {:.1}s",
-                                    filename,
-                                    count,
-                                    delay_ms as f64 / 1000.0
+                                eprintln!(
+                                    "[WARN] {} reached max defer retries ({}); moving to dead-letter",
+                                    filename, max_defer_retries
                                 );
+                                append_processed_ledger(&processed_ledgers_path, &filename);
+                                processed_ledgers.insert(filename);
+                            } else {
                                 deferred_ledgers.push(filename);
                             }
                         }
@@ -897,33 +462,14 @@ fn main() -> NotifyResult<()> {
                 if !circuit_deferred_ledgers.is_empty() {
                     let probe = circuit_deferred_ledgers.remove(0);
                     let probe_path = Path::new(&corpus_dir).join(&probe);
-                    let mut probe_tier_b = false;
-                    let probe_result = process_corpus(
+                    match process_corpus(
                         &probe_path,
                         &crm_dir,
                         &doorman_endpoint,
                         &module_id,
                         &graph_store,
                         &feedback_dir,
-                        &mut probe_tier_b,
-                        backpressure_threshold,
-                        Some(&tier_a_tx),
-                    );
-                    if matches!(probe_result, ExtractResult::Success) {
-                        write_tier_progress(
-                            &tier_progress_path,
-                            serde_json::json!({
-                                "corpus_filename": probe,
-                                "tier_a_done": true,
-                                "tier_b_done": probe_tier_b,
-                                "processed_at": std::time::SystemTime::now()
-                                    .duration_since(std::time::UNIX_EPOCH)
-                                    .unwrap_or_default()
-                                    .as_secs(),
-                            }),
-                        );
-                    }
-                    match probe_result {
+                    ) {
                         ExtractResult::DeferCircuitOpen => {
                             // Still down — keep it dormant.
                             circuit_deferred_ledgers.push(probe);
@@ -944,17 +490,6 @@ fn main() -> NotifyResult<()> {
                                     circuit_deferred_ledgers.len()
                                 );
                                 deferred_ledgers.append(&mut circuit_deferred_ledgers);
-                            }
-                            // Promote any Tier-A-only docs for Tier B enrichment.
-                            if !tier_b_enrichment_queue.is_empty() {
-                                println!(
-                                    "[RECOVERY] Promoting {} tier_b_pending docs for Tier B enrichment.",
-                                    tier_b_enrichment_queue.len()
-                                );
-                                for f in tier_b_enrichment_queue.drain(..) {
-                                    processed_ledgers.remove(&f);
-                                    deferred_ledgers.push(f);
-                                }
                             }
                         }
                     }
@@ -989,175 +524,6 @@ fn append_processed_ledger(path: &Path, filename: &str) {
 
 /// Call Tier A (OLMo 7B via /v1/chat/completions) and return raw entity JSON.
 /// Returns None when Tier A is unavailable or response is unparseable.
-/// System prompt for open IE relation extraction — runs alongside entity extraction in
-/// a single combined Tier A OLMo call. Returns (subject, predicate, object) triples.
-/// Both subject and object must be entity names from the text (source-grounding enforced
-/// at write time before upsert_edges). Predicate is a short English verb phrase.
-const RELATION_EXTRACTION_ADDITION: &str = "\n\nAFTER the entities array, also extract relationships between named entities.\n\
-Return them under a \"relations\" key as an array of triples:\n\
-  {\"subject\": \"<entity_name>\", \"predicate\": \"<verb phrase>\", \"object\": \"<entity_name>\"}\n\
-Rules:\n\
-- subject and object must be entity names that appear verbatim in the text.\n\
-- predicate is a short English verb phrase (e.g., \"acquired\", \"employed by\", \"invested in\", \"owns\").\n\
-- omit any triple where subject or object does not name a specific entity from the text.\n\
-- return [] for relations when no clear relationships are stated.\n\
-Return format: {\"entities\": [...], \"relations\": [...]}";
-
-fn relation_extraction_schema() -> serde_json::Value {
-    serde_json::json!({
-        "type": "object",
-        "properties": {
-            "entities": {
-                "type": "array",
-                "items": {
-                    "type": "object",
-                    "properties": {
-                        "entity_name": {"type": "string"},
-                        "classification": {
-                            "type": "string",
-                            "enum": ["Person", "Company", "Project", "Account", "Location"]
-                        },
-                        "role_vector":     {"type": ["string", "null"]},
-                        "location_vector": {"type": ["string", "null"]},
-                        "contact_vector":  {"type": ["string", "null"]}
-                    },
-                    "required": ["entity_name", "classification"],
-                    "additionalProperties": false
-                }
-            },
-            "relations": {
-                "type": "array",
-                "items": {
-                    "type": "object",
-                    "properties": {
-                        "subject":   {"type": "string"},
-                        "predicate": {"type": "string"},
-                        "object":    {"type": "string"}
-                    },
-                    "required": ["subject", "predicate", "object"],
-                    "additionalProperties": false
-                }
-            }
-        },
-        "required": ["entities", "relations"],
-        "additionalProperties": false
-    })
-}
-
-/// Combined entity + relation extraction in one Tier A OLMo call.
-/// Returns `(entities, relations)` parsed from the combined JSON object.
-/// Falls back to `(tier_a_entities_only, [])` on parse failure.
-fn call_tier_a_combined(
-    corpus_text: &str,
-    doorman_endpoint: &str,
-    worm_id: &str,
-) -> (Vec<serde_json::Value>, Vec<serde_json::Value>) {
-    let combined_prompt = format!(
-        "{}{}",
-        EXTRACTION_SYSTEM_PROMPT, RELATION_EXTRACTION_ADDITION
-    );
-    let schema = relation_extraction_schema();
-    let use_grammar = std::env::var("SERVICE_CONTENT_TIER_A_GRAMMAR")
-        .map(|v| v == "json_schema")
-        .unwrap_or(false);
-
-    let chat_body = if use_grammar {
-        serde_json::json!({
-            "messages": [
-                {"role": "system", "content": combined_prompt},
-                {"role": "user",   "content": corpus_text}
-            ],
-            "grammar": {"type": "json-schema", "value": schema},
-            "temperature": 0.0,
-            "max_tokens": 1536,
-            "cache_prompt": true
-        })
-    } else {
-        serde_json::json!({
-            "messages": [
-                {"role": "system", "content": combined_prompt},
-                {"role": "user",   "content": corpus_text},
-                {"role": "assistant", "content": "{\"entities\": [{\""}
-            ],
-            "temperature": 0.0,
-            "max_tokens": 1536,
-            "cache_prompt": true
-        })
-    };
-
-    let url = format!("{}/v1/chat/completions", doorman_endpoint);
-    let client = reqwest::blocking::Client::new();
-    let raw = match client
-        .post(&url)
-        .header("X-Foundry-Complexity", "low")
-        .header("X-Foundry-Background", "true")
-        .json(&chat_body)
-        .timeout(Duration::from_secs(180))
-        .send()
-    {
-        Ok(r) if r.status().is_success() => match r.json::<serde_json::Value>() {
-            Ok(v) => Some(v),
-            Err(e) => {
-                eprintln!(
-                    "[TIER-A] call_tier_a_combined: response body parse failed for {}: {}",
-                    worm_id, e
-                );
-                None
-            }
-        },
-        Ok(r) => {
-            eprintln!(
-                "[TIER-A] call_tier_a_combined: non-success status {} for {}",
-                r.status(),
-                worm_id
-            );
-            None
-        }
-        Err(e) => {
-            eprintln!(
-                "[TIER-A] call_tier_a_combined: request failed for {}: {}",
-                worm_id, e
-            );
-            None
-        }
-    };
-
-    let content = raw.as_ref().and_then(|v| {
-        v["content"]
-            .as_str()
-            .or_else(|| v["choices"][0]["message"]["content"].as_str())
-            .map(|s| s.to_string())
-    });
-
-    if let Some(mut content) = content {
-        // Re-attach pre-fill prefix when the model returned only the continuation.
-        if !content.trim_start().starts_with('{') {
-            content = format!("{{\"entities\": [{{\"{}\"", content);
-        }
-        let content = content
-            .trim()
-            .strip_prefix("```json")
-            .unwrap_or(content.trim())
-            .strip_prefix("```")
-            .unwrap_or(content.trim());
-        let content = content.strip_suffix("```").unwrap_or(content).trim();
-        match serde_json::from_str::<serde_json::Value>(content) {
-            Ok(v) => {
-                let entities = v["entities"].as_array().cloned().unwrap_or_default();
-                let relations = v["relations"].as_array().cloned().unwrap_or_default();
-                return (entities, relations);
-            }
-            Err(e) => {
-                eprintln!(
-                    "[TIER-A] call_tier_a_combined: entity/relation JSON parse failed for {}: {}",
-                    worm_id, e
-                );
-            }
-        }
-    }
-    (vec![], vec![])
-}
-
 fn call_tier_a_extract(
     corpus_text: &str,
     entity_schema: &serde_json::Value,
@@ -1178,10 +544,7 @@ fn call_tier_a_extract(
                 {"role": "system", "content": EXTRACTION_SYSTEM_PROMPT},
                 {"role": "user",   "content": corpus_text}
             ],
-            "grammar": {"type": "json-schema", "value": entity_schema},
-            "temperature": 0.0,
-            "max_tokens": 1024,
-            "cache_prompt": true
+            "grammar": {"type": "json-schema", "value": entity_schema}
         })
     } else {
         serde_json::json!({
@@ -1189,10 +552,7 @@ fn call_tier_a_extract(
                 {"role": "system", "content": EXTRACTION_SYSTEM_PROMPT},
                 {"role": "user",   "content": corpus_text},
                 {"role": "assistant", "content": "[{\""}
-            ],
-            "temperature": 0.0,
-            "max_tokens": 1024,
-            "cache_prompt": true
+            ]
         })
     };
     let url = format!("{}/v1/chat/completions", doorman_endpoint);
@@ -1200,376 +560,58 @@ fn call_tier_a_extract(
     match client
         .post(&url)
         .header("X-Foundry-Complexity", "low")
-        // Route via complete_background() so interactive chat can preempt this
-        // extraction call. Without this header, Tier A competes with interactive
-        // on equal footing inside OLMo, causing 4-minute batch delays.
-        .header("X-Foundry-Background", "true")
         .json(&chat_body)
         .timeout(Duration::from_secs(180))
         .send()
     {
-        Ok(r) if r.status().is_success() => {
-            let result = r.json::<serde_json::Value>().ok().and_then(|v| {
-                // Doorman envelope: {"content": "...", "tier_used": "local", ...}
-                // OpenAI fallback: {"choices": [{"message": {"content": "..."}}]}
-                let content = v["content"]
-                    .as_str()
-                    .or_else(|| v["choices"][0]["message"]["content"].as_str())?;
-                // Reattach assistant pre-fill when llama-server returns only the continuation.
-                let owned;
-                let content = if content.trim_start().starts_with('[') {
-                    content
-                } else {
-                    owned = format!("[{{\"{}", content);
-                    owned.as_str()
-                };
-                // Strip markdown fences the model may have added
-                let stripped = content
-                    .trim()
-                    .strip_prefix("```json")
-                    .unwrap_or(content.trim())
-                    .strip_prefix("```")
-                    .unwrap_or(content.trim());
-                let stripped = stripped.strip_suffix("```").unwrap_or(stripped).trim();
-                serde_json::from_str(stripped).ok()
-            });
-            if result.is_none() {
-                eprintln!(
-                    "[TIER-A] call_tier_a_extract: success response but content missing/unparseable"
-                );
-            }
-            result
-        }
-        Ok(r) => {
-            eprintln!(
-                "[TIER-A] call_tier_a_extract: non-success status {}",
-                r.status()
-            );
-            None
-        }
-        Err(e) => {
-            eprintln!("[TIER-A] call_tier_a_extract: request failed: {}", e);
-            None
-        }
+        Ok(r) if r.status().is_success() => r.json::<serde_json::Value>().ok().and_then(|v| {
+            // Doorman envelope: {"content": "...", "tier_used": "local", ...}
+            // OpenAI fallback: {"choices": [{"message": {"content": "..."}}]}
+            let content = v["content"]
+                .as_str()
+                .or_else(|| v["choices"][0]["message"]["content"].as_str())?;
+            // Reattach assistant pre-fill when llama-server returns only the continuation.
+            let owned;
+            let content = if content.trim_start().starts_with('[') {
+                content
+            } else {
+                owned = format!("[{{\"{}", content);
+                owned.as_str()
+            };
+            // Strip markdown fences the model may have added
+            let stripped = content
+                .trim()
+                .strip_prefix("```json")
+                .unwrap_or(content.trim())
+                .strip_prefix("```")
+                .unwrap_or(content.trim());
+            let stripped = stripped.strip_suffix("```").unwrap_or(stripped).trim();
+            serde_json::from_str(stripped).ok()
+        }),
+        _ => None,
     }
-}
-
-/// Detects CSV-flavoured structured-data corpus text (e.g. CRM people
-/// exports emitted as `CORPUS_csv-people-*.json`) rather than prose. GLiNER's
-/// NER model correctly returns empty for these — there's no natural-language
-/// context to extract entities from — so callers should skip the Tier 0 call
-/// entirely and route straight to Tier A, which parses the delimited
-/// `Entity Name:` fields directly. Requires the marker on 2+ lines so prose
-/// that merely mentions "Entity Name" once isn't misrouted.
-fn is_csv_structured_data(text: &str) -> bool {
-    text.lines().filter(|l| l.contains("Entity Name:")).count() >= 2
-}
-
-/// Max chars per Tier A (OLMo 7B) chunk. Larger than GLINER_MAX_CHARS since
-/// OLMo's context window is far bigger than the GLiNER BERT encoder's ~512
-/// tokens — this still keeps prompt + system prompt + output comfortably
-/// inside a single chat-completion call.
-const TIER_A_MAX_CHARS: usize = 6000;
-
-/// Chunked wrapper around `call_tier_a_extract` — EQ5: long documents (10KB+
-/// Bloomberg articles) lose second-half entities in a single unchunked call.
-/// Splits via the same sentence-boundary chunker used for GLiNER, merges and
-/// dedupes entities across chunks. Returns `None` only when every chunk's
-/// call failed (Tier A genuinely unavailable) — a single-chunk document
-/// behaves exactly as the unchunked call did.
-fn call_tier_a_extract_chunked(
-    corpus_text: &str,
-    entity_schema: &serde_json::Value,
-    doorman_endpoint: &str,
-) -> Option<Vec<serde_json::Value>> {
-    let chunks = chunk_for_gliner(corpus_text, TIER_A_MAX_CHARS);
-    if chunks.len() == 1 {
-        return call_tier_a_extract(corpus_text, entity_schema, doorman_endpoint);
-    }
-
-    let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
-    let mut merged: Vec<serde_json::Value> = Vec::new();
-    let mut any_succeeded = false;
-    for chunk in &chunks {
-        if let Some(ents) = call_tier_a_extract(chunk, entity_schema, doorman_endpoint) {
-            any_succeeded = true;
-            for ent in ents {
-                let key = format!(
-                    "{}__{}",
-                    ent["entity_name"].as_str().unwrap_or("").to_lowercase(),
-                    ent["classification"].as_str().unwrap_or(""),
-                );
-                if seen.insert(key) {
-                    merged.push(ent);
-                }
-            }
-        }
-    }
-    if !any_succeeded {
-        return None;
-    }
-    println!(
-        "  -> [TIER-A] {} unique entities from {} chunks",
-        merged.len(),
-        chunks.len()
-    );
-    Some(merged)
-}
-
-/// Remove `<https://…>` and `<http://…>` inline URL fragments from a string.
-fn strip_inline_urls(s: &str) -> String {
-    let mut out = String::with_capacity(s.len());
-    let mut chars = s.chars().peekable();
-    while let Some(c) = chars.next() {
-        if c == '<' {
-            let rest: String = chars.clone().take(8).collect();
-            if rest.starts_with("https://") || rest.starts_with("http://") {
-                for c2 in chars.by_ref() {
-                    if c2 == '>' {
-                        break;
-                    }
-                }
-                continue;
-            }
-        }
-        out.push(c);
-    }
-    out
-}
-
-/// Clean web-scraped corpus text before entity extraction.
-/// Removes nav links, inline URLs, and Unicode box-drawing/block characters.
-/// Clean Bloomberg/PDF text passes through unchanged (fast path).
-fn preprocess_corpus_text(text: &str) -> std::borrow::Cow<'_, str> {
-    let needs_clean = text.contains('<')
-        || text.contains('\u{fffd}')
-        || text.chars().any(|c| matches!(c as u32, 0x2500..=0x25FF));
-    if !needs_clean {
-        return std::borrow::Cow::Borrowed(text);
-    }
-    let mut out = String::with_capacity(text.len());
-    for line in text.lines() {
-        let trimmed = line.trim();
-        // Drop short navigation UI lines (nav link pattern: keyword + inline URL)
-        if trimmed.len() < 80
-            && (trimmed.starts_with("Home<")
-                || trimmed.starts_with("Blog<")
-                || trimmed.starts_with("Tweet")
-                || trimmed.starts_with("Share")
-                || trimmed.starts_with("Tenant Portal"))
-        {
-            continue;
-        }
-        // Strip inline URLs then box-drawing chars
-        let cleaned = strip_inline_urls(trimmed);
-        let cleaned: String = cleaned
-            .chars()
-            .filter(|c| !matches!(*c as u32, 0x2500..=0x259F | 0x25A0..=0x25FF | 0xFFFD))
-            .collect();
-        if !cleaned.trim().is_empty() {
-            out.push_str(&cleaned);
-            out.push('\n');
-        }
-    }
-    std::borrow::Cow::Owned(out)
-}
-
-const GLINER_ENDPOINT: &str = "http://127.0.0.1:9085";
-
-/// Call GLiNER Tier 0 microservice for entity extraction.
-/// Extractive (cannot hallucinate), 150x faster than OLMo.
-/// Returns None when GLiNER is unavailable — caller falls back to Tier A OLMo.
-/// Max chars per GLiNER chunk. BERT encoder limit is ~512 tokens (~2000 chars).
-/// Long documents are split into consecutive chunks; entities are merged + deduped.
-const GLINER_MAX_CHARS: usize = 2000;
-
-/// Split `text` into consecutive slices of at most `max_chars` bytes,
-/// cutting at the last sentence-ending punctuation within each window.
-/// Falls back to a hard byte cut when no sentence boundary is found.
-/// All returned slices are valid UTF-8 (cuts are aligned to char boundaries).
-fn chunk_for_gliner(text: &str, max_chars: usize) -> Vec<&str> {
-    if text.len() <= max_chars {
-        return vec![text];
-    }
-    let mut chunks = Vec::new();
-    let mut start = 0usize;
-    while start < text.len() {
-        // Align raw_end to a valid UTF-8 char boundary (handles multi-byte chars).
-        let mut raw_end = (start + max_chars).min(text.len());
-        if raw_end < text.len() {
-            while raw_end > start && !text.is_char_boundary(raw_end) {
-                raw_end -= 1;
-            }
-        }
-        // Prefer cutting at the last sentence boundary within the window.
-        let end = if raw_end < text.len() {
-            text[start..raw_end]
-                .rfind(['.', '!', '?'])
-                .map(|rel| start + rel + 1)
-                .unwrap_or(raw_end)
-        } else {
-            raw_end
-        };
-        // Safety: never produce a zero-length chunk that stalls the loop.
-        let end = end.max(start + 1).min(text.len());
-        chunks.push(&text[start..end]);
-        // 150-char overlap so entities at chunk boundaries are not split across two
-        // incomplete windows. Guard: only overlap when it still advances the cursor.
-        let prev_start = start;
-        start = if end > start + 150 { end - 150 } else { end };
-        // The overlap subtraction is a raw byte offset and can land inside a
-        // multi-byte UTF-8 character (e.g. an em dash) — walk back to a valid
-        // char boundary before it's used to slice `text` on the next iteration.
-        while start > 0 && !text.is_char_boundary(start) {
-            start -= 1;
-        }
-        // If start itself begins a multi-byte char, the walk-back above can land
-        // exactly on prev_start — zero net progress, which would loop forever
-        // (unboundedly growing `chunks` until OOM). `end` is always > prev_start
-        // and already a valid char boundary, so fall back to no overlap.
-        if start <= prev_start {
-            start = end;
-        }
-    }
-    chunks
-}
-
-enum GlinerOutcome {
-    /// GLiNER found named entities — use them, skip Tier A.
-    Found(Vec<serde_json::Value>),
-    /// GLiNER is reachable but found nothing (structured data, contentless text).
-    /// Tier A OLMo won't improve on this — mark the file done with 0 entities.
-    Empty,
-    /// GLiNER service is unreachable or returned an unexpected response.
-    /// Fall through to Tier A with backpressure gate.
-    Unavailable,
-}
-
-fn call_tier_0_gliner(corpus_text: &str, domain_id: Option<&str>) -> GlinerOutcome {
-    let chunks = chunk_for_gliner(corpus_text, GLINER_MAX_CHARS);
-
-    let client = match reqwest::blocking::Client::builder()
-        .timeout(Duration::from_secs(30))
-        .build()
-    {
-        Ok(c) => c,
-        Err(e) => {
-            eprintln!("  -> [TIER-0] Client build failed: {}", e);
-            return GlinerOutcome::Unavailable;
-        }
-    };
-
-    let domain = domain_id.unwrap_or("projects");
-    let url = format!("{GLINER_ENDPOINT}/v1/extract");
-    let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
-    let mut all_entities: Vec<serde_json::Value> = Vec::new();
-
-    for chunk in &chunks {
-        let body = serde_json::json!({
-            "text": chunk,
-            "domain_id": domain,
-            "entity_hints": entity_hints::get_entity_hints(),
-        });
-        let resp = match client.post(&url).json(&body).send() {
-            Ok(r) => r,
-            Err(e) => {
-                eprintln!("  -> [TIER-0] Request failed: {}", e);
-                return GlinerOutcome::Unavailable;
-            }
-        };
-        if !resp.status().is_success() {
-            eprintln!("  -> [TIER-0] Non-2xx status: {}", resp.status());
-            return GlinerOutcome::Unavailable;
-        }
-        let r: serde_json::Value = match resp.json() {
-            Ok(v) => v,
-            Err(e) => {
-                eprintln!("  -> [TIER-0] JSON parse failed: {}", e);
-                return GlinerOutcome::Unavailable;
-            }
-        };
-        let entities = match r["entities"].as_array() {
-            Some(a) => a,
-            None => {
-                eprintln!("  -> [TIER-0] No 'entities' array in response");
-                return GlinerOutcome::Unavailable;
-            }
-        };
-        for ent in entities {
-            let key = format!(
-                "{}__{}",
-                ent["entity_name"].as_str().unwrap_or("").to_lowercase(),
-                ent["classification"].as_str().unwrap_or(""),
-            );
-            if seen.insert(key) {
-                all_entities.push(ent.clone());
-            }
-        }
-    }
-
-    if all_entities.is_empty() {
-        eprintln!(
-            "  -> [TIER-0] No entities in {} chunk(s) — file done (GLiNER available)",
-            chunks.len()
-        );
-        return GlinerOutcome::Empty;
-    }
-    if chunks.len() > 1 {
-        eprintln!(
-            "  -> [TIER-0] {} unique entities from {} chunks",
-            all_entities.len(),
-            chunks.len()
-        );
-    }
-    GlinerOutcome::Found(all_entities)
 }
 
 /// Convert raw entity JSON values into `GraphEntity` structs.
-/// Logs per-stage rejection telemetry at INFO level for every batch so
-/// operators can tune filter thresholds without reading LadybugDB directly.
 fn raw_entities_to_graph(
     raw: &[serde_json::Value],
     module_id: &str,
     confidence: f64,
 ) -> Vec<GraphEntity> {
-    let (
-        mut drop_empty,
-        mut drop_noise,
-        mut drop_word_count,
-        mut drop_coerce,
-        mut drop_oov,
-        mut drop_field_missing,
-    ) = (0usize, 0usize, 0usize, 0usize, 0usize, 0usize);
-    let result = raw
-        .iter()
+    raw.iter()
         .filter_map(|ent| {
-            let entity_name = match ent["entity_name"].as_str() {
-                Some(s) => s.to_string(),
-                None => {
-                    drop_field_missing += 1;
-                    return None;
-                }
-            };
-            let classification = match ent["classification"].as_str() {
-                Some(s) => s.to_string(),
-                None => {
-                    drop_field_missing += 1;
-                    return None;
-                }
-            };
+            let entity_name = ent["entity_name"].as_str()?.to_string();
+            let classification = ent["classification"].as_str()?.to_string();
             if entity_name.is_empty() || classification.is_empty() {
-                drop_empty += 1;
                 return None;
             }
             // Change 2: deterministic noise filter — rejects env vars, file paths,
             // snake_case identifiers, call expressions, fragments, and placeholders.
             if entity_filter::is_noise_entity_name(&entity_name) {
-                drop_noise += 1;
                 return None;
             }
             // Change 5: word-count gate — sentences and clauses are not entity names.
             if entity_name.split_whitespace().count() > 8 {
-                drop_word_count += 1;
                 return None;
             }
             // Change 4: type-coherence validation — corrects or rejects misclassified
@@ -1577,16 +619,12 @@ fn raw_entities_to_graph(
             let classification =
                 match entity_filter::coerce_classification(&entity_name, &classification) {
                     Some(cls) => cls,
-                    None => {
-                        drop_coerce += 1;
-                        return None;
-                    }
+                    None => return None,
                 };
             // Reject out-of-vocabulary classifications. OLMo may emit values such as
             // "Licence" or "Technology" when the prompt omit list is insufficient.
             // Dropping them here prevents bad data from landing in LadybugDB.
-            if !entity_filter::is_allowed_classification(&classification) {
-                drop_oov += 1;
+            if !entity_filter::ALLOWED_CLASSIFICATIONS.contains(&classification.as_str()) {
                 return None;
             }
             Some(GraphEntity {
@@ -1609,21 +647,9 @@ fn raw_entities_to_graph(
                     .map(str::to_string),
                 module_id: module_id.to_string(),
                 confidence,
-                source_doc: None, // callers that know the worm_id may set this post-construction
             })
         })
-        .collect::<Vec<_>>();
-    let total_in = raw.len();
-    let kept = result.len();
-    let _dropped = total_in - kept;
-    if total_in > 0 {
-        println!(
-            "[entity_filter] module={module_id} kept={kept}/{total_in} \
-             drop=field_missing:{drop_field_missing} empty:{drop_empty} noise:{drop_noise} \
-             word_count:{drop_word_count} coerce:{drop_coerce} oov:{drop_oov}"
-        );
-    }
-    result
+        .collect()
 }
 
 /// Write a DPO training pair when Tier B improves on Tier A's extraction.
@@ -1641,7 +667,7 @@ fn raw_entities_to_graph(
 fn write_enrichment_dpo_pair(
     worm_id: &str,
     corpus_text: &str,
-    tier_0_entities: &[serde_json::Value],
+    tier_a_raw: &[serde_json::Value],
     tier_b_raw: &[serde_json::Value],
     feedback_dir: &str,
 ) -> bool {
@@ -1655,14 +681,14 @@ fn write_enrichment_dpo_pair(
     if tier_b_raw.is_empty() {
         return false;
     }
-    if tier_0_entities.is_empty() {
+    if tier_a_raw.is_empty() {
         return false; // no rejected signal — DPO pair would teach verbosity, not accuracy
     }
     // DPO pre-save validator — applies the SAME filter chain as raw_entities_to_graph:
     // noise rejection + word-count gate + coerce_classification + ALLOWED_CLASSIFICATIONS.
     // Ensures the chosen side of the DPO pair matches what actually lands in LadybugDB.
     let tier_b_clean = entity_filter::clean_dpo_side(tier_b_raw);
-    let tier_a_clean = entity_filter::clean_dpo_side(tier_0_entities);
+    let tier_a_clean = entity_filter::clean_dpo_side(tier_a_raw);
     if tier_b_clean.is_empty() {
         return false; // all Tier B entities were noise — no training signal after cleaning
     }
@@ -1671,7 +697,7 @@ fn write_enrichment_dpo_pair(
     }
     // Shadow-rebind: rest of function operates on cleaned slices.
     let tier_b_raw = tier_b_clean.as_slice();
-    let tier_0_entities = tier_a_clean.as_slice();
+    let tier_a_raw = tier_a_clean.as_slice();
     // Source-grounding: reject the pair if any Tier B entity name is absent
     // (case-insensitive) from the source corpus text. Prevents Tier B hallucinations
     // (verified: "Woodfine Management Corp.", "service-slm", "Vancouver" fabricated
@@ -1689,7 +715,7 @@ fn write_enrichment_dpo_pair(
     }
     // Normalize Tier A to {classification, entity_name} only — strips role_vector,
     // location_vector, contact_vector that are absent in Tier B's raw response.
-    let tier_a_normalized: Vec<serde_json::Value> = tier_0_entities
+    let tier_a_normalized: Vec<serde_json::Value> = tier_a_raw
         .iter()
         .map(|e| {
             serde_json::json!({
@@ -1750,123 +776,6 @@ fn write_enrichment_dpo_pair(
     false
 }
 
-/// JSON Schema shared by both Tier A (OLMo 7B) and the Tier A training worker.
-fn entity_extraction_schema() -> serde_json::Value {
-    serde_json::json!({
-        "type": "array",
-        "items": {
-            "type": "object",
-            "properties": {
-                "entity_name": {"type": "string"},
-                "classification": {
-                    "type": "string",
-                    "enum": ["Person", "Company", "Project", "Account", "Location"]
-                },
-                "role_vector":     {"type": ["string", "null"]},
-                "location_vector": {"type": ["string", "null"]},
-                "contact_vector":  {"type": ["string", "null"]}
-            },
-            "required": ["entity_name", "classification"],
-            "additionalProperties": false
-        }
-    })
-}
-
-/// Write a DPO training pair from the GLiNER vs OLMo comparison.
-/// GLiNER is the teacher (extractive, zero hallucinations); OLMo is the student.
-/// chosen = GLiNER output (when non-empty); OLMo=chosen only when GLiNER returned [].
-/// Returns true if a pair was written.
-fn write_gliner_olmo_dpo_pair(
-    worm_id: &str,
-    corpus_text: &str,
-    tier_0_entities: &[serde_json::Value],
-    tier_a_entities: &[serde_json::Value],
-    feedback_dir: &str,
-) -> bool {
-    if worm_id.starts_with("DOC_sweep-") {
-        return false; // git commit text — hallucination risk too high
-    }
-    // Both empty → both models agree nothing is here; no training signal
-    if tier_0_entities.is_empty() && tier_a_entities.is_empty() {
-        return false;
-    }
-    // Normalize + sort both sides to {classification, entity_name} for stable comparison
-    let normalize_sorted = |ents: &[serde_json::Value]| -> Vec<serde_json::Value> {
-        let mut v = entity_filter::clean_dpo_side(ents);
-        v.sort_by_key(|e| {
-            format!(
-                "{}__{}",
-                e.get("classification")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or(""),
-                e.get("entity_name").and_then(|v| v.as_str()).unwrap_or(""),
-            )
-        });
-        v.iter()
-            .map(|e| {
-                serde_json::json!({
-                    "classification": e.get("classification").unwrap_or(&serde_json::Value::Null),
-                    "entity_name":    e.get("entity_name").unwrap_or(&serde_json::Value::Null),
-                })
-            })
-            .collect()
-    };
-    let t0_norm = normalize_sorted(tier_0_entities);
-    let ta_norm = normalize_sorted(tier_a_entities);
-    // Identical → no training delta
-    if serde_json::to_string(&t0_norm).unwrap_or_default()
-        == serde_json::to_string(&ta_norm).unwrap_or_default()
-    {
-        return false;
-    }
-    // GLiNER non-empty → GLiNER=chosen; GLiNER empty → OLMo=chosen (caught a miss)
-    let (chosen, rejected, pair_type) = if !t0_norm.is_empty() {
-        (&t0_norm, &ta_norm, "gliner-distillation")
-    } else {
-        (&ta_norm, &t0_norm, "gliner-empty-olmo-found")
-    };
-    // Source grounding: verify chosen entities appear in corpus text
-    let corpus_lower = corpus_text.to_lowercase();
-    let all_grounded = chosen.iter().all(|e| {
-        e.get("entity_name")
-            .and_then(|v| v.as_str())
-            .map(|name| corpus_lower.contains(&name.to_lowercase()))
-            .unwrap_or(false)
-    });
-    if !all_grounded {
-        return false; // hallucinated entity in chosen side — discard
-    }
-    let chosen_json = serde_json::to_string(chosen).unwrap_or_default();
-    let rejected_json = serde_json::to_string(rejected).unwrap_or_default();
-    let prompt = format!("{}\n\nText:\n{}", EXTRACTION_SYSTEM_PROMPT, corpus_text);
-    let now = chrono::Utc::now();
-    let pair = serde_json::json!({
-        "prompt":      prompt,
-        "chosen":      chosen_json,
-        "rejected":    rejected_json,
-        "source_type": pair_type,
-        "worm_id":     worm_id,
-        "timestamp":   now.to_rfc3339(),
-    });
-    let _ = fs::create_dir_all(feedback_dir);
-    let filename = format!(
-        "{}/gliner-distill-{}-{}.jsonl",
-        feedback_dir,
-        worm_id,
-        now.timestamp_millis()
-    );
-    if let Ok(mut f) = fs::OpenOptions::new()
-        .create(true)
-        .write(true)
-        .truncate(true)
-        .open(&filename)
-    {
-        let _ = writeln!(f, "{}", pair);
-        return true;
-    }
-    false
-}
-
 /// Write the git commit SHA to the sweep completion ledger after enrichment succeeds.
 /// Only fires for sweep-sourced documents (worm_id prefix: "DOC_sweep-").
 /// Ledger path is read from SERVICE_CONTENT_SWEEP_LEDGER env var; no-op if unset.
@@ -1896,60 +805,6 @@ fn mark_sweep_sha_complete(worm_id: &str) {
     }
 }
 
-/// Returns true if Doorman queue depth exceeds `threshold`.
-/// Returns false (conservative) if Doorman is unreachable — do not gate on unavailable info.
-fn check_doorman_backpressure(doorman_endpoint: &str, threshold: u64) -> bool {
-    if threshold == 0 {
-        return false;
-    }
-    let url = format!("{}/readyz", doorman_endpoint);
-    let client = reqwest::blocking::Client::new();
-    let Ok(resp) = client.get(&url).timeout(Duration::from_secs(3)).send() else {
-        return false;
-    };
-    let Ok(body) = resp.json::<serde_json::Value>() else {
-        return false;
-    };
-    body["queue_pending"]
-        .as_u64()
-        .map(|p| p > threshold)
-        .unwrap_or(false)
-}
-
-fn write_tier_progress(path: &Path, entry: serde_json::Value) {
-    use std::io::Write;
-    if let Ok(mut f) = fs::OpenOptions::new().create(true).append(true).open(path) {
-        let _ = writeln!(f, "{}", entry);
-    }
-}
-
-/// Read tier_progress.jsonl; return corpus filenames where tier_a_done=true AND tier_b_done=false.
-/// Last entry per corpus_filename wins (append-only; newer entries supersede older ones).
-fn load_tier_b_pending(path: &Path) -> Vec<String> {
-    let Ok(file) = fs::File::open(path) else {
-        return Vec::new();
-    };
-    use std::io::BufRead;
-    let mut latest: std::collections::HashMap<String, serde_json::Value> =
-        std::collections::HashMap::new();
-    for line in std::io::BufReader::new(file).lines().map_while(Result::ok) {
-        if let Ok(v) = serde_json::from_str::<serde_json::Value>(&line) {
-            if let Some(fname) = v["corpus_filename"].as_str() {
-                latest.insert(fname.to_string(), v);
-            }
-        }
-    }
-    latest
-        .into_values()
-        .filter(|v| {
-            v["tier_a_done"].as_bool().unwrap_or(false)
-                && !v["tier_b_done"].as_bool().unwrap_or(false)
-        })
-        .filter_map(|v| v["corpus_filename"].as_str().map(str::to_string))
-        .collect()
-}
-
-#[allow(clippy::too_many_arguments)]
 fn process_corpus(
     filepath: &Path,
     crm_dir: &str,
@@ -1957,11 +812,7 @@ fn process_corpus(
     module_id: &str,
     graph_store: &Arc<dyn GraphStore>,
     feedback_dir: &str,
-    tier_b_used: &mut bool,
-    backpressure_threshold: u64,
-    tier_a_tx: Option<&SyncSender<TierAJob>>,
 ) -> ExtractResult {
-    *tier_b_used = false;
     // SC-5: log read failures instead of silently returning
     let content = match fs::read_to_string(filepath) {
         Ok(c) => c,
@@ -2009,136 +860,42 @@ fn process_corpus(
         .as_str()
         .filter(|s| !s.is_empty())
         .unwrap_or(module_id);
-    // Explicit domain_id in CORPUS JSON wins. If absent, infer from worm_id prefix:
-    // - DOC_session-* / DOC_sweep-* are engineering session transcripts and git commit
-    //   text → "documentation" domain (developer/service/library entity labels).
-    //   "documentation" is the Foundry ontology domain for technical content; it maps
-    //   directly to domain_documentation.csv in the ontology directory.
-    // - Everything else falls to service-gliner DEFAULT_DOMAIN ("projects")
-    let domain_id: Option<&str> = payload["domain_id"].as_str().or_else(|| {
-        if worm_id.starts_with("DOC_session-") || worm_id.starts_with("DOC_sweep-") {
-            Some("documentation")
-        } else {
-            None
-        }
-    });
 
     if corpus_text.is_empty() {
         return ExtractResult::Failed;
     }
 
-    // Preprocess: strip nav links, inline URLs, OCR artifacts before extraction.
-    let corpus_text_owned = preprocess_corpus_text(corpus_text);
-    let corpus_text = corpus_text_owned.as_ref();
-
     // ── Shared entity schema used by both tiers ───────────────────────────────
-    let entity_schema = entity_extraction_schema();
-
-    // ── Step 1: Tier 0 (GLiNER) with Tier A (OLMo) fallback ─────────────────
-    // GLiNER (Tier 0) is direct HTTP to port 9085 — no Doorman involvement.
-    // Backpressure gate only applies when GLiNER is down (Unavailable).
-    //
-    // Every document that passes Tier 0 is also queued for an async Tier A
-    // pass via tier_a_tx (fire-and-forget).  The worker writes a DPO training
-    // pair: GLiNER=chosen (extractive, no hallucinations), OLMo=rejected (student).
-    // When GLiNER returns Empty and OLMo finds entities the roles reverse so we
-    // capture GLiNER's blind spots.  This fire-and-forget never blocks the drain.
-    //
-    // CSV structured-data files (e.g. CORPUS_csv-people-*.json) have no natural-
-    // language context for GLiNER's NER model — it correctly returns empty.
-    // Skip the wasted Tier 0 round-trip and route straight to Tier A, which can
-    // parse delimited "Entity Name:" fields directly.
-    let tier_0_entities: Option<Vec<serde_json::Value>> = if is_csv_structured_data(corpus_text) {
-        println!(
-            "  -> [CSV] Structured-data pattern detected — skipping GLiNER, routing to Tier A."
-        );
-        if check_doorman_backpressure(doorman_endpoint, backpressure_threshold) {
-            eprintln!(
-                "[BACKPRESSURE] CSV structured-data + queue_pending > {} — deferring {}",
-                backpressure_threshold,
-                filepath.display()
-            );
-            return ExtractResult::DeferTransient;
+    let entity_schema = serde_json::json!({
+        "type": "array",
+        "items": {
+            "type": "object",
+            "properties": {
+                "entity_name": {"type": "string"},
+                "classification": {
+                    "type": "string",
+                    "enum": ["Person", "Company", "Project", "Account", "Location"]
+                },
+                "role_vector": {"type": ["string", "null"]},
+                "location_vector": {"type": ["string", "null"]},
+                "contact_vector": {"type": ["string", "null"]}
+            },
+            "required": ["entity_name", "classification"]
         }
-        let tier_a = call_tier_a_extract_chunked(corpus_text, &entity_schema, doorman_endpoint);
-        match &tier_a {
+    });
+
+    // ── Step 1: Tier A extraction (always first — fast local OLMo) ───────────
+    let tier_a_raw: Option<Vec<serde_json::Value>> = {
+        let result = call_tier_a_extract(corpus_text, &entity_schema, doorman_endpoint);
+        match &result {
             Some(ents) => println!(
-                "  -> [CSV/A] {} entities extracted via Tier A (module: {}).",
+                "  -> [TIER-A] {} entities extracted (module: {}).",
                 ents.len(),
                 effective_module_id
             ),
-            None => println!("  -> [CSV/A] Tier A unavailable — proceeding to Tier B."),
+            None => println!("  -> [TIER-A] Unavailable — proceeding to Tier B."),
         }
-        tier_a
-    } else {
-        match call_tier_0_gliner(corpus_text, domain_id) {
-            GlinerOutcome::Found(ents) => {
-                println!(
-                    "  -> [TIER-0/A] {} entities extracted (module: {}).",
-                    ents.len(),
-                    effective_module_id
-                );
-                // Queue for async Tier A training pass (non-blocking, drops if queue full)
-                if let Some(tx) = tier_a_tx {
-                    if let Err(e) = tx.try_send(TierAJob {
-                        corpus_text: corpus_text.to_string(),
-                        worm_id: worm_id.to_string(),
-                        module_id: effective_module_id.to_string(),
-                        tier_0_entities: ents.clone(),
-                        feedback_dir: feedback_dir.to_string(),
-                        doorman_endpoint: doorman_endpoint.to_string(),
-                    }) {
-                        eprintln!(
-                            "[TIER-A] enqueue dropped for {} (channel full or closed): {}",
-                            worm_id, e
-                        );
-                    }
-                }
-                Some(ents)
-            }
-            GlinerOutcome::Empty => {
-                // GLiNER reachable, no entities — queue for Tier A to catch GLiNER blind spots,
-                // then mark done immediately (production path unblocked).
-                if let Some(tx) = tier_a_tx {
-                    if let Err(e) = tx.try_send(TierAJob {
-                        corpus_text: corpus_text.to_string(),
-                        worm_id: worm_id.to_string(),
-                        module_id: effective_module_id.to_string(),
-                        tier_0_entities: vec![],
-                        feedback_dir: feedback_dir.to_string(),
-                        doorman_endpoint: doorman_endpoint.to_string(),
-                    }) {
-                        eprintln!(
-                            "[TIER-A] enqueue dropped for {} (channel full or closed): {}",
-                            worm_id, e
-                        );
-                    }
-                }
-                return ExtractResult::Success;
-            }
-            GlinerOutcome::Unavailable => {
-                // GLiNER down — check Doorman backpressure before using Tier A.
-                if check_doorman_backpressure(doorman_endpoint, backpressure_threshold) {
-                    eprintln!(
-                        "[BACKPRESSURE] GLiNER down + queue_pending > {} — deferring {}",
-                        backpressure_threshold,
-                        filepath.display()
-                    );
-                    return ExtractResult::DeferTransient;
-                }
-                let tier_a =
-                    call_tier_a_extract_chunked(corpus_text, &entity_schema, doorman_endpoint);
-                match &tier_a {
-                    Some(ents) => println!(
-                        "  -> [TIER-0/A] {} entities extracted via Tier A fallback (module: {}).",
-                        ents.len(),
-                        effective_module_id
-                    ),
-                    None => println!("  -> [TIER-0/A] Unavailable — proceeding to Tier B."),
-                }
-                tier_a
-            }
-        }
+        result
     };
 
     // ── Step 2: Tier B extraction (OLMo 32B via /v1/extract) ─────────────────
@@ -2163,15 +920,10 @@ fn process_corpus(
         .send();
 
     // Helper: flush Tier A entities to graph when Tier B is unavailable.
-    // None  → Tier A was unreachable (no-SLM deployment) → DeferTransient (retry soon)
-    // Some([]) → Tier A reachable but empty → DeferCircuitOpen (wait for circuit recovery)
     let flush_tier_a = |tier_a: &Option<Vec<serde_json::Value>>, reason: &str| -> ExtractResult {
         if let Some(ta_ents) = tier_a {
             if !ta_ents.is_empty() {
-                let mut ge = raw_entities_to_graph(ta_ents, effective_module_id, 0.75);
-                for e in &mut ge {
-                    e.source_doc = Some(worm_id.to_string());
-                }
+                let ge = raw_entities_to_graph(ta_ents, effective_module_id, 0.75);
                 match graph_store.upsert_entities(effective_module_id, &ge) {
                     Ok(n) => {
                         println!("  -> [TIER-A] {} entities written ({}).", n, reason);
@@ -2180,14 +932,8 @@ fn process_corpus(
                     Err(e) => eprintln!("  -> [TIER-A] Graph write failed: {}", e),
                 }
             }
-            ExtractResult::DeferCircuitOpen
-        } else {
-            println!(
-                "  -> [TIER-A] Unavailable — deferring transiently ({}).",
-                reason
-            );
-            ExtractResult::DeferTransient
         }
+        ExtractResult::DeferCircuitOpen
     };
 
     match res {
@@ -2197,14 +943,14 @@ fn process_corpus(
                     "  -> [SYS_HALT] Doorman rejected payload: {}",
                     response.status()
                 );
-                return flush_tier_a(&tier_0_entities, "Tier B rejected");
+                return flush_tier_a(&tier_a_raw, "Tier B rejected");
             }
 
             let extract_resp = match response.json::<serde_json::Value>() {
                 Ok(v) => v,
                 Err(_) => {
                     println!("  -> [SYS_HALT] Doorman returned invalid JSON.");
-                    return flush_tier_a(&tier_0_entities, "Tier B parse failed");
+                    return flush_tier_a(&tier_a_raw, "Tier B parse failed");
                 }
             };
 
@@ -2214,17 +960,13 @@ fn process_corpus(
                 return match reason {
                     "yoyo-circuit-open" => {
                         println!("  -> [TIER-B] Circuit open — using Tier A results.");
-                        flush_tier_a(&tier_0_entities, "Tier B circuit-open")
+                        flush_tier_a(&tier_a_raw, "Tier B circuit-open")
                     }
                     _ => {
                         // Transient: use Tier A if available, otherwise retry
-                        if let Some(ta_ents) = &tier_0_entities {
+                        if let Some(ta_ents) = &tier_a_raw {
                             if !ta_ents.is_empty() {
-                                let mut ge =
-                                    raw_entities_to_graph(ta_ents, effective_module_id, 0.75);
-                                for e in &mut ge {
-                                    e.source_doc = Some(worm_id.to_string());
-                                }
+                                let ge = raw_entities_to_graph(ta_ents, effective_module_id, 0.75);
                                 if let Ok(n) = graph_store.upsert_entities(effective_module_id, &ge)
                                 {
                                     println!(
@@ -2243,7 +985,7 @@ fn process_corpus(
 
             if !extract_resp["extraction_ok"].as_bool().unwrap_or(false) {
                 println!("  -> [SYS_HALT] Extraction failed: extraction_ok false.");
-                return flush_tier_a(&tier_0_entities, "Tier B extraction_ok=false");
+                return flush_tier_a(&tier_a_raw, "Tier B extraction_ok=false");
             }
 
             // ── Tier B succeeded ─────────────────────────────────────────────
@@ -2252,38 +994,8 @@ fn process_corpus(
                 .cloned()
                 .unwrap_or_default();
 
-            let mut graph_entities =
+            let graph_entities =
                 raw_entities_to_graph(&semantic_entities, effective_module_id, 0.95);
-            for e in &mut graph_entities {
-                e.source_doc = Some(worm_id.to_string());
-            }
-            *tier_b_used = true;
-
-            // If Tier B succeeded but all entities failed the filter, use GLiNER Tier 0 as
-            // fallback. This handles the case where OLMo returns field_missing entities
-            // (grammar constraint not enforced on the Doorman path).
-            let graph_entities = if graph_entities.is_empty() {
-                if let Some(ta_ents) = &tier_0_entities {
-                    let mut gliner_ge = raw_entities_to_graph(ta_ents, effective_module_id, 0.75);
-                    for e in &mut gliner_ge {
-                        e.source_doc = Some(worm_id.to_string());
-                    }
-                    if !gliner_ge.is_empty() {
-                        println!(
-                            "  -> [TIER-0 RESCUE] Tier B 0 valid — using {} GLiNER entities.",
-                            gliner_ge.len()
-                        );
-                        *tier_b_used = false;
-                        gliner_ge
-                    } else {
-                        graph_entities
-                    }
-                } else {
-                    graph_entities
-                }
-            } else {
-                graph_entities
-            };
 
             // Build legacy CRM record
             let mut enriched_crm = Vec::new();
@@ -2372,7 +1084,7 @@ fn process_corpus(
             // For sweep docs (DOC_sweep-*): write_enrichment_dpo_pair returns false early
             // (policy: skip pair generation for commit text), but mark the SHA complete
             // unconditionally — otherwise the same commit SHAs re-submit every nightly cycle.
-            if let Some(ref ta_ents) = tier_0_entities {
+            if let Some(ref ta_ents) = tier_a_raw {
                 let saved = write_enrichment_dpo_pair(
                     worm_id,
                     corpus_text,
@@ -2390,7 +1102,7 @@ fn process_corpus(
         Err(e) => {
             // Transport error — Tier B unreachable. Use Tier A to avoid losing the document.
             println!("  -> [SYS_HALT] Doorman routing failed (transient): {}", e);
-            let result = flush_tier_a(&tier_0_entities, &format!("Tier B transport error: {}", e));
+            let result = flush_tier_a(&tier_a_raw, &format!("Tier B transport error: {}", e));
             if matches!(result, ExtractResult::DeferCircuitOpen) {
                 ExtractResult::DeferTransient
             } else {
@@ -2414,117 +1126,6 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("sc-test-{}-{}", suffix, ms));
         fs::create_dir_all(&dir).unwrap();
         dir
-    }
-
-    #[test]
-    fn is_csv_structured_data_detects_entity_name_rows() {
-        let csv_text =
-            "Entity Name: John Smith, Role: Broker\nEntity Name: Jane Doe, Role: Agent\n";
-        assert!(is_csv_structured_data(csv_text));
-    }
-
-    #[test]
-    fn is_csv_structured_data_ignores_single_mention_in_prose() {
-        let prose = "The Entity Name: field in our schema maps to the entity's display name.";
-        assert!(!is_csv_structured_data(prose));
-    }
-
-    #[test]
-    fn is_csv_structured_data_ignores_plain_prose() {
-        let prose = "Jennifer Woodfine met with PointSav Digital Systems in London today.";
-        assert!(!is_csv_structured_data(prose));
-    }
-
-    #[test]
-    fn chunk_for_gliner_single_chunk_under_limit() {
-        let text = "Short document. Three sentences here. Done.";
-        let chunks = chunk_for_gliner(text, 2000);
-        assert_eq!(chunks, vec![text]);
-    }
-
-    #[test]
-    fn chunk_for_gliner_splits_long_document_with_overlap() {
-        // Build a document well over the limit out of short sentences so we can
-        // verify both that it's split into multiple chunks AND that consecutive
-        // chunks overlap (no entity is lost at a chunk boundary).
-        let sentence = "Jennifer Woodfine met with PointSav Digital Systems today. ";
-        let text: String = sentence.repeat(50); // ~3050 chars
-        let chunks = chunk_for_gliner(&text, 1000);
-        assert!(chunks.len() > 1, "document over the limit must be split");
-        for c in &chunks {
-            assert!(
-                c.len() <= 1000 + 200,
-                "chunk must respect max_chars (+ small slack for sentence-boundary search)"
-            );
-        }
-        // Consecutive chunks overlap: the tail of chunk[i] reappears at the head of chunk[i+1].
-        for w in chunks.windows(2) {
-            let (a, b) = (w[0], w[1]);
-            let tail = &a[a.len().saturating_sub(100)..];
-            assert!(
-                b.starts_with(&tail[tail.len().saturating_sub(50)..])
-                    || b.contains(&tail[tail.len().saturating_sub(20)..]),
-                "consecutive chunks must overlap so boundary entities aren't lost"
-            );
-        }
-    }
-
-    #[test]
-    fn chunk_for_gliner_never_stalls_on_short_overlap_window() {
-        // Regression guard: a naive `start = end.saturating_sub(150)` overlap calc
-        // can fail to advance `start` when a chunk is <=150 chars, looping forever.
-        // chunk_for_gliner's `end > start + 150` guard must always make progress.
-        let text = "a".repeat(5000);
-        let chunks = chunk_for_gliner(&text, 100);
-        // If this returns at all (vs. hanging), progress was guaranteed on every step.
-        assert!(chunks.len() > 10);
-        assert!(chunks.concat().len() >= text.len());
-    }
-
-    #[test]
-    fn chunk_for_gliner_handles_multibyte_char_at_overlap_boundary() {
-        // Regression: the 150-byte overlap subtraction (`end - 150`) is a raw byte
-        // offset and was not re-aligned to a UTF-8 char boundary, so it could land
-        // inside a multi-byte character (e.g. an em dash) and panic slicing the
-        // next chunk. This mirrors the exact live crash that took down
-        // local-content.service for 3 days starting 2026-07-10: "start byte index
-        // 6666 is not a char boundary; it is inside '—'".
-        let mut text = "a".repeat(148);
-        text.push('—'); // 3-byte UTF-8 char starting at byte 148
-        text.push_str(&"a".repeat(600));
-        let chunks = chunk_for_gliner(&text, 300); // should not panic
-        assert!(chunks.len() > 1);
-        assert!(chunks.concat().len() >= text.len());
-    }
-
-    #[test]
-    fn chunk_for_gliner_terminates_when_overlap_walkback_hits_prev_start() {
-        // Regression found by an independent audit of the fix above: when `start`
-        // itself begins a multi-byte char (e.g. an em dash at byte 0) and the
-        // sentence-boundary `end` lands 151-153 bytes later, `end - 150` walks
-        // back to exactly the previous `start` — zero net progress, so the old
-        // code pushed the identical chunk forever, growing `chunks` unboundedly
-        // toward an OOM-kill (local-content.service runs with a 4G MemoryMax).
-        // Uses a background thread + timeout so a real regression fails this
-        // test instead of hanging the whole suite.
-        let mut text = String::from("—"); // 3-byte char at byte 0
-        text.push_str(&"a".repeat(147));
-        text.push('.'); // sentence end at byte 151 — lands the walk-back on byte 0
-        text.push_str(&"b".repeat(600));
-        let text_len = text.len();
-
-        let (tx, rx) = std::sync::mpsc::channel();
-        std::thread::spawn(move || {
-            let chunks = chunk_for_gliner(&text, 300);
-            let _ = tx.send((chunks.len(), chunks.concat().len()));
-        });
-        match rx.recv_timeout(std::time::Duration::from_secs(5)) {
-            Ok((n, concat_len)) => {
-                assert!(n > 1, "must split into multiple chunks");
-                assert!(concat_len >= text_len);
-            }
-            Err(_) => panic!("chunk_for_gliner did not terminate within 5s — livelock regression"),
-        }
     }
 
     #[test]

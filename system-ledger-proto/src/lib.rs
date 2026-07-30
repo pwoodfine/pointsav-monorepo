@@ -1,6 +1,3 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 //! system-ledger-proto — transport-agnostic wire types for Capability Ledger consultation.
 //!
 //! [`ConsultRequest`] and [`ConsultResponse`] are postcard-serialized identically

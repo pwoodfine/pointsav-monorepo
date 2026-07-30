@@ -1,0 +1,11 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Migrated from the v1 allowlist (window.all = true). Pruned to what the frontend actually calls: src/index.html only uses appWindow.setTitle(). core:default does not grant window setters, so allow-set-title is listed explicitly — without it setTitle() is denied at runtime and, because the call site swallows errors with .catch(() => {}), the failure would be silent.",
+  "local": true,
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-set-title"
+  ]
+}

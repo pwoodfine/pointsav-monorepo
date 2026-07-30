@@ -1,6 +1,3 @@
-// SPDX-License-Identifier: FSL-1.1-ALv2
-// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 //! The page manifest — an ordered list of typed sections plus metadata.
 //!
 //! A page lives as a Git-tracked YAML file (`content/<slug>/page.yaml`). The

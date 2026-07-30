@@ -1,6 +1,3 @@
-// SPDX-License-Identifier: FSL-1.1-ALv2
-// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 use std::process;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");

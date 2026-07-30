@@ -1,7 +1,4 @@
 #!/bin/bash
-# SPDX-License-Identifier: FSL-1.1-ALv2
-# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 # PointSav Mesh Status Utility
 # Tier-4 Infrastructure | Node 3 (iMac)
 

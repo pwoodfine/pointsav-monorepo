@@ -1,12 +1,9 @@
-# SPDX-License-Identifier: AGPL-3.0-or-later
-# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 [package]
 name = "app-privategit-bim"
 version = "0.1.0"
 edition = "2021"
 description = "BIM Object schema vault, viewer, editor, and MCP endpoint — Woodfine"
-license = "AGPL-3.0-or-later"
+license = "Apache-2.0"
 
 [[bin]]
 name = "app-privategit-bim"
@@ -24,6 +21,3 @@ jsonschema    = "0.20"
 notify        = "6"
 tokio-stream  = { version = "0.1", features = ["sync"] }
 futures-util  = "0.3"
-
-[dev-dependencies]
-tower = { version = "0.5", features = ["util"] }

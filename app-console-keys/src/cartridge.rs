@@ -1,7 +1,3 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
-use console_core::{IntentArgs, IntentId, IntentSpec};
 use crossterm::event::Event;
 use ratatui::{layout::Rect, Frame};
 
@@ -12,10 +8,6 @@ pub enum CartridgeAction {
     Consumed,
     Quit,
     GoBack,
-    /// Request that the chassis transfer this text to the Content cartridge (F4),
-    /// switch to it, and pre-fill the draft textarea. Implements the
-    /// `search.send_to_proofreader` intent without a data-bus crate.
-    SendToContent(String),
 }
 
 pub trait Cartridge: Send {
@@ -49,40 +41,4 @@ pub trait Cartridge: Send {
     /// Called by the chassis after each terminal.draw() to emit OSC 8 hyperlinks
     /// for any rendered links. Default no-op; override in cartridges that render links.
     fn flush_hyperlinks(&self) {}
-
-    /// Accept a cross-cartridge text transfer (e.g. Search → Proofreader send-to).
-    /// The chassis calls this on the destination cartridge after switching focus to it.
-    /// Default: no-op.
-    fn accept_transfer(&mut self, _text: String) {}
-
-    /// Live capability verdicts for the `?` capability overlay (Phase K). Default: empty.
-    /// Returns `(label, verdict)` pairs where verdict is "✓ ALLOW", "✗ REVOKED", or "⟳ EXPIRED".
-    /// SystemCartridge overrides this with real ledger verdicts.
-    fn cap_verdicts(&self) -> Vec<(String, String)> {
-        Vec::new()
-    }
-
-    // --- Intent system (Phase I-1; additive, all defaulted) ---
-
-    /// Stable scope id for the dual-input intent system (e.g. `"system"`). A
-    /// cartridge that returns `Some(..)` participates in the command palette and
-    /// intent dispatch under that scope. `None` (default) = not yet migrated; the
-    /// cartridge still works via legacy `handle_event`.
-    fn intent_scope(&self) -> Option<&'static str> {
-        None
-    }
-
-    /// Intents this cartridge contributes to the registry. Default: none (the
-    /// seed vocabulary in `console-core` still covers the cartridge). Anything
-    /// returned here must be dual-input or the parity gate fails the build.
-    fn intents(&self) -> Vec<IntentSpec> {
-        Vec::new()
-    }
-
-    /// Act on a resolved intent (raised by either a keyboard chord via the
-    /// command palette/keymap or, from I-2, a mouse gesture). Default: not
-    /// handled, so the chassis leaves behavior to legacy `handle_event`.
-    fn dispatch(&mut self, _id: IntentId, _args: &IntentArgs) -> CartridgeAction {
-        CartridgeAction::None
-    }
 }

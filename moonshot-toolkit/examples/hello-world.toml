@@ -1,6 +1,3 @@
-# SPDX-License-Identifier: AGPL-3.0-or-later
-# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 # hello-world — minimal Phase 1C AArch64 seL4 protection domain spec.
 #
 # One PD: "hello" — compiles to build/hello.elf, then elfloader.elf.

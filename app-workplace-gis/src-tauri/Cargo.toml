@@ -1,0 +1,26 @@
+[workspace]
+
+[package]
+name = "workplace-gis"
+version = "0.1.0"
+description = "Sovereign desktop GIS viewer — MapLibre GL tile viewer shell"
+authors = ["PointSav Digital Systems"]
+license = "Apache-2.0"
+repository = ""
+edition = "2021"
+rust-version = "1.70"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+# Tauri v2 (migrated 2026-07-14). v1.x is unbuildable on this host — Ubuntu 24.04
+# dropped webkit2gtk-4.0; v2 uses the 4.1/soup3 stack. macOS floor: 10.15+.
+tauri = { version = "2", features = [] }
+# Native file-picker: v1's dialog-all allowlist feature became a plugin in v2.
+tauri-plugin-dialog = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# Shared get_X/set_X/has_X_config JSON config-store logic — see
+# ../../workplace-shell-chrome/README.md for why/what.
+workplace-shell-chrome = { path = "../../workplace-shell-chrome" }

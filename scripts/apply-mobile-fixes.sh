@@ -1,7 +1,4 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: AGPL-3.0-or-later
-# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 # apply-mobile-fixes.sh — Apply mobile logo-bar improvements to both live sites.
 #
 # Idempotent — safe to re-run. Each patch checks for old string before replacing;

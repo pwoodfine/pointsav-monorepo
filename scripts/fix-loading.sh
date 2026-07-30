@@ -1,7 +1,4 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: AGPL-3.0-or-later
-# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 # fix-loading.sh — Remove the loading splash screen and unused JS chunks
 # from both marketing deployment HTML files.
 #

@@ -1,8 +1,4 @@
 #!/bin/bash
-# SPDX-License-Identifier: FSL-1.1-ALv2
-# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
-
 # Start the os-totebox service stack in dependency order.
 # Run inside an os-totebox VM after binaries are installed.
 #

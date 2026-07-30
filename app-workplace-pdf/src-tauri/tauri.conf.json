@@ -1,0 +1,53 @@
+{
+  "productName": "Workplace PDF",
+  "mainBinaryName": "Workplace PDF",
+  "version": "0.1.0",
+  "identifier": "systems.pointsav.workplace-pdf",
+  "build": {
+    "beforeDevCommand": "",
+    "beforeBuildCommand": "",
+    "frontendDist": "../src"
+  },
+  "plugins": {},
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "label": "main",
+        "title": "Workplace PDF",
+        "url": "index.html",
+        "width": 1280,
+        "height": 900,
+        "minWidth": 900,
+        "minHeight": 600,
+        "resizable": true,
+        "fullscreen": false,
+        "center": true,
+        "decorations": true,
+        "transparent": false,
+        "useHttpsScheme": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; connect-src ipc: http://ipc.localhost; img-src 'self' data:; script-src 'self'; style-src 'self' 'unsafe-inline'"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "copyright": "© 2026 PointSav Digital Systems",
+    "category": "Productivity",
+    "shortDescription": "Sovereign desktop PDF viewer and print tool",
+    "longDescription": "Sovereign desktop PDF viewer and print tool. Renders PDF documents locally with the PDFium engine — open, navigate, zoom, and print via the OS print dialogue. No document data leaves the machine.",
+    "macOS": {
+      "minimumSystemVersion": "10.15"
+    }
+  }
+}

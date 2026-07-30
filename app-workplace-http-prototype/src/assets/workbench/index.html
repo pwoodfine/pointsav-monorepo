@@ -1,8 +1,3 @@
-<!--
-  SPDX-License-Identifier: AGPL-3.0-or-later
-  SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
--->
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -773,6 +768,7 @@ html.light .recent-show-more { color: #0066cc; }
 html.light .recent-show-more:hover { color: #004fa0; }
 </style>
 <script>(function(){if(localStorage.getItem('wb-theme')==='light')document.documentElement.classList.add('light');})()</script>
+<link rel="stylesheet" href="shell-chrome.css"><!-- B2 (Track B): shared shell chrome -->
 </head>
 <body>
 
@@ -1087,11 +1083,26 @@ const INDEXABLE_RE = /\.(html?|md|txt|pdf|csv|json|yaml|yml)$/i;
 // JSON schema detection (proforma, etc.) happens in openFile() after content is fetched.
 const DOCUMENT_EXTS = new Set(['geojson']);
 
+// Known-binary formats — never fetch-and-render as text (freezes the tab on
+// large files; the raw bytes get decoded as one giant garbled UTF-8 string).
+// Unrecognized extensions NOT in this set still fall through to 'text' below,
+// since this monorepo has many legitimate unlisted-extension text files
+// (Cargo.lock, Dockerfile, .gitignore, etc.) that must keep working.
+const BINARY_EXTS = new Set([
+  'docx','doc','xlsx','xls','pptx','ppt','odt','ods','odp',
+  'zip','tar','gz','tgz','bz2','xz','7z','rar',
+  'exe','dll','so','dylib','bin','wasm','class','jar',
+  'sqlite','sqlite3','db','iso','dmg',
+  'woff','woff2','ttf','otf','eot',
+  'mp3','mp4','mov','avi','mkv','wav','flac','ogg','webm',
+]);
+
 function fileMode(name) {
   const ext = name.split('.').pop().toLowerCase();
   if (IFRAME_EXTS.has(ext))    return 'iframe';
   if (IMAGE_EXTS.has(ext))     return 'image';
   if (DOCUMENT_EXTS.has(ext))  return 'document';
+  if (BINARY_EXTS.has(ext))    return 'unsupported';
   if (TEXT_EXTS.has(ext))      return 'text';
   return 'text';
 }
@@ -1846,6 +1857,26 @@ function hideViewerContent() {
   document.getElementById('image-viewer').style.display       = 'none';
 }
 
+function copyToClipboard(text, btnEl, idleLabel) {
+  const confirm = () => {
+    if (!btnEl) return;
+    btnEl.textContent = '✓ Copied';
+    setTimeout(() => { btnEl.textContent = idleLabel; }, 1500);
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(confirm);
+  } else {
+    const tmp = document.createElement('textarea');
+    tmp.value = text;
+    tmp.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0';
+    document.body.appendChild(tmp);
+    tmp.select();
+    document.execCommand('copy');
+    document.body.removeChild(tmp);
+    confirm();
+  }
+}
+
 function updateBar(name, path) {
   orgEditMode = false;
   document.getElementById('bar-path').textContent = name;
@@ -1856,25 +1887,15 @@ function updateBar(name, path) {
   copyBtn.className = 'bar-btn';
   copyBtn.textContent = '⎘ Copy name';
   copyBtn.title = 'Copy filename to clipboard';
-  copyBtn.addEventListener('click', () => {
-    const confirm = () => {
-      copyBtn.textContent = '✓ Copied';
-      setTimeout(() => { copyBtn.textContent = '⎘ Copy name'; }, 1500);
-    };
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(name).then(confirm);
-    } else {
-      const tmp = document.createElement('textarea');
-      tmp.value = name;
-      tmp.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0';
-      document.body.appendChild(tmp);
-      tmp.select();
-      document.execCommand('copy');
-      document.body.removeChild(tmp);
-      confirm();
-    }
-  });
+  copyBtn.addEventListener('click', () => copyToClipboard(name, copyBtn, '⎘ Copy name'));
   bar.appendChild(copyBtn);
+
+  const copyPathBtn = document.createElement('button');
+  copyPathBtn.className = 'bar-btn';
+  copyPathBtn.textContent = '⎘ Copy path';
+  copyPathBtn.title = 'Copy file path to clipboard';
+  copyPathBtn.addEventListener('click', () => copyToClipboard(path, copyPathBtn, '⎘ Copy path'));
+  bar.appendChild(copyPathBtn);
 
   // Platform PDF button — server-side WeasyPrint rendering (opens config dialog)
   const pdfExts = new Set(['html','htm','geojson']);
@@ -2151,6 +2172,19 @@ async function openFile(path, name) {
     const frame = document.getElementById('preview-frame');
     frame.style.display = 'block';
     frame.src = '/_api/edit/document?path=' + encodeURIComponent(apiPath);
+
+  } else if (mode === 'unsupported') {
+    // Known-binary format — no in-browser preview. Skip fetching the file
+    // entirely (avoids downloading + garbling large binary content) and
+    // point at the Download button already built into the toolbar above.
+    viewMode = 'text';
+    const tv = document.getElementById('text-viewer');
+    const tc = document.getElementById('text-content');
+    tv.style.display = 'block';
+    tc.className = 'code-view';
+    const ext = fname.split('.').pop().toUpperCase();
+    tc.textContent = 'Preview not available for ' + ext + ' files.\n\nUse the ⬇ Download button above to save it locally.';
+    hideEditorPanel();
 
   } else {
     viewMode = 'text';
@@ -3383,6 +3417,7 @@ function renderRecentSection() {
       e.preventDefault();
       showCtxMenu(e.clientX, e.clientY, [
         { label: 'Open', action: () => openFile(r.path, r.name) },
+        { label: '⎘ Copy path', action: () => copyToClipboard(r.path) },
         '-',
         { label: '📌 Pin to top', action: () => { pinFile(r.path, r.name); } },
         '-',
@@ -3475,6 +3510,7 @@ function attachContextMenu(item) {
     } else if (isFile && writable) {
       items = [
         { label: 'Open', action: () => openFile(path, name) },
+        { label: '⎘ Copy path', action: () => copyToClipboard(path) },
         '-',
         { label: '📌 Pin to top', action: () => pinFile(path, name) },
         { label: '✎ Rename',    action: () => renameByPath(path, name) },
@@ -3485,13 +3521,17 @@ function attachContextMenu(item) {
     } else if (isFile) {
       items = [
         { label: 'Open', action: () => openFile(path, name) },
+        { label: '⎘ Copy path', action: () => copyToClipboard(path) },
         { label: '📌 Pin to top', action: () => pinFile(path, name) },
       ];
     } else if (isDir) {
       const browse = item.dataset.browse || '';
       const api    = item.dataset.api || '';
       const isWritableDir = browse && !browse.startsWith('/_command/');
-      items = [{ label: '📁 Pin folder', action: () => pinFolder(browse, name, api) }];
+      items = [
+        { label: '📁 Pin folder', action: () => pinFolder(browse, name, api) },
+        { label: '⎘ Copy path',   action: () => copyToClipboard(browse) },
+      ];
       if (api) {
         items.push('-');
         items.push({ label: '⬇ Download as ZIP', action: () => {
@@ -4700,6 +4740,141 @@ setSurface(activeSurface);
 
 <div id="ctx-menu"></div>
 <div id="wb-toast"></div>
+
+<!-- B2 (Track B): shared frontend shell chrome. Additive + behaviour-preserving —
+     the existing window keydown handler still fires every shortcut; these entries
+     only make them discoverable via the Ctrl/Cmd+Shift+P command palette. No
+     keybindings are registered here for the existing shortcuts, so nothing double-fires. -->
+<script src="shell-chrome.js"></script>
+<script>
+(function () {
+  if (!window.ShellChrome) return;               // fail safe: never break the page
+  var SC = window.ShellChrome;
+  function has(fn) { return typeof window[fn] === 'function'; }
+  var cmds = [];
+  if (has('printCurrent'))  cmds.push({ id: 'wb.print',    title: 'Print Current',       category: 'File', shortcut: 'Ctrl/Cmd+P', run: function () { printCurrent(); } });
+  if (has('saveFile'))      cmds.push({ id: 'wb.save',     title: 'Save',                category: 'File', shortcut: 'Ctrl/Cmd+S', run: function () { saveFile(); } });
+  if (has('showFindBar'))   cmds.push({ id: 'wb.find',     title: 'Find in Editor',      category: 'Edit', shortcut: 'Ctrl/Cmd+F', run: function () { showFindBar(); } });
+  if (has('undoLastMove'))  cmds.push({ id: 'wb.undomove', title: 'Undo Last File Move', category: 'File', shortcut: 'Ctrl/Cmd+Z', run: function () { undoLastMove(); } });
+  try {
+    document.querySelectorAll('#surface-bar .surface-btn').forEach(function (btn, i) {
+      var label = (btn.textContent || ('Surface ' + (i + 1))).trim();
+      cmds.push({
+        id: 'wb.surface.' + i,
+        title: 'Switch to ' + label,
+        category: 'Surface',
+        shortcut: i < 9 ? ('Ctrl/Cmd+' + (i + 1)) : '',
+        run: function () { btn.click(); },
+      });
+    });
+  } catch (e) { /* surface bar optional */ }
+  SC.registerCommands(cmds);
+  SC.install();  // adds the palette overlay + its Ctrl/Cmd+Shift+P binding
+})();
+</script>
+
+<!-- In-workbench AI chat (Cursor-style). Proxies to the SLM Doorman via /workbench/chat;
+     model routes to local OLMo (Tier A, free, SYS-ADR-07-safe). Toggle: Ctrl/Cmd+L. -->
+<style>
+  #ai-chat { position: fixed; top: 0; right: 0; width: 380px; max-width: 92vw; height: 100vh;
+    display: none; flex-direction: column; background: #1e1e1e; color: #e6e6e6;
+    border-left: 1px solid #454545; box-shadow: -8px 0 24px rgba(0,0,0,.35); z-index: 900;
+    font: 13px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  #ai-chat.open { display: flex; }
+  html.light #ai-chat { background: #f6f6f6; color: #1a1a1a; border-left-color: #d0d0d0; }
+  #ai-chat-head { display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 12px; border-bottom: 1px solid #454545; font-weight: 600; }
+  #ai-chat-head .sub { font-weight: 400; opacity: .6; font-size: 11px; }
+  #ai-chat-close { cursor: pointer; background: none; border: 0; color: inherit; font-size: 18px; line-height: 1; }
+  #ai-chat-msgs { flex: 1 1 auto; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+  .ai-chat-msg { padding: 8px 10px; border-radius: 8px; white-space: pre-wrap; word-break: break-word; max-width: 92%; }
+  .ai-chat-msg--user { align-self: flex-end; background: #094771; color: #fff; }
+  .ai-chat-msg--assistant { align-self: flex-start; background: #2b2b2b; }
+  html.light .ai-chat-msg--assistant { background: #e6e6e6; }
+  #ai-chat-status { padding: 2px 12px; font-size: 11px; opacity: .6; min-height: 16px; }
+  #ai-chat-form { display: flex; gap: 6px; padding: 10px 12px; border-top: 1px solid #454545; }
+  #ai-chat-input { flex: 1 1 auto; resize: none; height: 44px; padding: 8px; border-radius: 6px;
+    border: 1px solid #454545; background: #111; color: inherit; font: inherit; }
+  html.light #ai-chat-input { background: #fff; }
+  #ai-chat-send { padding: 0 14px; border-radius: 6px; border: 0; background: #094771; color: #fff; cursor: pointer; }
+  #ai-chat-send:disabled { opacity: .5; cursor: default; }
+</style>
+<div id="ai-chat" aria-label="AI chat panel">
+  <div id="ai-chat-head"><span>AI Chat <span class="sub">local OLMo · $0</span></span>
+    <button id="ai-chat-close" title="Close (Ctrl/Cmd+L)" aria-label="Close AI chat">×</button></div>
+  <div id="ai-chat-msgs" role="log" aria-live="polite"></div>
+  <div id="ai-chat-status" role="status" aria-live="polite"></div>
+  <form id="ai-chat-form">
+    <textarea id="ai-chat-input" placeholder="Ask the local model…  (Enter to send, Shift+Enter for newline)" aria-label="Chat message"></textarea>
+    <button id="ai-chat-send" type="submit">Send</button>
+  </form>
+</div>
+<script>
+(function () {
+  var messages = [];
+  var panel = document.getElementById('ai-chat');
+  var msgsEl = document.getElementById('ai-chat-msgs');
+  var statusEl = document.getElementById('ai-chat-status');
+  var inputEl = document.getElementById('ai-chat-input');
+  var sendBtn = document.getElementById('ai-chat-send');
+
+  function render() {
+    msgsEl.innerHTML = '';
+    messages.forEach(function (m) {
+      var d = document.createElement('div');
+      d.className = 'ai-chat-msg ai-chat-msg--' + m.role;
+      d.textContent = m.content;
+      msgsEl.appendChild(d);
+    });
+    msgsEl.scrollTop = msgsEl.scrollHeight;
+  }
+  function setStatus(s) { statusEl.textContent = s || ''; }
+
+  async function send() {
+    var text = inputEl.value.trim();
+    if (!text) return;
+    inputEl.value = '';
+    messages.push({ role: 'user', content: text });
+    render();
+    setStatus('thinking… (local OLMo — can take a few seconds)');
+    sendBtn.disabled = true; inputEl.disabled = true;
+    try {
+      var r = await fetch('chat', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: messages }),
+      });
+      if (!r.ok) throw new Error((await r.text()) || ('HTTP ' + r.status));
+      var j = await r.json();
+      messages.push({ role: 'assistant', content: j.content || '(empty response)' });
+      render();
+      setStatus((j.tier_used || 'local') + ' · ' + (j.inference_ms || 0) + 'ms · $' + (j.cost_usd || 0));
+    } catch (e) {
+      messages.push({ role: 'assistant', content: '⚠ ' + (e && e.message ? e.message : e) });
+      render();
+      setStatus('error');
+    } finally {
+      sendBtn.disabled = false; inputEl.disabled = false; inputEl.focus();
+    }
+  }
+
+  function toggle() {
+    panel.classList.toggle('open');
+    if (panel.classList.contains('open')) inputEl.focus();
+  }
+
+  document.getElementById('ai-chat-form').addEventListener('submit', function (e) { e.preventDefault(); send(); });
+  document.getElementById('ai-chat-close').addEventListener('click', toggle);
+  inputEl.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+  });
+
+  // Discoverable via the command palette + Ctrl/Cmd+L (Cursor's chat shortcut).
+  if (window.ShellChrome) {
+    ShellChrome.registerCommand({ id: 'ai.chat.toggle', title: 'Toggle AI Chat', category: 'AI', shortcut: 'Ctrl/Cmd+L', run: toggle });
+    ShellChrome.registerKeybinding({ key: 'Mod+L', command: 'ai.chat.toggle' });
+  }
+})();
+</script>
 
 </body>
 </html>

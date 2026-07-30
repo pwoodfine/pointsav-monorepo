@@ -1,7 +1,4 @@
 #!/bin/bash
-# SPDX-License-Identifier: AGPL-3.0-or-later
-# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 set -euo pipefail
 
 # © 2026 PointSav Digital Systems

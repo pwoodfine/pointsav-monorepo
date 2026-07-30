@@ -1,0 +1,13 @@
+[package]
+name = "spatial-ledger"
+version = "3.0.0"
+edition = "2021"
+authors = ["PointSav Digital Systems"]
+description = "Leapfrog 2030 Spatial Ledger. Generates UUIDv5 Cryptographic Vectors."
+
+[workspace]
+
+[dependencies]
+uuid = { version = "1.4", features = ["v4", "v5"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"

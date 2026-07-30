@@ -1,17 +1,9 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 mod ai;
-mod component_meta;
-mod component_preview;
 mod config;
-mod i18n;
-mod mcp;
 mod render;
 mod routes;
 mod schema;
 mod state;
-mod tokens_gallery;
 mod vault;
 
 use minijinja::{path_loader, Environment};
@@ -31,21 +23,15 @@ use vault::SECTIONS;
 async fn main() {
     let cfg = Config::from_env();
     let nav = Arc::new(vault::discover_nav(&cfg.vault));
-    let component_groups = Arc::new(vault::discover_component_groups(
-        &cfg.vault,
-        nav.get("components").map(Vec::as_slice).unwrap_or(&[]),
-    ));
     let index = Arc::new(RwLock::new(InvertedIndex::new()));
 
     populate_index(&cfg.vault, &index).await;
 
-    let item_count: usize = nav.values().map(|v| v.len()).sum();
     eprintln!(
-        "app-privategit-design v{}: vault={:?} sections={} items={} indexed={}",
+        "app-privategit-design v{}: vault={:?} elements={} indexed={}",
         env!("CARGO_PKG_VERSION"),
         cfg.vault,
-        nav.len(),
-        item_count,
+        nav.get("elements").map(|v| v.len()).unwrap_or(0),
         index.read().await.len(),
     );
 
@@ -82,7 +68,10 @@ async fn main() {
     eprintln!("app-privategit-design edit token: {}", edit_token);
 
     let mut jinja = Environment::new();
-    jinja.set_loader(path_loader(&cfg.templates_dir));
+    jinja.set_loader(path_loader(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/templates"
+    )));
     jinja.add_filter("to_title", |s: String| -> String { vault::to_title(&s) });
     let env = Arc::new(jinja);
 
@@ -95,10 +84,6 @@ async fn main() {
         index,
         edit_token,
         env,
-        bundle_mounts: Arc::new(cfg.bundle_mounts),
-        static_dir: cfg.static_dir,
-        component_groups,
-        site_origin: Arc::new(cfg.site_origin),
     };
 
     let app = routes::build_router(state).layer(CompressionLayer::new());
@@ -143,59 +128,39 @@ fn generate_token() -> String {
     buf.iter().map(|b| format!("{:02x}", b)).collect()
 }
 
-fn index_markdown_file(idx: &mut InvertedIndex, path: &Path, name: &str) {
-    let Ok(content) = std::fs::read_to_string(path) else {
-        return;
-    };
-    let (fm, body) = vault::parse_frontmatter(&content);
-    let title = fm
-        .get("name")
-        .or_else(|| fm.get("title"))
-        .cloned()
-        .unwrap_or_else(|| name[..name.len() - 3].to_string());
-    idx.insert(Document {
-        id: path.to_string_lossy().to_string(),
-        title,
-        body,
-    });
-}
-
 async fn populate_index(vault: &Path, index: &Arc<RwLock<InvertedIndex>>) {
     let mut idx = index.write().await;
-    for (section, _, layout) in SECTIONS {
+    for section in SECTIONS {
         let sec_dir = vault.join(section);
         let Ok(entries) = std::fs::read_dir(&sec_dir) else {
             continue;
         };
-        match layout {
-            vault::Layout::Flat => {
-                for entry in entries.filter_map(|e| e.ok()) {
-                    let name = entry.file_name().to_string_lossy().to_string();
-                    if !entry.file_type().map(|t| t.is_file()).unwrap_or(false)
-                        || !name.ends_with(".md")
-                        || name.ends_with(".es.md")
-                    {
-                        continue;
-                    }
-                    index_markdown_file(&mut idx, &entry.path(), &name);
-                }
+        for entry in entries.filter_map(|e| e.ok()) {
+            if !entry.file_type().map(|t| t.is_dir()).unwrap_or(false) {
+                continue;
             }
-            vault::Layout::Nested => {
-                for entry in entries.filter_map(|e| e.ok()) {
-                    if !entry.file_type().map(|t| t.is_dir()).unwrap_or(false) {
-                        continue;
-                    }
-                    let Ok(files) = std::fs::read_dir(entry.path()) else {
-                        continue;
-                    };
-                    for file in files.filter_map(|e| e.ok()) {
-                        let name = file.file_name().to_string_lossy().to_string();
-                        if !name.ends_with(".md") || name.ends_with(".es.md") {
-                            continue;
-                        }
-                        index_markdown_file(&mut idx, &file.path(), &name);
-                    }
+            let Ok(files) = std::fs::read_dir(entry.path()) else {
+                continue;
+            };
+            for file in files.filter_map(|e| e.ok()) {
+                let name = file.file_name().to_string_lossy().to_string();
+                if !name.ends_with(".md") || name.ends_with(".es.md") {
+                    continue;
                 }
+                let Ok(content) = std::fs::read_to_string(file.path()) else {
+                    continue;
+                };
+                let (fm, body) = vault::parse_frontmatter(&content);
+                let title = fm
+                    .get("name")
+                    .or_else(|| fm.get("title"))
+                    .cloned()
+                    .unwrap_or_else(|| name[..name.len() - 3].to_string());
+                idx.insert(Document {
+                    id: file.path().to_string_lossy().to_string(),
+                    title,
+                    body,
+                });
             }
         }
     }

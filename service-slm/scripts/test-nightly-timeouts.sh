@@ -1,7 +1,4 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: AGPL-3.0-or-later
-# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 # Verifies that nightly-run.sh's two exit conditions fire correctly:
 #   Test 1 — idle timeout (no SEMANTIC progress for IDLE_SECONDS)
 #   Test 2 — hard-stop wall clock (HARD_STOP_SECONDS reached)

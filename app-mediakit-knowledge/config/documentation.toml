@@ -1,0 +1,22 @@
+# /etc/local-knowledge/documentation.toml
+# Knowledge platform — PointSav Documentation instance
+# Template: copy to /etc/local-knowledge/documentation.toml on target host
+# Operator: update paths to match actual content-repo checkout location
+#
+# Blueprint set: TOPIC + GUIDE (documentation instance is the only one serving GUIDEs)
+# Brand: pointsav (loads tokens.css, not tokens-woodfine.css)
+# Port: 9090 (local; nginx reverse-proxies to documentation.pointsav.com)
+
+[site]
+title     = "PointSav Documentation"
+brand     = "pointsav"
+bind      = "127.0.0.1:9090"
+state_dir = "/var/lib/local-knowledge/state"
+
+[[mount]]
+path          = "/srv/foundry/clones/project-editorial/media-knowledge-documentation"
+role          = "primary"
+blueprint_set = ["TOPIC", "GUIDE"]
+
+[citations]
+path = "/srv/foundry/citations.yaml"

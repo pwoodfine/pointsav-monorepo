@@ -1,0 +1,13 @@
+{
+  "name": "workplace-pdf",
+  "version": "0.1.0",
+  "description": "Sovereign desktop PDF viewer and print tool — PointSav Digital Systems",
+  "scripts": {
+    "tauri": "tauri",
+    "dev": "tauri dev",
+    "build": "tauri build"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^1.6"
+  }
+}

@@ -1,28 +1,51 @@
-<!--
-  SPDX-License-Identifier: AGPL-3.0-or-later
-  SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
--->
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Workplace Presentation</title>
-  <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-      margin: 0;
-      background: #1e1e2e;
-      color: #cdd6f4;
-    }
-  </style>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <p>Workplace Presentation — foundation scaffold. Implementation pending.</p>
+  <div class="app">
+    <div class="toolbar">
+      <span class="title">Workplace Presentation</span>
+      <div class="group">
+        <button id="newBtn" type="button">New</button>
+        <button id="openBtn" type="button">Open&hellip;</button>
+        <button id="saveBtn" class="primary" type="button">Save</button>
+        <button id="saveAsBtn" type="button">Save As&hellip;</button>
+      </div>
+      <div class="group">
+        <button id="addSlideBtn" type="button">+ Slide</button>
+        <button id="deleteSlideBtn" class="danger" type="button">Delete Slide</button>
+      </div>
+      <div class="group">
+        <button id="addTextBtn" type="button">+ Text</button>
+        <button id="addImageBtn" type="button">+ Image&hellip;</button>
+      </div>
+      <div class="group">
+        <button id="exportBtn" type="button">Export HTML&hellip;</button>
+      </div>
+      <span class="filename" id="filename">Untitled presentation</span>
+    </div>
+
+    <div class="main">
+      <div class="sidebar" id="slideList"></div>
+
+      <div class="canvas-wrap">
+        <div class="slide-canvas" id="slideCanvas"></div>
+      </div>
+
+      <div class="properties">
+        <h3>Properties</h3>
+        <div id="propertiesBody"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script type="module" src="app.js"></script>
 </body>
 </html>

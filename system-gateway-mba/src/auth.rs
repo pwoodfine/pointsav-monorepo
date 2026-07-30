@@ -1,6 +1,3 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 use russh::keys::{HashAlg, PublicKey};
 
 /// Compute the OpenSSH SHA-256 fingerprint of a public key.

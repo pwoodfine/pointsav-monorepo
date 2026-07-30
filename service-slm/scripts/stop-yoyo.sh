@@ -1,7 +1,4 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: AGPL-3.0-or-later
-# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 # On-demand Yo-Yo #1 stop with optional drain + snapshot.
 #
 # Under normal operation the Doorman idle monitor stops the VM automatically
@@ -28,8 +25,8 @@
 set -uo pipefail
 
 PROJECT="${SLM_YOYO_GCP_PROJECT:-woodfine-node-gcp-free}"
-ZONE="${SLM_YOYO_GCP_ZONE:-us-central1-a}"
-INSTANCE="${SLM_YOYO_GCP_INSTANCE:-yoyo-batch}"
+ZONE="${SLM_YOYO_GCP_ZONE:-us-west1-b}"
+INSTANCE="${SLM_YOYO_GCP_INSTANCE:-yoyo-tier-b-1}"
 LIFECYCLE_LOG="${SLM_YOYO_LIFECYCLE_LOG:-/srv/foundry/data/yoyo-lifecycle.log}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 

@@ -1,7 +1,3 @@
-// SPDX-License-Identifier: FSL-1.1-ALv2
-// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
-
 //! moonshot-crdt — edit history: undo/redo + version lineage.
 //!
 //! Replaces the history/undo facilities of Loro / Yjs / Automerge. v0 is the local
@@ -253,6 +249,3 @@ mod tests {
         assert_eq!(h.text(), "keep DROP me");
     }
 }
-
-#[cfg(feature = "wasm")]
-pub mod wasm;

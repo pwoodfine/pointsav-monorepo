@@ -1,39 +1,27 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
-/// Persisted session snapshot. Expanded (rebuild Phase I-4 groundwork) to carry
-/// the Content cartridge's last query, selection, and scroll so a reopened
-/// console restores where the operator left off. All fields default, so older
-/// snapshots still load.
 #[derive(Serialize, Deserialize, Default)]
 pub struct SessionState {
-    #[serde(default)]
-    pub content_query: Option<String>,
-    #[serde(default)]
-    pub content_selected: Option<usize>,
-    #[serde(default)]
-    pub content_scroll: Option<u16>,
+    pub content_query: String,
+}
+
+fn session_path() -> PathBuf {
+    let home = std::env::var("HOME").unwrap_or_else(|_| ".".into());
+    PathBuf::from(home).join(".local/share/os-console/session.toml")
 }
 
 impl SessionState {
-    /// Canonical on-disk location for the session snapshot.
-    pub fn default_path() -> PathBuf {
-        let home = std::env::var("HOME").unwrap_or_else(|_| ".".into());
-        PathBuf::from(home).join(".local/share/os-console/session.toml")
-    }
-
     pub fn load() -> Self {
-        let path = Self::default_path();
+        let path = session_path();
         std::fs::read_to_string(&path)
             .ok()
             .and_then(|s| toml::from_str(&s).ok())
             .unwrap_or_default()
     }
 
-    pub fn save(&self, path: &Path) {
+    pub fn save(&self) {
+        let path = session_path();
         if let Some(parent) = path.parent() {
             let _ = std::fs::create_dir_all(parent);
         }

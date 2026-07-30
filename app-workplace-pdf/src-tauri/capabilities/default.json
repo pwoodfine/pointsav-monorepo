@@ -1,0 +1,10 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Migrated from the v1 allowlist (window.print). The frontend (src/main.js) only calls our own #[tauri::command] functions via invoke() plus DOM window.print() — no Tauri window or dialog JS globals — so only core:default is needed. The PDF file picker is invoked from Rust (open_pdf via DialogExt), which is not gated by frontend capabilities; the tauri-plugin-dialog plugin still must be registered in main.rs.",
+  "local": true,
+  "windows": ["main"],
+  "permissions": [
+    "core:default"
+  ]
+}

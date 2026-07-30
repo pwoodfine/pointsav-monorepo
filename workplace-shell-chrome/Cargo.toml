@@ -1,0 +1,20 @@
+[workspace]
+
+[package]
+name = "workplace-shell-chrome"
+version = "0.1.0"
+description = "Shared backend substrate for the app-workplace-* Tauri app family — generalizes the get_X/set_X/has_X_config JSON config-store triad independently reinvented by app-workplace-workbench and app-workplace-gis (found 2026-07-13, see DESIGN-RESEARCH-workplace-shell-chrome.draft.md and BRIEF-workplace-institutional-quality-roadmap.md Track B)."
+authors = ["PointSav Digital Systems"]
+license = "Apache-2.0"
+repository = ""
+edition = "2021"
+rust-version = "1.70"
+
+# Deliberately Tauri-free: this crate operates on plain `&Path` values (the
+# already-resolved app-data directory), not `tauri::AppHandle`. That keeps it
+# compilable and unit-testable in isolation on any host — including this one,
+# where the app-workplace-* Tauri crates cannot currently pass `cargo check`
+# for reasons unrelated to this crate (see README.md "Verification status").
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

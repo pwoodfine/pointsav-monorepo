@@ -1,12 +1,9 @@
-# SPDX-License-Identifier: AGPL-3.0-or-later
-# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 [package]
 name = "app-privategit-workbench"
 version = "0.0.1"
 edition = "2021"
 description = "Browser-based developer workbench for Totebox Orchestration — file tree, viewer, and editor."
-license = "AGPL-3.0-or-later"
+license = "Apache-2.0"
 
 [dependencies]
 axum = "0.8"
@@ -18,7 +15,4 @@ anyhow = "1"
 tower-http = { version = "0.6", features = ["cors"] }
 notify = "6"
 tokio-stream = { version = "0.1", features = ["sync"] }
-moonshot-docengine = { path = "../moonshot-docengine" }
-moonshot-bim-engine = { path = "../moonshot-bim-engine" }
-zip = "2"
-walkdir = "2"
+zip = { version = "2", default-features = false, features = ["deflate"] }

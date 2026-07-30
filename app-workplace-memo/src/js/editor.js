@@ -1,6 +1,3 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 /**
  * Workplace*Memo — editor.js
  * Main application controller: document state, file operations, menu wiring,
@@ -52,7 +49,7 @@ async function tauriInvoke(cmd, args = {}) {
     console.warn(`[bridge] Tauri not available — skipping command: ${cmd}`);
     return null;
   }
-  return window.__TAURI__.invoke(cmd, args);
+  return window.__TAURI__.core.invoke(cmd, args); // v2: invoke moved to __TAURI__.core
 }
 
 /* ─── File operations ────────────────────────────────────────────────────── */
@@ -269,12 +266,16 @@ function handleAction(action) {
     case 'save-as':       saveDocumentAs(); break;
     case 'export-html':   window.WorkplaceExport?.exportHTML(); break;
     case 'print':         window.WorkplaceExport?.print(); break;
-    case 'insert-hr':     document.execCommand('insertHorizontalRule'); break;
+    case 'insert-hr':
+      document.execCommand('insertHorizontalRule');
+      markDirty();
+      break;
     case 'insert-pagebreak':
       // Insert a Paged.js-compatible page break
       document.execCommand('insertHTML',
         false,
         '<div style="break-before:page;page-break-before:always;" contenteditable="false">&nbsp;</div>');
+      markDirty();
       break;
     case 'page-size-a4':     setPageSize('A4'); break;
     case 'page-size-letter': setPageSize('Letter'); break;
@@ -298,6 +299,9 @@ function setPageSize(size) {
     canvas.style.minHeight = '1056px';
   }
   if (window.WorkplacePagination) WorkplacePagination.refresh();
+  // Page size is embedded in the exported document's @page CSS (see export.js
+  // buildPageCSS) — an un-saved change here must not be silently discardable.
+  markDirty();
 }
 
 function setMargins(mm) {
@@ -305,6 +309,9 @@ function setMargins(mm) {
   const px = Math.round(mm * 3.7795); // 1mm ≈ 3.7795px at 96dpi
   canvas.style.padding = `${px}px`;
   if (window.WorkplacePagination) WorkplacePagination.refresh();
+  // Margins are embedded in the exported document's @page CSS (see export.js
+  // buildPageCSS) — an un-saved change here must not be silently discardable.
+  markDirty();
 }
 
 /* ─── Fonts panel ────────────────────────────────────────────────────────── */

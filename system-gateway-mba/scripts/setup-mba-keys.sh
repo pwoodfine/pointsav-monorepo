@@ -1,7 +1,4 @@
 #!/bin/bash
-# SPDX-License-Identifier: AGPL-3.0-or-later
-# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 # PointSav Digital Systems: MBA Key Generation
 # System: os-console (GCP-Node)
 # Objective: Generate Ed25519 identity for secure totebox communication

@@ -1,6 +1,3 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 use crate::graph::GraphEntity;
 use csv::ReaderBuilder;
 use std::fs;
@@ -71,16 +68,6 @@ pub struct GuideRow {
     pub active_state: String,
 }
 
-#[derive(Debug, Clone)]
-pub struct EntityClassRow {
-    pub class_id: String,
-    pub class_name: String,
-    pub canonical_prefix: String,
-    pub domain_id: String,
-    pub file_location: String,
-    pub description: String,
-}
-
 #[derive(Debug, Default)]
 pub struct TaxonomyBundle {
     pub archetypes: Vec<ArchetypeRow>,
@@ -90,7 +77,6 @@ pub struct TaxonomyBundle {
     pub themes: Vec<ThemeRow>,
     pub topics: Vec<TopicRow>,
     pub guides: Vec<GuideRow>,
-    pub entity_classes: Vec<EntityClassRow>,
 }
 
 // ── Parsers ───────────────────────────────────────────────────────────────────
@@ -247,31 +233,6 @@ pub fn parse_guides(csv: &str) -> Result<Vec<GuideRow>, String> {
     Ok(rows)
 }
 
-pub fn parse_entity_classes(csv: &str) -> Result<Vec<EntityClassRow>, String> {
-    let mut rdr = ReaderBuilder::new()
-        .flexible(true)
-        .from_reader(csv.as_bytes());
-    let mut rows = Vec::new();
-    for result in rdr.records() {
-        let r = result.map_err(|e| format!("entity_classes CSV parse error: {e}"))?;
-        if r.len() < 6 {
-            return Err(format!(
-                "entity_classes row has {} columns, need 6",
-                r.len()
-            ));
-        }
-        rows.push(EntityClassRow {
-            class_id: r[0].trim().to_string(),
-            class_name: r[1].trim().to_string(),
-            canonical_prefix: r[2].trim().to_string(),
-            domain_id: r[3].trim().to_string(),
-            file_location: r[4].trim().to_string(),
-            description: r[5].trim().to_string(),
-        });
-    }
-    Ok(rows)
-}
-
 // ── Serializers (for GET /v1/config/* export) ────────────────────────────────
 
 #[allow(dead_code)]
@@ -379,23 +340,6 @@ pub fn serialize_guides(rows: &[GuideRow]) -> String {
     out
 }
 
-#[allow(dead_code)]
-pub fn serialize_entity_classes(rows: &[EntityClassRow]) -> String {
-    let mut out =
-        String::from("class_id,class_name,canonical_prefix,domain_id,file_location,description\n");
-    for r in rows {
-        out.push_str(&csv_row(&[
-            &r.class_id,
-            &r.class_name,
-            &r.canonical_prefix,
-            &r.domain_id,
-            &r.file_location,
-            &r.description,
-        ]));
-    }
-    out
-}
-
 // ── GraphEntity converters ────────────────────────────────────────────────────
 
 pub fn archetypes_to_entities(rows: &[ArchetypeRow]) -> Vec<GraphEntity> {
@@ -408,7 +352,6 @@ pub fn archetypes_to_entities(rows: &[ArchetypeRow]) -> Vec<GraphEntity> {
             contact_vector: Some(r.gravity_keywords.clone()),
             module_id: "__taxonomy__".to_string(),
             confidence: 1.0,
-            source_doc: None,
         })
         .collect()
 }
@@ -423,7 +366,6 @@ pub fn coa_to_entities(rows: &[CoaRow]) -> Vec<GraphEntity> {
             contact_vector: Some(r.gravity_keywords.clone()),
             module_id: "__taxonomy__".to_string(),
             confidence: 1.0,
-            source_doc: None,
         })
         .collect()
 }
@@ -438,7 +380,6 @@ pub fn domains_to_entities(rows: &[DomainRow]) -> Vec<GraphEntity> {
             contact_vector: Some(r.gravity_keywords.clone()),
             module_id: "__taxonomy__".to_string(),
             confidence: 1.0,
-            source_doc: None,
         })
         .collect()
 }
@@ -455,7 +396,6 @@ pub fn glossary_to_entities(rows: &[GlossaryRow]) -> Vec<GraphEntity> {
                 contact_vector: Some(r.definition.chars().take(200).collect()),
                 module_id: "__taxonomy__".to_string(),
                 confidence: 1.0,
-                source_doc: None,
             }
         })
         .collect()
@@ -472,7 +412,6 @@ pub fn themes_to_entities(rows: &[ThemeRow]) -> Vec<GraphEntity> {
             contact_vector: Some(r.gravity_keywords.clone()),
             module_id: "__taxonomy__".to_string(),
             confidence: 1.0,
-            source_doc: None,
         })
         .collect()
 }
@@ -488,7 +427,6 @@ pub fn topics_to_entities(rows: &[TopicRow]) -> Vec<GraphEntity> {
             contact_vector: Some(r.wiki_repo.clone()),
             module_id: "__taxonomy__".to_string(),
             confidence: 1.0,
-            source_doc: None,
         })
         .collect()
 }
@@ -503,22 +441,6 @@ pub fn guides_to_entities(rows: &[GuideRow]) -> Vec<GraphEntity> {
             contact_vector: Some(r.wiki_repo.clone()),
             module_id: "__taxonomy__".to_string(),
             confidence: 1.0,
-            source_doc: None,
-        })
-        .collect()
-}
-
-pub fn entity_classes_to_entities(rows: &[EntityClassRow]) -> Vec<GraphEntity> {
-    rows.iter()
-        .map(|r| GraphEntity {
-            entity_name: r.class_name.clone(),
-            classification: "entity-class".to_string(),
-            role_vector: Some(r.canonical_prefix.clone()),
-            location_vector: Some(r.domain_id.clone()),
-            contact_vector: Some(r.description.chars().take(200).collect()),
-            module_id: "__taxonomy__".to_string(),
-            confidence: 1.0,
-            source_doc: None,
         })
         .collect()
 }
@@ -591,14 +513,6 @@ pub fn load_taxonomy_from_dir(ontology_dir: &str) -> Result<TaxonomyBundle, Stri
         bundle.guides.append(&mut rows);
     }
 
-    // Entity classes (content artifact classes — TOPIC, GUIDE; single domain-independent file,
-    // same singleton pattern as archetypes.csv/themes.csv)
-    let entity_classes_path = format!("{}/entity_classes.csv", ontology_dir);
-    if std::path::Path::new(&entity_classes_path).exists() {
-        let csv = read(&entity_classes_path)?;
-        bundle.entity_classes = parse_entity_classes(&csv)?;
-    }
-
     Ok(bundle)
 }
 
@@ -611,7 +525,6 @@ pub fn bundle_to_entities(bundle: &TaxonomyBundle) -> Vec<GraphEntity> {
     all.extend(themes_to_entities(&bundle.themes));
     all.extend(topics_to_entities(&bundle.topics));
     all.extend(guides_to_entities(&bundle.guides));
-    all.extend(entity_classes_to_entities(&bundle.entity_classes));
     all
 }
 
@@ -763,99 +676,6 @@ mod tests {
                 row.domain, "documentation",
                 "all guides must have domain=documentation"
             );
-        }
-    }
-
-    // ── parse_entity_classes ─────────────────────────────────────────────────
-
-    #[test]
-    fn parse_entity_classes_parses_with_header() {
-        let csv = "class_id,class_name,canonical_prefix,domain_id,file_location,description\n\
-                   TOPIC,Topic,,corporate|projects|documentation,content-wiki-*/[category]/[slug].md,Doctrine and architecture articles\n";
-        let rows = parse_entity_classes(csv).unwrap();
-        assert_eq!(rows.len(), 1);
-        assert_eq!(rows[0].class_id, "TOPIC");
-        assert_eq!(rows[0].class_name, "Topic");
-        assert_eq!(rows[0].canonical_prefix, "");
-        assert_eq!(rows[0].domain_id, "corporate|projects|documentation");
-    }
-
-    #[test]
-    fn parse_entity_classes_multiple_rows() {
-        let csv = "class_id,class_name,canonical_prefix,domain_id,file_location,description\n\
-                   TOPIC,Topic,,corporate|projects|documentation,path-a,desc-a\n\
-                   GUIDE,Guide,guide-,documentation,path-b,desc-b\n";
-        let rows = parse_entity_classes(csv).unwrap();
-        assert_eq!(rows.len(), 2);
-        assert_eq!(rows[1].class_id, "GUIDE");
-        assert_eq!(rows[1].canonical_prefix, "guide-");
-    }
-
-    #[test]
-    fn parse_entity_classes_rejects_too_few_columns() {
-        let csv = "class_id,class_name,canonical_prefix\nTOPIC,Topic,\n";
-        let result = parse_entity_classes(csv);
-        assert!(result.is_err() || result.unwrap().is_empty());
-    }
-
-    #[test]
-    fn entity_classes_to_entities_maps_fields() {
-        let rows = vec![EntityClassRow {
-            class_id: "GUIDE".to_string(),
-            class_name: "Guide".to_string(),
-            canonical_prefix: "guide-".to_string(),
-            domain_id: "documentation".to_string(),
-            file_location: "customer/woodfine-fleet-deployment/[gateway]/guide-[slug].md"
-                .to_string(),
-            description: "Operational runbooks answering how do I operate X".to_string(),
-        }];
-        let entities = entity_classes_to_entities(&rows);
-        assert_eq!(entities.len(), 1);
-        assert_eq!(entities[0].entity_name, "Guide");
-        assert_eq!(entities[0].classification, "entity-class");
-        assert_eq!(entities[0].role_vector.as_deref(), Some("guide-"));
-        assert_eq!(
-            entities[0].location_vector.as_deref(),
-            Some("documentation")
-        );
-        assert_eq!(entities[0].module_id, "__taxonomy__");
-        assert!((entities[0].confidence - 1.0).abs() < f64::EPSILON);
-    }
-
-    #[test]
-    fn serialize_entity_classes_roundtrips() {
-        let rows = vec![EntityClassRow {
-            class_id: "TOPIC".to_string(),
-            class_name: "Topic".to_string(),
-            canonical_prefix: "".to_string(),
-            domain_id: "corporate|projects|documentation".to_string(),
-            file_location: "content-wiki-*/[category]/[slug].md".to_string(),
-            description: "Doctrine and architecture articles".to_string(),
-        }];
-        let csv = serialize_entity_classes(&rows);
-        assert!(csv.starts_with("class_id,class_name,"));
-        assert!(csv.contains("TOPIC"));
-        let parsed = parse_entity_classes(&csv).unwrap();
-        assert_eq!(parsed.len(), 1);
-        assert_eq!(parsed[0].class_id, "TOPIC");
-    }
-
-    // ── entity_classes.csv sanity ────────────────────────────────────────────
-
-    #[test]
-    fn ontology_entity_classes_csv_parses() {
-        // Verify the actual on-disk CSV parses without error and has expected rows.
-        let csv_path = concat!(env!("CARGO_MANIFEST_DIR"), "/ontology/entity_classes.csv");
-        let Ok(csv) = std::fs::read_to_string(csv_path) else {
-            return;
-        };
-        let rows = parse_entity_classes(&csv).expect("entity_classes.csv must parse cleanly");
-        assert!(
-            !rows.is_empty(),
-            "entity_classes.csv must have at least one row"
-        );
-        for row in &rows {
-            assert!(!row.class_id.is_empty(), "class_id must not be empty");
         }
     }
 

@@ -1,7 +1,4 @@
 #!/bin/bash
-# SPDX-License-Identifier: FSL-1.1-ALv2
-# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 TARGET_DIR="/opt/deployments/pointsav-fleet-deployment/media-marketing-landing"
 DATE_STAMP=$(date +"%Y%m%d")
 

@@ -1,6 +1,3 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 //! Recent-N checkpoint cache. Lookup by `(origin, tree_size)` and
 //! `(origin, root_hash)`. LRU eviction. Single-writer; not
 //! thread-safe — matches the kernel-side single-threaded substrate

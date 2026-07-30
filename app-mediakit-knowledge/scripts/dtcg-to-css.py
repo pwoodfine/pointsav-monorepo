@@ -1,0 +1,182 @@
+#!/usr/bin/env python3
+"""
+dtcg-to-css.py — DTCG 2025.10 bundle → CSS custom properties.
+
+Input:  scripts/dtcg-bundle.json  (vendored from design system dtcg-vault)
+Output: static/tokens.css
+
+Run from app-mediakit-knowledge/ (the crate root):
+    python3 scripts/dtcg-to-css.py
+
+Phase 4.2: all color values emitted as oklch().
+Non-color values (spacing, radius, motion, font, line) are passed through as-is.
+Alias tokens ({path.to.token}) are resolved to their leaf value before conversion.
+
+CSS variable naming:
+  primitive.color.brand.blue.60  → --color-brand-blue-60
+  semantic.surface.background    → --surface-background
+  component.home-grid.gap        → --home-grid-gap
+"""
+
+import json
+import math
+import os
+import re
+import sys
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+BUNDLE_PATH = os.path.join(SCRIPT_DIR, "dtcg-bundle.json")
+OUTPUT_PATH = os.path.join(SCRIPT_DIR, "..", "static", "tokens.css")
+
+ALIAS_RE = re.compile(r"^\{(.+)\}$")
+
+
+# ── Color conversion: hex → linear sRGB → XYZ(D65) → OKLab → OKLCh ─────────
+
+def _srgb_to_linear(c: float) -> float:
+    return c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
+
+
+def hex_to_oklch(hex_color: str) -> str:
+    """Convert #rrggbb (or #rgb) to oklch(L% C H) string."""
+    h = hex_color.lstrip("#")
+    if len(h) == 3:
+        h = h[0]*2 + h[1]*2 + h[2]*2
+    if len(h) != 6:
+        return hex_color  # non-standard; pass through
+    r = _srgb_to_linear(int(h[0:2], 16) / 255)
+    g = _srgb_to_linear(int(h[2:4], 16) / 255)
+    b = _srgb_to_linear(int(h[4:6], 16) / 255)
+
+    # Linear sRGB → XYZ (D65, IEC 61966-2-1)
+    X = r * 0.4124564 + g * 0.3575761 + b * 0.1804375
+    Y = r * 0.2126729 + g * 0.7151522 + b * 0.0721750
+    Z = r * 0.0193339 + g * 0.1191920 + b * 0.9503041
+
+    # XYZ → OKLab (Björn Ottosson 2021)
+    l_lin = 0.8189330101*X + 0.3618667424*Y - 0.1288597137*Z
+    m_lin = 0.0329845436*X + 0.9293118715*Y + 0.0361456387*Z
+    s_lin = 0.0482003018*X + 0.2643662691*Y + 0.6338517070*Z
+
+    l = l_lin ** (1/3)
+    m = m_lin ** (1/3)
+    s = s_lin ** (1/3)
+
+    L =  0.2104542553*l + 0.7936177850*m - 0.0040720468*s
+    a =  1.9779984951*l - 2.4285922050*m + 0.4505937099*s
+    b_ = 0.0259040371*l + 0.7827717662*m - 0.8086757660*s
+
+    # OKLab → OKLCh
+    C = math.sqrt(a*a + b_*b_)
+    H = math.degrees(math.atan2(b_, a)) % 360
+
+    L_pct = round(L * 100, 2)
+    C_val  = round(C, 4)
+    H_val  = round(H, 2)
+    return f"oklch({L_pct}% {C_val} {H_val})"
+
+
+# ── DTCG bundle traversal ─────────────────────────────────────────────────────
+
+def flatten(obj: dict, prefix: str, out: dict):
+    """Recursively collect all leaf tokens into out[path] = {$value, $type}."""
+    for k, v in obj.items():
+        if k.startswith("$"):
+            continue
+        path = f"{prefix}.{k}" if prefix else k
+        if isinstance(v, dict):
+            if "$value" in v:
+                out[path] = v
+            else:
+                flatten(v, path, out)
+
+
+def resolve(value: str, flat: dict) -> str:
+    """Resolve a DTCG alias {path.to.token} to its concrete value."""
+    visited = set()
+    while True:
+        m = ALIAS_RE.match(str(value))
+        if not m:
+            return value
+        ref = m.group(1)
+        if ref in visited:
+            return value  # cycle guard
+        visited.add(ref)
+        if ref not in flat:
+            return value  # unresolvable; pass through
+        value = flat[ref].get("$value", value)
+
+
+def to_css_var(path: str) -> str:
+    """Convert a DTCG token path to a CSS custom property name."""
+    # Strip top-level tier prefix (primitive, semantic, component)
+    parts = path.split(".")
+    if parts[0] in ("primitive", "semantic", "component"):
+        parts = parts[1:]
+    return "--" + "-".join(parts)
+
+
+# ── Emit ──────────────────────────────────────────────────────────────────────
+
+def emit_section(flat: dict, section_prefix: str, heading: str, lines: list):
+    tokens = {k: v for k, v in flat.items() if k.startswith(section_prefix + ".")}
+    if not tokens:
+        return
+    lines.append(f"  /* {heading} */")
+    for path, token in sorted(tokens.items()):
+        raw = resolve(token.get("$value", ""), flat)
+        typ = token.get("$type", "")
+        if typ == "color" or (isinstance(raw, str) and raw.startswith("#")):
+            css_val = hex_to_oklch(raw) if isinstance(raw, str) and raw.startswith("#") else str(raw)
+        elif isinstance(raw, list) and len(raw) == 4 and all(isinstance(x, (int, float)) for x in raw):
+            css_val = f"cubic-bezier({raw[0]}, {raw[1]}, {raw[2]}, {raw[3]})"
+        else:
+            css_val = str(raw)
+        var = to_css_var(path)
+        lines.append(f"  {var}: {css_val};")
+    lines.append("")
+
+
+def main():
+    with open(BUNDLE_PATH) as f:
+        bundle = json.load(f)
+
+    flat: dict = {}
+    flatten(bundle, "", flat)
+
+    lines = [
+        "/* PointSav Knowledge — design-system token variables.",
+        " * Generated by scripts/dtcg-to-css.py from scripts/dtcg-bundle.json.",
+        " * DO NOT EDIT DIRECTLY — re-run the script to regenerate.",
+        " * Source: pointsav-design-system dtcg-vault/tokens/dtcg-bundle.json",
+        f" * Bundle version: {bundle.get('$version', 'unversioned')}",
+        " */",
+        "",
+        ":root {",
+    ]
+
+    emit_section(flat, "primitive.color", "Primitive — color", lines)
+    emit_section(flat, "primitive.font",  "Primitive — font",  lines)
+    emit_section(flat, "primitive.space", "Primitive — space", lines)
+    emit_section(flat, "primitive.radius","Primitive — radius",lines)
+    emit_section(flat, "primitive.line",  "Primitive — line",  lines)
+    emit_section(flat, "primitive.motion","Primitive — motion",lines)
+    emit_section(flat, "primitive.density","Primitive — density",lines)
+    emit_section(flat, "semantic.surface",   "Semantic — surface",    lines)
+    emit_section(flat, "semantic.text",      "Semantic — text",       lines)
+    emit_section(flat, "semantic.interactive","Semantic — interactive",lines)
+    emit_section(flat, "semantic.border",    "Semantic — border",     lines)
+    emit_section(flat, "semantic.knowledge", "Semantic — knowledge",  lines)
+    emit_section(flat, "component",          "Component",             lines)
+
+    lines.append("}")
+    lines.append("")
+
+    out = "\n".join(lines)
+    with open(OUTPUT_PATH, "w") as f:
+        f.write(out)
+    print(f"wrote {OUTPUT_PATH} ({len(flat)} tokens)")
+
+
+if __name__ == "__main__":
+    main()

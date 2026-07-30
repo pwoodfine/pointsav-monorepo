@@ -1,6 +1,3 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 (function () {
   'use strict';
 
@@ -10,19 +7,17 @@
   function buildOverlay() {
     var el = document.createElement('div');
     el.id = 'ai-overlay';
-    el.style.cssText = 'position:fixed;bottom:1.5rem;right:1.5rem;width:min(360px, calc(100vw - 2rem));max-height:60vh;'
-      + 'background:var(--cds-layer);border:1px solid var(--cds-border-subtle);'
-      + 'border-radius:var(--cds-radius-md);padding:1rem;overflow-y:auto;z-index:900;display:none;'
-      + 'font-size:0.875rem;color:var(--cds-text-primary);box-shadow:var(--cds-elevation-3);';
+    el.style.cssText = 'position:fixed;bottom:1.5rem;right:1.5rem;width:360px;max-height:60vh;'
+      + 'background:var(--cds-layer,#161616);border:1px solid var(--cds-border-subtle,#393939);'
+      + 'border-radius:4px;padding:1rem;overflow-y:auto;z-index:900;display:none;'
+      + 'font-size:0.875rem;color:var(--cds-text-primary,#f4f4f4);';
     var header = document.createElement('div');
     header.style.cssText = 'display:flex;justify-content:space-between;align-items:center;'
       + 'margin-bottom:0.75rem;font-weight:600;';
     header.textContent = 'AI assistant';
     var close = document.createElement('button');
-    close.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>';
-    close.setAttribute('aria-label', 'Close');
-    close.style.cssText = 'background:none;border:none;color:inherit;cursor:pointer;display:flex;'
-      + 'width:var(--cds-icon-size-md);height:var(--cds-icon-size-md);padding:0;';
+    close.textContent = '×';
+    close.style.cssText = 'background:none;border:none;color:inherit;cursor:pointer;font-size:1.25rem;';
     close.onclick = function () { el.style.display = 'none'; };
     header.appendChild(close);
     el.appendChild(header);
@@ -97,9 +92,7 @@
     btn = document.createElement('button');
     btn.id = 'ai-trigger';
     btn.textContent = 'Ask AI';
-    // Bottom-left, deliberately separate from the edit/save cluster (bottom-right)
-    // so the two floating-button groups never overlap on narrow viewports (P1.9).
-    btn.style.cssText = 'position:fixed;bottom:1.5rem;left:1.5rem;'
+    btn.style.cssText = 'position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);'
       + 'padding:0.5rem 1.25rem;background:var(--cds-interactive,#4589ff);color:#fff;'
       + 'border:none;border-radius:4px;cursor:pointer;font-size:0.875rem;display:none;z-index:800;';
     btn.onclick = function () {

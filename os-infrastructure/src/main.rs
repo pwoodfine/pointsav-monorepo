@@ -1,7 +1,4 @@
 #![no_std]
-// SPDX-License-Identifier: FSL-1.1-ALv2
-// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 #![no_main]
 
 use core::arch::global_asm;

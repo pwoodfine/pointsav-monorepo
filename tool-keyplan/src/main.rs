@@ -1,6 +1,3 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 // tool-keyplan: BIM Key Plan compiler — TOML config → validated DTCG JSON
 //
 // CLI:
@@ -22,7 +19,6 @@ use std::{collections::HashMap, env, fs, path::Path};
 // ─── interior DTCG structures ──────────────────────────────────────────────
 
 #[derive(Debug, Clone, Deserialize)]
-#[allow(dead_code)]
 struct DimensionsMm {
     w: f64,
     d: f64,
@@ -78,7 +74,6 @@ struct KeyPlanMeta {
 }
 
 #[derive(Debug, Deserialize)]
-#[allow(dead_code)]
 struct CirculationToml {
     standard: String,
     min_area_per_person_m2: f64,
@@ -89,7 +84,6 @@ struct CirculationToml {
 }
 
 #[derive(Debug, Deserialize)]
-#[allow(dead_code)]
 struct FurniturePlacement {
     token: String,
     zone: String,

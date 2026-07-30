@@ -1,7 +1,4 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: AGPL-3.0-or-later
-# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 import os
 import sys
 import json
@@ -10,10 +7,7 @@ import datetime
 import shutil
 
 # Active Deployment Boundaries
-BASE_DIR = os.environ.get(
-    "SURVEYOR_BASE_DIR",
-    os.path.expanduser("~/deployments/woodfine-fleet-deployment/cluster-totebox-personnel"),
-)
+BASE_DIR = "/home/mathew/deployments/woodfine-fleet-deployment/cluster-totebox-personnel"
 QUEUE_DIR = os.path.join(BASE_DIR, "service-people/discovery-queue")
 VERIFIED_DIR = os.path.join(BASE_DIR, "service-people/verified-ledger")
 ARCHETYPES_CSV = os.path.join(BASE_DIR, "service-content/ontology/archetypes.csv")

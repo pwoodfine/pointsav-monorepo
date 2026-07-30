@@ -63,11 +63,6 @@ pub struct ApprenticeshipConfig {
     /// The default-true guard prevents git-commit briefs from auto-escalating
     /// to Cloud Run and accruing GPU charges without operator intent.
     pub tier_a_first: bool,
-    /// When routing to the Yoyo tier, target this named node.
-    /// `None` uses the router default. The drain worker sets this to
-    /// `Some("trainer")` so queue items land on the L4 GPU node rather
-    /// than the default node (which may be a different VM class).
-    pub yoyo_dispatch_label: Option<String>,
 }
 
 impl ApprenticeshipConfig {
@@ -108,7 +103,6 @@ impl ApprenticeshipConfig {
             doctrine_version,
             tenant,
             tier_a_first,
-            yoyo_dispatch_label: None,
         }
     }
 }
@@ -185,16 +179,13 @@ impl<'a> ApprenticeshipDispatcher<'a> {
                     role: "user".into(),
                     content: prompt,
                 },
-                // Assistant pre-fill: force the model past the frontmatter opener
-                // and straight into the first required value. Prefilling through
-                // "self_confidence: " (rather than just "---\n") guarantees the
-                // model's first generated token is the confidence number and the
-                // frontmatter structure cannot drift — instruct models otherwise
-                // begin with prose reasoning, causing parse_attempt_content to
-                // default escalate=true and blank the diff.
+                // Assistant pre-fill: force the model to start with the YAML fence.
+                // Without this, instruct models begin with prose reasoning and never
+                // write the frontmatter, causing parse_attempt_content to default
+                // escalate=true and blank the diff.
                 ChatMessage {
                     role: "assistant".into(),
-                    content: "---\nself_confidence: ".to_string(),
+                    content: "---\n".to_string(),
                 },
             ],
             complexity: match tier_hint {
@@ -204,29 +195,24 @@ impl<'a> ApprenticeshipDispatcher<'a> {
             tier_hint: Some(tier_hint),
             stream: false,
             // Tier B (OLMo 3 32B-Think): 2048 tokens ≈ 228 s at 9 tok/s.
-            // Tier A (OLMo 7B Q4): raised 512 → 1024 → 1536. The canonical
-            // envelope (frontmatter + one-line reasoning + fenced diff) plus a
-            // real multi-hunk diff routinely exceeds 1024 tokens; truncation
-            // there produced unterminated diffs that poisoned the corpus.
+            // Tier A (OLMo 2 7B Q4): raised from 512 → 1024.
+            // 512 was too tight: the 7B model used ~230 tokens for reasoning,
+            // leaving only 280 for the diff — not enough for non-trivial diffs.
             max_tokens: Some(match tier_hint {
                 Tier::Yoyo => 2048,
-                _ => 1536,
+                _ => 1024,
             }),
             temperature: None,
             sanitised_outbound: true,
             tier_c_label: None,
-            yoyo_label: if matches!(tier_hint, Tier::Yoyo) {
-                self.config.yoyo_dispatch_label.clone()
-            } else {
-                None
-            },
+            yoyo_label: None,
             grammar: None,
             speculation: None,
             graph_context_enabled: None,
             tools: None,
             // Stop at the natural end of the diff code block.
             stop_sequences: Some(vec![
-                "\n```\n".to_string(),
+                "```\n\n".to_string(),
                 "<|endoftext|>".to_string(),
                 "<|im_end|>".to_string(),
             ]),
@@ -247,7 +233,7 @@ impl<'a> ApprenticeshipDispatcher<'a> {
         let full_content = if resp.content.trim_start().starts_with("---") {
             resp.content.clone()
         } else {
-            format!("---\nself_confidence: {}", resp.content)
+            format!("---\n{}", resp.content)
         };
         let parsed = parse_attempt_content(&full_content);
         let attempt = build_attempt(brief, &resp, parsed);
@@ -323,7 +309,7 @@ impl<'a> ApprenticeshipDispatcher<'a> {
                 },
                 ChatMessage {
                     role: "assistant".into(),
-                    content: "---\nself_confidence: ".to_string(),
+                    content: "---\n".to_string(),
                 },
             ],
             complexity: match tier_hint {
@@ -334,22 +320,18 @@ impl<'a> ApprenticeshipDispatcher<'a> {
             stream: false,
             max_tokens: Some(match tier_hint {
                 Tier::Yoyo => 2048,
-                _ => 1536,
+                _ => 1024,
             }),
             temperature: None,
             sanitised_outbound: true,
             tier_c_label: None,
-            yoyo_label: if matches!(tier_hint, Tier::Yoyo) {
-                self.config.yoyo_dispatch_label.clone()
-            } else {
-                None
-            },
+            yoyo_label: None,
             grammar: None,
             speculation: None,
             graph_context_enabled: None,
             tools: None,
             stop_sequences: Some(vec![
-                "\n```\n".to_string(),
+                "```\n\n".to_string(),
                 "<|endoftext|>".to_string(),
                 "<|im_end|>".to_string(),
             ]),
@@ -364,12 +346,11 @@ impl<'a> ApprenticeshipDispatcher<'a> {
             "dispatching shadow brief"
         );
 
-        // Background work: use background slot (respects background_sem cap).
-        let resp = self.doorman.route_local_background(&req).await?;
+        let resp = self.doorman.route(&req).await?;
         let full_content = if resp.content.trim_start().starts_with("---") {
             resp.content.clone()
         } else {
-            format!("---\nself_confidence: {}", resp.content)
+            format!("---\n{}", resp.content)
         };
         let parsed = parse_attempt_content(&full_content);
         let attempt = build_attempt(brief, &resp, parsed);
@@ -528,27 +509,24 @@ fn sanitize_attempt_for_corpus(a: &ApprenticeshipAttempt) -> ApprenticeshipAttem
 pub const APPRENTICE_SYSTEM_PROMPT: &str = "\
 You are a code-editing assistant. Output ONLY the structured response below — no prose before it.\n\
 \n\
-REQUIRED FORMAT — copy this structure exactly and fill in real values:\n\
+REQUIRED FORMAT (copy exactly, fill in values):\n\
 \n\
 ---\n\
-self_confidence: 0.85\n\
+self_confidence: 0.7\n\
 escalate: false\n\
 ---\n\
 \n\
 ## Reasoning\n\
-Changed --parallel 2 to --parallel 1 to prevent SWA KV-cache slot collision on OLMo.\n\
+One sentence: what changed and why.\n\
 \n\
 ## Diff\n\
 ```diff\n\
---- a/infrastructure/local-slm.service\n\
-+++ b/infrastructure/local-slm.service\n\
-@@ -17,7 +17,7 @@ After=network.target\n\
- [Service]\n\
- User=mathew\n\
- Type=simple\n\
--ExecStart=/usr/bin/llama-server --parallel 2 --port 8080\n\
-+ExecStart=/usr/bin/llama-server --parallel 1 --port 8080\n\
- Restart=on-failure\n\
+--- a/path/to/file\n\
++++ b/path/to/file\n\
+@@ -1,3 +1,3 @@\n\
+ context line\n\
+-old line\n\
++new line\n\
 ```\n\
 \n\
 Rules:\n\
@@ -557,42 +535,7 @@ Rules:\n\
 - Set escalate: false and write the unified diff when you can make the change.\n\
 - Set escalate: true and leave Diff empty only when the task is truly ambiguous.\n\
 - self_confidence: your certainty (0.0 = none, 1.0 = certain).\n\
-- The diff MUST be a valid unified diff (--- a/ +++ b/ @@ lines).\n\
-- NEVER use placeholder text: write real file paths and real code — not path/to/file, old line, new line.";
-
-/// Render a response in the exact canonical envelope the apprentice emits at
-/// inference (frontmatter + `## Reasoning` + fenced `## Diff`). Used by the
-/// verdict path to store DPO `chosen`/`rejected` sides in the SAME output space
-/// the model is trained to produce, so preference optimisation compares
-/// like-for-like rather than rewarding a raw `diff --git` blob the model is
-/// instructed never to emit (2026-06-19 Opus audit, DPO-format finding).
-/// Mirrors the envelope built by `scripts/export-sft.py` — keep in sync.
-pub fn render_canonical_response(
-    self_confidence: f32,
-    escalate: bool,
-    reasoning: &str,
-    diff: &str,
-) -> String {
-    let reasoning = if reasoning.trim().is_empty() {
-        "(no reasoning captured)"
-    } else {
-        reasoning.trim()
-    };
-    format!(
-        "---\n\
-         self_confidence: {self_confidence:.2}\n\
-         escalate: {escalate}\n\
-         ---\n\
-         \n\
-         ## Reasoning\n\
-         {reasoning}\n\
-         \n\
-         ## Diff\n\
-         ```diff\n\
-         {diff}\n\
-         ```\n",
-    )
-}
+- The diff MUST be a valid unified diff (--- a/ +++ b/ @@ lines).";
 
 /// Build the apprentice user-prompt body from a brief.
 pub fn apprentice_prompt(cfg: &ApprenticeshipConfig, brief: &ApprenticeshipBrief) -> String {
@@ -611,7 +554,22 @@ pub fn apprentice_prompt(cfg: &ApprenticeshipConfig, brief: &ApprenticeshipBrief
          ## Brief body\n\
          {body}\n\n\
          ## Acceptance test\n\
-         {acceptance}\n",
+         {acceptance}\n\n\
+         ## Required response shape\n\
+         Respond with exactly this YAML frontmatter, then `## Reasoning` and `## Diff`:\n\
+         \n\
+         ---\n\
+         self_confidence: <0.0..=1.0>\n\
+         escalate: <true|false>\n\
+         ---\n\
+         \n\
+         ## Reasoning\n\
+         <your reasoning here>\n\
+         \n\
+         ## Diff\n\
+         ```diff\n\
+         <unified diff, OR empty if escalate=true>\n\
+         ```\n",
         brief_id = brief.brief_id,
         task_type = brief.task_type,
         senior = brief.senior_identity,
@@ -862,7 +820,6 @@ mod tests {
             doctrine_version: "0.0.7".into(),
             tenant: "pointsav".into(),
             tier_a_first: false,
-            yoyo_dispatch_label: None,
         }
     }
 
@@ -890,15 +847,6 @@ mod tests {
                 { "message": { "role": "assistant", "content": content } }
             ]
         })
-    }
-
-    /// SSE body for dispatch_shadow tests — route_local_background uses
-    /// complete_inner_streaming (stream:true) so mocks must return SSE format.
-    fn ok_completion_sse(content: &str) -> String {
-        let payload = serde_json::json!({
-            "choices": [{"delta": {"content": content}, "finish_reason": null}]
-        });
-        format!("data: {payload}\n\ndata: [DONE]\n\n")
     }
 
     /// Happy path — apprentice returns parseable response with a diff;
@@ -1105,9 +1053,6 @@ OK.
             },
             bearer,
         );
-        // health_up initialises false (pessimistic); simulate the first
-        // successful /health probe so dispatch will route to Tier B.
-        yoyo.health_up.store(true, std::sync::atomic::Ordering::Relaxed);
         let doorman = Doorman::new(
             DoormanConfig {
                 local: Some(local),
@@ -1221,23 +1166,18 @@ ok
         let body: serde_json::Value =
             serde_json::from_slice(&reqs[0].body).expect("request body is JSON");
 
-        // Tier A caps generation at 1536 tokens (raised from 1024 — the canonical
-        // envelope frontmatter+reasoning+fenced diff needs headroom; 1024 truncated
-        // multi-hunk diffs mid-fence, poisoning the corpus with partial captures).
+        // Tier A caps generation at 1024 tokens (raised from 512 — 7B needs room for diff).
         assert_eq!(
             body["max_tokens"].as_u64(),
-            Some(1536),
-            "Tier A shadow request must cap max_tokens at 1536"
+            Some(1024),
+            "Tier A shadow request must cap max_tokens at 1024"
         );
         // Fix 2: stop sequences present, including the diff-fence terminator.
-        // The terminator is "\n```\n" (single trailing newline) — the prior
-        // "```\n\n" rarely matched (the format ends with a single newline after
-        // the fence), so generation ran to max_tokens instead of stopping cleanly.
         let stop = body["stop"]
             .as_array()
             .expect("stop must be a top-level array");
         assert!(
-            stop.iter().any(|s| s.as_str() == Some("\n```\n")),
+            stop.iter().any(|s| s.as_str() == Some("```\n\n")),
             "stop sequences must include the diff code-fence terminator; got {stop:?}"
         );
     }
@@ -1288,11 +1228,7 @@ Shadow attempt for the apprentice.
         Mock::given(method("POST"))
             .and(path("/v1/chat/completions"))
             .respond_with(
-                // dispatch_shadow uses route_local_background → complete_inner_streaming
-                // (stream:true), so the mock must return SSE format.
-                ResponseTemplate::new(200)
-                    .insert_header("content-type", "text/event-stream")
-                    .set_body_string(ok_completion_sse(apprentice_response)),
+                ResponseTemplate::new(200).set_body_json(ok_completion(apprentice_response)),
             )
             .expect(1)
             .mount(&server)
@@ -1362,13 +1298,9 @@ Shadow attempt for the apprentice.
         let server = MockServer::start().await;
         Mock::given(method("POST"))
             .and(path("/v1/chat/completions"))
-            .respond_with(
-                ResponseTemplate::new(200)
-                    .insert_header("content-type", "text/event-stream")
-                    .set_body_string(ok_completion_sse(
-                        "---\nself_confidence: 0.8\nescalate: false\n---\n\n## Reasoning\nx\n## Diff\n```diff\n--- a\n+++ a\n```\n",
-                    )),
-            )
+            .respond_with(ResponseTemplate::new(200).set_body_json(ok_completion(
+                "---\nself_confidence: 0.8\nescalate: false\n---\n\n## Reasoning\nx\n## Diff\n```diff\n--- a\n+++ a\n```\n",
+            )))
             .expect(1) // exactly one apprentice call across both POSTs
             .mount(&server)
             .await;

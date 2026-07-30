@@ -1,8 +1,3 @@
-<!--
-  SPDX-License-Identifier: AGPL-3.0-or-later
-  SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
--->
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -214,7 +209,44 @@
     <div class="dropdown-sep"></div>
     <button role="menuitem" data-action="schema-info">Schema Information…</button>
     <button role="menuitem" data-action="audit-history">Audit History…</button>
+    <div class="dropdown-sep"></div>
+    <button role="menuitem" data-action="keyboard-shortcuts">Keyboard Shortcuts (F1)</button>
   </nav>
+
+  <!-- ═══════════════════════════════════════════════════════
+       KEYBOARD SHORTCUT HELP OVERLAY (hidden by default)
+       Opened via F1 or Tools ▸ Keyboard Shortcuts. Additive-only
+       surface — does not touch engine.js or formula-bar.js.
+  ═══════════════════════════════════════════════════════ -->
+  <div id="shortcut-overlay" class="shortcut-overlay hidden">
+    <div id="shortcut-dialog"
+         class="shortcut-dialog"
+         role="dialog"
+         aria-modal="true"
+         aria-labelledby="shortcut-dialog-title"
+         tabindex="-1">
+      <div class="shortcut-dialog-header">
+        <h2 id="shortcut-dialog-title">Keyboard Shortcuts</h2>
+        <button id="shortcut-dialog-close" class="shortcut-dialog-close" aria-label="Close">✕</button>
+      </div>
+      <dl class="shortcut-list">
+        <dt>F1</dt><dd>Show / hide this help</dd>
+        <dt>F9</dt><dd>Recalculate</dd>
+        <dt>Ctrl / Cmd + N</dt><dd>New proforma</dd>
+        <dt>Ctrl / Cmd + O</dt><dd>Open…</dd>
+        <dt>Ctrl / Cmd + S</dt><dd>Save</dd>
+        <dt>Ctrl / Cmd + Shift + S</dt><dd>Save As…</dd>
+        <dt>Ctrl / Cmd + P</dt><dd>Print / Save as PDF</dd>
+        <dt>Arrow keys</dt><dd>Move selection</dd>
+        <dt>Enter / F2</dt><dd>Edit selected cell</dd>
+        <dt>Delete / Backspace</dt><dd>Clear selected cell</dd>
+        <dt>Enter (while editing)</dt><dd>Commit and move down</dd>
+        <dt>Tab (while editing)</dt><dd>Commit and move right</dd>
+        <dt>Esc (while editing)</dt><dd>Cancel edit</dd>
+        <dt>Esc</dt><dd>Close this dialog</dd>
+      </dl>
+    </div>
+  </div>
 
   <!-- ─── Scripts ─────────────────────────────────────────── -->
   <!--

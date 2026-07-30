@@ -1,7 +1,4 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: AGPL-3.0-or-later
-# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 # smoke-test-doorman.sh — advisory smoke-test for the Doorman HTTP server.
 #
 # Hits every endpoint and reports PASS/FAIL without blocking the deploy.

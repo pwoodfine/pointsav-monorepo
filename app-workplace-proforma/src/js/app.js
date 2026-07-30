@@ -1,6 +1,3 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
-// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
-
 /**
  * Workplace*Proforma — app.js
  * Main application controller: document state, file operations, menu wiring,
@@ -33,6 +30,11 @@ window.WorkplaceApp = (function () {
   const statusEngine   = document.getElementById('status-engine');
   const statusSchema   = document.getElementById('status-schema');
 
+  const shortcutOverlay = document.getElementById('shortcut-overlay');
+  const shortcutDialog  = document.getElementById('shortcut-dialog');
+  const shortcutClose   = document.getElementById('shortcut-dialog-close');
+  let lastFocusedBeforeOverlay = null;
+
   /* ─── Tauri IPC bridge ─────────────────────────────────────────────────── */
 
   function isTauri() {
@@ -44,7 +46,7 @@ window.WorkplaceApp = (function () {
       console.warn(`[bridge] Tauri not available — skipping command: ${cmd}`);
       return null;
     }
-    return window.__TAURI__.invoke(cmd, args);
+    return window.__TAURI__.core.invoke(cmd, args); // v2: invoke moved to __TAURI__.core
   }
 
   /* ─── Initial load ─────────────────────────────────────────────────────── */
@@ -176,10 +178,71 @@ window.WorkplaceApp = (function () {
     document.title = `${title} — Workplace Proforma`;
   }
 
+  /* ─── Keyboard-shortcut help overlay ───────────────────────────────────── */
+  // Additive, frontend-only surface — F1 opens/closes it; Tools ▸ Keyboard
+  // Shortcuts gives a mouse-driven path to the same dialog for discoverability.
+  // The roadmap named "?/F1" as the trigger, but "?" is deliberately NOT bound
+  // as a global shortcut here: grid.js's keydown handler treats any single
+  // printable character as "start editing the selected cell with that
+  // character" whenever a dropdown/help overlay isn't open, so binding "?"
+  // globally would silently hijack typing a literal "?" into a cell. F1 has
+  // no such conflict (grid.js only acts on keys with length === 1) and is
+  // the sole keyboard trigger implemented tonight.
+
+  function isShortcutOverlayOpen() {
+    return !shortcutOverlay.classList.contains('hidden');
+  }
+
+  function openShortcutOverlay() {
+    if (isShortcutOverlayOpen()) return;
+    lastFocusedBeforeOverlay = document.activeElement;
+    closeAllMenus();
+    shortcutOverlay.classList.remove('hidden');
+    shortcutDialog.focus();
+  }
+
+  function closeShortcutOverlay() {
+    if (!isShortcutOverlayOpen()) return;
+    shortcutOverlay.classList.add('hidden');
+    if (lastFocusedBeforeOverlay && typeof lastFocusedBeforeOverlay.focus === 'function') {
+      lastFocusedBeforeOverlay.focus();
+    }
+    lastFocusedBeforeOverlay = null;
+  }
+
+  function toggleShortcutOverlay() {
+    if (isShortcutOverlayOpen()) closeShortcutOverlay();
+    else openShortcutOverlay();
+  }
+
+  shortcutClose.addEventListener('click', closeShortcutOverlay);
+  shortcutOverlay.addEventListener('click', (e) => {
+    if (e.target === shortcutOverlay) closeShortcutOverlay();
+  });
+
   /* ─── Keyboard shortcuts ───────────────────────────────────────────────── */
 
   document.addEventListener('keydown', (e) => {
     const mod = e.metaKey || e.ctrlKey;
+
+    // F1 = toggle the keyboard-shortcut help overlay (no modifier required)
+    if (e.key === 'F1') {
+      e.preventDefault();
+      toggleShortcutOverlay();
+      return;
+    }
+
+    // Esc closes the help overlay when it's open, before any other handling.
+    if (e.key === 'Escape' && isShortcutOverlayOpen()) {
+      e.preventDefault();
+      closeShortcutOverlay();
+      return;
+    }
+
+    // While the help overlay is open, suppress every other document-level
+    // shortcut (recalculate, save, grid navigation/editing in grid.js, etc.)
+    // so it behaves like a real modal dialog — only F1/Esc act on it.
+    if (isShortcutOverlayOpen()) return;
 
     // F9 = Recalculate (no modifier required)
     if (e.key === 'F9') {
@@ -277,6 +340,10 @@ window.WorkplaceApp = (function () {
       case 'recalculate':
         WorkplaceEngine.evaluateAll();
         WorkplaceGrid.render();
+        break;
+
+      case 'keyboard-shortcuts':
+        openShortcutOverlay();
         break;
 
       case 'schema-info':
