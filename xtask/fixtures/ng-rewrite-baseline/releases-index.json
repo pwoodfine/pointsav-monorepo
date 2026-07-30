@@ -1,0 +1,34 @@
+{
+  "body": {
+    "json": {
+      "products": [
+        "app-privategit-marketplace",
+        "os-infrastructure",
+        "os-interface",
+        "os-mediakit",
+        "soft-orchestration-command",
+        "os-console",
+        "os-privategit",
+        "os-network-admin",
+        "app-mediakit-knowledge",
+        "app-privategit-source",
+        "os-workplace",
+        "tool-wallet",
+        "os-totebox"
+      ]
+    },
+    "kind": "json"
+  },
+  "fixture": "releases-index",
+  "headers": {
+    "connection": "close",
+    "content-length": "260",
+    "content-type": "application/json"
+  },
+  "request": {
+    "method": "GET",
+    "path": "/releases/",
+    "port": 9201
+  },
+  "status": 200
+}

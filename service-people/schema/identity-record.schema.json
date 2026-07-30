@@ -1,0 +1,171 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Identity Ledger Record",
+  "description": "Canonical person record for Ring 1 identity service. JSONL format; one record per unique identity. Canonical key is UUID v5 derived from primary email address via Uuid::new_v5(&Uuid::NAMESPACE_DNS, email.as_bytes()).",
+  "type": "object",
+  "required": [
+    "identity_id",
+    "primary_email",
+    "addresses",
+    "roles",
+    "created_at",
+    "updated_at"
+  ],
+  "properties": {
+    "identity_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+      "description": "UUIDv5 derived from primary email (canonical identity key). Deterministic and reproducible across all nodes."
+    },
+    "primary_email": {
+      "type": "string",
+      "format": "email",
+      "description": "Primary email address used to derive the identity_id. Ring 1 zero-AI rule: email extraction via regex only (per ADR-07)."
+    },
+    "addresses": {
+      "type": "object",
+      "description": "Multi-endpoint communication channels. Each channel is optional but must include type validation if present.",
+      "properties": {
+        "emails": {
+          "type": "array",
+          "description": "All known email addresses for this identity, including primary. Deduplicated lowercase.",
+          "items": {
+            "type": "string",
+            "format": "email"
+          }
+        },
+        "phones": {
+          "type": "array",
+          "description": "Phone numbers in E.164 format (if known). Extract via regex; no parsing or normalization (Ring 1 zero-AI).",
+          "items": {
+            "type": "string",
+            "pattern": "^\\+[1-9]\\d{1,14}$"
+          }
+        },
+        "endpoints": {
+          "type": "array",
+          "description": "Other communication endpoints (Slack, Teams, Signal, etc.). Free-form URL or handle.",
+          "items": {
+            "type": "object",
+            "required": ["type", "value"],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["slack", "teams", "signal", "sms", "mms", "custom"],
+                "description": "Endpoint type (extensible enum)"
+              },
+              "value": {
+                "type": "string",
+                "description": "Endpoint value (user_id, phone, URL, etc.)"
+              }
+            }
+          }
+        }
+      }
+    },
+    "roles": {
+      "type": "array",
+      "description": "Role and relationship attributes. Each role is a snapshot at a point in time; append-only update log lives in role-claims ledger (future).",
+      "items": {
+        "type": "object",
+        "required": ["role_id", "role_type", "effective_at"],
+        "properties": {
+          "role_id": {
+            "type": "string",
+            "description": "UUIDv4 for this role assignment (unique within this identity's role history)"
+          },
+          "role_type": {
+            "type": "string",
+            "enum": ["employee", "contractor", "vendor", "customer", "partner", "other"],
+            "description": "Canonical role type"
+          },
+          "organization": {
+            "type": "string",
+            "description": "Organization name (PointSav, Woodfine, external partner, etc.)"
+          },
+          "effective_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When this role became effective (RFC 3339 timestamp)"
+          },
+          "expires_at": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "When this role expires (null = indefinite)"
+          },
+          "attributes": {
+            "type": "object",
+            "description": "Role-specific attributes (title, department, permissions, etc.). Free-form; clients may ignore unknown keys.",
+            "additionalProperties": true
+          }
+        }
+      }
+    },
+    "canonical_name": {
+      "type": ["string", "null"],
+      "description": "Human-readable canonical name. Extracted from email display name or user profile; may be null if unknown."
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Ring 1 service metadata (not for customer consumption).",
+      "properties": {
+        "source_id": {
+          "type": "string",
+          "description": "Source system or document that first provided this identity (e.g., 'sovereign-acs-engine', 'user-import-batch-20260425')"
+        },
+        "verification_level": {
+          "type": "string",
+          "enum": ["unverified", "regex_extracted", "system_verified", "manually_reviewed"],
+          "description": "Confidence level in this record's canonical status"
+        }
+      }
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "RFC 3339 timestamp when this identity record was first created"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "RFC 3339 timestamp when this identity record was last modified"
+    }
+  },
+  "additionalProperties": false,
+  "examples": [
+    {
+      "identity_id": "a1b2c3d4-e5f6-5789-a0b1-c2d3e4f5a6b7",
+      "primary_email": "jwoodfine@woodfine.com",
+      "addresses": {
+        "emails": ["jwoodfine@woodfine.com", "jennifer.woodfine@gmail.com"],
+        "phones": ["+1-555-0123"],
+        "endpoints": [
+          {
+            "type": "slack",
+            "value": "U123456789"
+          }
+        ]
+      },
+      "roles": [
+        {
+          "role_id": "r1-uuid4-here",
+          "role_type": "employee",
+          "organization": "Woodfine Management Corp",
+          "effective_at": "2025-01-01T00:00:00Z",
+          "expires_at": null,
+          "attributes": {
+            "title": "Development Lead",
+            "department": "Engineering"
+          }
+        }
+      ],
+      "canonical_name": "Jennifer Woodfine",
+      "metadata": {
+        "source_id": "PointSav-onboarding-batch-20250101",
+        "verification_level": "manually_reviewed"
+      },
+      "created_at": "2026-04-25T14:30:00Z",
+      "updated_at": "2026-04-26T09:15:00Z"
+    }
+  ]
+}

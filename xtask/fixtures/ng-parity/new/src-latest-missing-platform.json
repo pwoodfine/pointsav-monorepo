@@ -1,0 +1,22 @@
+{
+  "body": {
+    "json": {
+      "error": "no binary available for this platform",
+      "hint": "The formal build pipeline has not produced a release for this platform yet."
+    },
+    "kind": "json"
+  },
+  "fixture": "src-latest-missing-platform",
+  "headers": {
+    "connection": "close",
+    "content-length": "134",
+    "content-type": "application/json"
+  },
+  "normalize": "raw",
+  "request": {
+    "method": "GET",
+    "path": "/releases/os-test-open/latest/armv7-none",
+    "port": 19212
+  },
+  "status": 404
+}

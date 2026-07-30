@@ -1,0 +1,22 @@
+{
+  "body": {
+    "json": {
+      "reason": "malformed-token",
+      "valid": false
+    },
+    "kind": "json"
+  },
+  "fixture": "src-verify-key-malformed",
+  "headers": {
+    "connection": "close",
+    "content-length": "42",
+    "content-type": "application/json"
+  },
+  "normalize": "raw",
+  "request": {
+    "method": "POST",
+    "path": "/verify-key",
+    "port": 19212
+  },
+  "status": 401
+}

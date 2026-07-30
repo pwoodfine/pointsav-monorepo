@@ -1,0 +1,24 @@
+{
+  "body": {
+    "json": {
+      "confirmed_at": "<masked>",
+      "customer_ref": "0xparitycaffee",
+      "license_key": "179e46c2-7f24741f-db519072-5dd2a5e7",
+      "product_id": "fsl",
+      "status": "confirmed"
+    },
+    "kind": "json"
+  },
+  "fixture": "mkt-license-confirmed-19usd",
+  "headers": {
+    "connection": "close",
+    "content-type": "application/json"
+  },
+  "normalize": "mask-json",
+  "request": {
+    "method": "GET",
+    "path": "/v1/license/0xtestconfirmed19usd",
+    "port": 19214
+  },
+  "status": 200
+}

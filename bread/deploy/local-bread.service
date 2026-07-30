@@ -1,0 +1,22 @@
+[Unit]
+Description=Sourdough Tracker — foodservice.woodfinegroup.com
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=local-bread
+Group=local-bread
+WorkingDirectory=/var/lib/local-bread
+Environment="BREAD_DATA_FILE=/var/lib/local-bread/loaves.json"
+Environment="BREAD_STATIC_DIR=/var/lib/local-bread/www"
+ExecStart=/var/lib/local-bread/venv/bin/uvicorn server:app --host 127.0.0.1 --port 9099
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+MemoryMax=256M
+CPUQuota=20%
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,11 @@
+[package]
+name = "console-core"
+version = "0.1.0"
+edition = "2021"
+description = "os-console interaction core — the dual-input Intent vocabulary, registry, keymap, and the structural keyboard/mouse parity gate"
+
+# Deliberately dependency-free: console-core is a pure-std leaf crate so the
+# parity gate is a fast, terminal-independent build-time invariant. Front-ends
+# (crossterm keys, SGR mouse) translate raw input into this vocabulary in
+# app-console-keys; this crate knows nothing about terminals.
+[dependencies]

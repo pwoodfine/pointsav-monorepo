@@ -1,0 +1,107 @@
+/*
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ * SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+ */
+
+/* tokens.css — family continuity with home.woodfinegroup.com (2026-07-04).
+   Reverses the 2026-07-03 RD.7 Spectrum-chrome decision (drafting-blue
+   #1A4480, deliberate differentiation-by-color from the rest of the
+   Woodfine/PointSav network) per explicit operator direction: this catalog
+   should read as part of the same family, not a deliberately different
+   product. Values below are copied directly from home.woodfinegroup.com's
+   live tokens.css (its --m-navy-700/--m-navy-600/--m-navy-100/--m-ink-900/
+   --m-grey-50/--m-grey-200 primitives), not approximated. Differentiation
+   now comes from real content grounding (the "Anatomy of a Key Plan" hero)
+   rather than a different palette — see BRIEF-app-privategit-bim.md. */
+
+:root {
+  /* #164679 — home.woodfinegroup.com's real brand navy (--m-navy-700).
+     Sole interactive accent on the site: buttons, active-nav border, focus
+     rings, link text, chip accents. */
+  --bim-accent:           #164679;
+  --bim-accent-hover:     #1D5795;  /* home.woodfinegroup.com's --m-navy-600, its own hover/active value */
+  --bim-accent-active:    #10365C;  /* home.woodfinegroup.com's --m-navy-800 */
+  --bim-accent-subtle:    #E8EEF5;  /* home.woodfinegroup.com's --m-navy-100, selected/active row tint */
+
+  --bim-fg:               #111827;  /* home.woodfinegroup.com's --m-ink-900 */
+  --bim-fg-secondary:     #344054;
+  --bim-fg-muted:         #667085;
+  /* WCAG AA fix (2026-07-03 audit): #98A2B3 measured ~2.2-2.6:1 on white/
+     sidebar backgrounds, failing the 4.5:1 minimum for normal-size text
+     (header standards line, sidebar section counts). #5D6773 verified
+     5.0:1+ against both --bim-bg-surface and --bim-bg-sidebar. */
+  --bim-fg-faint:         #5D6773;
+
+  --bim-border:           #D0D5DD;
+  --bim-border-subtle:    #E5E7EB;
+  --bim-border-strong:    #98A2B3;
+
+  --bim-bg-page:          #F7F9FA;  /* home.woodfinegroup.com's --m-grey-50 */
+  --bim-bg-surface:       #FFFFFF;
+  --bim-bg-sidebar:       #E6E7E8;  /* home.woodfinegroup.com's --m-grey-200 */
+  --bim-bg-subtle:        #E6E7E8;
+  --bim-bg-panel:         #E8E8E8;  /* tab bar / preview-frame header band */
+  --bim-bg-tertiary:      #E8E8E8;
+  --bim-bg-code:          #1A1A1A; /* dark in both themes */
+  --bim-nav-hover-bg:     #E5E9EF;
+
+  --bim-header-height:    48px;
+  --bim-header-stack:     var(--bim-header-height);
+  --bim-sidebar-width:    272px;
+
+  --bim-radius-none: 0;
+  --bim-radius-sm:   4px;   /* chips, badges, inputs, tabs (top corners) */
+  --bim-radius-md:   6px;   /* buttons, cards/panels on grids */
+  --bim-radius-lg:   8px;   /* preview frames, hero SVG panel, modals */
+
+  /* AEC semantic status colors — from woodfine-media-assets/css/theme-woodfine.css,
+     brand-governed (Woodfine Color Matrix). For regulation/compliance status display.
+     Kept as-is per RD.7 §6.2: unrelated to the visual-direction change. */
+  --bim-safe:      #54924E;  /* IDS pass */
+  --bim-safe-bg:   #ECFDF3;
+  --bim-warning:   #B54708;  /* regulation warning */
+  --bim-warning-bg: #FFF8ED;
+  --bim-mep:       #0E7490;  /* MEP / systems */
+  --bim-mep-bg:    #ECFEFF;
+  --bim-error:     #B42318;  /* clash / IDS fail */
+  --bim-error-bg:  #FEF3F2;
+}
+
+/* color-scheme hints the browser's native form-control/scrollbar rendering
+   to match the active theme (data-theme is set before first paint by the
+   inline script in shell.rs's <head>, defaulting to "light" — see there
+   for the /edit/* force-light rule). */
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"]  { color-scheme: dark; }
+
+/* Dark mode — desaturated instrument-navy (promoted from the pre-existing
+   preview-frame-only palette to a full page palette per RD.7 §6.2), not the
+   prior near-black wiki-era palette. Reads as "technical instrument" and
+   stays distinguishable from design.pointsav.com's #161616 Carbon dark.
+   Footer and code blocks remain permanently dark, un-toggled, in both
+   themes (unchanged convention). */
+:root[data-theme="dark"] {
+  --bim-accent:           #5E9BDE;
+  --bim-accent-hover:     #7FB0E8;
+  --bim-accent-active:    #A3C6EF;
+  --bim-accent-subtle:    rgba(94, 155, 222, 0.16);
+
+  --bim-fg:               #E8EDF5;
+  --bim-fg-secondary:     #C3CBD9;
+  --bim-fg-muted:         #8B96A8;
+  /* WCAG AA fix, same rationale as the light-theme value above. #8E9BB2
+     verified 4.5:1+ against both --bim-bg-surface and --bim-bg-page. */
+  --bim-fg-faint:         #8E9BB2;
+
+  --bim-border:           #2E3D5A;
+  --bim-border-subtle:    rgba(232, 237, 245, 0.06);
+  --bim-border-strong:    #43547A;
+
+  --bim-bg-page:          #1C2333;
+  --bim-bg-surface:       #242E42;
+  --bim-bg-sidebar:       #1A2030;
+  --bim-bg-subtle:        #1A2030;
+  --bim-bg-panel:         #202A3E;
+  --bim-bg-tertiary:      #202A3E;
+  --bim-nav-hover-bg:     #202839;
+}

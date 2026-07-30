@@ -1,0 +1,21 @@
+{
+  "body": {
+    "json": {
+      "service": "app-privategit-marketplace",
+      "status": "ok"
+    },
+    "kind": "json"
+  },
+  "fixture": "healthz-marketplace",
+  "headers": {
+    "connection": "close",
+    "content-length": "54",
+    "content-type": "application/json"
+  },
+  "request": {
+    "method": "GET",
+    "path": "/healthz",
+    "port": 9202
+  },
+  "status": 200
+}
