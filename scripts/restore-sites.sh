@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 # restore-sites.sh — Restore both marketing sites after the font-zoom patch
 # broke them by leaving unescaped </script> inside the __bundler/template tag.
 #

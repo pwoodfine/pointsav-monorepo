@@ -1,4 +1,8 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 [package]
+license = "AGPL-3.0-or-later"
 name = "service-input"
 version = "0.1.0"
 edition = "2021"
@@ -25,3 +29,5 @@ base64 = "0.22"
 
 [dev-dependencies]
 tempfile = "3"
+tower = { version = "0.4", features = ["util"] }
+service-fs = { path = "../service-fs" }

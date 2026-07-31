@@ -1,8 +1,11 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 [package]
 name = "foundry-nodeclass"
 version = "0.1.0"
 edition = "2021"
-license = "Apache-2.0 OR MIT"
+license = "AGPL-3.0-or-later"
 rust-version = "1.85"
 description = "Runtime node-class detection for the Totebox fleet"
 

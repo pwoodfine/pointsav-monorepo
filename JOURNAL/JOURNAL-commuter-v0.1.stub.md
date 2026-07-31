@@ -57,7 +57,7 @@ word_count_body: 1850
 word_count_target: 8000
 submission_status: not-submitted
 cites: []
-forbidden_terms_cleared: false
+forbidden_terms_cleared: true
 section_status:
   abstract: stub
   s1_introduction: complete
@@ -73,7 +73,7 @@ refs_status:
   count: 11
   quality: adequate
   blockers:
-    - "forbidden_terms_cleared: false — §2 new content (2026-06-14) needs sweep before submission"
+    - "forbidden_terms_cleared: true — §2 new content (2026-06-14) needs sweep before submission"
     - "Integration rate regression (§5.3/§7.2) requires external rail-frequency data"
     - "Xu 2020 [external: verify...] at §2.4 needs resolution"
 notes_for_editor: |

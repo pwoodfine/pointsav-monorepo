@@ -1,6 +1,10 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 [package]
+license = "AGPL-3.0-or-later"
 name = "app-privategit-design"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 
 [[bin]]
@@ -29,6 +33,10 @@ moonshot-index = { path = "../moonshot-index" }
 reqwest = { version = "0.12", default-features = false, features = ["stream", "rustls-tls", "json"] }
 # Runtime HTML templates; path_loader enables disk-backed auto-reload (sovereign target: moonshot-template)
 minijinja = { version = "2", features = ["loader"] }
+# Bundle ZIP packaging (sovereign target: moonshot-archive; no in-house zip yet)
+zip = "2"
+# DTCG token-bundle parsing for the /tokens gallery (sovereign target: moonshot-toolkit, long-term)
+serde_json = "1"
 
 # --- "We Own It" dep map (BRIEF-app-privategit-design.md §D8) ---
 # askama (compile-time templates)   → moonshot-template  (stub added 2026-06-15)
@@ -36,4 +44,4 @@ minijinja = { version = "2", features = ["loader"] }
 # notify  (FS watch)                → moonshot-fs-watch   (active 2026-06-15)
 # tantivy (full-text search)        → moonshot-index      (active 2026-06-15)
 # rusqlite (SQLite token index)     → moonshot-database   (stub exists in monorepo)
-# serde_json (DTCG token parsing)   → moonshot-toolkit    (stub exists in monorepo)
+# serde_json (DTCG token parsing)   → moonshot-toolkit    (stub exists in monorepo; direct dep active 2026-07-03)

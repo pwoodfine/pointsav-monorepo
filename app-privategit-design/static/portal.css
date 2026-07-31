@@ -1,45 +1,470 @@
+/*
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ * SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+ */
+
 /* PointSav Design System portal layout (D6/D7).
    Depends on tokens.css for --cds-* custom properties. */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+/* <html> is the browser's actual root scrolling context — locking <body> alone
+   left <html> free to grow to fit body's content, which defeats the point of
+   locking body's height at all. Both need the same constraint. */
+html { height: 100%; overflow: hidden; }
+:focus-visible { outline: 2px solid var(--cds-focus); outline-offset: 2px; }
+.skip-link {
+  position: absolute; top: -100%; left: 0; z-index: 1000;
+  background: var(--cds-interactive); color: #fff;
+  padding: 0.75rem 1.25rem; font-size: 0.875rem; text-decoration: none;
+}
+.skip-link:focus { top: 0; }
+/* Dark-mode fill contrast fix (2026-07-16) — --cds-interactive is shared between two
+   purposes needing different values: link-text color (primary-40, #7392ff, correct
+   against a dark ground) and filled-background-with-white-text (needs primary-60,
+   #234ed8, the same value already verified in pointsav-brand.json's dark theme —
+   "6.66:1 with white text"). Using the shared #7392ff as a fill here computes to
+   2.88:1, a real WCAG AA failure. Same fix applies to .home-cta-button and
+   .btn--primary below — all three share this exact background+white-text shape. */
+[data-theme="dark"] .skip-link { background: #234ed8; }
+.theme-toggle {
+  background: none; border: 1px solid var(--cds-border-subtle); border-radius: var(--cds-radius-md);
+  color: var(--cds-text-secondary); cursor: pointer; padding: 0.375rem;
+  display: flex; align-items: center; justify-content: center;
+}
+[data-theme="dark"] .theme-toggle { border-color: rgba(255,255,255,0.3); color: #fff; }
+.theme-toggle svg { width: var(--cds-icon-size-md); height: var(--cds-icon-size-md); }
+/* Language-switch toggle (2026-07-12) — appears only on pages that actually have a
+   translated counterpart (shell() omits it otherwise, see toggle_href in render/mod.rs).
+   Light-mode border deliberately does NOT copy the mockup's own rgba(255,255,255,.3)
+   value verbatim (2026-07-16 audit) — that value reads as a near-invisible border on
+   the mockup's own white masthead too, a real bug in the mockup source, not something
+   worth reproducing; var(--cds-border-subtle) is real and visible instead. */
+.lang-switch {
+  display: flex; align-items: center; gap: 0.375rem;
+  border: 1px solid var(--cds-border-subtle); border-radius: var(--cds-radius-md);
+  padding: 0.375rem 0.625rem;
+  font-size: 0.8125rem; font-weight: 500; color: var(--cds-text-secondary);
+}
+[data-theme="dark"] .lang-switch { border-color: rgba(255,255,255,0.3); color: #fff; }
+/* Icon-only below 1300px (operator: "maybe the language toggle should just be
+   the globe like on home.pointsav.com") — that masthead hides its own
+   .m-lang-switch__label the same way below 60rem/960px, showing only the glyph;
+   full "English"/"Español" text returns once there's room at desktop width.
+   Adapted to this site's own 1300px collapse point (already used for the nav
+   drawer) rather than copying 960px verbatim, since it's the point row space
+   actually gets tight here. Also trims real width pressure from the exact row
+   that was overflowing into the wrap bug fixed above. */
+@media (max-width: 1300px) {
+  .lang-switch-label { display: none; }
+  .lang-switch { padding: 0.375rem; }
+}
+.lang-switch-icon { width: var(--cds-icon-size-sm); height: var(--cds-icon-size-sm); flex-shrink: 0; }
+/* Mobile nav toggle (2026-07-15) — JS-free (checkbox + :has()), ported from the
+   approved v3 mockup's proven pattern (.agent/mockups/v3-design-system/shared.css).
+   Hidden above 1300px — see the @media (max-width: 1300px) block below for the
+   drawer it reveals. Adapted from the mockup, not a blind copy: the drawer uses a
+   full 100dvh slide-in from the right rather than a calculated top-offset below the
+   header — this header's own height is dynamic (wraps to multiple rows below
+   860px, see that block), so a fixed top offset would be as fragile here as the
+   exact bug class the mockup had to fix for its own header.
+   Bar color (2026-07-16 masthead fix): now theme-aware like the rest of the header
+   chrome — was hardcoded #fff back when the header background was always dark;
+   the header is now light in light mode (matching the v3 mockup), so bars need
+   var(--cds-text-primary) there, #fff only under [data-theme="dark"]. */
+.nav-toggle {
+  display: none;
+  position: relative;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+}
+.nav-toggle__checkbox {
+  position: absolute; inset: 0; width: 44px; height: 44px;
+  margin: 0; opacity: 0; cursor: pointer; z-index: 2;
+}
+.nav-toggle__btn {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  justify-content: center; align-items: center; gap: 5px;
+  pointer-events: none; /* clicks pass through to the checkbox above */
+}
+.nav-toggle__bar {
+  display: block; width: 22px; height: 2px; border-radius: 1px;
+  background: var(--cds-text-primary); transition: transform 200ms ease, opacity 200ms ease;
+}
+[data-theme="dark"] .nav-toggle__bar { background: #fff; }
+.nav-toggle__checkbox:focus-visible ~ .nav-toggle__btn {
+  outline: 2px solid var(--cds-focus); outline-offset: 3px;
+}
+.nav-toggle:has(.nav-toggle__checkbox:checked) .nav-toggle__bar:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+.nav-toggle:has(.nav-toggle__checkbox:checked) .nav-toggle__bar:nth-child(2) { opacity: 0; }
+.nav-toggle:has(.nav-toggle__checkbox:checked) .nav-toggle__bar:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+/* .site-header__controls (2026-07-16) — groups lang-switch/theme-toggle/nav-toggle
+   into one real flex box so they move and right-align as a single atomic unit,
+   fixing "hamburger drops to the left on mobile" (see shell.html comment at this
+   div for the full root-cause writeup — the home.pointsav.com masthead hit and
+   fixed the identical bug shape 2026-07-13). */
+.site-header__controls { display: flex; align-items: center; gap: 0.75rem; flex-shrink: 0; }
+.nav-toggle__overlay { display: none; }
+/* Show the icon for what clicking will switch TO (moon visible in light mode, sun in dark) */
+.theme-toggle .icon-moon { display: block; }
+.theme-toggle .icon-sun { display: none; }
+[data-theme="dark"] .theme-toggle .icon-moon { display: none; }
+[data-theme="dark"] .theme-toggle .icon-sun { display: block; }
 body {
-  font-family: 'IBM Plex Sans', system-ui, sans-serif;
+  font-family: var(--cds-font-body);
   font-size: 16px; line-height: 1.5;
   color: var(--cds-text-primary);
   background: var(--cds-background);
-  display: flex; flex-direction: column; min-height: 100vh;
+  display: flex; flex-direction: column;
+  /* Root cause of the sidebar/content-height mismatch: min-height alone lets the
+     page grow past the viewport to fit whichever column is taller, so .layout's
+     overflow:hidden and .sidebar/.main's overflow-y:auto below never actually
+     activate — recurs on every content-light page as the sidebar grows. A hard
+     height locks the box so the two columns become genuinely independent scroll
+     panes. min-height kept as a fallback for browsers without dvh support. */
+  min-height: 100vh; height: 100dvh; overflow: hidden;
 }
-header {
-  height: 48px; background: var(--cds-background-brand); color: #fff;
-  display: flex; align-items: center; padding: 0 1.5rem;
+.site-header {
+  background: var(--cds-background-brand);
   flex-shrink: 0; position: sticky; top: 0; z-index: 100;
+  border-bottom: 1px solid var(--cds-border-subtle);
 }
-header a { color: #fff; text-decoration: none; font-size: 0.875rem; font-weight: 600; letter-spacing: 0.01em; }
-.layout { display: flex; flex: 1; overflow: hidden; }
+/* v3 Phase 4 port (2026-07-13): the pre-v3 header dropped global nav links
+   entirely ("Adoption"/"Tokens" links didn't make sense — already reachable from
+   home/sidebar/footer"). That decision predates the v3 mockup initiative, which
+   went through many rounds of explicit operator review landing on the opposite
+   conclusion — a real top nav, with domain categories broken out for
+   non-UI/UX visitors ("break out the categories in the NAV, it is easier... to
+   understand"). This supersedes the old comment; the sidebar/tab-bar mechanics
+   below are unaffected — this only adds a persistent top-level wayfinding layer
+   above them, matching the approved .agent/mockups/v3-design-system chrome. */
+.site-header__inner {
+  height: var(--cds-header-height); display: flex; align-items: center;
+  flex-wrap: wrap; padding: 0 1.5rem; column-gap: 1.5rem;
+  /* Centering added 2026-07-15, ported from mockup: without a cap the header's
+     content hugs the left edge on very wide monitors while everything below it
+     (content/footer) stays column-capped, reading as detached from centered
+     page content. */
+  max-width: 1440px; margin-inline: auto;
+}
+.site-header__wordmark {
+  color: var(--cds-link-primary); text-decoration: none;
+  /* 2026-07-16 nav-heading fix: was font-size:0.875rem/weight:600 with no
+     font-family override — nearly identical to .site-nav a's own 0.8125rem/500,
+     so it read as just another nav link instead of a masthead heading. Matches
+     the mockup exactly now (shared.css:407-410). */
+  font-family: var(--cds-font-display); font-size: 1.125rem; font-weight: 700; letter-spacing: 0.01em;
+  /* min-width:0 + ellipsis (2026-07-15, ported from mockup) — without this a
+     flex child's default min-width:auto can force the row wider than the
+     viewport at narrow widths, contributing horizontal overflow, instead of
+     letting the wordmark itself shrink/truncate first. */
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+[data-theme="dark"] .site-header__wordmark { color: #ffffff; }
+.site-nav { display: flex; align-items: center; gap: 1.5rem; margin-left: 2rem; flex-wrap: wrap; }
+.site-nav a { color: var(--cds-text-secondary); text-decoration: none; font-size: 0.8125rem; font-weight: 500; padding: 0.25rem 0; border-bottom: 2px solid transparent; transition: color 0.15s, border-bottom-color 0.15s; }
+.site-nav a:hover, .site-nav a:focus-visible { color: var(--cds-link-primary); border-bottom-color: var(--cds-link-primary); }
+[data-theme="dark"] .site-nav a { color: rgba(255,255,255,0.85); }
+[data-theme="dark"] .site-nav a:hover, [data-theme="dark"] .site-nav a:focus-visible { color: #fff; border-bottom-color: rgba(255,255,255,0.6); }
+/* Product lines / More nav dropdowns (2026-07-15) — JS-free (native
+   <details>/<summary>), ported from the v3 mockup's proven pattern. Theme-aware
+   (2026-07-16 masthead fix): the header background itself is now theme-aware
+   (light-mode white per the v3 mockup, dark-mode near-black), so the trigger
+   uses --cds-text-secondary/--cds-link-primary in light mode, and the
+   dark-header rgba(255,255,255,*) convention only under [data-theme="dark"].
+   The popover panel itself always used the mockup's light surface regardless
+   of header theme (it floats below the header bar, not inside it). */
+.site-nav__dropdown { position: relative; }
+.site-nav__dropdown summary {
+  display: flex; align-items: center; gap: 0.3rem;
+  font-size: 0.8125rem; font-weight: 500; color: var(--cds-text-secondary);
+  cursor: pointer; list-style: none; padding: 0.25rem 0;
+  border-bottom: 2px solid transparent; white-space: nowrap;
+  transition: color 0.15s, border-bottom-color 0.15s;
+}
+.site-nav__dropdown summary::-webkit-details-marker { display: none; }
+.site-nav__dropdown summary::after { content: "\25be"; font-size: 0.65em; color: var(--cds-text-tertiary); }
+.site-nav__dropdown[open] summary::after { content: "\25b4"; }
+.site-nav__dropdown summary:hover,
+.site-nav__dropdown summary:focus-visible { color: var(--cds-link-primary); border-bottom-color: var(--cds-link-primary); }
+[data-theme="dark"] .site-nav__dropdown summary { color: rgba(255, 255, 255, 0.85); }
+[data-theme="dark"] .site-nav__dropdown summary::after { color: rgba(255, 255, 255, 0.6); }
+[data-theme="dark"] .site-nav__dropdown summary:hover,
+[data-theme="dark"] .site-nav__dropdown summary:focus-visible { color: #fff; border-bottom-color: rgba(255, 255, 255, 0.6); }
+@keyframes site-nav-dropdown-reveal {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.site-nav__dropdown[open] .site-nav__dropdown-panel {
+  animation: site-nav-dropdown-reveal 140ms ease;
+}
+/* 2026-07-16 dropdown-not-working fix: this rule's unconditional `display: flex`
+   (inherited verbatim from the mockup's own shared.css:650, same bug present there)
+   overrode the browser's own UA-stylesheet rule that hides a <details> element's
+   non-summary children when it isn't [open] — author CSS setting `display` on a
+   details child always wins over that UA rule regardless of specificity (the
+   mockup's own comment at shared.css:1571-1574 confirms this exact mechanism, for
+   a DIFFERENT dropdown that deliberately wants to defeat it). Net effect: this
+   panel was permanently visible/expanded regardless of [open] state, so tapping
+   the summary produced no visible change — read as "not working." Real bug
+   inherited from the mockup, not introduced by this port; not worth reproducing
+   in production. Fixed below by explicitly hiding until [open]. */
+.site-nav__dropdown:not([open]) .site-nav__dropdown-panel { display: none; }
+.site-nav__dropdown-panel {
+  position: absolute; top: 100%; left: 0; margin-top: var(--cds-space-2);
+  display: flex; flex-direction: column; min-width: 190px;
+  background: var(--cds-background); border: 1px solid var(--cds-border-subtle);
+  border-radius: var(--cds-radius-md); box-shadow: var(--cds-elevation-2);
+  padding: var(--cds-space-2); z-index: 10;
+}
+.site-nav__dropdown-panel a {
+  padding: var(--cds-space-2) var(--cds-space-3); border-radius: var(--cds-radius-sm);
+  font-size: 0.8125rem; color: var(--cds-text-secondary); text-decoration: none;
+  white-space: nowrap; border-bottom: none;
+}
+.site-nav__dropdown-panel a:hover,
+.site-nav__dropdown-panel a:focus-visible { background: var(--cds-layer); color: var(--cds-link-primary); }
+@media (prefers-reduced-motion: reduce) {
+  .site-nav__dropdown[open] .site-nav__dropdown-panel { animation: none; }
+}
+
+.site-header__spacer { flex: 1 1 auto; }
+/* Breakpoint verified against real rendered width, not guessed: wordmark + 5 nav
+   links + search (320px) + lang-switch + theme-toggle needs ~1300px to fit one row
+   (scrollHeight == clientHeight only from 1300px up; overflow measured at 1100/1200px).
+   Wider than the v3 mockup's own 960px cutoff (checked directly in shared.css) —
+   the real header carries an extra search box the mockup's chrome doesn't, so a
+   wider real-content budget needing a later collapse point is expected, not a bug. */
+@media (max-width: 1300px) {
+  /* 2026-07-15: previously just hid .site-nav with nothing to replace it —
+     a real bug, below this width there was no way to reach the top nav at
+     all. Now reveals the JS-free hamburger toggle and converts .site-nav
+     into a full-height off-canvas drawer instead. */
+  .nav-toggle { display: block; }
+  .site-header__spacer { display: none; }
+  /* 2026-07-16, superseded same day: the first fix here gave .header-search-wrap
+     margin-left:auto to pull lang-switch/theme-toggle/nav-toggle along with it as
+     trailing siblings once .site-header__spacer disappeared. That broke under
+     flex-wrap at true mobile widths — a wrapped item only carries ITSELF onto the
+     new line, not later siblings, so the three trailing controls stranded
+     left-aligned on their own row once .header-search-wrap's own growth pushed
+     them off row 1 (operator: "the hamburger drops out of the NAV and goes to the
+     left"). Root-caused against home.pointsav.com's masthead, which hit and fixed
+     the identical bug shape 2026-07-13 by grouping its trailing controls into one
+     real wrapper div carrying the ONLY margin-left:auto (.m-masthead__controls) —
+     same fix applied here via .site-header__controls (see shell.html). */
+  .site-header__controls { margin-left: auto; }
+
+  .site-nav {
+    position: fixed;
+    inset: 0 0 0 auto;
+    z-index: 500;
+    width: min(320px, 84vw);
+    height: 100dvh;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    padding: var(--cds-space-9) var(--cds-space-5) var(--cds-space-5);
+    background: var(--cds-background);
+    border-left: 1px solid var(--cds-border-subtle);
+    box-shadow: var(--cds-elevation-3);
+    overflow-y: auto;
+    transform: translateX(100%);
+    transition: transform 220ms ease;
+  }
+
+  /* Anchored on .site-header__inner (2026-07-16), not .nav-toggle directly —
+     :has() works from any ancestor, so this no longer requires .nav-toggle to be
+     a direct sibling of .site-nav. Freed nav-toggle to move into
+     .site-header__controls alongside lang-switch/theme-toggle (see that div's
+     comment in shell.html) without breaking this toggle. */
+  .site-header__inner:has(#nav-toggle:checked) .site-nav {
+    transform: translateX(0);
+  }
+
+  .site-nav a {
+    color: var(--cds-text-primary);
+    width: 100%;
+    /* height:auto (2026-07-16) neutralizes the generic `header a { height:100% }`
+       rule (added this session, no mockup equivalent) leaking into the drawer's
+       100dvh column-flex context — min-height alone is a floor, not a ceiling,
+       so it wasn't guaranteed to stop a link from also trying to claim the full
+       drawer height. */
+    height: auto;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding: var(--cds-space-3) 0;
+    border-bottom: 1px solid var(--cds-border-subtle);
+  }
+
+  .site-nav a:hover, .site-nav a:focus-visible {
+    color: var(--cds-interactive);
+    border-bottom-color: var(--cds-interactive);
+  }
+
+  /* Product lines / More — in the vertical mobile drawer there's no width
+     constraint to solve, so the dropdown panel just expands inline instead
+     of popping over as an absolutely-positioned panel (same adaptation the
+     v3 mockup made for its own drawer). */
+  .site-nav__dropdown summary {
+    width: 100%; min-height: 44px; justify-content: space-between;
+    padding: var(--cds-space-3) 0; border-bottom: 1px solid var(--cds-border-subtle);
+    color: var(--cds-text-primary);
+  }
+  .site-nav__dropdown summary:hover, .site-nav__dropdown summary:focus-visible {
+    color: var(--cds-interactive); border-bottom-color: var(--cds-interactive);
+  }
+  .site-nav__dropdown-panel {
+    position: static; box-shadow: none; border: none;
+    padding: 0 0 0 var(--cds-space-5); margin-top: 0;
+  }
+  .site-nav__dropdown-panel a {
+    width: 100%; min-height: 44px; padding: var(--cds-space-3) 0;
+    border-bottom: 1px solid var(--cds-border-subtle);
+  }
+
+  .nav-toggle__overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 400;
+    background: rgba(0, 0, 0, 0.4);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 220ms ease;
+  }
+
+  .site-header__inner:has(#nav-toggle:checked) .nav-toggle__overlay {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .site-nav { transition: none; }
+  .nav-toggle__overlay { transition: none; }
+}
+@media (max-width: 860px) {
+  /* Fixed-height row still can't hold wordmark+search+lang-switch+theme-toggle
+     below ~860px even with the top nav already hidden (verified via real-viewport
+     screenshot: content wrapped to 3 rows and the fixed height clipped rows 2-3
+     entirely, making search/lang/theme invisible though still in the DOM).
+     Nothing else depends on a fixed header height (.layout is a flex sibling
+     that fills remaining space regardless), so let it grow instead of clipping. */
+  .site-header__inner { height: auto; flex-wrap: wrap; row-gap: 0.375rem; padding-block: 0.5rem; }
+  .header-search-wrap { margin-left: 0; flex: 1 1 auto; max-width: none; }
+}
+/* header-search/theme-toggle/lang-switch have no mockup equivalent (both are real,
+   post-mockup additions) — light-mode colors below are a real design judgment using
+   the same token vocabulary the rest of the light-mode chrome uses, not copied from
+   a reference; dark-mode keeps the original white-based values so dark-mode visitors
+   see no regression from the 2026-07-16 masthead fix. */
+header a { color: var(--cds-text-secondary); text-decoration: none; font-size: 0.875rem; font-weight: 600; letter-spacing: 0.01em; display: flex; align-items: center; height: 100%; }
+[data-theme="dark"] header a { color: #fff; }
+.header-search-wrap { position: relative; flex: 0 1 320px; max-width: 320px; }
+.header-search-icon {
+  position: absolute; left: 0.6rem; top: 50%; transform: translateY(-50%);
+  width: var(--cds-icon-size-sm); height: var(--cds-icon-size-sm);
+  color: var(--cds-text-tertiary); pointer-events: none;
+}
+[data-theme="dark"] .header-search-icon { color: rgba(255,255,255,0.6); }
+.header-search {
+  width: 100%; padding: 0.375rem 0.75rem 0.375rem 2rem; font-size: 0.8125rem;
+  border: 1px solid var(--cds-border-subtle); border-radius: var(--cds-radius-md);
+  background: var(--cds-layer); color: var(--cds-text-primary);
+}
+[data-theme="dark"] .header-search { border-color: rgba(255,255,255,0.3); background: rgba(255,255,255,0.08); color: #fff; }
+.header-search::placeholder { color: var(--cds-text-tertiary); }
+[data-theme="dark"] .header-search::placeholder { color: rgba(255,255,255,0.6); }
+.header-search:focus { background: var(--cds-background); color: var(--cds-text-primary); }
+/* 2026-07-16 audit fix: was `color: var(--cds-text-primary)` here, which resolves
+   to #f5f6f8 (near-white) in dark mode — on the deliberately-white focus
+   background that's ~1.04:1 contrast, invisible typed text. #0e0f12 matches the
+   real "light chip within a dark page" ink value already used elsewhere in this
+   vault's own dark-theme tokens (theme.dark.ink-on-inverse). */
+[data-theme="dark"] .header-search:focus { background: #fff; color: #0e0f12; }
+[data-theme="dark"] .header-search:focus::placeholder { color: rgba(14,15,18,0.6); }
+.header-search-wrap:focus-within .header-search-icon { color: var(--cds-text-tertiary); }
+.search-dropdown {
+  display: none; position: absolute; top: calc(100% + 0.25rem); left: 0; right: 0;
+  background: var(--cds-background); border: 1px solid var(--cds-border-subtle);
+  border-radius: var(--cds-radius-md); box-shadow: var(--cds-elevation-2); max-height: 60vh; overflow-y: auto;
+  z-index: 300;
+}
+.search-dropdown.open { display: block; }
+.search-dropdown a {
+  display: block; padding: 0.5rem 0.75rem; text-decoration: none;
+  color: var(--cds-text-primary); border-bottom: 1px solid var(--cds-border-subtle);
+}
+.search-dropdown a:hover, .search-dropdown a:focus { background: var(--cds-layer); }
+.search-dropdown .sd-title { font-size: 0.8125rem; font-weight: 600; }
+.search-dropdown .sd-snippet { font-size: 0.75rem; color: var(--cds-text-secondary); margin-top: 0.125rem; }
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+}
+/* min-height:0 overrides the flex-item default of min-height:auto, which
+   otherwise lets a flex child refuse to shrink below its content's natural
+   height — the actual reason html/body's overflow:hidden lock didn't hold. */
+/* Centered + capped at 1440px (2026-07-17) — matches .site-header__inner's own
+   1440px cap (:147). Without this, the header sits in a centered column while
+   .layout stretched full-bleed edge-to-edge on wide monitors: the page read as
+   two different layouts stacked on top of each other, not one consistently
+   centered page (operator: "the website doesn't sit in the center of the page
+   on larger Desktop views"). */
+.layout { display: flex; flex: 1; min-height: 0; overflow: hidden; max-width: 1440px; margin-inline: auto; width: 100%; }
+/* Sidebar now only renders on component-detail pages, scoped to the current
+   component's own real category (nav/sidebar structural rebuild) — matches the
+   mockup's real .doc-toc, never the old full mixed section tree. Kept the
+   flex/overflow-y scroll-container architecture (comment above .layout explains
+   why: html/body's overflow:hidden lock needs it) rather than the mockup's
+   position:sticky-in-normal-flow approach — same visual result, no banner-height
+   offset math needed since this page has no mockup disclaimer banner. */
 .sidebar {
-  width: 256px; flex-shrink: 0;
+  width: 232px; flex-shrink: 0;
   background: var(--cds-sidebar-bg);
   border-right: 1px solid var(--cds-border-subtle);
-  overflow-y: auto; padding: 1rem 0;
+  overflow-y: auto; padding: var(--cds-space-6) var(--cds-space-5);
 }
-.nav-section { margin-bottom: 0.5rem; }
-.nav-section-title {
-  display: block; padding: 0.5rem 1rem;
-  font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.08em;
-  text-transform: uppercase; color: var(--cds-text-secondary);
+/* 2026-07-16 audit fix: this rule previously set `display: flex; flex-direction:
+   column` unconditionally — same bug class as the top-nav dropdown-panel fix
+   earlier this session (author `display` on a <details> child overrides the UA's
+   native closed-state hiding). Below 961px this defeated the documented
+   "mobile stays collapsed-by-default" intent (comment below) entirely — tapping
+   the summary flipped the arrow but the list never actually hid. Scoped to
+   [open] now; the @media (min-width:961px) override below already re-forces it
+   open on desktop via its own :not([open]) rule. */
+.doc-toc__components-details[open] .doc-toc__components { display: flex; flex-direction: column; }
+.doc-toc__components { list-style: none; margin: 0; padding: 0; gap: 1px; }
+.doc-toc__components li a {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--cds-space-2);
+  padding: 0.35rem var(--cds-space-3); border-radius: var(--cds-radius-sm);
+  font-size: var(--cds-type-caption, 0.8125rem); color: var(--cds-text-secondary); text-decoration: none;
 }
-.sidebar ul { list-style: none; }
-.sidebar li a {
-  display: block; padding: 0.4rem 1rem 0.4rem 1.5rem;
-  font-size: 0.875rem; color: var(--cds-text-primary);
-  text-decoration: none; border-left: 3px solid transparent;
+.doc-toc__components li a:hover { background: var(--cds-layer); color: var(--cds-link-primary); }
+.doc-toc__components li a.active { background: var(--cds-surface-tint); color: var(--cds-selected-text); font-weight: 600; }
+.doc-toc__components-more { font-family: var(--cds-font-mono); font-size: 0.75rem; color: var(--cds-text-tertiary); padding: 0.45rem var(--cds-space-3) 0; }
+.doc-toc__components-details summary {
+  cursor: pointer; list-style: none; font-family: var(--cds-font-mono); font-size: var(--cds-type-micro, 0.6875rem);
+  font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--cds-text-tertiary);
+  padding: var(--cds-space-2) 0;
 }
-.sidebar li a:hover { background: var(--cds-border-subtle); color: var(--cds-interactive); }
-.sidebar li a.active {
-  border-left-color: var(--cds-selected-text);
-  background: var(--cds-selected-background);
-  color: var(--cds-selected-text); font-weight: 600;
+.doc-toc__components-details summary::-webkit-details-marker { display: none; }
+.doc-toc__components-details summary::after { content: "\25be"; float: right; }
+.doc-toc__components-details[open] summary::after { content: "\25b4"; }
+.doc-toc__components-details-count {
+  font-family: var(--cds-font-mono); font-size: var(--cds-type-micro, 0.6875rem); font-weight: 600;
+  padding: 0.1rem 0.4rem; margin-left: var(--cds-space-2); border-radius: 999px;
+  background: var(--cds-layer); color: var(--cds-text-tertiary); text-transform: none; letter-spacing: normal;
 }
-.main { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
+/* Above 960px the rail is always expanded (matches mockup: no page ever sets the
+   `open` attribute — CSS can't strip an HTML boolean attribute — so this override
+   is what keeps desktop expanded while mobile stays collapsed-by-default). */
+@media (min-width: 961px) {
+  .doc-toc__components-details:not([open]) .doc-toc__components { display: flex; }
+  .doc-toc__components-details summary { cursor: default; pointer-events: none; }
+  .doc-toc__components-details summary::after { content: none; }
+}
+.main { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; }
 .tab-bar {
   display: flex; border-bottom: 1px solid var(--cds-border-subtle);
   background: var(--cds-background); flex-shrink: 0; padding: 0 2rem;
@@ -51,57 +476,515 @@ header a { color: #fff; text-decoration: none; font-size: 0.875rem; font-weight:
 }
 .tab-bar a:hover { color: var(--cds-interactive); }
 .tab-bar a.active { color: var(--cds-selected-text); border-bottom-color: var(--cds-selected-text); font-weight: 600; }
-.page-title { padding: 2rem 2rem 1rem; font-size: 1.75rem; font-weight: 400; line-height: 1.25; color: var(--cds-text-primary); flex-shrink: 0; }
-.content { padding: 1rem 2rem 3rem; max-width: 860px; }
-.content h1 { font-size: 1.75rem; font-weight: 400; margin-bottom: 1rem; }
-.content h2 { font-size: 1.25rem; font-weight: 600; margin: 2rem 0 0.75rem; padding-bottom: 0.25rem; border-bottom: 1px solid var(--cds-border-subtle); }
-.content h3 { font-size: 1rem; font-weight: 600; margin: 1.5rem 0 0.5rem; }
+.page-title { padding: var(--cds-space-7) var(--cds-space-7) var(--cds-space-5); font-size: var(--cds-type-title); font-weight: 400; line-height: 1.25; color: var(--cds-text-primary); flex-shrink: 0; }
+.content { padding: var(--cds-space-5) var(--cds-space-7) var(--cds-space-9); max-width: 860px; }
+.content h1 { font-size: var(--cds-type-title); font-weight: 400; margin-bottom: var(--cds-space-5); }
+.content h2 { font-size: var(--cds-type-heading); font-weight: 600; margin: var(--cds-space-7) 0 var(--cds-space-4); padding-bottom: var(--cds-space-2); border-bottom: 1px solid var(--cds-border-subtle); }
+.content h3 { font-size: var(--cds-type-body-lg); font-weight: 600; margin: var(--cds-space-6) 0 var(--cds-space-3); }
 .content p { margin-bottom: 1rem; }
 .content ul, .content ol { padding-left: 1.5rem; margin-bottom: 1rem; }
 .content li { margin-bottom: 0.25rem; }
-.content table { border-collapse: collapse; width: 100%; margin-bottom: 1.5rem; font-size: 0.875rem; }
+.content table { display: block; overflow-x: auto; border-collapse: collapse; width: 100%; margin-bottom: 1.5rem; font-size: 0.875rem; }
 .content th { background: var(--cds-layer); text-align: left; padding: 0.5rem 0.75rem; font-weight: 600; border-bottom: 2px solid var(--cds-border-subtle); }
 .content td { padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--cds-border-subtle); vertical-align: top; }
-.content code { font-family: 'IBM Plex Mono', monospace; font-size: 0.875em; background: var(--cds-layer); padding: 0.1em 0.3em; border-radius: 2px; }
-.content pre { background: var(--cds-layer); padding: 1rem; border-radius: 4px; overflow-x: auto; margin-bottom: 1rem; font-size: 0.875rem; }
+.content code { font-family: var(--cds-font-mono); font-size: 0.875em; background: var(--cds-layer); padding: 0.1em 0.3em; border-radius: var(--cds-radius-sm); overflow-wrap: anywhere; }
+.content pre { background: var(--cds-layer); padding: 1rem; border-radius: var(--cds-radius-md); overflow-x: auto; margin-bottom: 1rem; font-size: 0.875rem; position: relative; }
 .content pre code { background: none; padding: 0; }
+.code-copy-btn {
+  position: absolute; top: 0.5rem; right: 0.5rem;
+  display: inline-flex; align-items: center; gap: 0.35rem;
+  padding: 0.25rem 0.6rem; font-size: 0.75rem;
+  background: var(--cds-background); color: var(--cds-text-secondary);
+  border: 1px solid var(--cds-border-subtle); border-radius: var(--cds-radius-md); cursor: pointer;
+}
+.code-copy-btn svg { width: var(--cds-icon-size-sm); height: var(--cds-icon-size-sm); }
+.code-copy-btn:hover { color: var(--cds-interactive); border-color: var(--cds-interactive); }
 .content a { color: var(--cds-link-primary); }
 .content figure { margin: 0; display: inline-block; }
 .home-body { padding: 4rem 2rem; }
-.home-body h1 { font-size: 2rem; font-weight: 300; margin-bottom: 1rem; }
-.home-body p { color: var(--cds-text-secondary); }
+
+/* Paper page rule-weight ladder + typography comparison (2026-07-15) --
+   literal real pt values from dtcg-vault/paper/primitive.json embedded
+   directly (this server's own tokens.css has no --ps-paper-* custom
+   properties -- those live in the separate pointsav-design-system repo's
+   own stylesheet, a different concern from this app's UI chrome). */
+.rule-ladder { display: flex; flex-direction: column; gap: var(--cds-space-5); margin: var(--cds-space-6) 0; }
+.rule-ladder__item { display: flex; align-items: center; gap: var(--cds-space-5); }
+.rule-ladder__label { flex: 0 0 8rem; font-family: var(--cds-font-mono); font-size: var(--cds-type-caption, 0.8125rem); color: var(--cds-text-secondary); }
+.rule-ladder__sample { flex: 1; border: none; border-top-style: solid; border-top-color: var(--cds-text-primary); margin: 0; }
+.type-sample-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--cds-space-6); margin: var(--cds-space-6) 0; }
+@media (max-width: 720px) { .type-sample-grid { grid-template-columns: 1fr; } }
+.type-sample { border: 1px solid var(--cds-border-subtle); border-radius: var(--cds-radius-md); padding: var(--cds-space-6); background: var(--cds-layer); }
+.type-sample__label { font-family: var(--cds-font-mono); font-size: 0.75rem; color: var(--cds-text-tertiary); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: var(--cds-space-4); }
+.type-sample__text { color: var(--cds-text-primary); margin: 0; }
+
+/* Tokens-page hero/strip/callout/legend/jump-nav (2026-07-15, ported from v3
+   mockup) -- lifecycle-legend deliberately NOT ported: TokenEntry has no
+   lifecycle field, every real token is currently active, and inventing
+   "everything is Active" data serves no one (plan judgment call #3). */
+.stat-panel { display: flex; flex-wrap: wrap; gap: var(--cds-space-7); padding: var(--cds-space-6) 0; }
+.stat-panel__item { display: flex; flex-direction: column; gap: 0.25rem; }
+.stat-panel__value { font-family: var(--cds-font-body); font-size: var(--cds-type-title); font-weight: 700; color: var(--cds-text-primary); }
+.stat-panel__label { font-family: var(--cds-font-mono); font-size: var(--cds-type-micro, 0.6875rem); text-transform: uppercase; letter-spacing: 0.04em; color: var(--cds-text-secondary); }
+.tokens-hero__stats { border-top: 1px solid var(--cds-border-subtle); border-bottom: 1px solid var(--cds-border-subtle); }
+
+.get-tokens-strip { display: grid; grid-template-columns: 1fr 1fr; gap: var(--cds-space-7); margin-top: var(--cds-space-7); }
+@media (max-width: 720px) { .get-tokens-strip { grid-template-columns: 1fr; } }
+.get-tokens-strip__snippet-label, .get-tokens-strip__figma-label { font-family: var(--cds-font-mono); font-size: 0.75rem; font-weight: 600; letter-spacing: 0.02em; color: var(--cds-text-tertiary); margin-bottom: var(--cds-space-3); }
+.get-tokens-strip__snippet .doc-code-block { margin: 0; }
+.get-tokens-strip__snippet .doc-code-block pre { padding: var(--cds-space-4) var(--cds-space-5); }
+.get-tokens-strip__snippet .doc-code-block code { font-size: 0.75rem; }
+.get-tokens-strip__figma p { font-size: 0.875rem; color: var(--cds-text-secondary); margin: 0; }
+
+.registry-callout { margin: var(--cds-space-9) 0; display: flex; gap: var(--cds-space-6); align-items: flex-start; }
+.registry-callout__icon { flex: 0 0 auto; width: 2.75rem; height: 2.75rem; border-radius: var(--cds-radius-lg); background: var(--cds-surface-tint); color: var(--cds-selected-text); display: flex; align-items: center; justify-content: center; font-family: var(--cds-font-mono); font-weight: 700; font-size: 1rem; }
+.registry-callout p { margin-bottom: 0; }
+.registry-callout p + p { margin-top: var(--cds-space-3); }
+
+.tier-legend { margin: var(--cds-space-9) 0; }
+.tier-legend .card h3 { display: flex; align-items: center; gap: var(--cds-space-3); font-family: var(--cds-font-mono); font-size: var(--cds-type-body); letter-spacing: 0.02em; text-transform: uppercase; }
+.tier-legend .card code { display: block; margin-top: var(--cds-space-3); font-size: var(--cds-type-caption, 0.8125rem); color: var(--cds-text-tertiary); background: var(--cds-layer); padding: 0.4rem 0.6rem; border-radius: var(--cds-radius-sm); }
+
+.domain-jump { display: flex; flex-wrap: wrap; gap: var(--cds-space-3); margin-bottom: var(--cds-space-10); }
+.domain-jump a { font-family: var(--cds-font-mono); font-size: 0.75rem; text-decoration: none; color: var(--cds-text-secondary); background: var(--cds-layer); border: 1px solid var(--cds-border-subtle); border-radius: 999px; padding: 0.35rem 0.85rem; }
+.domain-jump a:hover { color: var(--cds-interactive); border-color: var(--cds-interactive); }
+
+/* ---- MCP/Agents doc page: section scaffolding, endpoint cards, callout ---- */
+.doc-section { margin-bottom: var(--cds-space-11); }
+.doc-section h2 { font-size: var(--cds-type-title); }
+.doc-section__intro { color: var(--cds-text-secondary); max-width: 68ch; }
+.doc-section__intro + .doc-section__intro { margin-top: calc(var(--cds-space-5) * -1 + var(--cds-space-3)); }
+
+.onprem-callout { margin: var(--cds-space-7) 0 var(--cds-space-8); display: flex; gap: var(--cds-space-6); align-items: flex-start; }
+.onprem-callout__icon {
+  flex: 0 0 auto; width: 2.75rem; height: 2.75rem; border-radius: var(--cds-radius-lg);
+  background: var(--cds-surface-tint); color: var(--cds-selected-text);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--cds-font-mono); font-weight: 700; font-size: 1.1rem;
+}
+.onprem-callout p { margin-bottom: 0; }
+.onprem-callout p + p { margin-top: var(--cds-space-3); }
+
+.mcp-tool__name { display: block; font-family: var(--cds-font-mono); font-size: var(--cds-type-body-lg); color: var(--cds-link-primary); margin-bottom: var(--cds-space-2); word-break: break-word; }
+.mcp-tool__desc { font-size: var(--cds-type-caption, 0.8125rem); color: var(--cds-text-secondary); margin-bottom: var(--cds-space-4); }
+
+.endpoint-meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--cds-space-3); margin: var(--cds-space-7) 0 var(--cds-space-2); }
+.endpoint-meta code { font-family: var(--cds-font-mono); font-size: var(--cds-type-body-lg); color: var(--cds-text-primary); background: var(--cds-layer); padding: 0.2rem 0.5rem; border-radius: var(--cds-radius-sm); }
+.endpoint-meta__desc { font-size: var(--cds-type-caption, 0.8125rem); color: var(--cds-text-secondary); }
+@media (max-width: 720px) {
+  .onprem-callout { flex-direction: column; }
+  .endpoint-meta { flex-direction: column; align-items: flex-start; }
+}
+
+/* Homepage "act" sections (registry diagram, four-domains grid, proof panel)
+   -- ported from v3 mockup, real values throughout, no invented counts. */
+section.act { padding: var(--cds-space-11) 0; border-top: 1px solid var(--cds-border-subtle); }
+section.act:first-of-type { border-top: none; }
+.act h2 { font-size: var(--cds-type-title); max-width: 34ch; }
+.act__intro { max-width: 58ch; color: var(--cds-text-secondary); font-size: var(--cds-type-body-lg); }
+
+.registry-diagram { margin-top: var(--cds-space-8); display: flex; flex-direction: column; align-items: center; gap: 0; }
+.registry-diagram__source {
+  font-family: var(--cds-font-mono); font-size: var(--cds-type-caption, 0.8125rem); font-weight: 700;
+  color: var(--cds-selected-text); background: var(--cds-surface-tint); border: 1px solid var(--cds-border-subtle);
+  border-radius: var(--cds-radius-md); padding: var(--cds-space-4) var(--cds-space-6);
+}
+.registry-diagram__stem { width: 2px; height: var(--cds-space-6); background: var(--cds-border-strong); }
+.registry-diagram__rail { width: 100%; max-width: 760px; height: 2px; background: var(--cds-border-strong); position: relative; }
+.registry-diagram__outputs { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--cds-space-5); width: 100%; max-width: 900px; margin-top: var(--cds-space-6); }
+.registry-diagram__output { display: flex; flex-direction: column; align-items: center; text-align: center; gap: var(--cds-space-3); }
+.registry-diagram__output-stem { width: 2px; height: var(--cds-space-5); background: var(--cds-border-strong); }
+.registry-diagram__output-box { width: 100%; border: 1px solid var(--cds-border-strong); border-radius: var(--cds-radius-md); padding: var(--cds-space-4); font-size: var(--cds-type-caption, 0.8125rem); color: var(--cds-text-secondary); box-sizing: border-box; }
+.registry-diagram__output-box strong { display: block; font-family: var(--cds-font-mono); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--cds-text-primary); margin-bottom: var(--cds-space-2); }
+.registry-diagram__caption { margin-top: var(--cds-space-6); font-size: var(--cds-type-caption, 0.8125rem); color: var(--cds-text-tertiary); max-width: 52ch; text-align: center; }
+@media (max-width: 860px) { .registry-diagram__outputs { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 480px) { .registry-diagram__outputs { grid-template-columns: 1fr; } }
+
+.proof-panel {
+  margin-top: var(--cds-space-7); border: 1px solid var(--cds-border-subtle);
+  border-top: var(--cds-card-rule-width, 3px) solid var(--cds-interactive);
+  border-radius: var(--cds-radius-md); padding: var(--cds-space-7); background: var(--cds-layer);
+}
+.proof-panel__stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--cds-space-7); padding: 0 0 var(--cds-space-7); border-bottom: 1px solid var(--cds-border-subtle); margin-bottom: var(--cds-space-7); }
+.proof-stat__value { font-family: var(--cds-font-body); font-size: var(--cds-type-title); font-weight: 700; line-height: 1; color: var(--cds-text-primary); }
+.proof-stat__label { font-family: var(--cds-font-mono); font-size: var(--cds-type-micro, 0.6875rem); letter-spacing: 0.04em; text-transform: uppercase; color: var(--cds-text-secondary); margin-top: var(--cds-space-2); }
+.curl-block {
+  font-family: var(--cds-font-mono); font-size: var(--cds-type-caption, 0.8125rem); line-height: 1.7;
+  background: var(--cds-background); border: 1px solid var(--cds-border-subtle); border-radius: var(--cds-radius-md);
+  padding: var(--cds-space-6); overflow-x: auto; white-space: pre;
+}
+.curl-block .curl-prompt { color: var(--cds-text-tertiary); }
+.curl-block .curl-cmd { color: var(--cds-link-primary); }
+.curl-block .curl-key { color: var(--cds-selected-text); }
+.curl-block .curl-str { color: var(--cds-positive-text); }
+.curl-block .curl-note { color: var(--cds-caution-text); }
+.proof-panel__footnote { margin-top: var(--cds-space-5); font-size: 0.75rem; color: var(--cds-text-tertiary); }
+
+/* Product-line strip (2026-07-15, ported from v3 mockup) -- Stripe-style
+   compact proof strip right after the hero, deliberately a strip not a
+   section so it doesn't compete with the tokens pitch, which stays the
+   primary story. */
+.product-strip {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--cds-space-6);
+  padding: var(--cds-space-5) var(--cds-space-6); margin-bottom: var(--cds-space-10);
+  background: var(--cds-layer); border: 1px solid var(--cds-border-subtle); border-radius: var(--cds-radius-md);
+}
+.product-strip__label {
+  font-family: var(--cds-font-mono); font-size: var(--cds-type-micro, 0.6875rem); font-weight: 600;
+  letter-spacing: 0.08em; text-transform: uppercase; color: var(--cds-text-tertiary); white-space: nowrap;
+}
+.product-strip__items { display: flex; flex-wrap: wrap; flex: 1; gap: var(--cds-space-6); }
+.product-strip__item { display: flex; flex-direction: column; gap: 0.15rem; padding: 0.25rem 0; text-decoration: none; }
+.product-strip__name { font-size: 0.9375rem; font-weight: 600; color: var(--cds-text-primary); transition: color 0.15s ease; }
+.product-strip__item:hover .product-strip__name,
+.product-strip__item:focus-visible .product-strip__name { color: var(--cds-link-primary); }
+.product-strip__stat { font-size: var(--cds-type-caption, 0.8125rem); color: var(--cds-text-secondary); }
+@media (max-width: 640px) { .product-strip { flex-direction: column; align-items: flex-start; } }
+@media (prefers-reduced-motion: reduce) { .product-strip__name { transition: none; } }
+
+/* Hero two-column layout + live token-preview panel (2026-07-15, ported from
+   v3 mockup) -- the single biggest visual gap the mockup's own research found:
+   every reference hyperscaler hero anchors on one strong visual element; this
+   hero was previously text + stats only. Rendered directly from this page's
+   own real CSS custom properties -- not a screenshot, an actual live sample
+   of the token graph the page is about. */
+.home-hero-section {
+  display: grid; grid-template-columns: minmax(0, 46rem) minmax(260px, 320px);
+  gap: var(--cds-space-9, 3rem); align-items: center;
+}
+@media (max-width: 960px) { .home-hero-section { grid-template-columns: 1fr; } }
+
+.token-preview {
+  background: var(--cds-layer); border: 1px solid var(--cds-border-subtle);
+  border-top: var(--cds-card-rule-width, 3px) solid var(--cds-interactive);
+  border-radius: var(--cds-radius-md); box-shadow: var(--cds-elevation-2);
+  padding: var(--cds-space-6);
+  opacity: 0; transform: translateY(14px);
+  animation: token-preview-in var(--cds-duration-hero) var(--cds-ease-display) forwards;
+  animation-delay: 100ms;
+}
+@keyframes token-preview-in { to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) { .token-preview { animation: none; opacity: 1; transform: none; } }
+.token-preview__label {
+  font-family: var(--cds-font-mono); font-size: var(--cds-type-micro, 0.6875rem);
+  text-transform: uppercase; letter-spacing: 0.05em; color: var(--cds-text-tertiary);
+  margin-bottom: var(--cds-space-5);
+}
+.token-preview__swatches { display: grid; grid-template-columns: repeat(5, 1fr); gap: var(--cds-space-2); margin-bottom: var(--cds-space-5); }
+.token-preview__swatch { aspect-ratio: 1; border-radius: var(--cds-radius-sm); border: 1px solid var(--cds-border-subtle); }
+.token-preview__type { font-family: var(--cds-font-body); font-size: var(--cds-type-title); font-weight: 600; color: var(--cds-text-primary); margin-bottom: var(--cds-space-5); }
+.token-preview__rows { display: flex; flex-direction: column; }
+.token-preview__row {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--cds-space-3);
+  padding: var(--cds-space-2) 0; border-top: 1px solid var(--cds-border-subtle);
+  font-family: var(--cds-font-mono); font-size: var(--cds-type-caption, 0.8125rem);
+}
+.token-preview__row:first-child { border-top: none; padding-top: 0; }
+.token-preview__row code { color: var(--cds-text-secondary); }
+.token-preview__row-value { color: var(--cds-text-primary); font-weight: 600; }
+/* Phase 5 — a single, deliberate hero entrance using the vault's own primitive.duration
+   speed-6 ("Deliberate — hero animation") + motion.ease-display ("...hero"), both
+   ratified but never wired into app CSS before now. Fires once on load, not on every
+   scroll/hover — restraint over spectacle. Fully inert under reduced motion. */
+.home-hero { opacity: 0; transform: translateY(8px); }
+@media (prefers-reduced-motion: no-preference) {
+  .home-hero {
+    animation: home-hero-in var(--cds-duration-hero) var(--cds-ease-display) forwards;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .home-hero { opacity: 1; transform: none; }
+}
+@keyframes home-hero-in {
+  to { opacity: 1; transform: translateY(0); }
+}
+.home-eyebrow {
+  font-size: var(--cds-type-label); font-weight: 600; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--cds-text-secondary); margin-bottom: var(--cds-space-3);
+}
+/* Weight 700 (not the old 500) now that Inter 700 is self-hosted — every other
+   heading-weight element on the page converges on 600, so nothing previously read as
+   genuinely "the boldest thing on the page." Font-size now consumes --cds-type-display
+   instead of a duplicate literal clamp(). */
+.home-body h1 {
+  font-size: var(--cds-type-display); font-weight: 700; line-height: 1.2;
+  max-width: 22ch; margin-bottom: var(--cds-space-6);
+}
+.home-lede { color: var(--cds-text-secondary); margin-bottom: var(--cds-space-5); max-width: 68ch; }
+.home-lede a { color: var(--cds-link-primary); }
+/* Part C (2026-07-04): the CTA is a real button, not a grid card competing with
+   wayfinding tiles — solid fill reads as an action, inline with the lede that names it.
+   Selector specificity (0,2,1) deliberately beats both `.content a` and `.home-lede a`
+   (each 0,1,1) — the exact invisible-blue-on-blue bug the earlier .home-card h2 fix
+   already caught once this session, recurring here since the button sits inside a
+   .home-lede paragraph. */
+.home-lede a.home-cta-button {
+  display: inline-flex; align-items: center; margin-left: 0.25rem;
+  padding: 0.2rem 0.75rem; border-radius: var(--cds-radius-md);
+  background: var(--cds-interactive); color: #fff; text-decoration: none;
+  font-weight: 600; white-space: nowrap;
+}
+.home-lede a.home-cta-button:hover { background: var(--cds-interactive-hover); }
+[data-theme="dark"] .home-lede a.home-cta-button { background: #234ed8; }
+/* Dark-mode hover also needs its own override — --cds-interactive-hover is
+   primary-30 (#a6bcff) in dark mode, meant for hovering a *link*, not a filled
+   button; against white text that computes to 1.87:1. primary-70 (#173ab1,
+   9.22:1) reads as a natural hover-darken from the #234ed8 fill above. */
+[data-theme="dark"] .home-lede a.home-cta-button:hover { background: #173ab1; }
+/* One unboxed stat row replaces the four separately-boxed widgets this page previously
+   stacked (a bordered "token facts" card, a palette row, a caption sentence, a pill
+   row) — density drops, the same information stays. Swatches attach directly to the
+   token-count stat instead of forming their own row. */
+.home-stats {
+  display: flex; flex-wrap: wrap; align-items: baseline; column-gap: var(--cds-space-8);
+  row-gap: var(--cds-space-4); margin-bottom: var(--cds-space-8);
+}
+.home-stat { display: flex; flex-direction: column; }
+.home-stat-value { font-size: var(--cds-type-heading); font-weight: 700; color: var(--cds-text-primary); line-height: 1.1; }
+.home-stat-label { font-size: var(--cds-type-label); color: var(--cds-text-secondary); }
+.home-stat-swatches { display: inline-flex; gap: 0.25rem; margin-top: var(--cds-space-2); }
+.home-stat-swatches .home-swatch {
+  width: 0.75rem; height: 0.75rem; border-radius: var(--cds-radius-sm);
+  border: 1px solid var(--cds-border-subtle);
+}
+.home-stat-tag {
+  font-size: var(--cds-type-label); color: var(--cds-text-tertiary);
+  align-self: flex-end; padding-bottom: 0.2rem;
+}
+/* The generic card grid is now a uniform set of true peers — no CTA card carrying
+   different visual weight, no incomplete-last-row emphasis problem. */
+.home-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--cds-space-5); max-width: 860px; }
+.home-card {
+  display: block; padding: var(--cds-space-5); border: 1px solid var(--cds-border-subtle);
+  border-radius: var(--cds-radius); text-decoration: none; color: var(--cds-text-primary);
+  transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+/* Hover-lift (2026-07-15, ported from v3 mockup's Phase 7 motion pass) — a static
+   border-color change alone read as flat against the mockup's card treatment. */
+.home-card:hover { border-color: var(--cds-interactive); transform: translateY(-2px); box-shadow: var(--cds-elevation-2); }
+@media (prefers-reduced-motion: reduce) {
+  .home-card { transition: border-color 0.15s ease; }
+  .home-card:hover { transform: none; }
+}
+/* Phase 5 FABLE review fix: `.content a` (specificity 0,1,1) was beating `.home-card`'s
+   own color (0,1,0), so every card title inherited link-blue from its anchor parent
+   instead of dark ink — nine blue titles read as a link list, not a card system. */
+.home-card h2 { font-size: var(--cds-type-body-lg); font-weight: 600; margin-bottom: var(--cds-space-2); color: var(--cds-text-primary); }
+.home-card p { font-size: var(--cds-type-body-sm); color: var(--cds-text-tertiary); margin: 0; }
 
 /* Schema badge + metadata panel (D2) */
 .schema-badge {
   display: inline-block; padding: 0.125rem 0.5rem;
-  font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.04em;
-  text-transform: uppercase; border-radius: 2px; margin-bottom: 1.25rem;
+  font-size: var(--cds-type-label); font-weight: 600; letter-spacing: 0.04em;
+  text-transform: uppercase; border-radius: var(--cds-radius-sm); margin-bottom: 1.25rem;
 }
+/* Phase 3 — per-component origin + freshness badges (browse.rs::item_tab). */
+.component-meta-badges {
+  display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+.component-origin-badge {
+  display: inline-block; padding: 0.125rem 0.5rem;
+  font-size: var(--cds-type-label); font-weight: 600; letter-spacing: 0.04em;
+  text-transform: uppercase; border-radius: var(--cds-radius-sm);
+  background: var(--cds-caution-bg); color: var(--cds-caution-text);
+}
+.component-freshness-badge {
+  font-size: var(--cds-type-label); color: var(--cds-text-secondary);
+}
+/* Part D (2026-07-04): these four previously hardcoded raw hex, bypassing --cds-*
+   entirely — --bundle's #f2e8ff/#6929c4 violet traced to no primitive family at all
+   (an invented color, the exact doctrine violation Phase 1 fixed once already for the
+   main palette). Replaced with a tinted primary pairing instead of inventing a new hue. */
 .schema-badge--component { background: var(--cds-selected-background); color: var(--cds-selected-text); }
-.schema-badge--token { background: #defbe6; color: #0e6027; }
-.schema-badge--research { background: #fff5e8; color: #a56400; }
-.schema-badge--bundle { background: #f2e8ff; color: #6929c4; }
+.schema-badge--token { background: var(--cds-positive-bg); color: var(--cds-positive-text); }
+.schema-badge--research { background: var(--cds-caution-bg); color: var(--cds-caution-text); }
+.schema-badge--bundle { background: var(--cds-surface-tint); color: var(--cds-selected-text); }
 .schema-meta {
   display: grid; grid-template-columns: 8rem 1fr; gap: 0.375rem 1rem;
   margin-bottom: 1.5rem; font-size: 0.875rem;
-  border: 1px solid var(--cds-border-subtle); border-radius: 4px;
+  border: 1px solid var(--cds-border-subtle); border-radius: var(--cds-radius-md);
   padding: 0.75rem 1rem; background: var(--cds-layer);
 }
 .schema-meta dt { color: var(--cds-text-secondary); font-weight: 600; }
-.schema-meta dd { color: var(--cds-text-primary); }
+.schema-meta dd { color: var(--cds-text-primary); word-break: break-all; }
 .schema-reserved { color: var(--cds-text-tertiary); font-style: italic; }
+
+/* Design Tokens preamble (2026-07-06) — the explainer above the gallery. Reuses .content's
+   h2/p/ul/code rules; adds only spacing + a rule separating it from the gallery below, same
+   pattern as .adoption-lede. */
+.tokens-preamble { margin-bottom: 2.5rem; padding-bottom: 2rem; border-bottom: 1px solid var(--cds-border-subtle); }
+.tokens-preamble-lede { font-size: var(--cds-type-body-lg); max-width: 68ch; color: var(--cds-text-secondary); }
+.tokens-preamble ul { max-width: 68ch; }
+.tokens-preamble li { margin-bottom: 0.6rem; }
+
+/* Visual token gallery (P0.2) */
+.tg-tier { margin-bottom: 2.5rem; }
+.tg-tier h2 { font-size: 1.5rem; font-weight: 400; margin-bottom: 1rem; }
+/* Phase 4 — /adoption page (browse.rs::adoption_page). */
+.adoption-lede { max-width: 65ch; color: var(--cds-text-secondary); margin-bottom: 2rem; }
+.adoption-group {
+  border: 1px solid var(--cds-border-subtle); border-radius: var(--cds-radius-md);
+  padding: 1.25rem 1.5rem; margin-bottom: 1.25rem; background: var(--cds-layer);
+}
+.adoption-group--home { border-color: var(--cds-interactive); }
+.adoption-group h2 { font-size: 1.125rem; font-weight: 600; margin-bottom: 0.25rem; }
+.adoption-count { font-size: 0.875rem; color: var(--cds-text-secondary); margin-bottom: 0.75rem; }
+.adoption-desc { font-size: 0.875rem; color: var(--cds-text-secondary); }
+.adoption-slugs { display: flex; flex-wrap: wrap; gap: 0.5rem; list-style: none; padding: 0; margin: 0; }
+.adoption-slugs li a {
+  display: inline-block; padding: 0.25rem 0.625rem; border-radius: var(--cds-radius-sm);
+  background: var(--cds-selected-background); color: var(--cds-selected-text); font-size: 0.8125rem;
+}
+.tg-group { margin-bottom: 1.5rem; }
+.tg-group h3 { font-size: 1rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--cds-text-secondary); }
+.tg-group-guidance { font-size: 0.8125rem; margin: -0.25rem 0 0.75rem; }
+.tg-group-guidance a { color: var(--cds-link-primary); text-decoration: none; }
+.tg-group-guidance a:hover { text-decoration: underline; }
+.tg-entries { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 0.75rem; }
+.tg-entry {
+  border: 1px solid var(--cds-border-subtle); border-radius: var(--cds-radius-md);
+  padding: 0.75rem; display: flex; flex-direction: column; gap: 0.25rem;
+}
+.tg-swatch { display: block; width: 100%; height: 40px; border-radius: var(--cds-radius-md); border: 1px solid var(--cds-border-subtle); margin-bottom: 0.25rem; }
+.tg-name {
+  font-family: var(--cds-font-mono); font-size: 0.75rem;
+  color: var(--cds-link-primary); cursor: pointer; word-break: break-all;
+}
+/* word-break (2026-07-16, operator: "tokens bleed outside their boxes at 800x800")
+   — composite typography tokens flatten to a JSON-stringified object (e.g.
+   {"fontFamily":"'IBM Plex Sans', ...","fontSize":"2.25rem",...}), up to ~290
+   characters with runs of 140+ characters between whitespace — well past any
+   ~220-300px grid-cell width, and normal word-wrap only breaks at whitespace. */
+.tg-value { font-family: var(--cds-font-mono); font-size: 0.75rem; color: var(--cds-text-secondary); word-break: break-all; }
+.tg-contrast { font-size: var(--cds-type-label); color: var(--cds-text-tertiary); }
+.tg-desc { font-size: 0.75rem; color: var(--cds-text-tertiary); margin-top: 0.25rem; }
+
+/* Breadcrumb (P2.2) */
+.breadcrumb {
+  font-size: var(--cds-type-body-sm); color: var(--cds-text-tertiary);
+  margin-bottom: var(--cds-space-5); padding-top: var(--cds-space-5);
+}
+.breadcrumb a { color: var(--cds-link-primary); text-decoration: none; }
+.breadcrumb a:hover { text-decoration: underline; }
+.breadcrumb [aria-current="page"] { color: var(--cds-text-secondary); }
+
+/* Live component preview (P1.1) */
+.component-preview { margin-bottom: var(--cds-space-7); }
+.component-preview h2 { font-size: var(--cds-type-heading); font-weight: 600; margin-bottom: var(--cds-space-5); }
+.cp-variants { display: flex; flex-wrap: wrap; gap: var(--cds-space-5); }
+.cp-variant {
+  border: 1px solid var(--cds-border-subtle); border-radius: var(--cds-radius);
+  overflow: hidden; flex: 1 1 220px; min-width: 200px;
+}
+.cp-variant-name {
+  font-size: var(--cds-type-label); font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.04em; padding: var(--cds-space-3) var(--cds-space-4);
+  background: var(--cds-layer); color: var(--cds-text-secondary);
+  border-bottom: 1px solid var(--cds-border-subtle);
+}
+.cp-frame { width: 100%; height: 120px; border: none; display: block; }
 
 /* Mobile drawer toggle (D7, injected by drawer.js) */
 .drawer-toggle {
-  display: none; width: 100%; padding: 0.625rem 1rem;
+  display: none; width: 100%; padding: 0.75rem 1rem;
   background: var(--cds-sidebar-bg); border: none;
   border-bottom: 1px solid var(--cds-border-subtle);
   text-align: left; font-size: 0.875rem; font-weight: 600;
   color: var(--cds-text-primary); cursor: pointer;
 }
 
-/* Mobile responsive layout (D7) */
-@media (max-width: 672px) {
+/* Footer (P1.3) */
+.ds-footer {
+  background: var(--cds-footer-bg); color: var(--cds-footer-ink);
+  border-top: var(--cds-footer-rule);
+  /* Extra bottom clearance: the floating Edit/Save/Ask-AI buttons are
+     position:fixed at bottom:2rem, so scrolled-to-bottom footer content
+     (the "Powered by PrivateGit" badge) would otherwise sit directly under
+     them — verified via screenshot, not assumed. */
+  /* Horizontal inset moved off this wrapper and onto .ds-footer__cols/
+     .ds-footer__base themselves (2026-07-18) -- .site-header__inner applies
+     its own 1.5rem padding AND its 1440px cap on the same box, so header
+     content starts exactly 1.5rem in from the viewport edge at every width.
+     This wrapper previously carried the horizontal padding while the 1440px
+     cap lived one level down on .ds-footer__cols/.ds-footer__base -- two
+     different nesting depths, so padding and centering compounded
+     differently than the header. Confirmed via computed box model: at
+     1920px this put footer content at 240px from the viewport edge vs.
+     the header's 264px, a 24px mismatch. Vertical padding (top/bottom
+     clearance for the fixed Edit/Save/Ask-AI buttons) stays here. */
+  padding: var(--cds-footer-pad-y) 0 calc(var(--cds-footer-pad-y) + 3rem);
+  flex-shrink: 0;
+}
+.ds-footer__disclosure-notice {
+  font-size: var(--cds-footer-legal-size); color: var(--cds-footer-ink-muted);
+  margin-bottom: 1.5rem; max-width: 72ch; padding-inline: 1.5rem;
+}
+/* grid, not flex (2026-07-15) -- flex-wrap produced an uneven 3+1/2+2 wrap at
+   in-between viewport widths (mockup's own documented fix for the same bug). */
+/* max-width + centering (2026-07-17) -- matches .site-header__inner/.layout's own
+   1440px cap. .ds-footer itself stays full-bleed (background color spans the
+   viewport, same two-layer pattern as .site-header/.site-header__inner) but its
+   content grid was stretching edge-to-edge on wide monitors with nothing
+   reconciling it against the header/content column above (operator: "the footer
+   doesn't seem to always line up"). */
+.ds-footer__cols { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3rem; margin-bottom: 1.5rem; max-width: 1440px; margin-inline: auto; padding-inline: 1.5rem; }
+/* Single breakpoint, straight from 4 columns to 1 (2026-07-18) -- the prior
+   960px intermediate 2-column tier paired the 4 real footer columns
+   (Identity 5 items, Canonical 14, Machine-surface 6, Network 4) into an
+   unbalanced 2x2 grid at in-between widths; a single stacked column can't
+   produce that problem regardless of how mismatched the column lengths are. */
+@media (max-width: 960px) { .ds-footer__cols { grid-template-columns: 1fr; gap: 1.5rem; } }
+.ds-footer__col-title {
+  font-size: var(--cds-footer-heading-size); font-weight: 600; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--cds-footer-ink-muted); margin-bottom: 0.5rem;
+}
+.ds-footer__col ul { list-style: none; }
+.ds-footer__col li { margin-bottom: 0.375rem; }
+/* padding + display:block widen the tap target to ~35px tall (was ~16px, no padding) --
+   found via mobile audit 2026-07-22: WCAG 2.2 SC 2.5.8 requires 24x24px minimum. */
+.ds-footer__col a { display: block; padding: 0.5rem 0; color: var(--cds-footer-link); text-decoration: none; font-size: 0.8125rem; }
+.ds-footer__col a:hover { color: var(--cds-footer-link-hover); text-decoration: underline; }
+.ds-footer__col--mono a { font-family: var(--cds-font-mono); font-size: 0.75rem; }
+/* Identity plate — first footer column, matching the approved v3 mockup's
+   site-footer__col--identity: name, tagline, real live counts, standards, license,
+   one source link. Plain <li> text (not links) for every row but the last. */
+.ds-footer__col--identity li { color: var(--cds-footer-ink-muted); font-size: 0.8125rem; }
+.ds-footer__col--identity .ds-footer__col-title { color: var(--cds-footer-ink); font-size: 0.9375rem; text-transform: none; letter-spacing: normal; font-weight: 700; }
+.ds-footer__base {
+  display: flex; flex-direction: column; gap: 0.5rem;
+  padding-top: 1rem; border-top: var(--cds-footer-rule);
+  max-width: 1440px; margin-inline: auto; width: 100%; padding-inline: 1.5rem;
+}
+.ds-footer__identity-row {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.75rem;
+  font-size: var(--cds-footer-legal-size); color: var(--cds-footer-ink-muted);
+}
+.ds-footer__identity-row--trademark { max-width: 72ch; }
+.ds-footer__locations { font-size: var(--cds-footer-legal-size); color: var(--cds-footer-ink-muted); }
+.ds-footer__legal, .ds-footer__build { font-size: var(--cds-footer-legal-size); color: var(--cds-footer-ink-muted); }
+.ds-footer__live { color: var(--cds-positive-text); }
+/* "Powered by PrivateGit" badge — matches documentation.pointsav.com's .k-badge
+   pattern (icon + two-line "lead"/"name" text) for cross-site family consistency. */
+.ds-badge {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  padding: 0.35rem 0.6rem; border: 1px solid var(--cds-border-subtle);
+  border-radius: var(--cds-radius-sm); background: var(--cds-layer);
+  color: var(--cds-text-secondary); text-decoration: none; line-height: 1.05;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+.ds-badge:hover { border-color: var(--cds-interactive); color: var(--cds-interactive); }
+.ds-badge__glyph { display: inline-flex; color: currentColor; flex-shrink: 0; }
+.ds-badge__text { display: inline-flex; flex-direction: column; gap: 1px; }
+.ds-badge__lead {
+  font-size: 0.5625rem; text-transform: uppercase; letter-spacing: 0.04em;
+  color: var(--cds-text-tertiary);
+}
+.ds-badge:hover .ds-badge__lead { color: inherit; }
+.ds-badge__name { font-size: var(--cds-type-label); font-weight: 600; color: inherit; }
+
+/* Mobile responsive layout — single breakpoint (D7, P1.5) */
+@media (max-width: 768px) {
   .drawer-toggle { display: block; }
   .layout { flex-direction: column; }
   .sidebar {
@@ -109,8 +992,240 @@ header a { color: #fff; text-decoration: none; font-size: 0.875rem; font-weight:
     border-right: none; border-bottom: 1px solid var(--cds-border-subtle);
     max-height: 60vh; overflow-y: auto;
   }
-  .sidebar.drawer-collapsed { max-height: 0; overflow: hidden; padding: 0; }
-  .tab-bar { padding: 0 1rem; }
+  .sidebar.drawer-collapsed { max-height: 0; overflow: hidden; padding: 0; visibility: hidden; }
+  .tab-bar { padding: 0 1rem; overflow-x: auto; }
   .content { padding: 1rem 1rem 3rem; }
   .page-title { padding: 1.5rem 1rem 0.75rem; }
+}
+
+/* ==========================================================================
+   v3 shared design system (2026-07-15) — ported wholesale from the approved
+   v3 mockup's shared.css, not diffed piecemeal, per operator instruction.
+   Generic, reusable classes that didn't exist anywhere in this file before.
+   ========================================================================== */
+
+/* Global reduced-motion catch-all — this file previously only had scoped
+   overrides (nav drawer/overlay); mockup's shared.css has a blanket rule. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
+.eyebrow {
+  display: inline-block; font-family: var(--cds-font-mono); font-size: var(--cds-type-label);
+  font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--cds-text-secondary); margin-bottom: var(--cds-space-2);
+}
+
+.card {
+  background: var(--cds-background); border: 1px solid var(--cds-border-subtle);
+  border-top: var(--cds-card-rule-width, 3px) solid var(--cds-interactive);
+  border-radius: var(--cds-radius-md); box-shadow: var(--cds-elevation-1);
+  padding: var(--cds-space-6);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.card:hover { transform: translateY(-2px); box-shadow: var(--cds-elevation-2); }
+.card h3 { font-size: var(--cds-type-heading); margin-bottom: var(--cds-space-3); }
+.card p:last-child { margin-bottom: 0; }
+.card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: var(--cds-space-6); margin-bottom: var(--cds-space-11); }
+@media (prefers-reduced-motion: reduce) {
+  .card { transition: none; }
+  .card:hover { transform: none; }
+}
+
+.card__tags { display: flex; align-items: center; gap: var(--cds-space-2); margin-top: var(--cds-space-4); }
+.card__tags a.badge { text-decoration: none; }
+
+.page-intro { margin-bottom: var(--cds-space-9); }
+.page-intro h1 { font-size: var(--cds-type-display); }
+.page-intro__lede { font-size: var(--cds-type-body-lg); color: var(--cds-text-secondary); max-width: 68ch; }
+
+.domain-stats {
+  display: flex; flex-wrap: wrap; gap: var(--cds-space-6);
+  margin-top: var(--cds-space-6); padding-top: var(--cds-space-6);
+  border-top: 1px solid var(--cds-border-subtle);
+}
+.domain-stat__value { display: block; font-size: var(--cds-type-heading); font-weight: 700; color: var(--cds-text-primary); }
+.domain-stat__label { font-size: var(--cds-type-caption); color: var(--cds-text-tertiary); }
+
+.domain-intro { max-width: 68ch; margin-bottom: var(--cds-space-10); }
+.domain-intro p + p { margin-top: var(--cds-space-4); }
+
+.gap-table-wrap { margin-bottom: var(--cds-space-10); }
+.gap-table-wrap h2 { font-size: var(--cds-type-heading); margin-bottom: var(--cds-space-3); }
+.gap-table-wrap > p { color: var(--cds-text-secondary); max-width: 68ch; margin-bottom: var(--cds-space-5); }
+
+.badge {
+  display: inline-flex; align-items: center; gap: 0.3rem;
+  font-family: var(--cds-font-mono); font-size: var(--cds-type-micro, 0.6875rem); font-weight: 600;
+  letter-spacing: 0.03em; text-transform: uppercase; padding: 0.2rem 0.55rem;
+  border-radius: var(--cds-radius-sm); background: var(--cds-layer); color: var(--cds-text-secondary);
+  white-space: nowrap;
+}
+.badge--brand { background: var(--cds-surface-tint); color: var(--cds-selected-text); }
+.badge--positive { background: var(--cds-positive-bg); color: var(--cds-positive-text); }
+.badge--caution { background: var(--cds-caution-bg); color: var(--cds-caution-text); }
+.badge--critical { background: var(--cds-critical-bg); color: var(--cds-critical-text); }
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem;
+  font-family: var(--cds-font-body); font-size: 0.875rem; font-weight: 600;
+  text-decoration: none; padding: 0.6rem 1.25rem; border-radius: var(--cds-radius-md);
+  border: 1px solid transparent; cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+.btn:active { transform: translateY(1px); }
+.btn--primary { background: var(--cds-interactive); color: #ffffff; }
+.btn--primary:hover { background: var(--cds-interactive-hover); }
+[data-theme="dark"] .btn--primary { background: #234ed8; }
+[data-theme="dark"] .btn--primary:hover { background: #173ab1; }
+.btn--secondary { background: var(--cds-background); color: var(--cds-text-primary); border-color: var(--cds-border-strong); }
+.btn--secondary:hover { border-color: var(--cds-interactive); color: var(--cds-interactive); }
+/* .content a (0,1,1) silently overrides .btn--primary/.btn--secondary's own color
+   (0,1,0) for every .btn placed inside markdown-rendered docs (all of dtcg-vault) —
+   this, not the dark-mode fill value fixed above, is the actual cause of "can't see
+   the text": in light mode --cds-link-primary and --cds-interactive are the literal
+   same value (#234ed8), so .btn--primary's text renders at 1:1 contrast against its
+   own background — completely invisible in ANY theme, not just dark. Same
+   specificity collision already solved once this session for
+   .home-lede a.home-cta-button; applying the identical fix generally. */
+.content a.btn--primary { color: #ffffff; }
+.content a.btn--secondary { color: var(--cds-text-primary); }
+.btn--mono { font-family: var(--cds-font-mono); font-size: var(--cds-type-caption, 0.8125rem); }
+@media (prefers-reduced-motion: reduce) {
+  .btn { transition: none; }
+  .btn:active { transform: none; }
+}
+
+.closing-cta {
+  border: 1px solid var(--cds-border-subtle); border-top: var(--cds-card-rule-width, 3px) solid var(--cds-interactive);
+  border-radius: var(--cds-radius-md); padding: var(--cds-space-6);
+  display: flex; align-items: center; justify-content: space-between; gap: var(--cds-space-5); flex-wrap: wrap;
+}
+
+/* ---- Releases: dated entries, not a version-numbered history ---- */
+.release-list { display: flex; flex-direction: column; }
+.release-entry { padding: var(--cds-space-8) 0; border-bottom: 1px solid var(--cds-border-subtle); }
+.release-entry:first-child { padding-top: 0; }
+.release-entry:last-child { border-bottom: none; }
+.release-entry__head { display: flex; align-items: center; flex-wrap: wrap; gap: var(--cds-space-4); margin-bottom: var(--cds-space-3); }
+.release-entry__date { font-family: var(--cds-font-mono); font-weight: 700; font-size: 1.0625rem; color: var(--cds-link-primary); }
+.release-entry__summary { max-width: 72ch; color: var(--cds-text-secondary); margin-bottom: var(--cds-space-4); }
+.release-notes { list-style: none; margin: 0 0 var(--cds-space-5); padding: 0; display: flex; flex-direction: column; gap: var(--cds-space-2); max-width: 72ch; }
+.release-notes li { font-size: var(--cds-type-caption, 0.8125rem); color: var(--cds-text-secondary); padding-left: 1.1rem; position: relative; }
+.release-notes li::before { content: "\2014"; position: absolute; left: 0; color: var(--cds-border-strong); }
+.release-notes__tag { font-family: var(--cds-font-mono); font-weight: 600; font-size: var(--cds-type-micro, 0.6875rem); text-transform: uppercase; letter-spacing: 0.03em; margin-right: var(--cds-space-2); }
+.release-notes__tag--added { color: var(--cds-positive-text); }
+.release-notes__tag--changed { color: var(--cds-selected-text); }
+.release-notes__tag--fixed { color: var(--cds-selected-text); }
+.release-notes__tag--removed { color: var(--cds-critical-text); }
+
+.doc-breadcrumb { font-family: var(--cds-font-mono); font-size: var(--cds-type-caption, 0.8125rem); margin-bottom: var(--cds-space-4); }
+.doc-breadcrumb a { color: var(--cds-text-tertiary); text-decoration: none; }
+.doc-breadcrumb a:hover { color: var(--cds-link-primary); }
+.doc-breadcrumb__sep { opacity: 0.6; }
+.doc-breadcrumb__current { color: var(--cds-text-secondary); font-weight: 600; }
+
+.doc-footer-meta { font-family: var(--cds-font-mono); font-size: var(--cds-type-caption, 0.8125rem); color: var(--cds-text-tertiary); margin-top: var(--cds-space-6); }
+.doc-footer-meta a { color: var(--cds-text-tertiary); text-decoration: underline dotted; }
+.doc-footer-meta a:hover { color: var(--cds-link-primary); }
+.doc-footer-meta__sep { margin: 0 var(--cds-space-2); opacity: 0.6; }
+
+.doc-header { margin-bottom: var(--cds-space-9); padding-bottom: var(--cds-space-7); border-bottom: 1px solid var(--cds-border-subtle); }
+.doc-header__badges { display: flex; flex-wrap: wrap; align-items: center; gap: var(--cds-space-2); margin: var(--cds-space-3) 0 var(--cds-space-5); }
+.doc-header__lead { font-size: var(--cds-type-body-lg); color: var(--cds-text-secondary); max-width: 64ch; }
+
+.registry-note {
+  display: flex; align-items: baseline; gap: var(--cds-space-3); margin-top: var(--cds-space-5);
+  padding: var(--cds-space-3) var(--cds-space-4); background: var(--cds-layer);
+  border: 1px solid var(--cds-border-subtle); border-radius: var(--cds-radius-md);
+  font-family: var(--cds-font-mono); font-size: 0.75rem; color: var(--cds-text-secondary);
+}
+.registry-note code { background: none; padding: 0; color: var(--cds-link-primary); }
+
+.doc-table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.doc-table { border-collapse: collapse; margin: var(--cds-space-5) 0; font-size: var(--cds-type-caption, 0.8125rem); width: 100%; }
+.doc-table th, .doc-table td { padding: var(--cds-space-3) var(--cds-space-4); border: 1px solid var(--cds-border-subtle); text-align: left; }
+.doc-table th { font-family: var(--cds-font-mono); font-size: var(--cds-type-micro, 0.6875rem); text-transform: uppercase; background: var(--cds-layer); }
+.doc-table td code { font-size: 0.9em; }
+.doc-table tr:last-child td { border-bottom: none; }
+
+.doc-code-block { border: 1px solid var(--cds-border-subtle); border-radius: var(--cds-radius-md); overflow: hidden; margin: var(--cds-space-5) 0; }
+.doc-code-block__label { display: flex; justify-content: space-between; padding: var(--cds-space-2) var(--cds-space-4); background: var(--cds-layer); font-family: var(--cds-font-mono); font-size: var(--cds-type-micro, 0.6875rem); text-transform: uppercase; border-bottom: 1px solid var(--cds-border-subtle); }
+.doc-code-block pre { margin: 0; padding: var(--cds-space-4); overflow-x: auto; }
+.doc-code-block code { font-family: var(--cds-font-mono); font-size: var(--cds-type-caption, 0.8125rem); line-height: 1.7; }
+.doc-code-block .tok-comment { color: var(--cds-text-tertiary); }
+
+/* ---- Install page: section scaffolding, comparison callout, variants ---- */
+section.install-block { padding: var(--cds-space-10) 0; border-top: 1px solid var(--cds-border-subtle); }
+section.install-block:first-of-type { border-top: none; }
+.install-block__label { display: flex; align-items: center; gap: var(--cds-space-3); margin-bottom: var(--cds-space-4); }
+.install-block h2 { font-size: var(--cds-type-title); max-width: 40ch; }
+.install-block__intro { max-width: 62ch; color: var(--cds-text-secondary); font-size: var(--cds-type-body-lg); }
+
+.compare-callout {
+  margin-top: var(--cds-space-7); border: 1px solid var(--cds-border-subtle);
+  border-top: var(--cds-card-rule-width, 3px) solid var(--cds-interactive);
+  border-radius: var(--cds-radius-md); padding: var(--cds-space-7); background: var(--cds-layer);
+}
+.compare-callout__heading { display: flex; align-items: center; gap: var(--cds-space-3); margin-bottom: var(--cds-space-6); }
+.compare-callout__heading strong { font-size: var(--cds-type-heading); color: var(--cds-text-primary); }
+.compare-callout__cols { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--cds-space-7); }
+@media (max-width: 720px) { .compare-callout__cols { grid-template-columns: 1fr; } }
+.compare-callout__col { background: var(--cds-background); border: 1px solid var(--cds-border-subtle); border-radius: var(--cds-radius-md); padding: var(--cds-space-6); }
+.compare-callout__col--us { border-color: var(--cds-interactive); }
+.compare-callout__col-title { font-family: var(--cds-font-mono); font-size: var(--cds-type-micro, 0.6875rem); font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--cds-text-tertiary); margin-bottom: var(--cds-space-4); }
+.compare-callout__col--us .compare-callout__col-title { color: var(--cds-selected-text); }
+.compare-callout__col ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--cds-space-3); font-size: 0.875rem; }
+.compare-callout__col--them li { color: var(--cds-text-secondary); }
+.compare-callout__col--them li::before { content: "\2715 "; color: var(--cds-critical-text); font-weight: 700; }
+.compare-callout__col--us li { color: var(--cds-text-primary); }
+.compare-callout__col--us li::before { content: "\2713 "; color: var(--cds-positive-text); font-weight: 700; }
+.compare-callout__footnote { margin: var(--cds-space-6) 0 0; font-size: 0.75rem; color: var(--cds-text-tertiary); }
+
+.variant-grid { margin-top: var(--cds-space-6); display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap: var(--cds-space-6); }
+.variant-grid .doc-code-block { margin: var(--cds-space-3) 0 0; }
+
+.note-strip { display: flex; align-items: flex-start; gap: var(--cds-space-4); margin-top: var(--cds-space-5); padding: var(--cds-space-5) var(--cds-space-6); background: var(--cds-layer); border: 1px solid var(--cds-border-subtle); border-radius: var(--cds-radius-md); }
+.note-strip__body p { margin: 0; font-size: 0.875rem; color: var(--cds-text-secondary); }
+.note-strip__body p + p { margin-top: var(--cds-space-3); }
+
+/* "Important Information" collapsible disclosure — sits directly above the
+   footer, sharing its background/rhythm (BIM-family pattern, previously
+   only the always-visible one-line .ds-footer__disclosure-notice existed
+   on the real server; this is the missing expandable governance block). */
+.site-disclosure { border-top: 1px solid var(--cds-border-subtle); background: var(--cds-footer-bg); }
+/* Widened 1200px -> 1440px (2026-07-17) to match .site-header__inner/.layout/
+   .ds-footer__cols's shared 1440px cap -- this sat directly above .ds-footer at
+   a third, different width with no comment explaining a deliberate narrower
+   inset, reading as an accidental mismatch rather than a design choice
+   (operator: footer "doesn't seem to always line up"). */
+.site-disclosure__details { max-width: 1440px; margin: 0 auto; padding: var(--cds-space-3) 1.5rem 0; }
+.site-disclosure__summary { cursor: pointer; padding: var(--cds-space-5) 0; font-family: var(--cds-font-body); font-size: 1.0625rem; font-weight: 700; color: var(--cds-footer-ink); list-style: none; }
+.site-disclosure__summary::-webkit-details-marker { display: none; }
+.site-disclosure__summary::before { content: "\25B8  "; color: var(--cds-footer-ink-muted); }
+.site-disclosure__details[open] .site-disclosure__summary::before { content: "\25BE  "; }
+.site-disclosure__label { font-size: var(--cds-type-micro, 0.6875rem); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--cds-footer-ink-muted); margin: -0.5rem 0 var(--cds-space-4); }
+.site-disclosure__body { max-width: 72ch; padding-bottom: var(--cds-space-6); font-size: var(--cds-footer-legal-size); line-height: 1.6; color: var(--cds-footer-ink); }
+.site-disclosure__body p { margin: 0 0 var(--cds-space-3); }
+@media print {
+  .site-disclosure__body { display: block !important; }
+  .site-disclosure__summary::before { display: none; }
+}
+
+/* Windows High Contrast / forced-colors — the active-state cue and badge fills are
+   color-only; add non-color fallbacks so they survive forced-colors mode (P2.4). */
+@media (forced-colors: active) {
+  .sidebar li a.active { text-decoration: underline; font-weight: 700; }
+  .schema-badge { border: 1px solid CanvasText; }
+  .tab-bar a.active { text-decoration: underline; }
+}
+
+@media print {
+  header, .sidebar, .tab-bar, .drawer-toggle, #ai-overlay, #edit-toggle, #save-btn { display: none !important; }
+  .layout, .main, .content { overflow: visible !important; }
+  .ds-footer { border-top: 1px solid #000; }
 }

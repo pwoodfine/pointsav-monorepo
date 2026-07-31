@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 # Weekly DataGraph cleanup — re-seeds taxonomy entities from current CSVs.
 #
 # Calls service-content HTTP API to reload topics and guides from disk,

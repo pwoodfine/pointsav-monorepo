@@ -1,17 +1,26 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 pub mod cartridge;
 pub mod chassis;
 pub mod colors;
 pub mod config;
 pub mod fkey;
+pub mod glyphs;
 pub mod input_bytes;
+pub mod motion;
 pub mod pairing;
 pub mod qr;
 pub mod session;
+pub mod tls;
 pub mod widgets;
 
 pub use cartridge::{Cartridge, CartridgeAction};
 pub use chassis::{request_shutdown, AppConsoleKeys, ChassisAction};
+// Re-export the console-core intent vocabulary so cartridges depend only on
+// app-console-keys (the chassis crate) to implement the intent methods.
 pub use config::ConsoleConfig;
+pub use console_core::{IntentArgs, IntentId, IntentScope, IntentSpec, MouseAffordance, Waiver};
 pub use fkey::FKey;
 pub use pairing::{PairingEvent, PairingState};
 pub use session::SessionState;

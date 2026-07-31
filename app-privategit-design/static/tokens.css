@@ -1,18 +1,237 @@
-/* Carbon Design System tokens — --cds-* custom properties (D6).
-   Consuming rules use var(--cds-*); future themes swap this file only. */
+/*
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ * SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+ */
+
+/* PointSav Design System tokens — --cds-* custom properties.
+   Reconciled 2026-07-03 (Phase 1, hyperscaler-tier initiative) to this project's own
+   ratified DTCG primitives (pointsav-design-system/dtcg-vault/tokens/primitive.json +
+   themes/pointsav-brand.json), replacing values that had drifted to IBM Carbon's literal
+   hex values — a doctrine violation, not a style choice (see commit 18b1764, 2026-04-28:
+   "original hex values... Inter, no IBM Plex"). Every value below traces to a real
+   primitive/semantic token in that vault; none are invented.
+   Consuming rules use var(--cds-*); future tenant themes swap this file only. */
+
+/* Self-hosted fonts — Inter (body, per founding doctrine) and JetBrains Mono (code).
+   Both SIL OFL 1.1; licence text ships alongside at fonts/{Inter,JetBrainsMono}-OFL.txt.
+   No CDN dependency — files are served from this app's own /static/fonts/. Replaces the
+   "IBM Plex Sans/Mono" declarations that were never actually loaded (no @font-face existed
+   at all before this). */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 300;
+  font-display: swap;
+  src: url('fonts/inter-300.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('fonts/inter-400.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('fonts/inter-500.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('fonts/inter-600.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('fonts/inter-700.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('fonts/jetbrains-mono-400.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('fonts/jetbrains-mono-700.woff2') format('woff2');
+}
+
 :root {
-  --cds-background: #fff;
-  --cds-layer: #f4f4f4;
-  --cds-border-subtle: #e0e0e0;
-  --cds-border-strong: #8d8d8d;
-  --cds-text-primary: #161616;
-  --cds-text-secondary: #393939;
-  --cds-text-tertiary: #525252;
-  --cds-link-primary: #0e3a66;
-  --cds-interactive: #0050e6;
-  --cds-focus: #0f62fe;
-  --cds-background-brand: #161616;
-  --cds-selected-background: #e8f0f8;
-  --cds-selected-text: #0e3a66;
-  --cds-sidebar-bg: #f4f4f4;
+  /* Semantic color — mapped from dtcg-vault/themes/pointsav-brand.json */
+  --cds-background: #ffffff;        /* surface-base       -> color.white */
+  --cds-layer: #f5f6f8;             /* surface-subtle      -> color.neutral-10 */
+  --cds-border-subtle: #e6e8ec;     /* border-subtle       -> color.neutral-20 */
+  --cds-border-strong: #aab0bb;     /* border-strong       -> color.neutral-40 */
+  --cds-text-primary: #0e0f12;      /* ink-primary         -> color.neutral-100 */
+  --cds-text-secondary: #4a4f59;    /* ink-secondary       -> color.neutral-70 */
+  --cds-text-tertiary: #666c78;     /* (no distinct semantic token) -> color.neutral-60 */
+  --cds-link-primary: #234ed8;      /* was a third, orphan "brand blue" (#0e3a66) —
+                                        reconciled to interactive-primary, the vault's
+                                        one documented action/link color */
+  --cds-interactive: #234ed8;       /* interactive-primary -> color.primary-60 */
+  --cds-focus: #234ed8;             /* focus-ring          -> color.primary-60 */
+  --cds-background-brand: #ffffff;  /* v3 masthead fix (2026-07-16): was #0e0f12 (the
+                                        old, pre-v3 dark masthead) — the approved v3
+                                        mockup's :root uses a white masthead in light
+                                        theme (shared.css:106, "was #0e0f12 site-wide").
+                                        This single stale value was the actual root
+                                        cause of "still looks like the old nav" —
+                                        confirmed via a real CSS-value diff audit, not
+                                        a missing-feature bug. */
+  --cds-selected-background: #eef3ff; /* -> color.primary-10 */
+  --cds-selected-text: #173ab1;     /* -> color.primary-70 (distinct from plain links) */
+  --cds-sidebar-bg: #f5f6f8;        /* surface-subtle      -> color.neutral-10 */
+
+  /* Interactive tonal range (Part D, 2026-07-04) — --cds-interactive was doing every job
+     at once (focus ring, CTA fill, tab underline, hover) with zero tonal variation. These
+     give hover/quiet-background states their own ratified step instead of reusing the
+     exact same hex for everything. Matches home.pointsav.com's own [data-brand="pointsav"]
+     theme, which independently arrived at primary-50 for hover on large solid fills. */
+  --cds-interactive-hover: #3f6cf2; /* -> color.primary-50 */
+  --cds-surface-tint: #eef3ff;      /* -> color.primary-10 (same value as selected-background;
+                                        named separately since the use case — a quiet
+                                        on-brand background, not a selection state — differs) */
+
+  /* Semantic status colors (Part D) — replace hardcoded hex literals in badge CSS
+     (.schema-badge--token, .schema-badge--research, .component-origin-badge) that bypassed
+     --cds-* entirely; .schema-badge--bundle's invented #f2e8ff/#6929c4 violet (no primitive
+     backing at all) is replaced with a tinted primary pairing instead of a new invented hue. */
+  /* positive/caution text fixed 2026-07-15 (real WCAG AA failures found during the
+     pointsav-design-system token-compliance audit -- 4.33:1 and 3.72:1 against
+     their own tinted backgrounds, same underlying color-scale regression found and
+     fixed in that repo's badge component). critical-text was already compliant
+     (critical-60, 6.32:1) and needed no change. */
+  --cds-positive-bg: #e8f6ed;    /* -> color.positive-10 */
+  --cds-positive-text: #16602b;  /* -> color.positive-70 (was positive-60, 4.33:1 fail; now 6.87:1) */
+  --cds-caution-bg: #fff5e1;     /* -> color.caution-10 */
+  --cds-caution-text: #7a520a;   /* -> color.caution-70 (was caution-60, 3.72:1 fail; now 6.38:1) */
+  --cds-critical-bg: #fceaea;    /* -> color.critical-10 */
+  --cds-critical-text: #a52323;  /* -> color.critical-60 (already compliant, 6.32:1) */
+
+  /* Type scale (P1.4 — dogfood the site's own tokens instead of hardcoded literals) */
+  --cds-type-label: 0.75rem; /* was 0.6875rem (11px) — bumped for legibility (P2.6) */
+  --cds-type-body-sm: 0.75rem;
+  --cds-type-body: 0.875rem;
+  --cds-type-body-lg: 1rem;
+  --cds-type-heading: 1.25rem;
+  /* Fluid across the viewport range (P2.7) — mirrors home.pointsav.com's proven
+     clamp()-based scaling instead of a hard per-breakpoint step. */
+  --cds-type-title: clamp(1.5rem, 1.3rem + 1vw, 1.75rem);
+  /* Range widened 2026-07-04 (Part D) to match the home hero's actual screenshot-verified
+     size instead of maintaining two divergent "big heading" values — the hero previously
+     hardcoded its own clamp() literal here instead of consuming this token. */
+  --cds-type-display: clamp(1.75rem, 1.3rem + 1.8vw, 2.5rem);
+  --cds-font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --cds-font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+  /* Added 2026-07-16 (nav-heading fix) — matches the mockup's real, deliberate
+     choice (shared.css:138): Source Serif 4, scoped to .site-header__wordmark only
+     (Phase 3b of the mockup's own history reverted it off h1/h2 site-wide — a
+     second UI-facing type family read as editorial/magazine, not "seasoned
+     enterprise," for anything beyond the one masthead heading). */
+  --cds-font-display: 'Source Serif 4', 'Serif Fallback', Georgia, serif;
+
+  /* Spacing — full 13-step scale, values identical to dtcg-vault/tokens/primitive.json
+     `size.space-*` (renumbered 2026-07-03; previous numbering skipped steps and didn't
+     match the vault's own ratified scale — no visual change, existing consumers remapped
+     to the correct step for the same pixel value). */
+  --cds-space-1: 0.125rem;  /* 2px  — hairline gutter */
+  --cds-space-2: 0.25rem;   /* 4px */
+  --cds-space-3: 0.5rem;    /* 8px  — paragraph rhythm floor */
+  --cds-space-4: 0.75rem;   /* 12px */
+  --cds-space-5: 1rem;      /* 16px — body grid unit */
+  --cds-space-6: 1.5rem;    /* 24px */
+  --cds-space-7: 2rem;      /* 32px — section gutter */
+  --cds-space-8: 2.5rem;    /* 40px */
+  --cds-space-9: 3rem;      /* 48px */
+  --cds-space-10: 4rem;     /* 64px — major section */
+  --cds-space-11: 5rem;     /* 80px */
+  --cds-space-12: 6rem;     /* 96px */
+  --cds-space-13: 10rem;    /* 160px — hero spacing */
+
+  /* Radius — matches dtcg-vault primitive.json `border.corner-*` */
+  --cds-radius-sm: 0.125rem;  /* 2px — chip, badge */
+  --cds-radius-md: 0.25rem;   /* 4px — button, input, card default */
+  --cds-radius-lg: 0.5rem;    /* 8px — surface, dialog */
+  --cds-radius: var(--cds-radius-md); /* alias — existing consumers unchanged */
+
+  /* Elevation — new (Phase 1 gap: previously zero shadow tokens, one hardcoded literal).
+     Shadow color derived from ink-primary (neutral-100, #0e0f12), not a generic black,
+     so it stays a PointSav-specific value rather than a CSS default. */
+  --cds-elevation-1: 0 1px 2px rgba(14, 15, 18, 0.06);   /* cards, resting surfaces */
+  --cds-elevation-2: 0 4px 12px rgba(14, 15, 18, 0.12);  /* dropdowns, popovers */
+  --cds-elevation-3: 0 8px 24px rgba(14, 15, 18, 0.18);  /* modals, dialogs */
+
+  /* Motion — new (Phase 5 gap: primitive.json's motion/duration scale was ratified but
+     never wired into any app CSS). Values are the vault's own primitive.duration.speed-6
+     ("Deliberate — hero animation") and primitive.motion.ease-display
+     ("Expressive interaction — toasts, modals, hero") — literally named for this use. */
+  --cds-duration-hero: 720ms;
+  --cds-ease-display: cubic-bezier(0.4, 0.14, 0.3, 1.0);
+
+  /* Layout — new. Header height promoted from a literal in portal.css so it
+     isn't duplicated between the header rule and any layout math. */
+  --cds-header-height: 48px;
+
+  /* Icon — new (Phase 1 gap: no icon-system tokens existed at all) */
+  --cds-icon-size-sm: 1rem;      /* 16px */
+  --cds-icon-size-md: 1.25rem;   /* 20px */
+  --cds-icon-size-lg: 1.5rem;    /* 24px */
+  --cds-icon-color: var(--cds-text-secondary);
+  --cds-icon-color-interactive: var(--cds-interactive);
+
+  /* Footer (P1.3) — echoes --cds-* family, resolves to existing primitives */
+  --cds-footer-bg: var(--cds-layer);
+  --cds-footer-ink: var(--cds-text-secondary);
+  --cds-footer-ink-muted: var(--cds-text-tertiary);
+  --cds-footer-link: var(--cds-link-primary);
+  --cds-footer-link-hover: var(--cds-interactive);
+  --cds-footer-rule: 1px solid var(--cds-border-subtle);
+  --cds-footer-legal-size: 0.75rem;
+  --cds-footer-heading-size: 0.6875rem;
+  --cds-footer-pad-y: 3rem;
+  --cds-footer-gutter: clamp(1rem, 0.5rem + 2.5vw, 2rem);
+}
+
+/* Dark mode (P2) — explicit data-theme, set inline in <head> before paint.
+   Reconciled 2026-07-03 alongside light mode — same vault primitives, dark-appropriate
+   steps (lighter neutrals for text/borders, primary-40 for interactive/focus/links since
+   it reads with sufficient contrast against a dark ground; primary-60 would not). */
+[data-theme="dark"] {
+  --cds-background: #0e0f12;        /* color.neutral-100 */
+  --cds-layer: #1f2125;             /* color.neutral-90 */
+  --cds-border-subtle: #33373e;     /* color.neutral-80 */
+  --cds-border-strong: #666c78;     /* color.neutral-60 */
+  --cds-text-primary: #f5f6f8;      /* color.neutral-10 */
+  --cds-text-secondary: #cdd1d8;    /* color.neutral-30 */
+  --cds-text-tertiary: #aab0bb;     /* color.neutral-40 */
+  --cds-link-primary: #7392ff;      /* color.primary-40 */
+  --cds-interactive: #7392ff;       /* color.primary-40 */
+  --cds-focus: #7392ff;             /* color.primary-40 */
+  --cds-background-brand: #0e0f12;  /* v3 masthead fix (2026-07-16): was #000000 —
+                                        the mockup's dark theme keeps #0e0f12 ("dark
+                                        masthead — unchanged from live", shared.css:220),
+                                        distinct from real's prior pure-black value. */
+  --cds-selected-background: #04165a; /* color.primary-90 */
+  --cds-selected-text: #7392ff;     /* color.primary-40 */
+  --cds-sidebar-bg: #1f2125;        /* color.neutral-90 */
+
+  --cds-interactive-hover: #a6bcff; /* color.primary-30 — lighter for dark-ground hover */
+  --cds-surface-tint: #04165a;      /* color.primary-90 */
+  --cds-positive-bg: #16602b;    /* color.positive-70 */
+  --cds-positive-text: #9fdaae;  /* color.positive-30 */
+  --cds-caution-bg: #7a520a;     /* color.caution-70 */
+  --cds-caution-text: #f5cd7a;   /* color.caution-30 */
+  --cds-critical-bg: #7d1414;    /* color.critical-70 */
+  --cds-critical-text: #f0a3a3;  /* color.critical-30 */
 }

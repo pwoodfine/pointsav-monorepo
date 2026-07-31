@@ -1,9 +1,22 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 [package]
 name = "service-fs"
-version = "1.0.1"
+version = "0.1.0"
 edition = "2021"
 authors = ["PointSav Digital Systems"]
-description = "WORM Storage Gatekeeper — Envelope A (std/axum HTTP). Envelope B (seL4 unikernel) is Phase 3."
+description = "Ring 1 WORM Immutable Ledger — per-tenant boundary-ingest service exposing an MCP-server interface to sibling Ring 1 producers (service-people, service-email, service-input) and Ring 2 consumers (service-extraction)."
+license = "AGPL-3.0-or-later"
+
+# Note: package version reset 1.0.1 → 0.1.0. The 1.0.1 stream
+# belonged to the bare-metal seL4 unikernel scaffold relocated to
+# vendor-sel4-fs/. This is a fresh hosted MCP-server skeleton with
+# a different runtime model and an empty version stream.
+
+[lib]
+name = "service_fs"
+path = "src/lib.rs"
 
 [[bin]]
 name = "service-fs"
@@ -11,23 +24,21 @@ path = "src/main.rs"
 
 [dev-dependencies]
 tower = { version = "0.4", features = ["util"] }
-tempfile = "3"
+criterion = { version = "0.5", features = ["html_reports"] }
 
 [[bench]]
 name = "ledger_bench"
 harness = false
-# Requires lib target (PosixTileLedger) not yet implemented.
-# Enable with: cargo bench --features=bench-ledger
-required-features = ["bench-ledger"]
-
-[features]
-bench-ledger = []
 
 [dependencies]
-axum = { version = "0.7", features = ["json"] }
-tokio = { version = "1", features = ["full"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "net", "signal"] }
+axum = "0.7"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+anyhow = "1"
 sha2 = "0.10"
 hex = "0.4"
-uuid = { version = "1", features = ["v4"] }
+ed25519-dalek = "2"
+base64 = "0.22"

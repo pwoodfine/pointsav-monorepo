@@ -1,6 +1,12 @@
+# SPDX-License-Identifier: FSL-1.1-ALv2
+# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 [package]
+license = "FSL-1.1-ALv2"
 name = "app-mediakit-distributions"
 version = "0.1.0"
 edition = "2021"
+
+[workspace]
 
 [dependencies]

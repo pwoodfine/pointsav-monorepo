@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 # Purpose: Orchestrate Rust engine and anchor to Data Mesh.
 FILENAME=$1
 PROTOCOL=$2

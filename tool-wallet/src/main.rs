@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 /// tool-wallet — Polygon USDC payment watcher + receipt writer + key utilities
 ///
 /// Single-tenant (PointSav vendor). Watches for inbound USDC transfers to

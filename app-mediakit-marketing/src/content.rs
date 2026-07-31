@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: FSL-1.1-ALv2
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 //! Content loading. A page is a Git-tracked manifest at
 //! `<content_dir>/<slug>/page.yaml`. Loading is validation: a manifest either
 //! deserializes into the typed section vocabulary or it is an error.

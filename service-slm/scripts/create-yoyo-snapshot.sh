@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 # Create a GCP snapshot of the Yo-Yo weights disk so that zone migrations
 # can restore weights automatically (no re-upload needed).
 #

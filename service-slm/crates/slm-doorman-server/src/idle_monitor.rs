@@ -4,9 +4,13 @@
 //!
 //! Polls the Yo-Yo VM `/metrics` endpoint every 5 minutes for an active-request
 //! counter. When the VM has been idle (zero active requests) longer than
-//! `SLM_YOYO_IDLE_MINUTES` (default 30), sends a GCP `instances.stop` request
+//! `SLM_YOYO_IDLE_MINUTES` (default 30), sends a GCP `instances.delete` request
 //! via the Compute Engine API using the workspace Service Account ADC token from
-//! the GCE metadata server.
+//! the GCE metadata server. The boot disk survives — it's attached with
+//! auto-delete disabled by the nightly create call (see `yoyo-daily-cycle.sh`),
+//! so a plain instance delete preserves it. Delete (not stop) matches the
+//! delete+create nightly pattern: GCE only documents capacity-queue behavior for
+//! `instances.create`, not for restarting an already-created FLEX_START VM.
 //!
 //! The monitor is spawned as a background tokio task in `main.rs` only when all
 //! four GCP env vars are set (`SLM_YOYO_GCP_PROJECT`, `SLM_YOYO_GCP_ZONE`,
@@ -85,8 +89,8 @@ pub async fn run_idle_monitor(config: IdleMonitorConfig) {
     // Start the idle clock at task-spawn time so a cold VM doesn't get stopped
     // before its first request within the threshold window.
     let mut last_active = Instant::now();
-    // Guard against sending repeated stop requests for the same idle period.
-    let mut stop_sent = false;
+    // Guard against sending repeated delete requests for the same idle period.
+    let mut delete_sent = false;
 
     info!(
         target: "slm_doorman::idle_monitor",
@@ -111,29 +115,29 @@ pub async fn run_idle_monitor(config: IdleMonitorConfig) {
                 // Metrics reachable, zero active slots — VM is up but idle.
                 // Let the idle clock run; fire stop if threshold exceeded.
                 let idle_secs = last_active.elapsed().as_secs();
-                if !stop_sent && last_active.elapsed() >= config.idle_threshold {
+                if !delete_sent && last_active.elapsed() >= config.idle_threshold {
                     warn!(
                         target: "slm_doorman::idle_monitor",
                         idle_secs,
                         project = %config.gcp_project,
                         zone = %config.gcp_zone,
                         instance = %config.gcp_instance,
-                        "Yo-Yo idle threshold reached; sending GCP stop request"
+                        "Yo-Yo idle threshold reached; sending GCP delete request (boot disk preserved)"
                     );
-                    match stop_gcp_instance(&client, &config).await {
+                    match delete_gcp_instance(&client, &config).await {
                         Ok(()) => {
                             info!(
                                 target: "slm_doorman::idle_monitor",
                                 instance = %config.gcp_instance,
-                                "GCP stop request accepted"
+                                "GCP delete request accepted"
                             );
-                            stop_sent = true;
+                            delete_sent = true;
                         }
                         Err(reason) => {
                             warn!(
                                 target: "slm_doorman::idle_monitor",
                                 %reason,
-                                "GCP stop request failed; will retry next cycle"
+                                "GCP delete request failed; will retry next cycle"
                             );
                         }
                     }
@@ -142,7 +146,7 @@ pub async fn run_idle_monitor(config: IdleMonitorConfig) {
             Some(n) => {
                 // VM is serving (n > 0) — reset idle clock.
                 last_active = Instant::now();
-                stop_sent = false;
+                delete_sent = false;
                 info!(
                     target: "slm_doorman::idle_monitor",
                     active_slots = n,
@@ -150,12 +154,12 @@ pub async fn run_idle_monitor(config: IdleMonitorConfig) {
                 );
             }
             None => {
-                // Metrics unreachable — VM is booting, stopped, or vLLM not yet
-                // loaded. Reset the idle clock so we don't stop a VM that was never
-                // serving. The nightly GCP instance schedule is the hard-stop
+                // Metrics unreachable — VM is booting, deleted, or llama-server not
+                // yet loaded. Reset the idle clock so we don't delete a VM that was
+                // never serving. The nightly cycle's own hard-stop (Phase 8) is the
                 // fallback when the VM is unreachable.
                 last_active = Instant::now();
-                stop_sent = false;
+                delete_sent = false;
             }
         }
     }
@@ -212,24 +216,22 @@ async fn fetch_gcp_adc_token(client: &reqwest::Client) -> Result<String, String>
     Ok(t.access_token)
 }
 
-/// POST `instances.stop` to the GCP Compute Engine API.
-async fn stop_gcp_instance(
+/// DELETE the Yo-Yo instance via the GCP Compute Engine API. The boot disk is
+/// attached with auto-delete disabled (set by the nightly `instances create`
+/// call — see `yoyo-daily-cycle.sh`), so this preserves the persistent disk
+/// (weights, venv) without needing a `keepDisks` request parameter.
+async fn delete_gcp_instance(
     client: &reqwest::Client,
     config: &IdleMonitorConfig,
 ) -> Result<(), String> {
     let token = fetch_gcp_adc_token(client).await?;
     let url = format!(
-        "https://compute.googleapis.com/compute/v1/projects/{}/zones/{}/instances/{}/stop",
+        "https://compute.googleapis.com/compute/v1/projects/{}/zones/{}/instances/{}",
         config.gcp_project, config.gcp_zone, config.gcp_instance
     );
-    // GCP Compute Engine API requires Content-Length: 0 on empty-body POSTs.
-    // reqwest may use chunked transfer encoding for .body(""), which the API
-    // rejects with HTTP 411. Setting the header explicitly is the safe path.
     let resp = client
-        .post(&url)
+        .delete(&url)
         .bearer_auth(&token)
-        .header(reqwest::header::CONTENT_LENGTH, "0")
-        .body(reqwest::Body::from(""))
         .send()
         .await
         .map_err(|e| format!("GCP API request failed: {e}"))?;
@@ -237,7 +239,7 @@ async fn stop_gcp_instance(
         Ok(())
     } else {
         Err(format!(
-            "GCP instances.stop returned HTTP {}",
+            "GCP instances.delete returned HTTP {}",
             resp.status()
         ))
     }

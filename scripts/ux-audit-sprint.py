@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 # ux-audit-sprint.py — Apply 10 UX audit items to both marketing landing sites.
 # Idempotent. Run: python3 scripts/ux-audit-sprint.py
 #

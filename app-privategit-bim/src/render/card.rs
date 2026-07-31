@@ -1,33 +1,54 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 use crate::{
-    schema::dtcg::{known_categories, SIDEBAR_ORDER},
+    content::{self, Section},
     state::AppState,
 };
 use serde_json::Value;
 
 use super::shell::esc;
 
-pub fn render_home(state: &AppState) -> String {
-    format!(
-        r#"<div class="bim-home">
-  <h1>BIM Object Catalog</h1>
-  <p class="bim-home-subtitle">PointSav BIM Object Schema v1 (PBS-1) — {token_count} entities across {cat_count} categories</p>
-  <div class="bim-category-grid">
-    {cards}
+/// The real "Browse All BIM Objects" catalog index — every category grouped
+/// under the four Sections the hero's callouts route to. This used to be
+/// a stub that silently rendered the homepage template instead (the
+/// `/tokens` dead-link bug found in the 2026-07-03 audit); it's now a
+/// distinct page with anchors (`#taxonomy`, `#objects`, `#compositions`,
+/// `#context`) matching the hero's real-fact hotspot targets.
+pub fn render_tokens_index(state: &AppState) -> String {
+    let mut groups = String::new();
+    for (i, section) in Section::all().into_iter().enumerate() {
+        let cards = render_category_cards_for_section(state, section);
+        groups.push_str(&format!(
+            r#"<section id="{id}" class="bim-tokens-index__group">
+  <div class="bim-tokens-sechead">
+    <span class="bim-tokens-secnum">{num:02}</span>
+    <h2>{label}</h2>
   </div>
+  <div class="bim-category-grid">{cards}</div>
+</section>"#,
+            id = section.label().to_lowercase(),
+            num = i + 1,
+            label = section.label(),
+            cards = cards,
+        ));
+    }
+
+    format!(
+        r#"<div class="bim-tokens-index">
+  <header class="bim-cat-pagehead">
+    <span class="bim-cat-kicker">BIM Object registry · full taxonomy</span>
+    <h1>BIM Object Catalog</h1>
+    <p class="bim-cat-pagehead__lede">Every BIM Object category, grouped by the four sections the homepage's Key Plan example routes to.</p>
+  </header>
+  {groups}
 </div>"#,
-        token_count = state.token_count,
-        cat_count = SIDEBAR_ORDER.len(),
-        cards = render_category_cards(state),
+        groups = groups,
     )
 }
 
-pub fn render_tokens_index(state: &AppState) -> String {
-    render_home(state)
-}
-
 pub fn render_token_page(category: &str, state: &AppState) -> String {
-    let cats = known_categories();
-    let meta = cats.get(category);
+    let meta = state.categories.iter().find(|c| c.slug == category);
 
     let Some(file_val) = state.tokens.get(category) else {
         return format!(
@@ -46,33 +67,50 @@ pub fn render_token_page(category: &str, state: &AppState) -> String {
         }
     };
 
-    let intro = meta.map(|m| m.intro).unwrap_or("");
-    let ifc_anchor = meta.map(|m| m.ifc_anchor).unwrap_or("");
-    let elements = meta.map(|m| m.elements).unwrap_or("");
+    let intro_html = meta.map(|m| m.intro_html.as_str()).unwrap_or("");
+    let ifc_anchor = meta.map(|m| m.ifc_anchor.as_str()).unwrap_or("");
+    let elements = meta.map(|m| m.elements.as_str()).unwrap_or("");
+    let uniclass = meta.map(|m| m.uniclass.as_str()).unwrap_or("—");
+    let ifc_hierarchy = meta.map(|m| m.ifc_hierarchy.as_str()).unwrap_or("—");
+    let empty_psets = Vec::new();
+    let property_sets = meta.map(|m| &m.property_sets).unwrap_or(&empty_psets);
 
+    let multi_group = bim.keys().filter(|k| !k.starts_with('$')).count() > 1;
+    let mut entity_count = 0usize;
     let mut rows = String::new();
-    for (_cat_key, cat_val) in bim {
+    for (cat_key, cat_val) in bim {
         if let Some(entities) = cat_val.as_object() {
-            let mut slugs: Vec<&String> = entities.keys().collect();
+            let mut slugs: Vec<&String> = entities.keys().filter(|k| !k.starts_with('$')).collect();
             slugs.sort();
             for slug in slugs {
+                entity_count += 1;
                 let entity = &entities[slug];
+                // Explicit placeholder, not a blank cell (2026-07-03 audit:
+                // an empty <td> reads as a broken/half-populated table —
+                // "—" makes the sparseness a legible fact about the data,
+                // not something that looks like a rendering bug).
                 let description = entity
                     .get("$description")
                     .and_then(|v| v.as_str())
-                    .unwrap_or("");
+                    .filter(|s| !s.is_empty())
+                    .unwrap_or("—");
                 let ifc_class = entity
                     .get("$value")
                     .and_then(|v| v.get("ifc_class"))
                     .and_then(|v| v.as_str())
                     .unwrap_or("—");
+                let display_slug = if multi_group {
+                    format!("{cat_key}/{slug}")
+                } else {
+                    slug.clone()
+                };
                 rows.push_str(&format!(
-                    r#"<cds-table-row>
-  <cds-table-cell><code>{slug}</code></cds-table-cell>
-  <cds-table-cell><code>{ifc_class}</code></cds-table-cell>
-  <cds-table-cell>{description}</cds-table-cell>
-</cds-table-row>"#,
-                    slug = esc(slug),
+                    r#"<tr>
+  <td><code>{slug}</code></td>
+  <td><code>{ifc_class}</code></td>
+  <td>{description}</td>
+</tr>"#,
+                    slug = esc(&display_slug),
                     ifc_class = esc(ifc_class),
                     description = esc(description),
                 ));
@@ -80,141 +118,111 @@ pub fn render_token_page(category: &str, state: &AppState) -> String {
         }
     }
 
+    let mut pset_rows = String::new();
+    for (pset, prop, ty) in property_sets {
+        pset_rows.push_str(&format!(
+            r#"<tr><td><code>{pset}</code></td><td><code>{prop}</code></td><td><code>{ty}</code></td></tr>"#,
+            pset = esc(pset),
+            prop = esc(prop),
+            ty = esc(ty),
+        ));
+    }
+    let pset_block = if pset_rows.is_empty() {
+        r#"<p class="bim-empty">No property sets registered for this category yet.</p>"#.to_string()
+    } else {
+        format!(
+            r#"<table class="bim-table-wrap bim-token-table">
+  <thead><tr><th>Property set</th><th>Property</th><th>Type</th></tr></thead>
+  <tbody>{pset_rows}</tbody>
+</table>"#
+        )
+    };
+
+    let dtcg_json = serde_json::to_string_pretty(file_val).unwrap_or_default();
+
+    let uniclass_chip = if uniclass == "—" {
+        String::new()
+    } else {
+        format!(
+            r#"<span class="bim-cat-chip bim-cat-chip--pr"><span class="bim-cat-chip__lv">Uniclass</span>{}</span>"#,
+            esc(uniclass)
+        )
+    };
+    let uniclass_row = if uniclass == "—" {
+        String::new()
+    } else {
+        format!("<tr><th>Uniclass 2015</th><td>{}</td></tr>", esc(uniclass))
+    };
+
     format!(
         r#"<div class="bim-category-page">
   <div class="bim-breadcrumbs">
-    <a href="/tokens" data-path="/tokens" class="bim-nav-link">Catalog</a> / <span>{category}</span>
+    <a href="/" data-path="/" class="bim-nav-link">Home</a> / <a href="/tokens" data-path="/tokens" class="bim-nav-link">BIM Objects</a>
   </div>
-  <h1>{display_name}</h1>
-  <p class="bim-intro">{intro}</p>
-  <p class="bim-ifc-anchor"><strong>IFC anchor:</strong> <code>{ifc_anchor}</code></p>
-  <p class="bim-elements">{elements}</p>
-  <cds-data-table>
-    <cds-table-head>
-      <cds-table-header-row>
-        <cds-table-header-cell>Token slug</cds-table-header-cell>
-        <cds-table-header-cell>IFC class</cds-table-header-cell>
-        <cds-table-header-cell>Description</cds-table-header-cell>
-      </cds-table-header-row>
-    </cds-table-head>
-    <cds-table-body>
-      {rows}
-    </cds-table-body>
-  </cds-data-table>
+  <header class="bim-cat-pagehead">
+    <span class="bim-cat-kicker">IFC 4.3 · Uniclass 2015</span>
+    <h1>{display_name}</h1>
+    <div class="bim-chip-row">
+      <span class="bim-cat-chip bim-cat-chip--plain"><span class="bim-cat-chip__lv">IFC</span><code>{ifc_anchor}</code></span>
+      {uniclass_chip}
+    </div>
+  </header>
+
+  <details class="bim-spec-card" open>
+    <summary>Specification</summary>
+    <div class="bim-spec-card__body">
+      <div class="bim-intro">{intro_html}</div>
+      <p class="bim-elements"><code>{elements}</code></p>
+      <table class="bim-cat-spectable bim-detail-spectable">
+        <tr><th>IFC entity</th><td><code>{ifc_anchor}</code></td></tr>
+        {uniclass_row}
+        <tr><th>IFC hierarchy</th><td class="bim-ifc-hierarchy"><code>{ifc_hierarchy}</code></td></tr>
+      </table>
+      <h2>Applicable property sets</h2>
+      {pset_block}
+    </div>
+  </details>
+
+  <details class="bim-spec-card" open>
+    <summary>BIM Objects ({entity_count})</summary>
+    <div class="bim-spec-card__body">
+      <table class="bim-table-wrap bim-token-table">
+        <thead>
+          <tr>
+            <th>Token slug</th>
+            <th>IFC class</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>{rows}</tbody>
+      </table>
+    </div>
+  </details>
+
+  <details class="bim-accordion">
+    <summary>Regulation</summary>
+    <div class="bim-spec-card__body"><p class="bim-empty">No regulatory overlays registered for this category yet.</p></div>
+  </details>
+  <details class="bim-accordion">
+    <summary>Climate Zone</summary>
+    <div class="bim-spec-card__body"><p class="bim-empty">Climate zone constraints not yet modeled for this category.</p></div>
+  </details>
+  <details class="bim-accordion">
+    <summary>Token Format</summary>
+    <div class="bim-spec-card__body"><pre><code>{dtcg_json}</code></pre></div>
+  </details>
 </div>"#,
-        category = esc(category),
-        display_name = esc(meta.map(|m| m.display_name).unwrap_or(category)),
-        intro = esc(intro),
+        display_name = esc(meta.map(|m| m.display_name.as_str()).unwrap_or(category)),
+        intro_html = intro_html,
         ifc_anchor = esc(ifc_anchor),
         elements = esc(elements),
+        uniclass_chip = uniclass_chip,
+        uniclass_row = uniclass_row,
+        ifc_hierarchy = esc(ifc_hierarchy),
+        pset_block = pset_block,
+        entity_count = entity_count,
         rows = rows,
-    )
-}
-
-pub fn render_key_plans(state: &AppState) -> String {
-    // Phase 4 will fill in SVG zone diagrams; stub for compile
-    let Some(file_val) = state.tokens.get("key-plans") else {
-        return r#"<div class="bim-empty"><p>key-plans.dtcg.json not found in library.</p></div>"#
-            .into();
-    };
-    let bim = match file_val.get("bim").and_then(|v| v.as_object()) {
-        Some(b) => b,
-        None => {
-            return r#"<div class="bim-empty"><p>No bim root in key-plans.dtcg.json.</p></div>"#
-                .into()
-        }
-    };
-
-    let mut cards = String::new();
-    for (_cat, cat_val) in bim {
-        if let Some(entities) = cat_val.as_object() {
-            let mut slugs: Vec<&String> = entities.keys().collect();
-            slugs.sort();
-            for slug in slugs {
-                let entity = &entities[slug];
-                let val = entity.get("$value").cloned().unwrap_or(Value::Null);
-                let display_name = val
-                    .get("display_name")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or(slug);
-                let internal_code = val
-                    .get("internal_code")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("—");
-                let category = val.get("category").and_then(|v| v.as_str()).unwrap_or("—");
-                let area_sf = val.get("area_sf").and_then(|v| v.as_u64()).unwrap_or(0);
-
-                let svg = super::svg::render_kp_zone_svg_from_value(&val);
-
-                cards.push_str(&format!(
-                    r#"<div class="bim-kp-card">
-  <div class="bim-kp-svg">{svg}</div>
-  <div class="bim-kp-info">
-    <div class="bim-kp-name">{display_name}</div>
-    <div class="bim-kp-meta"><span class="bim-tag">{internal_code}</span> <span class="bim-cat">{category}</span></div>
-    <div class="bim-kp-area">{area_sf} SF</div>
-  </div>
-</div>"#,
-                    display_name = esc(display_name),
-                    internal_code = esc(internal_code),
-                    category = esc(category),
-                    area_sf = area_sf,
-                    svg = svg,
-                ));
-            }
-        }
-    }
-
-    format!(
-        r#"<div class="bim-key-plans">
-  <h1>Key Plans</h1>
-  <p class="bim-intro">Key Plans are the smallest BIM Object unit — spatial programs defined by three-zone cross-section and furniture arrangement.</p>
-  <div class="bim-kp-grid">
-    {cards}
-  </div>
-</div>"#,
-        cards = cards,
-    )
-}
-
-pub fn render_furniture(state: &AppState) -> String {
-    let components_dir = state.config.library_dir.join("components");
-    let mut items = String::new();
-    if let Ok(rd) = std::fs::read_dir(&components_dir) {
-        let mut names: Vec<String> = rd
-            .filter_map(|e| e.ok())
-            .filter(|e| e.path().extension().and_then(|s| s.to_str()) == Some("ifc"))
-            .filter_map(|e| {
-                e.path()
-                    .file_name()
-                    .and_then(|s| s.to_str())
-                    .map(|s| s.to_string())
-            })
-            .collect();
-        names.sort();
-        for name in &names {
-            items.push_str(&format!(
-                r#"<div class="bim-furniture-item">
-  <span class="bim-furniture-name">{name}</span>
-  <a class="cds-btn cds-btn--ghost" href="/furniture/download/{name}">Download IFC</a>
-</div>"#,
-                name = esc(name),
-            ));
-        }
-    }
-
-    format!(
-        r#"<div class="bim-furniture">
-  <h1>Furniture Library</h1>
-  <p class="bim-intro">IFC furniture components for use in Key Plan BIM Objects.</p>
-  <div class="bim-furniture-actions">
-    <a class="cds-btn cds-btn--primary" href="/furniture/download/bundle.zip">Download All (ZIP)</a>
-  </div>
-  <div class="bim-furniture-list">
-    {items}
-  </div>
-</div>"#,
-        items = items,
+        dtcg_json = esc(&dtcg_json),
     )
 }
 
@@ -234,11 +242,23 @@ pub fn render_research_index(state: &AppState) -> String {
             .collect();
         names.sort();
         for slug in &names {
+            let title = std::fs::read_to_string(research_dir.join(format!("{slug}.md")))
+                .ok()
+                .and_then(|content| {
+                    content
+                        .lines()
+                        .find_map(|l| l.strip_prefix("# ").map(|t| t.trim().to_string()))
+                })
+                .unwrap_or_else(|| slug.replace('-', " "));
             items.push_str(&format!(
                 r#"<div class="bim-research-item">
-  <a href="/research/{slug}" data-path="/research/{slug}" class="bim-nav-link">{slug}</a>
+  <a href="/research/{slug}" data-path="/research/{slug}" class="bim-nav-link">
+    <span class="bim-research-item__title">{title}</span>
+    <span class="bim-research-item__slug">/research/{slug}</span>
+  </a>
 </div>"#,
                 slug = esc(slug),
+                title = esc(&title),
             ));
         }
     }
@@ -246,7 +266,14 @@ pub fn render_research_index(state: &AppState) -> String {
         items = r#"<p class="bim-empty">No research documents found.</p>"#.into();
     }
     format!(
-        r#"<div class="bim-research"><h1>Research</h1><div class="bim-research-list">{items}</div></div>"#,
+        r#"<div class="bim-research">
+  <header class="bim-cat-pagehead">
+    <span class="bim-cat-kicker">Research backplane</span>
+    <h1>Research</h1>
+    <p class="bim-cat-pagehead__lede">Background notes and working documents behind the BIM Object Library's classifications and methodology.</p>
+  </header>
+  <div class="bim-research-list">{items}</div>
+</div>"#,
         items = items,
     )
 }
@@ -266,7 +293,7 @@ pub fn render_research_item(slug: &str, state: &AppState) -> String {
             )
         }
     };
-    let html_body = render_markdown(&raw);
+    let html_body = content::render_markdown(&raw);
     format!(
         r#"<div class="bim-research-item-page">
   <div class="bim-breadcrumbs">
@@ -279,27 +306,42 @@ pub fn render_research_item(slug: &str, state: &AppState) -> String {
     )
 }
 
-fn render_category_cards(state: &AppState) -> String {
-    let cats = known_categories();
+fn render_category_cards_for_section(state: &AppState, section: Section) -> String {
     let mut out = String::new();
-    for (slug, _label) in SIDEBAR_ORDER {
-        let meta = cats.get(slug);
-        let display = meta.map(|m| m.display_name).unwrap_or(slug);
-        let desc = meta.map(|m| m.card_desc).unwrap_or("");
-        let count = count_entities_in_file(state, slug);
+    for cat in state.categories.iter().filter(|c| c.section == section) {
+        let count = count_entities_in_file(state, &cat.slug);
         out.push_str(&format!(
             r#"<a class="bim-category-card bim-nav-link" href="/tokens/{slug}" data-path="/tokens/{slug}">
-  <div class="bim-category-card-name">{display}</div>
-  <div class="bim-category-card-desc">{desc}</div>
-  <div class="bim-category-card-count">{count} entities</div>
+  <span class="bim-category-card-name">{display}</span>
+  <span class="bim-category-card-count">{count} {entity_word}</span>
 </a>"#,
-            slug = slug,
-            display = esc(display),
-            desc = esc(desc),
+            slug = cat.slug,
+            display = esc(&cat.display_name),
             count = count,
+            entity_word = if count == 1 { "entity" } else { "entities" },
         ));
     }
     out
+}
+
+/// Recursively walk a DTCG object collecting every node that carries a
+/// `$value` field, regardless of nesting depth — key-plans.dtcg.json nests
+/// three levels deep (category -> subcategory -> size variant); other files
+/// nest two. `slug` is set to the object key one level above the leaf.
+pub(crate) fn collect_kp_leaves<'a>(
+    obj: &'a serde_json::Map<String, Value>,
+    out: &mut Vec<(&'a str, &'a Value)>,
+) {
+    for (key, val) in obj {
+        if key == "$description" {
+            continue;
+        }
+        if val.get("$value").is_some() {
+            out.push((key.as_str(), val));
+        } else if let Some(child) = val.as_object() {
+            collect_kp_leaves(child, out);
+        }
+    }
 }
 
 fn count_entities_in_file(state: &AppState, category: &str) -> usize {
@@ -311,15 +353,7 @@ fn count_entities_in_file(state: &AppState, category: &str) -> usize {
     };
     bim.values()
         .filter_map(|v| v.as_object())
-        .flat_map(|o| o.values())
+        .flat_map(|o| o.iter())
+        .filter(|(k, _)| !k.starts_with('$'))
         .count()
-}
-
-fn render_markdown(md: &str) -> String {
-    use pulldown_cmark::{html, Options, Parser};
-    let opts = Options::ENABLE_TABLES | Options::ENABLE_STRIKETHROUGH;
-    let parser = Parser::new_ext(md, opts);
-    let mut out = String::new();
-    html::push_html(&mut out, parser);
-    out
 }

@@ -1,13 +1,25 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 [package]
+license = "AGPL-3.0-or-later"
 name = "service-email"
 version = "0.1.0"
 edition = "2021"
-description = "Sovereign bridge for Microsoft Exchange to Maildir conversion."
+description = "Ring 1 Communications Ledger — EWS SOAP ingest from Microsoft Exchange."
 
 [dependencies]
 tokio = { version = "1.35", features = ["full"] }
-reqwest = { version = "0.11", features = ["json"] }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
+reqwest = { version = "0.11", default-features = false, features = ["rustls-tls"] }
+axum = "0.7"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+ureq = { version = "3.3.0", default-features = false, features = ["json"] }
+base64 = "0.22"
 uuid = { version = "1.6", features = ["v4"] }
 chrono = "0.4"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[dev-dependencies]
+tower = { version = "0.4", features = ["util"] }

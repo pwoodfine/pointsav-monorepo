@@ -1,6 +1,9 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 // D3 — WYSIWYG edit overlay: raw markdown GET + authenticated PUT save-back.
 
-use crate::state::AppState;
+use crate::{state::AppState, vault};
 use axum::{
     extract::{Path, State},
     http::{header, HeaderMap, StatusCode},
@@ -9,19 +12,15 @@ use axum::{
 use std::fs;
 
 /// Serve the raw markdown source for a vault file.
-/// GET /vault/elements/:slug/:tab/raw
+/// GET /vault/:section/:slug/:tab/raw
 pub async fn get_raw(
-    Path((slug, tab)): Path<(String, String)>,
+    Path((section, slug, tab)): Path<(String, String, String)>,
     State(state): State<AppState>,
 ) -> impl IntoResponse {
-    if bad_path(&slug) || bad_path(&tab) {
+    if bad_path(&section) || bad_path(&slug) || bad_path(&tab) {
         return (StatusCode::BAD_REQUEST, "invalid path").into_response();
     }
-    let path = state
-        .vault
-        .join("elements")
-        .join(&slug)
-        .join(format!("{}.md", tab));
+    let path = vault::content_path(&state.vault, &section, &slug, &tab);
     match fs::read_to_string(&path) {
         Ok(s) => (
             StatusCode::OK,
@@ -34,11 +33,11 @@ pub async fn get_raw(
 }
 
 /// Save edited markdown back to vault.
-/// PUT /vault/elements/:slug/:tab
+/// PUT /vault/:section/:slug/:tab
 /// Requires Authorization: Bearer <edit_token> header.
 /// SYS-ADR-10: operator reviews changes in the textarea before clicking Confirm.
 pub async fn put_save(
-    Path((slug, tab)): Path<(String, String)>,
+    Path((section, slug, tab)): Path<(String, String, String)>,
     State(state): State<AppState>,
     headers: HeaderMap,
     body: String,
@@ -53,15 +52,11 @@ pub async fn put_save(
         return StatusCode::UNAUTHORIZED.into_response();
     }
 
-    if bad_path(&slug) || bad_path(&tab) {
+    if bad_path(&section) || bad_path(&slug) || bad_path(&tab) {
         return (StatusCode::BAD_REQUEST, "invalid path").into_response();
     }
 
-    let path = state
-        .vault
-        .join("elements")
-        .join(&slug)
-        .join(format!("{}.md", tab));
+    let path = vault::content_path(&state.vault, &section, &slug, &tab);
 
     // Confirm file already exists — no new file creation via PUT
     if !path.exists() {

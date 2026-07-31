@@ -98,6 +98,10 @@ El manifiesto de despliegue de flota de Woodfine — 201 confirmaciones y en cre
 
 ---
 
-*© 2026 PointSav Digital Systems™. Los componentes con licencia Apache 2.0 se rigen por los términos de dicha licencia. Los componentes propietarios están todos los derechos reservados.*
-
 *→ English version: [README.md](./README.md)*
+
+---
+
+*Copyright © 2026 Woodfine Capital Projects Inc. Consulte [LICENSE](LICENSE) para los términos aplicables.*
+
+*Woodfine Capital Projects™, Woodfine Management Corp™, PointSav Digital Systems™, Totebox Orchestration™ y Totebox Archive™ son marcas comerciales de Woodfine Capital Projects Inc., utilizadas en Canadá, los Estados Unidos, América Latina y Europa. Todas las demás marcas comerciales son propiedad de sus respectivos titulares.*

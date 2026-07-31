@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 // bim.js — partial-page navigation, SSE hot-reload, SchemaState
 // Hand-written; no HTMX dependency.
 
@@ -12,7 +15,15 @@ async function navigate(path) {
     const res = await fetch('/fragment' + path, {
       headers: { 'X-Fragment': '1' },
     });
-    if (!res.ok) return;
+    if (!res.ok) {
+      // Not every route has a /fragment/* counterpart (e.g. home, /about,
+      // /disclaimers, /search — only tokens/tokens-detail/research do).
+      // A missing fragment used to silently do nothing on click; fall back
+      // to a real navigation instead, same as the network-failure path
+      // below.
+      window.location.href = path;
+      return;
+    }
     const html = await res.text();
     const main = getMain();
     if (main) {
@@ -62,6 +73,70 @@ document.addEventListener('click', (e) => {
 // Browser back/forward
 window.addEventListener('popstate', () => {
   navigate(location.pathname);
+});
+
+// ── Envelope jurisdiction-overlay toggle ────────────────────────────────────
+// Homepage envelope diagram: switches which pre-rendered overlay-state frame
+// is visible (municipal / +provincial / +accessibility). Each frame is a
+// complete SVG (render::envelope generates one per state) rather than one
+// shared SVG with toggled sub-groups, since the tiers' shapes genuinely
+// differ between states, not just their visibility.
+
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.bim-envelope__overlay-btn');
+  if (!btn) return;
+  const key = btn.dataset.overlayTarget;
+  const envelope = btn.closest('.bim-envelope');
+  if (!envelope) return;
+  envelope.setAttribute('data-active-overlay', key);
+  envelope.querySelectorAll('.bim-envelope__frame').forEach((frame) => {
+    frame.hidden = frame.dataset.overlay !== key;
+  });
+  envelope.querySelectorAll('.bim-envelope__overlay-btn').forEach((b) => {
+    b.setAttribute('aria-pressed', b === btn ? 'true' : 'false');
+  });
+});
+
+// ── Theme toggle ──────────────────────────────────────────────────────────
+
+function syncThemeControls(theme) {
+  document.querySelectorAll('.bim-theme-toggle').forEach((btn) => {
+    btn.setAttribute('aria-pressed', theme === 'dark' ? 'true' : 'false');
+    btn.setAttribute('aria-label', theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme');
+  });
+}
+
+document.addEventListener('click', (e) => {
+  const toggle = e.target.closest('.bim-theme-toggle');
+  if (!toggle || toggle.disabled) return;
+  const current = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+  const next = current === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  try { localStorage.setItem('bim-theme', next); } catch (_) {}
+  syncThemeControls(next);
+});
+
+syncThemeControls(document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light');
+
+// ── Force Important Information open when printing ─────────────────────────
+// A CSS-only `display: block !important` on the closed <details> body is not
+// reliable across Chromium's print-to-PDF path (verified: getComputedStyle
+// reports the body as visible/non-zero-height under print media, but the
+// actual PDF output omits it) — so open the element for real via the DOM
+// attribute, which every engine honors, and restore whatever state the
+// reader had it in afterward.
+let disclosureWasOpen = null;
+window.addEventListener('beforeprint', () => {
+  const details = document.querySelector('.bim-disclosure__details');
+  if (!details) return;
+  disclosureWasOpen = details.open;
+  details.open = true;
+});
+window.addEventListener('afterprint', () => {
+  const details = document.querySelector('.bim-disclosure__details');
+  if (!details || disclosureWasOpen === null) return;
+  details.open = disclosureWasOpen;
+  disclosureWasOpen = null;
 });
 
 // ── SSE hot-reload ──────────────────────────────────────────────────────────

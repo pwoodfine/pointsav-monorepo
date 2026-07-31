@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: FSL-1.1-ALv2
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 //! moonshot-bim-engine — IFC (ISO 16739) STEP-file structural parser.
 //!
 //! Replaces the structural-parse role of web-ifc (MPL) and xeokit (commercial) — the
@@ -615,3 +618,6 @@ END-ISO-10303-21;
         assert_eq!(p[8], Value::Ref(7));
     }
 }
+
+#[cfg(feature = "wasm")]
+pub mod wasm;

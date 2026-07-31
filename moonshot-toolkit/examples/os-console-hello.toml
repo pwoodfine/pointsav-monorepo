@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 # os-console seL4 system image — Phase H1 hello milestone.
 #
 # Build from monorepo root:
@@ -5,10 +8,12 @@
 #
 # Produces build/system-image.bin (elfloader ELF, AArch64).
 # Boot with:
-#   qemu-system-aarch64 -machine virt -cpu cortex-a53 -m 1G -display none \
-#     -serial file:/tmp/sel4-serial.log -kernel build/system-image.bin \
+#   qemu-system-aarch64 -machine virt,secure=off -cpu cortex-a53 -m 1G -display none \
+#     -serial file:/tmp/sel4-serial.log -kernel build/elfloader.elf \
 #     && cat /tmp/sel4-serial.log
-# Note: use -m 1G (not 512M) — the DTB reports 1 GiB RAM; mismatch causes Data Abort.
+# Note: virt,secure=off required — without it EL3 traps silently, no serial output.
+#       Use build/elfloader.elf (same bytes as build/system-image.bin).
+#       Use -m 1G (not 512M) — DTB reports 1 GiB RAM; mismatch causes Data Abort.
 #
 # Gate: "Hello from os-console seL4 PD" appears on serial output.
 
