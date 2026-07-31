@@ -1,4 +1,9 @@
 /*
+ * SPDX-License-Identifier: FSL-1.1-ALv2
+ * SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+ */
+
+/*
  * app-mediakit-shell — shared chrome CSS (header, footer, page container).
  *
  * Ported from `templates/shell.css` (2026-05-09 Woodfine shell), with the
@@ -204,6 +209,7 @@ a { color: inherit; text-decoration: none; }
     justify-content: center;
     gap: 20px;
     font-size: 14px;
+    flex-wrap: wrap;
   }
   .topnav .right-cluster { justify-content: center; flex-wrap: wrap; gap: 14px; }
   .wordmark .logo-svg { width: 200px; height: 50px; }

@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 # system-ledger-pd — seL4 Microkit PD build
 #
 # Requires Microkit SDK v2.1.0 for x86_64_generic board.

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: FSL-1.1-ALv2
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 //! MCP (Model Context Protocol) server — native JSON-RPC 2.0, no vendor SDK.
 //!
 //! This is the agent-first authoring surface: AI authors discover the typed

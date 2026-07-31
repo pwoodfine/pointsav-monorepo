@@ -171,6 +171,15 @@ impl Doorman {
             .collect()
     }
 
+    /// Returns true when the named Yoyo node has its circuit closed and its
+    /// health probe up — i.e. it is currently accepting requests.
+    /// Used by the drain worker to gate shadow brief dispatch before dequeuing,
+    /// preventing Tier A fallback from saturating OLMo when the GPU node is
+    /// unavailable (STOCKOUT, circuit open, or health probe failure).
+    pub fn yoyo_node_ready(&self, label: &str) -> bool {
+        self.yoyo.get(label).map(|c| c.allow_request()).unwrap_or(false)
+    }
+
     pub fn ledger(&self) -> &AuditLedger {
         &self.ledger
     }
@@ -214,12 +223,20 @@ impl Doorman {
                 .unwrap_or_default();
 
             let mut seen = std::collections::HashSet::new();
-            let candidates: Vec<String> = user_text
+            let mut candidates: Vec<String> = user_text
                 .split(|c: char| !c.is_alphanumeric())
                 .filter(|w| w.len() >= 4)
                 .filter(|w| seen.insert(w.to_lowercase()))
                 .map(|w| w.to_string())
                 .collect();
+            // Prefer longer, more specific candidates first. Short common-word
+            // fragments (e.g. "Peter") can substring-match wildly unrelated
+            // entities (e.g. "St. Peters", "Peterborough" — both contain
+            // "peter") and pre-empt a far more specific candidate later in the
+            // same sentence (e.g. "Woodfine"), since the loop below stops at
+            // the first candidate that returns any match at all. Stable sort
+            // preserves original sentence order among equal-length words.
+            candidates.sort_by_key(|w| std::cmp::Reverse(w.len()));
 
             let mut ctx_opt: Option<String> = None;
             for candidate in candidates.iter().take(6) {
@@ -236,7 +253,13 @@ impl Doorman {
                     0,
                     slm_core::ChatMessage {
                         role: "system".to_string(),
-                        content: format!("[ENTITY CONTEXT]\n{}", ctx),
+                        content: format!(
+                            "[ENTITY CONTEXT — verified data retrieved from the knowledge graph \
+                             for this exact query. Treat it as ground truth and prefer it over \
+                             any prior assumption you may have about this entity, even if a \
+                             different identity seems familiar.]\n{}",
+                            ctx
+                        ),
                     },
                 );
                 effective_req = cloned;
@@ -614,6 +637,17 @@ impl Doorman {
             None => Err(DoormanError::TierUnavailable(Tier::Local)),
         }
     }
+
+    /// Route a background request (extraction fallback, drain dispatch) directly
+    /// to Tier A using the background slot. Returns LocalSaturated immediately when
+    /// either background_sem or total_sem is full — no queuing inside llama-server.
+    /// Skips graph-context injection (the extraction handler pre-builds its request).
+    pub async fn route_local_background(&self, req: &ComputeRequest) -> Result<ComputeResponse> {
+        match &self.local {
+            Some(local) => local.complete_background(req).await,
+            None => Err(DoormanError::TierUnavailable(Tier::Local)),
+        }
+    }
 }
 
 fn is_transient_tier_b_failure(e: &DoormanError) -> bool {
@@ -724,6 +758,10 @@ fn classify_error(e: &DoormanError) -> CompletionStatus {
         // caller should retry or accept the deferred response. UpstreamError
         // because the extraction timed out due to OLMo saturation.
         DoormanError::RequestTimeout => CompletionStatus::UpstreamError,
+        // Tier A admission control: all slots occupied. The request was
+        // fast-failed before queuing in llama-server. PolicyDenied — the
+        // Doorman is enforcing a server-side concurrency cap.
+        DoormanError::LocalSaturated => CompletionStatus::PolicyDenied,
     }
 }
 
@@ -996,5 +1034,208 @@ mod tests {
             .select_tier(&req(Complexity::High, None, None))
             .expect("cap not exceeded — should pick yoyo");
         assert_eq!(picked, Tier::Yoyo);
+    }
+
+    /// End-to-end proof that `route()` actually injects graph context before
+    /// dispatch. Closes a confirmed zero-coverage gap (2026-07-03 quality audit):
+    /// every existing test in this file and in http_test.rs sets
+    /// `graph_context_client: None`, so the candidate-word lookup + system-message
+    /// insertion logic (lines ~198-274) had never been exercised end-to-end by an
+    /// automated test — only `GraphContextClient::fetch_context` in isolation
+    /// (graph.rs) was covered.
+    #[tokio::test]
+    async fn graph_context_is_injected_as_system_message_before_dispatch() {
+        use wiremock::matchers::{method, path};
+        use wiremock::{Mock, MockServer, ResponseTemplate};
+
+        let server = MockServer::start().await;
+
+        // service-content: any entity-context lookup returns one fixed entity,
+        // regardless of which candidate word the router happens to try first.
+        Mock::given(method("GET"))
+            .and(path("/v1/graph/context"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+                {
+                    "entity_name": "Hamid Moghadam",
+                    "classification": "Person",
+                    "role_vector": "chief executive",
+                    "location_vector": null,
+                    "contact_vector": null,
+                    "module_id": "jennifer",
+                    "confidence": 0.85
+                }
+            ])))
+            .mount(&server)
+            .await;
+
+        // Tier A (llama-server): the assertion is on what the Doorman SENT, not
+        // what it got back, so any well-formed response is fine here.
+        Mock::given(method("POST"))
+            .and(path("/v1/chat/completions"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "choices": [{ "message": { "role": "assistant", "content": "ok" } }]
+            })))
+            .mount(&server)
+            .await;
+
+        let doorman = Doorman::new(
+            DoormanConfig {
+                local: Some(LocalTierClient::new(crate::tier::LocalTierConfig {
+                    endpoint: server.uri(),
+                    default_model: "OLMo-3-7B-Instruct".into(),
+                })),
+                yoyo: HashMap::new(),
+                external: None,
+                lark_validator: None,
+                graph_context_client: Some(GraphContextClient::new(server.uri())),
+                tier_a_first: false,
+                daily_yoyo_cap_usd: None,
+                cost_ledger: None,
+            },
+            ledger(),
+        );
+
+        let mut request = req(Complexity::Low, Some(Tier::Local), None);
+        request.messages = vec![ChatMessage {
+            role: "user".into(),
+            content: "who is Hamid Moghadam?".into(),
+        }];
+
+        doorman.route(&request).await.expect("route should succeed");
+
+        let received = server
+            .received_requests()
+            .await
+            .expect("wiremock request recording should be enabled");
+        let chat_call = received
+            .iter()
+            .find(|r| r.url.path() == "/v1/chat/completions")
+            .expect("expected a dispatched chat-completions call");
+        let body: serde_json::Value =
+            serde_json::from_slice(&chat_call.body).expect("chat request body should be JSON");
+        let messages = body["messages"].as_array().expect("messages array");
+        assert_eq!(
+            messages[0]["role"], "system",
+            "first message must be the injected system message"
+        );
+        let content = messages[0]["content"].as_str().unwrap_or("");
+        assert!(
+            content.contains("[ENTITY CONTEXT"),
+            "expected injected entity-context marker, got: {content}"
+        );
+        assert!(
+            content.contains("Hamid Moghadam"),
+            "expected the fetched entity name in the injected context, got: {content}"
+        );
+    }
+
+    /// Regression test for the entity-context contamination bug found 2026-07-08:
+    /// service-content does a raw substring match on `entity_name`
+    /// (`lower(e.entity_name) CONTAINS $query`), and the candidate-word loop used
+    /// to try words in sentence order and stop at the first non-empty match. For
+    /// "Who is Peter M. Woodfine?" that meant "Peter" (a short, common fragment
+    /// that substring-matches unrelated entities like "St. Peters"/"Peterborough")
+    /// was tried before the far more specific "Woodfine" — returning the wrong
+    /// entity context entirely. The fix sorts candidates by length (longest
+    /// first) before trying them. This test mounts distinct mock responses per
+    /// candidate word to prove "Woodfine" is now tried — and wins — over "Peter".
+    #[tokio::test]
+    async fn longer_more_specific_candidate_word_is_tried_before_short_common_word() {
+        use wiremock::matchers::{method, path, query_param};
+        use wiremock::{Mock, MockServer, ResponseTemplate};
+
+        let server = MockServer::start().await;
+
+        // "Peter" spuriously substring-matches unrelated retail-cluster entities —
+        // this must NOT win if the fix is working.
+        Mock::given(method("GET"))
+            .and(path("/v1/graph/context"))
+            .and(query_param("q", "Peter"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+                {
+                    "entity_name": "St. Peters",
+                    "classification": "Location",
+                    "role_vector": null,
+                    "location_vector": "retail cluster",
+                    "contact_vector": null,
+                    "module_id": "jennifer",
+                    "confidence": 0.75
+                }
+            ])))
+            .mount(&server)
+            .await;
+
+        // "Woodfine" is the correct, specific match — this must win.
+        Mock::given(method("GET"))
+            .and(path("/v1/graph/context"))
+            .and(query_param("q", "Woodfine"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+                {
+                    "entity_name": "Peter M. Woodfine",
+                    "classification": "Person",
+                    "role_vector": null,
+                    "location_vector": null,
+                    "contact_vector": null,
+                    "module_id": "jennifer",
+                    "confidence": 0.95
+                }
+            ])))
+            .mount(&server)
+            .await;
+
+        Mock::given(method("POST"))
+            .and(path("/v1/chat/completions"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "choices": [{ "message": { "role": "assistant", "content": "ok" } }]
+            })))
+            .mount(&server)
+            .await;
+
+        let doorman = Doorman::new(
+            DoormanConfig {
+                local: Some(LocalTierClient::new(crate::tier::LocalTierConfig {
+                    endpoint: server.uri(),
+                    default_model: "OLMo-3-7B-Instruct".into(),
+                })),
+                yoyo: HashMap::new(),
+                external: None,
+                lark_validator: None,
+                graph_context_client: Some(GraphContextClient::new(server.uri())),
+                tier_a_first: false,
+                daily_yoyo_cap_usd: None,
+                cost_ledger: None,
+            },
+            ledger(),
+        );
+
+        let mut request = req(Complexity::Low, Some(Tier::Local), None);
+        request.messages = vec![ChatMessage {
+            role: "user".into(),
+            content: "Who is Peter M. Woodfine?".into(),
+        }];
+
+        doorman.route(&request).await.expect("route should succeed");
+
+        let received = server
+            .received_requests()
+            .await
+            .expect("wiremock request recording should be enabled");
+        let chat_call = received
+            .iter()
+            .find(|r| r.url.path() == "/v1/chat/completions")
+            .expect("expected a dispatched chat-completions call");
+        let body: serde_json::Value =
+            serde_json::from_slice(&chat_call.body).expect("chat request body should be JSON");
+        let content = body["messages"][0]["content"].as_str().unwrap_or("");
+
+        assert!(
+            content.contains("Peter M. Woodfine"),
+            "expected the specific, correct entity match, got: {content}"
+        );
+        assert!(
+            !content.contains("St. Peters"),
+            "the short, common-word spurious match must not win over the more \
+             specific candidate, got: {content}"
+        );
     }
 }

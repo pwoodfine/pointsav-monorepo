@@ -1,4 +1,7 @@
 #!/bin/bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 # install.sh — install os-console on macOS 10.13 Intel or Linux x86_64
 #
 # What this script does:
@@ -47,8 +50,8 @@ echo "Installed: $HOME/bin/os-console"
 
 # ── Step 3: Detect SSH key for embedded tunnel ──────────────────────────────
 
-GCE_IP="34.53.65.203"
-GCE_USER="mathew"
+GCE_IP="${OS_CONSOLE_BUILD_HOST_IP:?Set OS_CONSOLE_BUILD_HOST_IP to your build server's address}"
+GCE_USER="${OS_CONSOLE_BUILD_HOST_USER:?Set OS_CONSOLE_BUILD_HOST_USER to your build server's SSH user}"
 SSH_KEY=""
 
 for CANDIDATE in \

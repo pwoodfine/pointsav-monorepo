@@ -1,10 +1,293 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 use serde_json::Value;
+use std::collections::HashMap;
+use std::sync::OnceLock;
 
 /// Canonical classification vocabulary — shared with `raw_entities_to_graph`.
 /// Both ingest gate and DPO pre-save validator must use this constant so they
 /// agree on what is acceptable and the training signal matches what lands in LadybugDB.
+///
+/// This is the compile-time fallback. The live vocabulary is the `label`
+/// column of `ontology/entity_types.csv` (COA-driven entity type labels,
+/// operator direction 2026-06-28) — see [`init_ontology_classifications`].
 pub const ALLOWED_CLASSIFICATIONS: [&str; 5] =
     ["Person", "Company", "Project", "Account", "Location"];
+
+static ONTOLOGY_CLASSIFICATIONS: OnceLock<Vec<String>> = OnceLock::new();
+
+/// label -> parent_class (`None` if the label is a root class, i.e. its
+/// `parent_class` CSV cell is empty). Populated alongside
+/// `ONTOLOGY_CLASSIFICATIONS` by [`init_ontology_classifications`] — see
+/// [`parent_class_of`] / [`is_subclass_of`].
+static ONTOLOGY_PARENT_CLASSES: OnceLock<HashMap<String, Option<String>>> = OnceLock::new();
+
+/// Load the classification vocabulary from `entity_types.csv`'s `label`
+/// column (and its `parent_class` column, if present). Call once at startup,
+/// alongside taxonomy loading. Additive only: if the CSV is missing,
+/// unreadable, or empty, [`is_allowed_classification`] keeps using the
+/// compile-time [`ALLOWED_CLASSIFICATIONS`] fallback — adding a new entity
+/// type (or a subclass relationship) is then just a CSV edit, with no code
+/// change required.
+/// label -> parent_class, as parsed from `entity_types.csv`'s `parent_class`
+/// column (see [`parse_entity_types_csv`]).
+type ParentClassMap = HashMap<String, Option<String>>;
+
+/// Pure CSV-parsing core of [`init_ontology_classifications`], separated out
+/// so it's testable with inline synthetic CSV text — no filesystem, no
+/// process-global state. Returns `None` if the CSV has no `label` column or
+/// no non-empty label rows.
+fn parse_entity_types_csv(content: &str) -> Option<(Vec<String>, ParentClassMap)> {
+    let mut rdr = csv::Reader::from_reader(content.as_bytes());
+    let headers = rdr.headers().ok()?.clone();
+    let label_idx = headers.iter().position(|h| h == "label")?;
+    let parent_idx = headers.iter().position(|h| h == "parent_class");
+    let mut labels = Vec::new();
+    let mut parents = HashMap::new();
+    for rec in rdr.records().flatten() {
+        if let Some(label) = rec.get(label_idx) {
+            let label = label.trim();
+            if !label.is_empty() {
+                labels.push(label.to_string());
+                let parent = parent_idx
+                    .and_then(|i| rec.get(i))
+                    .map(str::trim)
+                    .filter(|p| !p.is_empty())
+                    .map(str::to_string);
+                parents.insert(label.to_string(), parent);
+            }
+        }
+    }
+    if labels.is_empty() {
+        None
+    } else {
+        Some((labels, parents))
+    }
+}
+
+pub fn init_ontology_classifications(ontology_dir: &str) {
+    let path = std::path::Path::new(ontology_dir).join("entity_types.csv");
+    let parsed = std::fs::read_to_string(&path)
+        .ok()
+        .and_then(|content| parse_entity_types_csv(&content));
+    match parsed {
+        Some((labels, parents)) => {
+            println!(
+                "[entity_filter] loaded {} classification(s) from {}",
+                labels.len(),
+                path.display()
+            );
+            let _ = ONTOLOGY_CLASSIFICATIONS.set(labels);
+            let _ = ONTOLOGY_PARENT_CLASSES.set(parents);
+        }
+        None => {
+            println!(
+                "[entity_filter] {} not found or empty; using compile-time ALLOWED_CLASSIFICATIONS",
+                path.display()
+            );
+        }
+    }
+}
+
+/// Returns true if `classification` is in the active vocabulary: the
+/// ontology CSV if [`init_ontology_classifications`] loaded one, else the
+/// compile-time [`ALLOWED_CLASSIFICATIONS`] fallback.
+pub fn is_allowed_classification(classification: &str) -> bool {
+    match ONTOLOGY_CLASSIFICATIONS.get() {
+        Some(labels) => labels.iter().any(|l| l == classification),
+        None => ALLOWED_CLASSIFICATIONS.contains(&classification),
+    }
+}
+
+/// Returns true if `child` is `ancestor` itself, or a (possibly indirect)
+/// subclass of `ancestor` per `map`'s parent-class chain — e.g. if `Broker`'s
+/// parent is `Person`, `is_subclass_of_in(map, "Broker", "Person")` is true.
+/// Walks the chain with a depth cap to stay safe against a malformed CSV
+/// introducing a parent-class cycle. Pure — no process-global state — so
+/// it's directly testable with a synthetic map.
+fn is_subclass_of_in(map: &HashMap<String, Option<String>>, child: &str, ancestor: &str) -> bool {
+    if child == ancestor {
+        return true;
+    }
+    const MAX_DEPTH: u8 = 16;
+    let mut current = child;
+    for _ in 0..MAX_DEPTH {
+        match map.get(current) {
+            Some(Some(parent)) if parent == ancestor => return true,
+            Some(Some(parent)) => current = parent,
+            _ => return false,
+        }
+    }
+    false
+}
+
+/// Returns `class`'s immediate parent class per `entity_types.csv`'s
+/// `parent_class` column, or `None` if `class` is unknown or is a root class
+/// (empty `parent_class` cell). Requires [`init_ontology_classifications`] to
+/// have been called; returns `None` unconditionally otherwise (no compile-time
+/// fallback — the 5 built-in `ALLOWED_CLASSIFICATIONS` are all root classes).
+///
+/// Public introspection accessor — not yet called internally (`is_subclass_of`
+/// reads the map directly), kept `pub` for callers that need the immediate
+/// parent rather than a subsumption check. Same `#[allow(dead_code)]`
+/// treatment as `query_context_transitive` had before it found its caller.
+#[allow(dead_code)]
+pub fn parent_class_of(class: &str) -> Option<String> {
+    ONTOLOGY_PARENT_CLASSES.get()?.get(class)?.clone()
+}
+
+/// Returns true if `child` is `ancestor` itself, or a (possibly indirect)
+/// subclass of `ancestor`, per the live ontology loaded by
+/// [`init_ontology_classifications`]. Returns `child == ancestor` if the
+/// ontology hasn't been loaded (no parent-class data available at all).
+pub fn is_subclass_of(child: &str, ancestor: &str) -> bool {
+    match ONTOLOGY_PARENT_CLASSES.get() {
+        Some(map) => is_subclass_of_in(map, child, ancestor),
+        None => child == ancestor,
+    }
+}
+
+/// A closed relation-type rule loaded from `ontology/relation_types.csv`:
+/// the canonical relation name plus which entity classes are valid as the
+/// edge's subject/object (subsumption-aware — a `valid_subject_classes` entry
+/// of `Person` also matches a `Broker`, via [`is_subclass_of`]).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RelationTypeRule {
+    pub relation_type: String,
+    pub valid_subject_classes: Vec<String>,
+    pub valid_object_classes: Vec<String>,
+}
+
+/// normalized (lowercased) predicate synonym -> the rule it resolves to.
+/// The canonical `relation_type` name itself is always included as a synonym
+/// of itself. Populated by [`init_relation_ontology`].
+static RELATION_ONTOLOGY: OnceLock<HashMap<String, RelationTypeRule>> = OnceLock::new();
+
+fn split_pipe_list(s: &str) -> Vec<String> {
+    s.split('|')
+        .map(str::trim)
+        .filter(|p| !p.is_empty())
+        .map(str::to_string)
+        .collect()
+}
+
+/// Pure CSV-parsing core of [`init_relation_ontology`] — testable with inline
+/// synthetic CSV text, no filesystem or process-global state. Returns `None`
+/// if the CSV is missing required columns or has no usable rows.
+fn parse_relation_types_csv(content: &str) -> Option<HashMap<String, RelationTypeRule>> {
+    let mut rdr = csv::Reader::from_reader(content.as_bytes());
+    let headers = rdr.headers().ok()?.clone();
+    let type_idx = headers.iter().position(|h| h == "relation_type")?;
+    let subj_idx = headers.iter().position(|h| h == "valid_subject_classes")?;
+    let obj_idx = headers.iter().position(|h| h == "valid_object_classes")?;
+    let syn_idx = headers.iter().position(|h| h == "predicate_synonyms");
+    let mut by_predicate = HashMap::new();
+    for rec in rdr.records().flatten() {
+        let Some(relation_type) = rec
+            .get(type_idx)
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(str::to_string)
+        else {
+            continue;
+        };
+        let rule = RelationTypeRule {
+            relation_type: relation_type.clone(),
+            valid_subject_classes: split_pipe_list(rec.get(subj_idx).unwrap_or("")),
+            valid_object_classes: split_pipe_list(rec.get(obj_idx).unwrap_or("")),
+        };
+        let mut predicates = vec![relation_type.to_lowercase()];
+        if let Some(syn_idx) = syn_idx {
+            predicates.extend(
+                split_pipe_list(rec.get(syn_idx).unwrap_or(""))
+                    .into_iter()
+                    .map(|s| s.to_lowercase()),
+            );
+        }
+        for predicate in predicates {
+            by_predicate.insert(predicate, rule.clone());
+        }
+    }
+    if by_predicate.is_empty() {
+        None
+    } else {
+        Some(by_predicate)
+    }
+}
+
+/// Load the closed relation-type vocabulary from `ontology/relation_types.csv`.
+/// Call once at startup, alongside [`init_ontology_classifications`]. Additive
+/// only: if the CSV is missing, unreadable, or empty, [`validate_relation_edge`]
+/// allows every edge through unchanged (fail-open — a missing/malformed CSV
+/// must not silently stop all relation writes).
+pub fn init_relation_ontology(ontology_dir: &str) {
+    let path = std::path::Path::new(ontology_dir).join("relation_types.csv");
+    let parsed = std::fs::read_to_string(&path)
+        .ok()
+        .and_then(|content| parse_relation_types_csv(&content));
+    match parsed {
+        Some(rules) => {
+            println!(
+                "[entity_filter] loaded {} relation-type predicate mapping(s) from {}",
+                rules.len(),
+                path.display()
+            );
+            let _ = RELATION_ONTOLOGY.set(rules);
+        }
+        None => {
+            println!(
+                "[entity_filter] {} not found or empty; relation-edge validation disabled (fail-open)",
+                path.display()
+            );
+        }
+    }
+}
+
+/// Pure core of [`validate_relation_edge`] — takes the ontology map
+/// explicitly rather than reading the process-global [`RELATION_ONTOLOGY`],
+/// so it's directly testable with a synthetic map (same rationale as
+/// [`is_subclass_of_in`]).
+fn validate_relation_edge_in(
+    ontology: &HashMap<String, RelationTypeRule>,
+    predicate: &str,
+    subject_class: &str,
+    object_class: &str,
+) -> bool {
+    let Some(rule) = ontology.get(&predicate.trim().to_lowercase()) else {
+        return true;
+    };
+    let subject_ok = rule
+        .valid_subject_classes
+        .iter()
+        .any(|c| is_subclass_of(subject_class, c));
+    let object_ok = rule
+        .valid_object_classes
+        .iter()
+        .any(|c| is_subclass_of(object_class, c));
+    subject_ok && object_ok
+}
+
+/// Returns true if an edge with this `predicate` (matched case-insensitively
+/// against `relation_types.csv`'s canonical names and synonyms) is valid
+/// between an entity classified `subject_class` and one classified
+/// `object_class` — checking class membership via [`is_subclass_of`], so a
+/// rule's `valid_subject_classes: ["Person"]` also accepts a `Broker` subject.
+///
+/// **Fail-open by design**: if [`init_relation_ontology`] never loaded a
+/// vocabulary (CSV missing/empty) or `predicate` doesn't match any known
+/// relation type, this returns `true` — an unrecognized predicate is not
+/// necessarily wrong, just not yet in the closed vocabulary (this is a v1
+/// starter list; see `ontology/relation_types.csv`'s header comment). Once a
+/// predicate *is* in the vocabulary, its subject/object classes are enforced.
+pub fn validate_relation_edge(predicate: &str, subject_class: &str, object_class: &str) -> bool {
+    match RELATION_ONTOLOGY.get() {
+        Some(ontology) => {
+            validate_relation_edge_in(ontology, predicate, subject_class, object_class)
+        }
+        None => true,
+    }
+}
 
 /// Returns true if `name` looks like a code or environment identifier rather
 /// than a proper entity name. Used as a deterministic backstop in
@@ -36,9 +319,11 @@ pub fn is_noise_entity_name(name: &str) -> bool {
     if trimmed.contains('/') {
         return true;
     }
-    // File-extension-suffixed names: create-yoyo-snapshot.sh, build.py, local-content.service
-    const PATH_SUFFIXES: [&str; 10] = [
+    // File-extension-suffixed names: create-yoyo-snapshot.sh, build.py, local-content.service,
+    // lora-update.timer (systemd timer units)
+    const PATH_SUFFIXES: [&str; 11] = [
         ".sh", ".py", ".rs", ".md", ".json", ".jsonl", ".conf", ".toml", ".yaml", ".service",
+        ".timer",
     ];
     if PATH_SUFFIXES.iter().any(|s| lower.ends_with(s)) {
         return true;
@@ -46,6 +331,31 @@ pub fn is_noise_entity_name(name: &str) -> bool {
     // Math/code expressions with parentheses: ops(slm), log(employment_35km), func()
     if trimmed.contains('(') && trimmed.contains(')') {
         return true;
+    }
+    // Operational status phrases joined by " + ": "service-content rebuilt + deployed",
+    // "Yo-Yo env IP update + Doorman restart" — these are event descriptions, not entities.
+    if trimmed.contains(" + ") {
+        return true;
+    }
+    // Date-slug identifiers: hyphenated names with an 8-consecutive-digit segment are
+    // mailbox message IDs (command-20260520-stage6-rebase-required) or dated slugs.
+    // Real entity names (proper nouns) do not embed YYYYMMDD date runs.
+    {
+        let mut consecutive_digits: u8 = 0;
+        let mut max_run: u8 = 0;
+        for c in trimmed.chars() {
+            if c.is_ascii_digit() {
+                consecutive_digits += 1;
+                if consecutive_digits > max_run {
+                    max_run = consecutive_digits;
+                }
+            } else {
+                consecutive_digits = 0;
+            }
+        }
+        if max_run >= 8 {
+            return true;
+        }
     }
     // Snake_case identifiers without spaces: env vars, code symbols, metric names
     if !trimmed.contains(' ') && trimmed.contains('_') {
@@ -140,7 +450,7 @@ pub fn clean_dpo_side(side: &[Value]) -> Vec<Value> {
                 return None;
             }
             let coerced = coerce_classification(name, cls)?;
-            if !ALLOWED_CLASSIFICATIONS.contains(&coerced.as_str()) {
+            if !is_allowed_classification(&coerced) {
                 return None;
             }
             if coerced != cls {
@@ -259,6 +569,154 @@ pub fn coerce_classification(entity_name: &str, classification: &str) -> Option<
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn is_allowed_classification_falls_back_to_const_when_unset() {
+        // No init_ontology_classifications call in this test — must use the
+        // compile-time fallback regardless of whether another test in this
+        // binary has already set the (process-global, set-once) ontology cache.
+        for label in ALLOWED_CLASSIFICATIONS {
+            assert!(is_allowed_classification(label));
+        }
+        assert!(!is_allowed_classification("Technology"));
+    }
+
+    #[test]
+    fn ontology_classifications_load_from_real_csv() {
+        // Verify the actual on-disk entity_types.csv parses and matches the
+        // compile-time vocabulary (same 5 labels — additive migration, see
+        // BRIEF-flow-build-plan.md §COA-driven entity type labels).
+        // Path relative to the manifest directory (service-content/).
+        let ontology_dir = concat!(env!("CARGO_MANIFEST_DIR"), "/ontology");
+        init_ontology_classifications(ontology_dir);
+        for label in ALLOWED_CLASSIFICATIONS {
+            assert!(
+                is_allowed_classification(label),
+                "{label} must be allowed after loading entity_types.csv"
+            );
+        }
+        assert!(!is_allowed_classification("Technology"));
+    }
+
+    #[test]
+    fn parse_entity_types_csv_extracts_parent_class_column() {
+        let csv = "label,description_projects,parent_class\n\
+                   Person,a human,\n\
+                   Broker,a real-estate broker,Person\n";
+        let (labels, parents) = parse_entity_types_csv(csv).expect("should parse");
+        assert_eq!(labels, vec!["Person".to_string(), "Broker".to_string()]);
+        assert_eq!(parents.get("Person"), Some(&None));
+        assert_eq!(parents.get("Broker"), Some(&Some("Person".to_string())));
+    }
+
+    #[test]
+    fn parse_entity_types_csv_tolerates_missing_parent_class_column() {
+        // Older/minimal CSVs without a parent_class column at all must still parse —
+        // every label is treated as a root class (no parent recorded).
+        let csv = "label,description_projects\nPerson,a human\n";
+        let (labels, parents) = parse_entity_types_csv(csv).expect("should parse");
+        assert_eq!(labels, vec!["Person".to_string()]);
+        assert_eq!(parents.get("Person"), Some(&None));
+    }
+
+    #[test]
+    fn is_subclass_of_direct_and_reflexive() {
+        let mut map = HashMap::new();
+        map.insert("Person".to_string(), None);
+        map.insert("Broker".to_string(), Some("Person".to_string()));
+        assert!(is_subclass_of_in(&map, "Broker", "Person"));
+        assert!(is_subclass_of_in(&map, "Person", "Person"));
+        assert!(!is_subclass_of_in(&map, "Person", "Broker"));
+    }
+
+    #[test]
+    fn is_subclass_of_transitive_chain() {
+        // ResidentialBroker -> Broker -> Person: a two-hop subsumption chain.
+        let mut map = HashMap::new();
+        map.insert("Person".to_string(), None);
+        map.insert("Broker".to_string(), Some("Person".to_string()));
+        map.insert("ResidentialBroker".to_string(), Some("Broker".to_string()));
+        assert!(is_subclass_of_in(&map, "ResidentialBroker", "Person"));
+        assert!(is_subclass_of_in(&map, "ResidentialBroker", "Broker"));
+        assert!(!is_subclass_of_in(&map, "Person", "ResidentialBroker"));
+    }
+
+    #[test]
+    fn is_subclass_of_unrelated_classes_and_cycle_safety() {
+        let mut map = HashMap::new();
+        map.insert("Person".to_string(), None);
+        map.insert("Company".to_string(), None);
+        assert!(!is_subclass_of_in(&map, "Person", "Company"));
+        // A malformed CSV introducing a cycle must not hang — MAX_DEPTH bounds the walk.
+        let mut cyclic = HashMap::new();
+        cyclic.insert("A".to_string(), Some("B".to_string()));
+        cyclic.insert("B".to_string(), Some("A".to_string()));
+        assert!(!is_subclass_of_in(&cyclic, "A", "Nonexistent"));
+    }
+
+    #[test]
+    fn parse_relation_types_csv_basic_and_synonyms() {
+        let csv = "relation_type,valid_subject_classes,valid_object_classes,predicate_synonyms\n\
+                   employed_by,Person,Company,employed by|works for\n";
+        let ontology = parse_relation_types_csv(csv).expect("should parse");
+        // Canonical name and every synonym all resolve to the same rule.
+        for key in ["employed_by", "employed by", "works for"] {
+            let rule = ontology.get(key).unwrap_or_else(|| panic!("missing {key}"));
+            assert_eq!(rule.relation_type, "employed_by");
+            assert_eq!(rule.valid_subject_classes, vec!["Person".to_string()]);
+            assert_eq!(rule.valid_object_classes, vec!["Company".to_string()]);
+        }
+        assert!(!ontology.contains_key("acquired"));
+    }
+
+    #[test]
+    fn parse_relation_types_csv_missing_columns_returns_none() {
+        assert!(parse_relation_types_csv("relation_type\nemployed_by\n").is_none());
+    }
+
+    #[test]
+    fn validate_relation_edge_enforces_known_predicate_classes() {
+        let mut ontology = HashMap::new();
+        ontology.insert(
+            "employed_by".to_string(),
+            RelationTypeRule {
+                relation_type: "employed_by".to_string(),
+                valid_subject_classes: vec!["Person".to_string()],
+                valid_object_classes: vec!["Company".to_string()],
+            },
+        );
+        assert!(validate_relation_edge_in(
+            &ontology,
+            "employed_by",
+            "Person",
+            "Company"
+        ));
+        // Wrong subject class for a known predicate — rejected.
+        assert!(!validate_relation_edge_in(
+            &ontology,
+            "employed_by",
+            "Location",
+            "Company"
+        ));
+        // Wrong object class for a known predicate — rejected.
+        assert!(!validate_relation_edge_in(
+            &ontology,
+            "employed_by",
+            "Person",
+            "Location"
+        ));
+    }
+
+    #[test]
+    fn validate_relation_edge_fails_open_for_unknown_predicate() {
+        // An empty/unrelated ontology must not block a predicate it has never heard of —
+        // fail-open, since open-IE extraction produces free-form verb phrases and an
+        // unrecognized one is "not yet in the vocabulary," not "known to be wrong."
+        let ontology = HashMap::new();
+        assert!(validate_relation_edge_in(
+            &ontology, "invented", "Person", "Project"
+        ));
+    }
 
     #[test]
     fn noise_rejects_env_var() {
@@ -445,9 +903,42 @@ mod tests {
         // systemd unit names extracted as Project — filter via .service suffix
         assert!(is_noise_entity_name("local-content.service"));
         assert!(is_noise_entity_name("llama-server.service"));
-        // service- prefix project names (no .service suffix) must pass
+        // systemd timer unit names — .timer suffix
+        assert!(is_noise_entity_name("lora-update.timer"));
+        assert!(is_noise_entity_name("nightly-build.timer"));
+        // service- prefix project names (no .service/.timer suffix) must pass
         assert!(!is_noise_entity_name("service-vm-fleet"));
         assert!(!is_noise_entity_name("service-content"));
+    }
+
+    #[test]
+    fn noise_rejects_operational_plus_phrases() {
+        // " + " is an operational event joiner, not an entity name component
+        assert!(is_noise_entity_name("service-content rebuilt + deployed"));
+        assert!(is_noise_entity_name(
+            "Yo-Yo env IP update + Doorman restart"
+        ));
+        assert!(is_noise_entity_name("stage6 + restart"));
+    }
+
+    #[test]
+    fn noise_rejects_date_slug_ids() {
+        // Mailbox message IDs and dated slugs contain 8-consecutive-digit YYYYMMDD runs
+        assert!(is_noise_entity_name(
+            "command-20260520-stage6-rebase-required"
+        ));
+        assert!(is_noise_entity_name(
+            "project-totebox-20260622-stage6-d9-d8-p8-fixes"
+        ));
+        assert!(is_noise_entity_name(
+            "project-intelligence-20260620-session26c-stage6-prompt-fix"
+        ));
+        // Real project names with short digit runs must pass
+        assert!(!is_noise_entity_name("service-vm-fleet"));
+        assert!(!is_noise_entity_name("app-privategit-source"));
+        assert!(!is_noise_entity_name("moonshot-sel4-vmm"));
+        // A project with a version number (short digit run) must pass
+        assert!(!is_noise_entity_name("v0.3.1"));
     }
 
     #[test]

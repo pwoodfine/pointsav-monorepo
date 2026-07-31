@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: FSL-1.1-ALv2
+# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 # PointSav Digital Systems | V6.4 Generic Ledger Salvage & Deduplication Core
 # Community Release (Sovereign Data Protocol)
 import os

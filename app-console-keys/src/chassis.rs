@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 use std::{
     collections::BTreeMap,
     io::{self, Write},
@@ -18,9 +21,13 @@ pub fn request_shutdown() {
 }
 
 use anyhow::Result;
+use console_core::{IntentArgs, IntentId, IntentRegistry, IntentScope, Keymap, MouseAffordance};
 use crossterm::{
     cursor,
-    event::{self, Event, KeyCode, KeyModifiers},
+    event::{
+        self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEvent, KeyModifiers,
+        MouseButton, MouseEvent, MouseEventKind,
+    },
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
@@ -29,7 +36,7 @@ use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Paragraph},
+    widgets::{Block, Borders, Clear, Paragraph},
     Frame, Terminal,
 };
 use ratatui_image::{
@@ -80,6 +87,49 @@ impl TerminalCaps {
     }
 }
 
+/// Command-palette overlay state (Phase I-1). The palette is the universal
+/// keyboard floor: every enabled, in-scope intent is reachable here whether or
+/// not it has a chord. Entries are a *view* of the intent registry.
+struct Palette {
+    query: String,
+    entries: Vec<(IntentId, String)>,
+    selected: usize,
+}
+
+impl Palette {
+    fn filtered(&self) -> Vec<&(IntentId, String)> {
+        let q = self.query.to_ascii_lowercase();
+        self.entries
+            .iter()
+            .filter(|(_, t)| q.is_empty() || t.to_ascii_lowercase().contains(&q))
+            .collect()
+    }
+
+    fn move_sel(&mut self, delta: i32) {
+        let n = self.filtered().len() as i32;
+        if n == 0 {
+            self.selected = 0;
+            return;
+        }
+        self.selected = (self.selected as i32 + delta).rem_euclid(n) as usize;
+    }
+
+    fn selected_id(&self) -> Option<IntentId> {
+        self.filtered().get(self.selected).map(|(id, _)| *id)
+    }
+}
+
+/// Right-click context menu (Phase I-2). Its entries are a view of the intent
+/// registry filtered by the right-click affordance and the focused scope — the
+/// same data the command palette draws from, so the menu can never offer an
+/// action the keyboard cannot reach. Navigable by both mouse and keyboard.
+struct ContextMenu {
+    entries: Vec<(IntentId, String)>,
+    selected: usize,
+    anchor: (u16, u16),
+    rect: Rect,
+}
+
 pub struct AppConsoleKeys {
     cartridges: BTreeMap<FKey, Box<dyn Cartridge>>,
     active: FKey,
@@ -99,6 +149,18 @@ pub struct AppConsoleKeys {
     qr_state: Option<StatefulProtocol>,
     // Terminal capability snapshot — populated in run_local() after enable_raw_mode + probe.
     caps: TerminalCaps,
+    // --- Intent system (Phase I-1) ---
+    registry: IntentRegistry,
+    keymap: Keymap,
+    palette: Option<Palette>,
+    // --- Mouse layer (Phase I-2) ---
+    context_menu: Option<ContextMenu>,
+    // Layout rects captured during render() for hit-testing in handle_event().
+    strip_rect: Rect,
+    content_rect: Rect,
+    palette_rect: Rect,
+    // --- Capability overlay (Phase K) ---
+    cap_overlay: bool,
 }
 
 impl AppConsoleKeys {
@@ -122,6 +184,334 @@ impl AppConsoleKeys {
                 sixel: false,
                 truecolor: false,
             },
+            registry: IntentRegistry::new(),
+            keymap: Keymap::default(),
+            palette: None,
+            context_menu: None,
+            strip_rect: Rect::default(),
+            content_rect: Rect::default(),
+            palette_rect: Rect::default(),
+            cap_overlay: false,
+        }
+    }
+
+    /// Build the live intent registry (seed vocabulary + each cartridge's
+    /// `intents()`) and the keymap. Called once after all cartridges are
+    /// registered, at the start of the run loop.
+    fn build_intents(&mut self) {
+        let mut reg = console_core::seed::console_seed();
+        for c in self.cartridges.values() {
+            reg.extend(c.intents());
+        }
+        self.keymap = Keymap::from_registry(&reg);
+        self.registry = reg;
+    }
+
+    /// Scope id of the focused cartridge for keymap/palette filtering.
+    fn focused_scope(&self) -> Option<&'static str> {
+        self.cartridges
+            .get(&self.active)
+            .and_then(|c| c.intent_scope())
+    }
+
+    fn is_global_or_pane(&self, id: IntentId) -> bool {
+        matches!(
+            self.registry.get(id).map(|s| s.scope),
+            Some(IntentScope::Global) | Some(IntentScope::Pane)
+        )
+    }
+
+    fn switch_to(&mut self, fkey: FKey) {
+        if self.active != fkey {
+            self.previous = self.active;
+        }
+        self.active = fkey;
+    }
+
+    fn open_palette(&mut self) {
+        let focused = self.focused_scope();
+        let entries: Vec<(IntentId, String)> = self
+            .registry
+            .palette_entries(focused)
+            .iter()
+            .map(|s| (s.id, s.title.to_string()))
+            .collect();
+        self.palette = Some(Palette {
+            query: String::new(),
+            entries,
+            selected: 0,
+        });
+    }
+
+    /// Route a resolved intent: chassis-global verbs are handled here; anything
+    /// else is dispatched to the active cartridge's `dispatch()`.
+    fn dispatch_intent(&mut self, id: IntentId) -> ChassisAction {
+        match id.0 {
+            "console.quit" => return ChassisAction::Quit,
+            "console.palette" => {
+                self.open_palette();
+                return ChassisAction::None;
+            }
+            "console.help" => {
+                self.switch_to(FKey::F1);
+                return ChassisAction::None;
+            }
+            "view.switch.search" => {
+                self.switch_to(FKey::F5);
+                return ChassisAction::None;
+            }
+            "view.switch.content" => {
+                self.switch_to(FKey::F4);
+                return ChassisAction::None;
+            }
+            "view.switch.system" => {
+                self.switch_to(FKey::F11);
+                return ChassisAction::None;
+            }
+            "input.anchor.open" => {
+                self.switch_to(FKey::F12);
+                return ChassisAction::None;
+            }
+            _ => {}
+        }
+        // Cartridge-scoped intent: hand to the active cartridge.
+        let args = IntentArgs::default();
+        let action = self
+            .cartridges
+            .get_mut(&self.active)
+            .map(|c| c.dispatch(id, &args))
+            .unwrap_or(CartridgeAction::None);
+        match action {
+            CartridgeAction::Quit => return ChassisAction::Quit,
+            CartridgeAction::GoBack => self.active = self.previous,
+            CartridgeAction::SendToContent(text) => {
+                self.previous = self.active;
+                self.active = FKey::F4;
+                if let Some(dest) = self.cartridges.get_mut(&FKey::F4) {
+                    dest.accept_transfer(text);
+                }
+            }
+            CartridgeAction::Consumed | CartridgeAction::None => {}
+        }
+        ChassisAction::None
+    }
+
+    fn handle_palette_event(&mut self, event: &Event) -> ChassisAction {
+        enum Outcome {
+            Stay,
+            Close,
+            Run(IntentId),
+        }
+        let prect = self.palette_rect;
+        let outcome = {
+            let Some(p) = self.palette.as_mut() else {
+                return ChassisAction::None;
+            };
+            match event {
+                Event::Key(key) => match key.code {
+                    KeyCode::Esc => Outcome::Close,
+                    KeyCode::Up => {
+                        p.move_sel(-1);
+                        Outcome::Stay
+                    }
+                    KeyCode::Down => {
+                        p.move_sel(1);
+                        Outcome::Stay
+                    }
+                    KeyCode::Enter => match p.selected_id() {
+                        Some(id) => Outcome::Run(id),
+                        None => Outcome::Close,
+                    },
+                    KeyCode::Backspace => {
+                        p.query.pop();
+                        p.selected = 0;
+                        Outcome::Stay
+                    }
+                    KeyCode::Char(ch) if !key.modifiers.contains(KeyModifiers::CONTROL) => {
+                        p.query.push(ch);
+                        p.selected = 0;
+                        Outcome::Stay
+                    }
+                    _ => Outcome::Stay,
+                },
+                Event::Mouse(m) => match m.kind {
+                    MouseEventKind::Down(_) => {
+                        if !rect_contains(prect, m.column, m.row) {
+                            Outcome::Close
+                        } else {
+                            // Entry rows start at prect.y + 3 (border + query + blank).
+                            let first = prect.y.saturating_add(3);
+                            let idx = m.row.checked_sub(first).map(|d| d as usize);
+                            match idx {
+                                Some(i) if i < p.filtered().len() => {
+                                    p.selected = i;
+                                    match p.selected_id() {
+                                        Some(id) => Outcome::Run(id),
+                                        None => Outcome::Stay,
+                                    }
+                                }
+                                _ => Outcome::Stay,
+                            }
+                        }
+                    }
+                    MouseEventKind::ScrollDown => {
+                        p.move_sel(1);
+                        Outcome::Stay
+                    }
+                    MouseEventKind::ScrollUp => {
+                        p.move_sel(-1);
+                        Outcome::Stay
+                    }
+                    _ => Outcome::Stay,
+                },
+                _ => Outcome::Stay,
+            }
+        };
+        match outcome {
+            Outcome::Stay => ChassisAction::None,
+            Outcome::Close => {
+                self.palette = None;
+                ChassisAction::None
+            }
+            Outcome::Run(id) => {
+                self.palette = None;
+                self.dispatch_intent(id)
+            }
+        }
+    }
+
+    fn handle_mouse(&mut self, m: &MouseEvent) -> ChassisAction {
+        match m.kind {
+            MouseEventKind::Down(MouseButton::Right) => {
+                self.open_context_menu(m.column, m.row);
+                ChassisAction::None
+            }
+            MouseEventKind::Down(MouseButton::Left) => {
+                // Click on the F-key strip switches cartridge (mouse parity for
+                // F-key/Ctrl-digit/view.switch.* keyboard paths).
+                if rect_contains(self.strip_rect, m.column, m.row) {
+                    if let Some(fk) = fkey_at_column(self.strip_rect, m.column) {
+                        self.switch_to(fk);
+                    }
+                    return ChassisAction::None;
+                }
+                if rect_contains(self.content_rect, m.column, m.row) {
+                    return self.forward_mouse_to_cartridge(m);
+                }
+                ChassisAction::None
+            }
+            MouseEventKind::ScrollUp | MouseEventKind::ScrollDown => {
+                if rect_contains(self.content_rect, m.column, m.row) {
+                    self.forward_mouse_to_cartridge(m)
+                } else {
+                    ChassisAction::None
+                }
+            }
+            _ => ChassisAction::None,
+        }
+    }
+
+    fn forward_mouse_to_cartridge(&mut self, m: &MouseEvent) -> ChassisAction {
+        let ev = Event::Mouse(*m);
+        let action = self
+            .cartridges
+            .get_mut(&self.active)
+            .map(|c| c.handle_event(&ev))
+            .unwrap_or(CartridgeAction::None);
+        match action {
+            CartridgeAction::Quit => return ChassisAction::Quit,
+            CartridgeAction::GoBack => self.active = self.previous,
+            CartridgeAction::SendToContent(text) => {
+                self.previous = self.active;
+                self.active = FKey::F4;
+                if let Some(dest) = self.cartridges.get_mut(&FKey::F4) {
+                    dest.accept_transfer(text);
+                }
+            }
+            CartridgeAction::Consumed | CartridgeAction::None => {}
+        }
+        ChassisAction::None
+    }
+
+    fn open_context_menu(&mut self, col: u16, row: u16) {
+        let focused = self.focused_scope();
+        let entries: Vec<(IntentId, String)> = self
+            .registry
+            .context_for(MouseAffordance::RIGHT_CLICK, focused)
+            .iter()
+            .map(|s| (s.id, s.title.to_string()))
+            .collect();
+        if entries.is_empty() {
+            return;
+        }
+        self.context_menu = Some(ContextMenu {
+            entries,
+            selected: 0,
+            anchor: (col, row),
+            rect: Rect::default(),
+        });
+    }
+
+    fn handle_context_menu_event(&mut self, event: &Event) -> ChassisAction {
+        enum Outcome {
+            Stay,
+            Close,
+            Run(IntentId),
+        }
+        let outcome = {
+            let Some(menu) = self.context_menu.as_mut() else {
+                return ChassisAction::None;
+            };
+            match event {
+                Event::Key(key) => match key.code {
+                    KeyCode::Esc => Outcome::Close,
+                    KeyCode::Up => {
+                        menu.selected = menu.selected.saturating_sub(1);
+                        Outcome::Stay
+                    }
+                    KeyCode::Down => {
+                        if menu.selected + 1 < menu.entries.len() {
+                            menu.selected += 1;
+                        }
+                        Outcome::Stay
+                    }
+                    KeyCode::Enter => match menu.entries.get(menu.selected) {
+                        Some((id, _)) => Outcome::Run(*id),
+                        None => Outcome::Close,
+                    },
+                    _ => Outcome::Stay,
+                },
+                Event::Mouse(m) => match m.kind {
+                    MouseEventKind::Down(_) => {
+                        if !rect_contains(menu.rect, m.column, m.row) {
+                            Outcome::Close
+                        } else {
+                            // Entry rows start at menu.rect.y + 1 (top border).
+                            let first = menu.rect.y.saturating_add(1);
+                            let idx = m.row.checked_sub(first).map(|d| d as usize);
+                            match idx {
+                                Some(i) if i < menu.entries.len() => {
+                                    Outcome::Run(menu.entries[i].0)
+                                }
+                                _ => Outcome::Stay,
+                            }
+                        }
+                    }
+                    _ => Outcome::Stay,
+                },
+                _ => Outcome::Stay,
+            }
+        };
+        match outcome {
+            Outcome::Stay => ChassisAction::None,
+            Outcome::Close => {
+                self.context_menu = None;
+                ChassisAction::None
+            }
+            Outcome::Run(id) => {
+                self.context_menu = None;
+                self.dispatch_intent(id)
+            }
         }
     }
 
@@ -223,6 +613,10 @@ impl AppConsoleKeys {
             ])
             .split(area);
 
+        // Capture layout rects for mouse hit-testing (Phase I-2).
+        self.strip_rect = chunks[0];
+        self.content_rect = chunks[1];
+
         let installed = self.installed();
         crate::widgets::fkey_strip::render(frame, chunks[0], self.active, &installed);
 
@@ -254,10 +648,73 @@ impl AppConsoleKeys {
             elapsed,
             pending_pairs,
         );
+
+        // Command palette overlay (Phase I-1) — drawn on top of everything.
+        if self.palette.is_some() {
+            let rect = palette_rect_for(area);
+            self.palette_rect = rect;
+            if let Some(p) = self.palette.as_ref() {
+                render_palette(frame, rect, p);
+            }
+        }
+
+        // Right-click context menu (Phase I-2) — topmost overlay.
+        if let Some(menu) = self.context_menu.as_mut() {
+            let rect = compute_menu_rect(area, menu.anchor, &menu.entries);
+            menu.rect = rect;
+            render_context_menu(frame, menu);
+        }
+
+        // Capability overlay (Phase K) — rendered on top.
+        if self.cap_overlay {
+            let verdicts = self
+                .cartridges
+                .get(&self.active)
+                .map(|c| c.cap_verdicts())
+                .unwrap_or_default();
+            render_cap_overlay(frame, area, &verdicts);
+        }
     }
 
     pub fn handle_event(&mut self, event: &Event) -> ChassisAction {
+        // Overlays capture input while open (topmost first).
+        if self.context_menu.is_some() {
+            return self.handle_context_menu_event(event);
+        }
+        if self.palette.is_some() {
+            return self.handle_palette_event(event);
+        }
+        // Capability overlay (Phase K): ? toggles; Esc / ? closes.
+        if self.cap_overlay {
+            if let Event::Key(key) = event {
+                if key.code == KeyCode::Char('?') || key.code == KeyCode::Esc {
+                    self.cap_overlay = false;
+                }
+            }
+            return ChassisAction::None;
+        }
+
+        // Mouse input (Phase I-2) — only when no overlay is open.
+        if let Event::Mouse(m) = event {
+            return self.handle_mouse(m);
+        }
+
+        // Ctrl-K (resolved through the keymap) opens the palette.
+        // ? opens the capability overlay.
         if let Event::Key(key) = event {
+            if key.code == KeyCode::Char('?') {
+                self.cap_overlay = true;
+                return ChassisAction::None;
+            }
+            if let Some(chord) = key_to_chord(key) {
+                if self.keymap.resolve(&chord, self.focused_scope())
+                    == Some(IntentId("console.palette"))
+                {
+                    self.open_palette();
+                    return ChassisAction::None;
+                }
+            }
+            // F12 anchor pre-empt (SYS-ADR-10) — unchanged, immovable.
             if key.code == KeyCode::F(12) {
                 if self.active != FKey::F12 {
                     self.previous = self.active;
@@ -267,19 +724,40 @@ impl AppConsoleKeys {
             }
         }
 
-        if let Some(c) = self.cartridges.get_mut(&self.active) {
-            match c.handle_event(event) {
-                CartridgeAction::Consumed => return ChassisAction::None,
-                CartridgeAction::Quit => return ChassisAction::Quit,
-                CartridgeAction::GoBack => {
-                    self.active = self.previous;
-                    return ChassisAction::None;
-                }
-                CartridgeAction::None => {}
+        let action = self
+            .cartridges
+            .get_mut(&self.active)
+            .map(|c| c.handle_event(event))
+            .unwrap_or(CartridgeAction::None);
+        match action {
+            CartridgeAction::Consumed => return ChassisAction::None,
+            CartridgeAction::Quit => return ChassisAction::Quit,
+            CartridgeAction::GoBack => {
+                self.active = self.previous;
+                return ChassisAction::None;
             }
+            CartridgeAction::SendToContent(text) => {
+                self.previous = self.active;
+                self.active = FKey::F4;
+                if let Some(dest) = self.cartridges.get_mut(&FKey::F4) {
+                    dest.accept_transfer(text);
+                }
+                return ChassisAction::None;
+            }
+            CartridgeAction::None => {}
         }
 
         if let Event::Key(key) = event {
+            // Global/pane intents the focused cartridge did not consume resolve
+            // through the keymap (cartridge-scoped chords are left to the
+            // cartridge's own handler above, so no behavior is overridden).
+            if let Some(chord) = key_to_chord(key) {
+                if let Some(id) = self.keymap.resolve(&chord, self.focused_scope()) {
+                    if self.is_global_or_pane(id) {
+                        return self.dispatch_intent(id);
+                    }
+                }
+            }
             if key.code == KeyCode::Char('q')
                 || (key.code == KeyCode::Char('c') && key.modifiers.contains(KeyModifiers::CONTROL))
             {
@@ -610,6 +1088,7 @@ impl AppConsoleKeys {
         mut terminal: ratatui::Terminal<CrosstermBackend<W>>,
         rx: mpsc::Receiver<u8>,
     ) {
+        self.build_intents();
         let mut parser = crate::input_bytes::ByteParser::new();
         loop {
             self.drain_pair_events();
@@ -646,8 +1125,14 @@ impl AppConsoleKeys {
         for c in self.cartridges.values_mut() {
             c.set_graphics_caps(kitty, sixel, font_size, truecolor);
         }
+        self.build_intents();
         let mut stdout = io::stdout();
-        execute!(stdout, EnterAlternateScreen, cursor::Hide)?;
+        execute!(
+            stdout,
+            EnterAlternateScreen,
+            EnableMouseCapture,
+            cursor::Hide
+        )?;
 
         let backend = CrosstermBackend::new(stdout);
         let mut terminal = Terminal::new(backend)?;
@@ -672,9 +1157,288 @@ impl AppConsoleKeys {
             Ok(())
         })();
 
-        let _ = execute!(terminal.backend_mut(), LeaveAlternateScreen, cursor::Show);
+        let _ = execute!(
+            terminal.backend_mut(),
+            LeaveAlternateScreen,
+            DisableMouseCapture,
+            cursor::Show
+        );
         let _ = disable_raw_mode();
 
         run_result
+    }
+}
+
+/// True if (col, row) lies within `rect`.
+fn rect_contains(rect: Rect, col: u16, row: u16) -> bool {
+    col >= rect.x
+        && col < rect.x.saturating_add(rect.width)
+        && row >= rect.y
+        && row < rect.y.saturating_add(rect.height)
+}
+
+/// Map a column on the F-key strip back to the F-key whose label spans it.
+/// Mirrors the strip layout in `widgets::fkey_strip`: `" {short} "` per key
+/// (len = short+2) plus a one-cell separator after every key except F12.
+fn fkey_at_column(strip: Rect, col: u16) -> Option<FKey> {
+    if col < strip.x {
+        return None;
+    }
+    let mut cursor = strip.x;
+    for fk in FKey::all() {
+        let w = fk.short().len() as u16 + 2;
+        if col >= cursor && col < cursor.saturating_add(w) {
+            return Some(fk);
+        }
+        cursor = cursor.saturating_add(w);
+        if fk != FKey::F12 {
+            cursor = cursor.saturating_add(1);
+        }
+    }
+    None
+}
+
+/// Compute the context-menu rect from its anchor and entries, clamped on-screen.
+fn compute_menu_rect(area: Rect, anchor: (u16, u16), entries: &[(IntentId, String)]) -> Rect {
+    let title_w = entries.iter().map(|(_, t)| t.len()).max().unwrap_or(8) as u16;
+    let w = (title_w + 4).clamp(12, area.width.max(12));
+    let h = (entries.len() as u16 + 2).clamp(3, area.height.max(3));
+    let max_x = area.x + area.width.saturating_sub(w);
+    let max_y = area.y + area.height.saturating_sub(h);
+    let x = anchor.0.min(max_x).max(area.x);
+    let y = anchor.1.min(max_y).max(area.y);
+    Rect {
+        x,
+        y,
+        width: w,
+        height: h,
+    }
+}
+
+/// Render the right-click context menu (a view of the intent registry).
+fn render_context_menu(frame: &mut Frame, menu: &ContextMenu) {
+    frame.render_widget(Clear, menu.rect);
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(Color::Cyan));
+    let inner = block.inner(menu.rect);
+    frame.render_widget(block, menu.rect);
+    let rows = inner.height as usize;
+    let lines: Vec<Line> = menu
+        .entries
+        .iter()
+        .enumerate()
+        .take(rows)
+        .map(|(i, (_, title))| {
+            let style = if i == menu.selected {
+                Style::default()
+                    .fg(Color::Black)
+                    .bg(Color::Cyan)
+                    .add_modifier(Modifier::BOLD)
+            } else {
+                Style::default().fg(Color::Gray)
+            };
+            Line::from(Span::styled(format!(" {title} "), style))
+        })
+        .collect();
+    frame.render_widget(Paragraph::new(lines), inner);
+}
+
+/// Render the capability overlay (Phase K). A centered box showing live verdicts
+/// from the active cartridge. Empty message when the cartridge has no verdicts.
+fn render_cap_overlay(frame: &mut Frame, area: Rect, verdicts: &[(String, String)]) {
+    use ratatui::layout::{Constraint as C, Direction, Layout};
+    use ratatui::style::{Color, Modifier, Style};
+    use ratatui::text::{Line, Span};
+
+    let height = (verdicts.len() as u16 + 4).min(area.height.saturating_sub(4));
+    let vchunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([C::Fill(1), C::Length(height), C::Fill(1)])
+        .split(area);
+    let hchunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([C::Fill(1), C::Percentage(60), C::Fill(1)])
+        .split(vchunks[1]);
+
+    let rect = hchunks[1];
+    frame.render_widget(Clear, rect);
+
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .border_style(
+            Style::default()
+                .fg(Color::Magenta)
+                .add_modifier(Modifier::BOLD),
+        )
+        .title(" ◈ Capability Verdicts    [? / Esc: close] ");
+    let inner = block.inner(rect);
+    frame.render_widget(block, rect);
+
+    let mut lines: Vec<Line> = vec![Line::from("")];
+    if verdicts.is_empty() {
+        lines.push(Line::from(Span::styled(
+            "  No capability data — switch to F11 for live verdicts.",
+            Style::default().fg(Color::DarkGray),
+        )));
+    } else {
+        for (label, verdict) in verdicts {
+            let color = if verdict.starts_with('✓') {
+                Color::Green
+            } else if verdict.starts_with('✗') {
+                Color::Red
+            } else {
+                Color::Yellow
+            };
+            lines.push(Line::from(vec![
+                Span::styled(
+                    format!("  {:<28}", label),
+                    Style::default().fg(Color::White),
+                ),
+                Span::styled(verdict.clone(), Style::default().fg(color)),
+            ]));
+        }
+    }
+    frame.render_widget(Paragraph::new(lines), inner);
+}
+
+/// Translate a crossterm key event into a canonical console-core chord string.
+fn key_to_chord(key: &KeyEvent) -> Option<String> {
+    let base = match key.code {
+        KeyCode::Char(c) => c.to_ascii_lowercase().to_string(),
+        KeyCode::Enter => "enter".to_string(),
+        KeyCode::Esc => "esc".to_string(),
+        KeyCode::Tab | KeyCode::BackTab => "tab".to_string(),
+        KeyCode::Backspace => "backspace".to_string(),
+        KeyCode::Left => "left".to_string(),
+        KeyCode::Right => "right".to_string(),
+        KeyCode::Up => "up".to_string(),
+        KeyCode::Down => "down".to_string(),
+        KeyCode::F(n) => format!("f{n}"),
+        _ => return None,
+    };
+    let mut s = String::new();
+    if key.modifiers.contains(KeyModifiers::CONTROL) {
+        s.push_str("ctrl-");
+    }
+    if key.modifiers.contains(KeyModifiers::ALT) {
+        s.push_str("alt-");
+    }
+    if key.modifiers.contains(KeyModifiers::SHIFT) {
+        s.push_str("shift-");
+    }
+    s.push_str(&base);
+    Some(console_core::intent::normalize_chord(&s))
+}
+
+/// Render the command-palette overlay: a centered box with the query line and
+/// the filtered, scope-aware entries (selected highlighted). The entries are a
+/// view of the intent registry — the palette cannot list an action the keyboard
+/// cannot reach.
+/// Compute the centered command-palette rect (shared by render and hit-test).
+fn palette_rect_for(area: Rect) -> Rect {
+    let want_w = (area.width / 5).saturating_mul(3);
+    let min_w = 40u16.min(area.width);
+    let max_w = area.width.saturating_sub(2).max(min_w);
+    let w = want_w.clamp(min_w, max_w);
+    let want_h = (area.height / 3).saturating_mul(2);
+    let min_h = 8u16.min(area.height);
+    let max_h = area.height.saturating_sub(2).max(min_h);
+    let h = want_h.clamp(min_h, max_h);
+    let x = area.x + area.width.saturating_sub(w) / 2;
+    let y = area.y + area.height.saturating_sub(h) / 2;
+    Rect {
+        x,
+        y,
+        width: w,
+        height: h,
+    }
+}
+
+fn render_palette(frame: &mut Frame, rect: Rect, p: &Palette) {
+    frame.render_widget(Clear, rect);
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .border_style(
+            Style::default()
+                .fg(Color::Cyan)
+                .add_modifier(Modifier::BOLD),
+        )
+        .title(" Command palette  (type to filter · ↑↓ · Enter · Esc) ");
+    let inner = block.inner(rect);
+    frame.render_widget(block, rect);
+
+    let mut lines: Vec<Line> = Vec::new();
+    lines.push(Line::from(vec![
+        Span::styled("  › ", Style::default().fg(Color::Cyan)),
+        Span::styled(
+            if p.query.is_empty() {
+                "type to filter…".to_string()
+            } else {
+                p.query.clone()
+            },
+            Style::default().fg(if p.query.is_empty() {
+                Color::DarkGray
+            } else {
+                Color::White
+            }),
+        ),
+    ]));
+    lines.push(Line::from(""));
+
+    let filtered = p.filtered();
+    let max_rows = inner.height.saturating_sub(2) as usize;
+    for (i, (id, title)) in filtered.iter().enumerate().take(max_rows) {
+        let selected = i == p.selected;
+        let style = if selected {
+            Style::default()
+                .fg(Color::Black)
+                .bg(Color::Cyan)
+                .add_modifier(Modifier::BOLD)
+        } else {
+            Style::default().fg(Color::Gray)
+        };
+        let marker = if selected { " ▌ " } else { "   " };
+        lines.push(Line::from(vec![
+            Span::styled(marker, style),
+            Span::styled(format!("{:<32}", title), style),
+            Span::styled(format!(" {}", id.0), Style::default().fg(Color::DarkGray)),
+        ]));
+    }
+    frame.render_widget(Paragraph::new(lines), inner);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn rect_contains_edges() {
+        let r = Rect {
+            x: 2,
+            y: 3,
+            width: 4,
+            height: 2,
+        };
+        assert!(rect_contains(r, 2, 3));
+        assert!(rect_contains(r, 5, 4));
+        assert!(!rect_contains(r, 6, 3)); // x past right edge (exclusive)
+        assert!(!rect_contains(r, 2, 5)); // y past bottom edge
+        assert!(!rect_contains(r, 1, 3)); // left of x
+    }
+
+    #[test]
+    fn fkey_strip_column_mapping() {
+        let strip = Rect {
+            x: 0,
+            y: 0,
+            width: 80,
+            height: 1,
+        };
+        // " F1 " occupies cols 0..4; separator at col 4; " F2 " starts at col 5.
+        assert_eq!(fkey_at_column(strip, 0), Some(FKey::F1));
+        assert_eq!(fkey_at_column(strip, 3), Some(FKey::F1));
+        assert_eq!(fkey_at_column(strip, 4), None); // separator
+        assert_eq!(fkey_at_column(strip, 5), Some(FKey::F2));
     }
 }

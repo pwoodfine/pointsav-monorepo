@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 # Jennifer Ontological DataGraph rebuild — REST API integration test.
 #
 # Uses ONLY the customer-facing REST API:

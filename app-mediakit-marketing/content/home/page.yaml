@@ -1,14 +1,46 @@
-title: Home
+# SPDX-License-Identifier: FSL-1.1-ALv2
+# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
+title: ""
 slug: home
-description: A real property developer with 40 years' experience in the procurement, development, and management of real property.
+description: A real property developer with more than 35 years' experience in the procurement, development, and management of real property.
 lang: en
 sections:
   - type: hero
-    headline: A real property developer with 40 years' experience
+    headline: A real property developer with more than 35 years' experience
     subhead: >-
       The firm sponsors direct-hold solutions that hold four Development Classes
       of environmentally certified properties in or near Power Centres in
       selected North American and European markets.
+
+  - type: icon-strip
+    icons:
+      - src: /static/graphics/woodfine/class-1.svg
+        alt: Professional Centres
+        body: >-
+          Three-to-five-floor office buildings for service providers such as
+          law firms, accountants, dental practices, and medical clinics.
+      - src: /static/graphics/woodfine/class-2.svg
+        alt: Tech Industrial
+        body: >-
+          Storefront-and-workshop buildings for last-mile delivery and
+          hands-on trades.
+      - src: /static/graphics/woodfine/class-3.svg
+        alt: Retail Select
+        body: >-
+          Single-storey retail buildings for banks, pharmacies, and similar
+          everyday services.
+      - src: /static/graphics/woodfine/class-4.svg
+        alt: Suburban Office
+        # "medical" is operator-added, not directly sourced in the
+        # class-suburban-office.md wiki article (its own tenant list is
+        # academic/business/civic/laboratory; the closest sourced term is
+        # "healthcare-adjacent", a different word) — kept per explicit
+        # operator direction 2026-07-07. See DESIGN-RESEARCH-icon-strip-
+        # mobile.draft.md "Round 6" for the full sourcing trail.
+        body: >-
+          Six-to-nine-floor office buildings for academic, business, civic,
+          medical and laboratory tenants who need more space.
 
   - type: card-grid
     columns: 4
@@ -58,51 +90,32 @@ sections:
           intelligence, and operational systems integrated across the
           direct-hold solution lifecycle.
 
+  # FABLE nav-priority audit 2026-07-02: this button row is the real 1-tap
+  # mobile fast path (masthead is 2 taps behind the hamburger). Projects
+  # promoted here (from the masthead, to avoid duplicating it in both
+  # places); Manifest demoted to the footer Network column — a niche
+  # transparency artifact, not a task destination either audience needs
+  # single-tap.
+  # Caption text below is provisional/illustrative (operator-directed
+  # 2026-07-07), not verified against the actual destination pages' own
+  # content — see DESIGN-RESEARCH-icon-strip-mobile.draft.md "Round 7"/"8"
+  # for the full trail. Review before treating as final.
   - type: card-grid
     columns: 3
+    style: buttons
     cards:
-      - title: Manifest
-        href: https://github.com/woodfine/woodfine-fleet-deployment
+      - title: Projects
+        href: https://projects.woodfinegroup.com/
+        body: Development regions and building designs
       - title: BIM Library
         href: https://bim.woodfinegroup.com/
+        body: Building objects and specifications
       - title: Location Intelligence
         href: https://gis.woodfinegroup.com/
+        body: Site-selection data and analysis
 
-  - type: prose
-    body: |
-      **Securities offering.** Securities of Woodfine-sponsored direct-hold
-      solutions are offered only to qualified investors pursuant to applicable
-      prospectus exemptions under National Instrument 45-106 — Prospectus
-      Exemptions. The information on this page is provided for general
-      informational purposes only and does not constitute an offer to sell or a
-      solicitation of an offer to buy any security. Prospective investors should
-      review the applicable offering memorandum and consult their own
-      professional advisors before investing.
-
-      1. Information on this page describes the firm and its activities at a high
-      level and is qualified in its entirety by the applicable offering
-      memorandum and universal governing bylaws.
-
-      2. Investment in real-property direct-hold solutions involves significant
-      risk, including possible loss of capital. Past performance is not
-      indicative of future results. References to structural features such as
-      advisory fees, transferability, and net asset value methodology describe
-      the contractual terms of the direct-hold solutions and are not
-      representations as to investment outcomes or returns.
-
-      **Forward-looking statements.** Statements that are not historical facts
-      may constitute forward-looking information within the meaning of applicable
-      Canadian securities laws. Such statements are subject to known and unknown
-      risks, uncertainties and assumptions, and actual results may differ
-      materially. Woodfine undertakes no obligation to update such statements
-      except as required by law.
-
-      **Registration.** Woodfine Capital Projects and its affiliates conduct
-      registrable activities, where required, under the relevant categories
-      prescribed by the British Columbia Securities Commission and other Canadian
-      securities regulators. Specific registration details are available on
-      request.
-
-      Woodfine Capital Projects, Woodfine Management Corp, PointSav Digital
-      Systems, Totebox Orchestration, and Totebox Archive are trademarks owned by
-      Woodfine Capital Projects Inc.
+  # Full legal text (securities offering, forward-looking statements,
+  # registration) moved 2026-07-02 into the footer's "Important information"
+  # accordion (Tenant::woodfine().disclosure_slots in ui.rs) -- it was
+  # duplicating that same accordion when it also lived here as a separate,
+  # always-visible prose section.

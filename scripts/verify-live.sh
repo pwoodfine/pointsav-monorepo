@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 # verify-live.sh — Show the actual state of the live marketing sites.
 #
 # Run at session START before making changes (baseline) and at session END

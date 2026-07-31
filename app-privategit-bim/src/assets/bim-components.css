@@ -1,3 +1,8 @@
+/*
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ * SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+ */
+
 /* bim-components.css — BIM Object component styles */
 
 /* Ensure CDS data-table inherits our color tokens */
@@ -15,8 +20,8 @@ cds-table-cell {
 /* BIM tag chip */
 .bim-tag {
   display: inline-block;
-  background: #dde7f1;
-  color: #164679;
+  background: var(--bim-accent-subtle, #dde7f1);
+  color: var(--bim-accent, #164679);
   font-size: 0.6875rem;
   font-weight: 500;
   padding: 0.125em 0.5em;
@@ -33,10 +38,12 @@ cds-side-nav-menu-item a.bim-nav-link {
   width: 100%;
 }
 
-/* Active link indicator in sidebar */
+/* Active link indicator in sidebar (set client-side by bim.js's SPA
+   navigation, alongside the server-rendered .active class used on the
+   initial page load — keep both in sync with the same tokens). */
 [aria-current="page"] {
-  border-left: 3px solid #164679;
-  background: rgba(22, 70, 121, 0.08);
+  border-left: 3px solid var(--bim-accent, #164679);
+  background: var(--bim-accent-subtle, rgba(22, 70, 121, 0.08));
 }
 
 /* Carbon button overrides for bim-nav context */
@@ -87,29 +94,80 @@ cds-side-nav-menu-item a.bim-nav-link {
 .bim-kp-card[data-category="civic"] .bim-kp-svg { background: #f5e9eb; }
 .bim-kp-card[data-category="corporate-office"] .bim-kp-svg { background: #e8f1f8; }
 
+/* Same category accents, desaturated/darkened for dark mode — the light
+   pastel fills above would clash badly on a dark canvas. */
+:root[data-theme="dark"] .bim-kp-card[data-category="private-office"] .bim-kp-svg { background: #1c2634; }
+:root[data-theme="dark"] .bim-kp-card[data-category="medical"] .bim-kp-svg { background: #1a2b24; }
+:root[data-theme="dark"] .bim-kp-card[data-category="business"] .bim-kp-svg { background: #241f2f; }
+:root[data-theme="dark"] .bim-kp-card[data-category="laboratory"] .bim-kp-svg { background: #2c2417; }
+:root[data-theme="dark"] .bim-kp-card[data-category="academic"] .bim-kp-svg { background: #17281f; }
+:root[data-theme="dark"] .bim-kp-card[data-category="civic"] .bim-kp-svg { background: #2b1f23; }
+:root[data-theme="dark"] .bim-kp-card[data-category="corporate-office"] .bim-kp-svg { background: #1a2732; }
+
 /* Notification inline */
 .bim-save-notification {
   margin-top: 1rem;
 }
 
-/* Visual property editor table */
+/* Horizontal scroll container for wide tables at narrow viewports —
+   applied directly to <table class="bim-table-wrap ...">, so display:block
+   is needed for overflow-x to actually establish a scroll container. */
+.bim-table-wrap {
+  display: block;
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+/* Visual property editor table — editor-only; the /edit surface is
+   deliberately kept on its own Carbon-adjacent look and out of the
+   catalog-family restyle. */
 .bim-prop-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.875rem;
 }
 .bim-prop-table th {
-  background: #f4f4f4;
+  background: var(--bim-bg-subtle, #F7F9FA);
   text-align: left;
   padding: 0.5rem 0.75rem;
   font-weight: 600;
-  border-bottom: 2px solid #dde;
-  color: #333;
+  border-bottom: 2px solid var(--bim-border, #dde);
+  color: var(--bim-fg, #333);
 }
 .bim-prop-table td {
   padding: 0.375rem 0.75rem;
-  border-bottom: 1px solid #e8e8e8;
+  border-bottom: 1px solid var(--bim-border, #e8e8e8);
   vertical-align: middle;
+  color: var(--bim-fg-secondary, #374151);
+}
+
+/* Category-page data tables (entity list + applicable property sets) —
+   catalog family: mono uppercase column headers on a strong hairline rule,
+   flush-left, roomy rows. */
+.bim-token-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+}
+.bim-token-table th {
+  text-align: left;
+  padding: 0.5rem 0.875rem 0.5rem 0;
+  font-family: var(--bim-font-mono);
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--bim-border-strong, #98A2B3);
+  color: var(--bim-fg-muted, #6B7280);
+}
+.bim-token-table td {
+  padding: 0.5rem 0.875rem 0.5rem 0;
+  border-bottom: 1px solid var(--bim-border, #E6E7E8);
+  vertical-align: top;
+  color: var(--bim-fg-secondary, #374151);
+}
+.bim-token-table tr:last-child td {
+  border-bottom: 0;
 }
 .bim-prop-key label {
   color: #555;
@@ -139,6 +197,143 @@ cds-side-nav-menu-item a.bim-nav-link {
   padding: 1rem 0.75rem;
 }
 
+/* Chip row (home + category page identification strip) */
+.bim-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+.bim-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-family: var(--bim-font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--bim-fg-secondary, #374151);
+  background: var(--bim-accent-subtle, #E8EFF7);
+  border: 1px solid var(--bim-border, #E6E7E8);
+  border-radius: var(--bim-radius-sm, 2px);
+  padding: 0.25rem 0.625rem;
+}
+.bim-chip strong {
+  color: var(--bim-accent, #164679);
+  font-weight: 700;
+}
+/* IFC class names/codes (e.g. "IfcSpatialElement") must keep their real
+   mixed case — the chip's uppercase transform was making "IFC
+   IfcSpatialElement" render as "IFC IFCSPATIALELEMENT," an unreadable,
+   doubled-looking mash-up (2026-07-04 audit finding). */
+.bim-chip code {
+  text-transform: none;
+}
+.bim-chip--accent {
+  background: #fff;
+  border-color: var(--bim-accent, #164679);
+}
+.bim-chip--muted {
+  background: transparent;
+  color: var(--bim-fg-muted, #6B7280);
+}
+.bim-chip--muted strong {
+  color: var(--bim-fg-muted, #6B7280);
+}
+
+/* AEC semantic status chip variants — for regulation/compliance display */
+.bim-chip--safe {
+  background: var(--bim-safe-bg, #ECFDF3);
+  border-color: var(--bim-safe, #54924E);
+  color: var(--bim-safe, #54924E);
+}
+.bim-chip--safe strong { color: var(--bim-safe, #54924E); }
+.bim-chip--warning {
+  background: var(--bim-warning-bg, #FFF8ED);
+  border-color: var(--bim-warning, #B54708);
+  color: var(--bim-warning, #B54708);
+}
+.bim-chip--warning strong { color: var(--bim-warning, #B54708); }
+.bim-chip--mep {
+  background: var(--bim-mep-bg, #ECFEFF);
+  border-color: var(--bim-mep, #0E7490);
+  color: var(--bim-mep, #0E7490);
+}
+.bim-chip--mep strong { color: var(--bim-mep, #0E7490); }
+.bim-chip--error {
+  background: var(--bim-error-bg, #FEF3F2);
+  border-color: var(--bim-error, #B42318);
+  color: var(--bim-error, #B42318);
+}
+.bim-chip--error strong { color: var(--bim-error, #B42318); }
+
+.bim-rule {
+  border: none;
+  border-top: 1px solid var(--bim-border, #E6E7E8);
+  margin: 2rem 0;
+}
+
+.bim-fg-muted {
+  color: var(--bim-fg-muted, #6B7280);
+}
+
+/* Specification card + accordions on category pages — catalog family.
+   Primary spec sections carry the accent edge the home cards use (here as a
+   left rule, matching `.bim-cat-cons`/`.bim-cat-areabox`); secondary
+   accordions (regulation / climate / token format) stay quiet until opened. */
+.bim-spec-card,
+.bim-accordion {
+  border: 1px solid var(--bim-border, #E6E7E8);
+  border-radius: 0;
+  margin: 0.875rem 0;
+  background: var(--bim-bg-surface, #fff);
+}
+.bim-spec-card {
+  border-left: 3px solid var(--bim-accent, #164679);
+}
+.bim-accordion {
+  background: var(--bim-bg-subtle, #F7F9FA);
+}
+.bim-spec-card summary,
+.bim-accordion summary {
+  cursor: pointer;
+  font-family: var(--bim-font-display);
+  font-size: 1.0625rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--bim-fg, #111827);
+  padding: 0.875rem 1.25rem;
+  list-style: none;
+}
+.bim-spec-card summary::-webkit-details-marker,
+.bim-accordion summary::-webkit-details-marker {
+  display: none;
+}
+.bim-spec-card summary::before {
+  content: "▾ ";
+  color: var(--bim-fg-muted, #6B7280);
+}
+.bim-spec-card:not([open]) summary::before,
+.bim-accordion summary::before {
+  content: "▸ ";
+  color: var(--bim-fg-muted, #6B7280);
+}
+.bim-spec-card__body {
+  padding: 0 1.25rem 1.25rem;
+}
+
+/* Category-page identity table reuses the catalog's `.bim-cat-spectable`;
+   its labels are short IFC/Uniclass terms, so let the value column take the
+   room instead of the modal table's fixed 46% label column. */
+table.bim-detail-spectable {
+  margin: 0.75rem 0 1.25rem;
+}
+table.bim-detail-spectable th {
+  width: auto;
+  white-space: nowrap;
+  padding-right: 1.5rem;
+}
+
 /* Editor layout */
 .bim-editor-header {
   display: flex;
@@ -160,3 +355,411 @@ cds-side-nav-menu-item a.bim-nav-link {
   gap: 1rem;
   padding-top: 0.75rem;
 }
+
+/* ============================================================================
+   CATALOG (home page) — Objects / Compositions tabs, cards, chips, detail modal
+   Namespaced `.bim-cat-*` so it never collides with the category-page chips,
+   the /tokens grid, or the old key-plan card styles. Classification chips are
+   distinguished strictly within the Woodfine navy family, as the reference
+   mockup does it: Objects (Uniclass Pr) = soft navy TINT outline; Compositions
+   (Uniclass SL) = SOLID deep navy fill. No second accent hue is introduced.
+   ============================================================================ */
+
+/* ---- classification + plain chips ---- */
+.bim-cat-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  width: fit-content;
+  font-family: var(--bim-font-mono);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  padding: 0.1875rem 0.5rem;
+  border: 1px solid transparent;
+  border-radius: var(--bim-radius-sm, 4px);
+  white-space: nowrap;
+}
+.bim-cat-chip__lv {
+  font-size: 0.5625rem;
+  opacity: 0.82;
+  letter-spacing: 0.06em;
+}
+/* Objects — Uniclass Pr: soft navy-tint outline */
+.bim-cat-chip--pr {
+  color: var(--bim-accent, #164679);
+  background: var(--bim-accent-subtle, #E8EEF5);
+  border-color: var(--bim-accent, #164679);
+}
+/* Compositions — Uniclass SL: solid deep navy fill */
+.bim-cat-chip--ef {
+  color: #ffffff;
+  background: var(--bim-accent-active, #10365C);
+  border-color: var(--bim-accent-active, #10365C);
+}
+:root[data-theme="dark"] .bim-cat-chip--ef {
+  color: #0B1622;
+  background: var(--bim-accent, #5E9BDE);
+  border-color: var(--bim-accent, #5E9BDE);
+}
+.bim-cat-chip--plain {
+  color: var(--bim-fg-secondary, #374151);
+  background: var(--bim-bg-subtle, #EEF1F5);
+  border-color: var(--bim-border, #E6E7E8);
+  text-transform: none;
+}
+
+/* ---- card ---- */
+.bim-cat-card {
+  border: 1px solid var(--bim-border, #E6E7E8);
+  border-top: 3px solid var(--bim-accent, #164679);
+  background: var(--bim-bg-surface, #fff);
+  border-radius: 0;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+  font-family: inherit;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+}
+.bim-cat-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 1px 2px rgba(11, 35, 64, 0.05), 0 10px 26px -16px rgba(11, 35, 64, 0.28);
+  border-color: var(--bim-border-strong, #98A2B3);
+  border-top-color: var(--bim-accent-hover, #1D5795);
+}
+.bim-cat-card:focus-visible {
+  outline: 2px solid var(--bim-accent, #164679);
+  outline-offset: 2px;
+}
+.bim-cat-card.is-hidden { display: none; }
+
+.bim-cat-thumb {
+  position: relative;
+  aspect-ratio: 5 / 4;
+  overflow: hidden;
+  border-bottom: 1px solid var(--bim-border, #E6E7E8);
+  background: var(--bim-bg-subtle, #EEF1F5);
+  display: block;
+}
+.bim-cat-thumb--comp { aspect-ratio: 16 / 10; }
+.bim-cat-thumb--comp .bim-kp-diagram { width: 100%; height: 100%; display: block; }
+.bim-cat-thumb--obj {
+  display: grid;
+  place-items: center;
+  background:
+    linear-gradient(160deg, rgba(22, 70, 121, 0.09), transparent 60%),
+    var(--bim-bg-surface, #fff);
+}
+.bim-cat-thumb--obj::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(22, 70, 121, 0.16) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(22, 70, 121, 0.16) 1px, transparent 1px);
+  background-size: 20px 20px;
+  background-position: center;
+  opacity: 0.5;
+}
+.bim-cat-thumb__glyph {
+  position: relative;
+  font-family: var(--bim-font-mono);
+  font-size: 2rem;
+  font-weight: 600;
+  color: var(--bim-accent, #164679);
+}
+.bim-cat-thumb__fmt {
+  position: absolute;
+  right: 0.5rem;
+  bottom: 0.5rem;
+  font-family: var(--bim-font-mono);
+  font-size: 0.625rem;
+  letter-spacing: 0.04em;
+  padding: 0.125rem 0.375rem;
+  background: var(--bim-bg-surface, #fff);
+  border: 1px solid var(--bim-border, #E6E7E8);
+  color: var(--bim-fg-muted, #6B7280);
+}
+.bim-cat-card__body {
+  padding: 0.8125rem 0.875rem 0.9375rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 1 1 auto;
+}
+.bim-cat-card__name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--bim-fg, #111827);
+}
+.bim-cat-card__meta {
+  font-size: 0.75rem;
+  color: var(--bim-fg-muted, #6B7280);
+  margin-top: auto;
+}
+.bim-cat-card__em { color: var(--bim-fg-secondary, #374151); font-weight: 500; }
+.bim-cat-card__dims {
+  font-family: var(--bim-font-mono);
+  font-size: 0.6875rem;
+  color: var(--bim-fg-faint, #5D6773);
+}
+.bim-cat-card__note {
+  font-size: 0.6875rem;
+  color: var(--bim-fg-muted, #6B7280);
+  font-style: italic;
+}
+
+/* ---- detail modal ---- */
+.bim-cat-modal { position: fixed; inset: 0; z-index: 200; display: none; }
+.bim-cat-modal.is-open { display: block; }
+.bim-cat-modal__bk {
+  position: absolute;
+  inset: 0;
+  background: rgba(6, 16, 32, 0.55);
+}
+.bim-cat-modal__panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 100%;
+  width: min(660px, 100%);
+  background: var(--bim-bg-surface, #fff);
+  border-left: 1px solid var(--bim-border, #E6E7E8);
+  box-shadow: -30px 0 70px -26px rgba(6, 20, 40, 0.45);
+  display: flex;
+  flex-direction: column;
+  animation: bim-cat-slidein 0.24s ease;
+}
+@keyframes bim-cat-slidein {
+  from { transform: translateX(24px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bim-cat-modal__panel { animation: none; }
+  .bim-cat-card { transition: none; }
+}
+.bim-cat-modal__head {
+  padding: 1.25rem 3rem 1rem 1.375rem;
+  border-bottom: 1px solid var(--bim-border, #E6E7E8);
+}
+.bim-cat-modal__ey {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.6875rem;
+}
+.bim-cat-modal__id {
+  font-family: var(--bim-font-mono);
+  font-size: 0.6875rem;
+  color: var(--bim-fg-muted, #6B7280);
+}
+.bim-cat-modal__title {
+  font-family: var(--bim-font-display);
+  font-size: 1.375rem;
+  line-height: 1.2;
+  color: var(--bim-fg, #111827);
+}
+.bim-cat-modal__sub {
+  font-size: 0.8125rem;
+  color: var(--bim-fg-secondary, #374151);
+  margin-top: 0.375rem;
+}
+.bim-cat-modal__close {
+  position: absolute;
+  top: 1.125rem;
+  right: 1.125rem;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid var(--bim-border-strong, #98A2B3);
+  background: var(--bim-bg-surface, #fff);
+  color: var(--bim-fg-secondary, #374151);
+  cursor: pointer;
+  font-size: 0.875rem;
+  line-height: 1;
+}
+.bim-cat-modal__close:hover { background: var(--bim-bg-subtle, #EEF1F5); color: var(--bim-fg, #111827); }
+.bim-cat-modal__body {
+  overflow-y: auto;
+  padding: 1.25rem 1.375rem 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+.bim-cat-preview {
+  border: 1px solid var(--bim-border, #E6E7E8);
+  background: var(--bim-bg-subtle, #EEF1F5);
+  overflow: hidden;
+}
+.bim-cat-preview .bim-kp-diagram { width: 100%; height: auto; display: block; }
+.bim-cat-desc {
+  font-size: 0.875rem;
+  line-height: 1.64;
+  color: var(--bim-fg-secondary, #374151);
+}
+.bim-cat-secth {
+  font-family: var(--bim-font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--bim-fg-muted, #6B7280);
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+}
+.bim-cat-secth::after {
+  content: "";
+  flex: 1 1 auto;
+  height: 1px;
+  background: var(--bim-border, #E6E7E8);
+}
+.bim-cat-spectable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+}
+.bim-cat-spectable th,
+.bim-cat-spectable td {
+  text-align: left;
+  padding: 0.5rem 0.125rem;
+  border-bottom: 1px solid var(--bim-border, #E6E7E8);
+  vertical-align: top;
+}
+.bim-cat-spectable th { font-weight: 500; color: var(--bim-fg-muted, #6B7280); width: 46%; }
+.bim-cat-spectable td { color: var(--bim-fg, #111827); }
+.bim-cat-spectable tr:last-child th,
+.bim-cat-spectable tr:last-child td { border-bottom: 0; }
+
+.bim-cat-classblock {
+  display: grid;
+  gap: 1px;
+  background: var(--bim-border, #E6E7E8);
+  border: 1px solid var(--bim-border, #E6E7E8);
+}
+.bim-cat-clrow {
+  background: var(--bim-bg-subtle, #EEF1F5);
+  padding: 0.75rem 0.875rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.bim-cat-clrow__k { font-size: 0.75rem; color: var(--bim-fg-muted, #6B7280); }
+.bim-cat-clrow__v {
+  font-family: var(--bim-font-mono);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--bim-fg, #111827);
+  text-align: right;
+}
+.bim-cat-clrow__v small {
+  display: block;
+  font-weight: 500;
+  color: var(--bim-fg-secondary, #374151);
+  font-size: 0.6875rem;
+  margin-top: 2px;
+}
+.bim-cat-areabox {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.75rem;
+  padding: 0.9375rem 1rem;
+  border: 1px solid var(--bim-border, #E6E7E8);
+  border-left: 3px solid var(--bim-accent, #164679);
+  background: var(--bim-bg-subtle, #EEF1F5);
+}
+/* "Data Box" kicker — real architect sketch-note terminology for this
+   sizing/area summary panel, not a generic label. */
+.bim-cat-areabox__kicker {
+  flex-basis: 100%;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--bim-fg-muted, #6B7280);
+}
+.bim-cat-areabox__n {
+  font-family: var(--bim-font-mono);
+  font-size: 1.625rem;
+  font-weight: 600;
+  color: var(--bim-fg, #111827);
+}
+.bim-cat-areabox__n small { font-size: 0.5em; color: var(--bim-fg-muted, #6B7280); font-weight: 500; }
+.bim-cat-areabox__l { font-size: 0.75rem; color: var(--bim-fg-muted, #6B7280); line-height: 1.4; }
+
+.bim-cat-zones { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.625rem; }
+.bim-cat-zone { border: 1px solid var(--bim-border, #E6E7E8); background: var(--bim-bg-surface, #fff); padding: 0.75rem; }
+.bim-cat-zone__k {
+  font-family: var(--bim-font-mono);
+  font-size: 0.625rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--bim-accent, #164679);
+  font-weight: 600;
+}
+.bim-cat-zone__t { font-size: 0.75rem; color: var(--bim-fg-secondary, #374151); margin-top: 3px; }
+.bim-cat-zone__n { font-family: var(--bim-font-mono); font-size: 1.0625rem; font-weight: 600; margin-top: 0.5rem; color: var(--bim-fg, #111827); }
+.bim-cat-zone__n small { font-size: 0.6em; color: var(--bim-fg-muted, #6B7280); font-weight: 500; }
+.bim-cat-zone__bar { height: 4px; background: var(--bim-bg-subtle, #EEF1F5); margin-top: 0.5rem; overflow: hidden; }
+.bim-cat-zone__bar i { display: block; height: 100%; background: var(--bim-accent, #164679); }
+
+.bim-cat-bill { display: flex; flex-direction: column; gap: 0.5rem; }
+.bim-cat-billrow {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--bim-border, #E6E7E8);
+  background: var(--bim-bg-surface, #fff);
+  padding: 0.6875rem 0.75rem;
+  cursor: pointer;
+  color: inherit;
+  font-family: inherit;
+  transition: border-color 0.14s ease, background 0.14s ease;
+}
+.bim-cat-billrow:hover { border-color: var(--bim-accent, #164679); background: var(--bim-bg-subtle, #EEF1F5); }
+.bim-cat-billrow:focus-visible { outline: 2px solid var(--bim-accent, #164679); outline-offset: 2px; }
+.bim-cat-billrow--ext { cursor: default; }
+.bim-cat-billrow__main { flex: 1 1 auto; min-width: 0; }
+.bim-cat-billrow__name { font-size: 0.8125rem; font-weight: 600; color: var(--bim-fg, #111827); display: block; }
+.bim-cat-billrow__code { font-family: var(--bim-font-mono); font-size: 0.6875rem; color: var(--bim-fg-muted, #6B7280); margin-top: 2px; display: block; }
+
+.bim-cat-cons-list { display: flex; flex-direction: column; gap: 0.5rem; }
+.bim-cat-cons {
+  font-size: 0.8125rem;
+  color: var(--bim-fg-secondary, #374151);
+  border: 1px solid var(--bim-border, #E6E7E8);
+  border-left: 3px solid var(--bim-accent, #164679);
+  padding: 0.625rem 0.75rem;
+  background: var(--bim-bg-surface, #fff);
+}
+.bim-cat-cons b { color: var(--bim-fg, #111827); font-weight: 600; text-transform: capitalize; }
+.bim-cat-note {
+  font-size: 0.75rem;
+  color: var(--bim-fg-muted, #6B7280);
+  line-height: 1.55;
+}
+.bim-cat-note a { color: var(--bim-accent, #164679); }
+.bim-cat-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6875rem 1.125rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  background: var(--bim-accent, #164679);
+  color: #fff;
+  text-decoration: none;
+  border-radius: var(--bim-radius-sm, 4px);
+}
+.bim-cat-btn:hover { background: var(--bim-accent-hover, #1D5795); }
+:root[data-theme="dark"] .bim-cat-btn { color: #0B1622; }

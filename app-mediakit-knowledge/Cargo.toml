@@ -1,10 +1,16 @@
+# SPDX-License-Identifier: FSL-1.1-ALv2
+# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
+# app-mediakit-knowledge — ground-up rewrite of the knowledge wiki engine.
+# Renamed from app-mediakit-knowledge-2 at cutover (plan P8).
+# 100% new code. Only third-party crates are shared with the retired engine.
 [package]
 name = "app-mediakit-knowledge"
-version = "0.1.0"
+version = "0.0.1"
 edition = "2021"
 rust-version = "1.80"
-description = "PointSav knowledge platform — wiki engine. Single-binary, flat-file Markdown source-of-truth, Git-versioned, AI-optional."
-license = "Apache-2.0"
+description = "PointSav knowledge wiki engine. Single binary, flat-file Markdown source-of-truth, Git-versioned, Wikipedia-structured."
+license = "FSL-1.1-ALv2"
 publish = false
 
 [[bin]]
@@ -14,15 +20,16 @@ path = "src/main.rs"
 [lib]
 path = "src/lib.rs"
 
-# Phase 1 deps only. Phases 3 (search), 4 (git), 5 (auth), 7 (federation),
-# 8 (disclosure mode) add more deps as they land. See ARCHITECTURE.md.
+# Deps grow phase by phase (see plan virtual-twirling-parasol P0–P5).
+# P0/P1 set: HTTP stack, templating, config, markdown, embedded assets.
 [dependencies]
 axum = "0.8"
-tokio = { version = "1", features = ["rt-multi-thread", "macros", "signal", "fs", "process", "io-util"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "signal", "fs", "io-util"] }
 tower = "0.5"
 tower-http = { version = "0.6", features = ["trace", "set-header", "compression-br", "compression-gzip"] }
-comrak = "0.52"
 maud = { version = "0.27", features = ["axum"] }
+comrak = { version = "0.52", features = ["syntect"] }
+syntect = "5"
 rust-embed = { version = "8", features = ["compression"] }
 mime_guess = "2"
 tracing = "0.1"
@@ -31,44 +38,13 @@ clap = { version = "4", features = ["derive", "env"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 serde_yaml = "0.9"
+toml = "0.8"
 anyhow = "1"
 thiserror = "2"
-tokio-util = { version = "0.7", features = ["io"] }
-# Phase 2 Step 2: tempfile moved from [dev-dependencies] to [dependencies]
-# for use in src/edit.rs (atomic write via NamedTempFile::persist).
-tempfile = "3"
-# Phase 4 Step 4.1: git2 integration for versioned content. libgit2-dev
-# system library required at link time (bundled with libssl-dev in PK.3).
-git2 = "0.20"
-# Phase 4 Step 4.2: gix (read-side) for history and blame.
-gix = { version = "0.83", features = ["blame"] }
-gix-blame = "0.13"
-similar = { version = "2.7", features = ["inline"] }
-# Phase 3 Step 3.1: tantivy full-text search backend. On-disk index at
-# <state_dir>/search/; rebuilt on startup from a tree walk; incremental
-# reindex on edit. ~50 MB writer heap default.
 tantivy = "0.24"
-# Phase 3 Step 3.3: Atom feed generation (RFC 4287). chrono is a transitive
-# dep of atom_syndication; declared directly so DateTime<Utc> is available
-# for mtime → FixedDateTime conversions in feeds.rs.
-atom_syndication = "0.12"
-chrono = "0.4"
-csv = "1.3"
-# Phase 0 federation: declarative per-instance `knowledge.toml` mount manifest.
-toml = "0.8"
-regex = "1.10"
-# File-system watcher for incremental Tantivy search reindex.
-# The recommended backend on Linux is inotify (default); macos uses kqueue.
-notify = "6"
-# Phase 4 Steps 4.4+4.5: redb embedded key-value store for the wikilink
-# graph and blake3 content hashes. redb stores the link graph on disk at
-# <state_dir>/links.redb; blake3 provides the federation-seam baseline.
-redb = "4.1"
-blake3 = "1.8"
-# Phase 7 federation: HTTP client for cross-instance search fan-out.
-reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
+git2 = "0.20"
 
 [dev-dependencies]
 tower = { version = "0.5", features = ["util"] }
 http-body-util = "0.1"
-
+tempfile = "3"

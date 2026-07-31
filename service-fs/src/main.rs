@@ -1,250 +1,132 @@
-use axum::{
-    extract::{Json, State},
-    http::{HeaderMap, StatusCode},
-    response::IntoResponse,
-    routing::{get, post},
-    Router,
-};
-use serde::{Deserialize, Serialize};
-use serde_json::Value;
-use sha2::{Digest, Sha256};
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+//! `service-fs` — Ring 1 WORM Immutable Ledger.
+//!
+//! Per-tenant boundary-ingest service. Accepts append requests
+//! from sibling Ring 1 services (`service-people`, `service-email`,
+//! `service-input`) and serves read requests to Ring 2 callers
+//! (`service-extraction`). One process per `moduleId` (per-tenant
+//! by infrastructure, per Doctrine §IV.b).
+//!
+//! Hard rules:
+//! - ADR-07 — zero AI in Ring 1; deterministic processing only.
+//! - Append-only invariant — no path mutates a previously-persisted
+//!   entry. The ledger module enforces this at its API surface.
+//! - One process per moduleId — `FS_MODULE_ID` env is required and
+//!   the daemon refuses to start without it. Cross-tenant
+//!   reads/writes are out of scope; the caller's
+//!   `X-Foundry-Module-ID` header MUST match `FS_MODULE_ID` or the
+//!   request is rejected.
+//!
+//! Reference shape: `slm-doorman-server`
+//! (project-slm cluster `78031c4`) — Tokio + axum, layered AppState
+//! in an Arc, axum router with /healthz + /readyz + /v1/contract
+//! plus business endpoints, anyhow at the top level, tracing via
+//! EnvFilter.
+//!
+//! Environment configuration:
+//!   FS_BIND_ADDR              default 127.0.0.1:9100
+//!   FS_MODULE_ID              required; this instance's tenant moduleId
+//!   FS_LEDGER_ROOT            required; absolute path to the per-tenant
+//!                             WORM directory (created on first append
+//!                             if absent)
+//!   RUST_LOG                  default service_fs=info,axum=warn
+//!
+//! This is the B1-equivalent skeleton: routes mount, the ledger
+//! exposes append + read_since, the in-memory storage is a placeholder
+//! for the on-disk segment-file format that lands as the first
+//! NEXT.md item after `cargo check` passes clean.
+
+use std::net::SocketAddr;
 use std::sync::Arc;
-use std::time::{SystemTime, UNIX_EPOCH};
 
-#[derive(Clone)]
-struct Config {
-    module_id: String,
-    ledger_root: String,
-    watch_drop_dir: String,
-}
+use anyhow::Context;
+use tracing::info;
 
-#[derive(Deserialize)]
-struct AppendRequest {
-    payload_id: String,
-    payload: Value,
-}
-
-#[derive(Serialize)]
-struct AppendResponse {
-    payload_id: String,
-    module_id: String,
-    sha256: String,
-    ts: u64,
-    ledger_root: String,
-}
-
-async fn healthz(State(cfg): State<Arc<Config>>) -> impl IntoResponse {
-    Json(serde_json::json!({
-        "status": "ok",
-        "envelope": "A",
-        "module_id": cfg.module_id,
-    }))
-}
-
-async fn append(
-    State(cfg): State<Arc<Config>>,
-    headers: HeaderMap,
-    Json(req): Json<AppendRequest>,
-) -> impl IntoResponse {
-    let module_id = headers
-        .get("x-foundry-module-id")
-        .and_then(|v| v.to_str().ok())
-        .map(|s| s.to_string())
-        .unwrap_or_else(|| cfg.module_id.clone());
-
-    let payload_str = req.payload.to_string();
-    let mut hasher = Sha256::new();
-    hasher.update(payload_str.as_bytes());
-    let sha = hex::encode(hasher.finalize());
-
-    let ts = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap()
-        .as_secs();
-
-    // Atomic WORM ledger append: write to .tmp then rename
-    let ledger_dir = format!("{}/{}", cfg.ledger_root, module_id);
-    if let Err(e) = std::fs::create_dir_all(&ledger_dir) {
-        eprintln!("[service-fs] create_dir_all {ledger_dir}: {e}");
-        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
-    }
-    let ledger_path = format!("{}/log.jsonl", ledger_dir);
-    let record = format!(
-        "{}\n",
-        serde_json::json!({
-            "payload_id": req.payload_id,
-            "module_id": module_id,
-            "sha256": sha,
-            "ts": ts,
-        })
-    );
-    let existing = std::fs::read_to_string(&ledger_path).unwrap_or_default();
-    let tmp_path = format!("{}.tmp", ledger_path);
-    if let Err(e) = std::fs::write(&tmp_path, format!("{}{}", existing, record)) {
-        eprintln!("[service-fs] write {tmp_path}: {e}");
-        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
-    }
-    if let Err(e) = std::fs::rename(&tmp_path, &ledger_path) {
-        eprintln!("[service-fs] rename {tmp_path} → {ledger_path}: {e}");
-        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
-    }
-
-    // Drop payload to watch dir for service-extraction pickup
-    if let Err(e) = std::fs::create_dir_all(&cfg.watch_drop_dir) {
-        eprintln!("[service-fs] create_dir_all {}: {e}", cfg.watch_drop_dir);
-        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
-    }
-    let drop_path = format!("{}/{}.json", cfg.watch_drop_dir, req.payload_id);
-    if let Err(e) = std::fs::write(&drop_path, &payload_str) {
-        eprintln!("[service-fs] write {drop_path}: {e}");
-        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
-    }
-
-    println!(
-        "[service-fs] {module_id}/{} → sha256:{}",
-        req.payload_id,
-        &sha[..12]
-    );
-
-    Json(AppendResponse {
-        payload_id: req.payload_id,
-        module_id,
-        sha256: sha,
-        ts,
-        ledger_root: cfg.ledger_root.clone(),
-    })
-    .into_response()
-}
+use service_fs::ledger;
+use service_fs::posix_tile::PosixTileLedger;
+use service_fs::{router, AppState};
 
 #[tokio::main]
-async fn main() {
-    let bind = std::env::var("FS_BIND_ADDR").unwrap_or_else(|_| "0.0.0.0:9100".into());
-    let module_id = std::env::var("FS_MODULE_ID").unwrap_or_else(|_| "local".into());
-    let ledger_root = std::env::var("FS_LEDGER_ROOT")
-        .unwrap_or_else(|_| "/var/lib/pointsav/service-fs/worm".into());
-    let watch_drop_dir = std::env::var("FS_WATCH_DROP_DIR")
-        .unwrap_or_else(|_| "/var/lib/pointsav/service-extraction/watch".into());
+async fn main() -> anyhow::Result<()> {
+    init_tracing();
 
-    let cfg = Arc::new(Config {
-        module_id,
-        ledger_root,
-        watch_drop_dir,
+    let bind_addr: SocketAddr = std::env::var("FS_BIND_ADDR")
+        .unwrap_or_else(|_| "127.0.0.1:9100".to_string())
+        .parse()
+        .context("FS_BIND_ADDR must be a socket address")?;
+
+    let module_id = std::env::var("FS_MODULE_ID")
+        .context("FS_MODULE_ID is required (per-tenant boundary; one process per moduleId)")?;
+
+    let ledger_root = std::env::var("FS_LEDGER_ROOT")
+        .context("FS_LEDGER_ROOT is required (absolute path to WORM segment directory)")?;
+
+    // Optional: path to a 32-byte raw Ed25519 seed file. When set,
+    // every checkpoint is signed with the named key (signed-note body
+    // per worm-ledger-design.md §5 step 3). Omit to run without
+    // checkpoint signing — useful when key provisioning is deferred.
+    let signing_key_path: Option<std::path::PathBuf> =
+        std::env::var("FS_SIGNING_KEY").ok().map(Into::into);
+
+    // Persistent POSIX hash-chain backend per
+    // ~/Foundry/conventions/worm-ledger-design.md §5 step 2.
+    // Loads existing entries on open + verifies the chain (returns
+    // ChainTampered if any record's stored hash diverges from the
+    // recomputed value). InMemoryLedger remains available behind
+    // the same trait for tests + as a fallback.
+    let ledger: Box<dyn ledger::LedgerBackend + Send + Sync> = Box::new(
+        PosixTileLedger::open(&ledger_root, &module_id, signing_key_path.as_deref())
+            .with_context(|| format!("failed to open WORM ledger at {ledger_root}"))?,
+    );
+
+    // ADR-07 audit sub-ledger per worm-ledger-design.md §5 step 4.
+    // Placed at <ledger_root>/<moduleId>/audit-log/ — a sibling
+    // directory inside the per-tenant tree, separate from the main
+    // ledger's log.jsonl. The same PosixTileLedger / D4 discipline
+    // applies; no signing key (audit log is integrity-protected by
+    // the hash chain; a separate signing key for the audit log is
+    // a follow-up if required by a specific compliance regime).
+    let audit_ledger_root = format!("{ledger_root}/{module_id}");
+    let audit_ledger: Box<dyn ledger::LedgerBackend + Send + Sync> = Box::new(
+        PosixTileLedger::open(&audit_ledger_root, "audit-log", None::<&std::path::Path>)
+            .with_context(|| {
+                format!("failed to open audit ledger at {audit_ledger_root}/audit-log")
+            })?,
+    );
+
+    let state = Arc::new(AppState {
+        module_id: module_id.clone(),
+        ledger,
+        audit_ledger,
     });
 
-    let app = Router::new()
-        .route("/healthz", get(healthz))
-        .route("/v1/append", post(append))
-        .with_state(cfg.clone());
-
-    println!(
-        "[service-fs] Envelope A ready on {bind} (module: {})",
-        cfg.module_id
+    info!(
+        version = env!("CARGO_PKG_VERSION"),
+        %bind_addr,
+        module_id = %module_id,
+        ledger_root = %ledger_root,
+        signing = signing_key_path.is_some(),
+        "service-fs Ring 1 WORM ledger starting"
     );
-    let listener = tokio::net::TcpListener::bind(&bind)
+
+    let app = router(state);
+    let listener = tokio::net::TcpListener::bind(bind_addr)
         .await
-        .unwrap_or_else(|e| panic!("Cannot bind {bind}: {e}"));
-    axum::serve(listener, app).await.unwrap();
+        .with_context(|| format!("failed to bind {bind_addr}"))?;
+    axum::serve(listener, app)
+        .await
+        .context("axum serve loop exited")?;
+    Ok(())
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use axum::body::Body;
-    use axum::http::{Method, Request};
-    use tower::ServiceExt;
+fn init_tracing() {
+    use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 
-    fn test_cfg(ledger_root: &str, watch_dir: &str) -> Arc<Config> {
-        Arc::new(Config {
-            module_id: "test".into(),
-            ledger_root: ledger_root.into(),
-            watch_drop_dir: watch_dir.into(),
-        })
-    }
-
-    fn test_app(cfg: Arc<Config>) -> Router {
-        Router::new()
-            .route("/healthz", get(healthz))
-            .route("/v1/append", post(append))
-            .with_state(cfg)
-    }
-
-    #[tokio::test]
-    async fn healthz_ok() {
-        let cfg = test_cfg("/tmp", "/tmp");
-        let app = test_app(cfg);
-        let resp = app
-            .oneshot(
-                Request::builder()
-                    .uri("/healthz")
-                    .body(Body::empty())
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
-        assert_eq!(resp.status(), 200);
-    }
-
-    #[tokio::test]
-    async fn append_creates_jsonl() {
-        let dir = tempfile::tempdir().unwrap();
-        let ledger_root = dir.path().join("worm").to_string_lossy().into_owned();
-        let watch_dir = dir.path().join("watch").to_string_lossy().into_owned();
-        let cfg = test_cfg(&ledger_root, &watch_dir);
-        let app = test_app(cfg);
-
-        let body = serde_json::json!({
-            "payload_id": "test-001",
-            "payload": {"file": {"filename": "test.md", "data": "aGVsbG8="}}
-        });
-        let resp = app
-            .oneshot(
-                Request::builder()
-                    .method(Method::POST)
-                    .uri("/v1/append")
-                    .header("content-type", "application/json")
-                    .body(Body::from(body.to_string()))
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
-        assert_eq!(resp.status(), 200);
-
-        let log_path = format!("{}/test/log.jsonl", ledger_root);
-        assert!(
-            std::path::Path::new(&log_path).exists(),
-            "WORM ledger not created"
-        );
-    }
-
-    #[tokio::test]
-    async fn append_drops_watch_file() {
-        let dir = tempfile::tempdir().unwrap();
-        let ledger_root = dir.path().join("worm").to_string_lossy().into_owned();
-        let watch_dir = dir.path().join("watch").to_string_lossy().into_owned();
-        let cfg = test_cfg(&ledger_root, &watch_dir);
-        let app = test_app(cfg);
-
-        let body = serde_json::json!({
-            "payload_id": "test-drop-001",
-            "payload": {"file": {"filename": "hello.md", "data": "aGVsbG8="}}
-        });
-        let resp = app
-            .oneshot(
-                Request::builder()
-                    .method(Method::POST)
-                    .uri("/v1/append")
-                    .header("content-type", "application/json")
-                    .body(Body::from(body.to_string()))
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
-        assert_eq!(resp.status(), 200);
-
-        let drop_path = format!("{}/test-drop-001.json", watch_dir);
-        assert!(
-            std::path::Path::new(&drop_path).exists(),
-            "watch dir file not dropped"
-        );
-    }
+    let filter = EnvFilter::try_from_default_env()
+        .unwrap_or_else(|_| EnvFilter::new("service_fs=info,axum=warn"));
+    tracing_subscriber::registry()
+        .with(filter)
+        .with(fmt::layer())
+        .init();
 }

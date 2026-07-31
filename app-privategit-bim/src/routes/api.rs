@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 use axum::{
     extract::State,
     http::StatusCode,
@@ -10,7 +13,7 @@ use futures_util::StreamExt;
 use serde_json::{json, Value};
 use tokio_stream::wrappers::BroadcastStream;
 
-use crate::{schema::validator, state::AppState};
+use crate::{render, schema::validator, state::AppState};
 
 pub async fn sse_handler(
     State(state): State<AppState>,
@@ -23,11 +26,17 @@ pub async fn sse_handler(
 }
 
 pub async fn tokens_json_handler(State(state): State<AppState>) -> Json<Value> {
-    let combined: serde_json::Map<String, Value> = state
+    let mut combined: serde_json::Map<String, Value> = state
         .tokens
         .iter()
         .map(|(k, v)| (k.clone(), v.clone()))
         .collect();
+    // `_catalog`: normalized { objects, compositions } derived from the raw
+    // DTCG above (interior furniture + key-plans), with `.ifc` availability
+    // and PO-1's resolved bill-of-objects folded in. Consumed by the home
+    // page's bim-catalog.js to populate the detail modal without a new route.
+    // Underscore-prefixed so it stays distinct from the DTCG token files.
+    combined.insert("_catalog".into(), render::catalog::build_catalog(&state));
     Json(Value::Object(combined))
 }
 

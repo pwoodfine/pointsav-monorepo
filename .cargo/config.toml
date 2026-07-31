@@ -12,13 +12,10 @@ rustflags = ["--cfg", "curve25519_dalek_backend=\"fiat\""]
 #   rustup target add x86_64-unknown-netbsd
 #   sudo apt-get install -y clang lld
 #   Extract NetBSD 10.1 amd64 base.tgz + comp.tgz to $NETBSD_SYSROOT
-# Build:
-#   RUSTFLAGS="-C link-arg=--sysroot=/path/to/netbsd-sysroot" \
+# Build (sysroot path is deployment-specific, passed at build time — not
+# checked in, so this target section never breaks a default `cargo build`
+# for anyone who hasn't set up NetBSD cross-compilation):
+#   RUSTFLAGS="-C link-arg=--target=x86_64--netbsd -C link-arg=--sysroot=$NETBSD_SYSROOT -C link-arg=-fuse-ld=lld" \
 #   cargo build --release --target x86_64-unknown-netbsd -p <crate>
 [target.x86_64-unknown-netbsd]
 linker = "clang"
-rustflags = [
-  "-C", "link-arg=--target=x86_64--netbsd",
-  "-C", "link-arg=--sysroot=/srv/foundry/build/netbsd-sysroot",
-  "-C", "link-arg=-fuse-ld=lld",
-]

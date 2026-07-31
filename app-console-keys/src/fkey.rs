@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 use crossterm::event::KeyCode;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -23,7 +26,7 @@ impl FKey {
             FKey::F2 => "F2: People",
             FKey::F3 => "F3: Email",
             FKey::F4 => "F4: Content",
-            FKey::F5 => "F5: Minutes",
+            FKey::F5 => "F5: Search",
             FKey::F6 => "F6: Bookkeeper",
             FKey::F7 => "F7: BIM",
             FKey::F8 => "F8: GIS",

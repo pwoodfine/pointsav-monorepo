@@ -1,75 +1,23 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 installers:
   - id: os-console
     name: PointSav Console OS
     description: Hosted application (Type II) — graphical terminal on existing OS
-    edition: "2026.05.144"
+    edition: "0.2.4"
     platform: "macOS · Win · Linux"
     size_mb: 412
-    path: os-console/2026.05.144
-
-  - id: os-infrastructure
-    name: PointSav Infrastructure OS
-    description: Lightweight universal hypervisor for infrastructure-node provisioning
-    edition: "2026.05.144"
-    platform: "Bare-metal · any hardware"
-    size_mb: 188
-    path: os-infrastructure/2026.05.144
-
-  - id: os-mediakit
-    name: PointSav MediaKit OS
-    description: High-performance JeOS for corporate disclosure and digital marketing surfaces
-    edition: "2026.05.142"
-    platform: "Linux server"
-    size_mb: 96
-    path: os-mediakit/2026.05.142
+    path: os-console/0.2.4
+    license_tier: agpl
+    price_usdc: 0
 
   - id: os-network-admin
     name: PointSav Network OS
     description: Orchestrates VM map, private network routing, and provisioning authorisation
-    edition: "2026.05.140"
-    platform: "Linux · embedded"
-    size_mb: 124
-    path: os-network-admin/2026.05.140
-
-  - id: os-privategit
-    name: PointSav PrivateGit OS
-    description: Independent code repository and version control system
-    edition: "2026.05.144"
-    platform: "Linux server"
-    size_mb: 142
-    path: os-privategit/2026.05.144
-
-  - id: os-workplace
-    name: PointSav Workplace OS
-    description: Bare-metal installation on trusted hardware (Type I) — boots to Console OS
-    edition: "2026.05.144"
-    platform: "Bare-metal · appliance"
-    size_mb: 286
-    path: os-workplace/2026.05.144
-
-  - id: os-interface
-    name: Totebox Integration OS
-    description: Aggregation and active routing of Totebox Archives across the wider system
-    edition: "2026.05.142"
-    platform: "Linux server"
-    size_mb: 156
-    path: os-interface/2026.05.142
-
-  - id: os-totebox
-    name: Totebox OS
-    description: Hardware-agnostic micro-kernel foundation for data segregation across Toteboxes
-    edition: "2026.05.144"
-    platform: "Bare-metal · any hardware"
-    size_mb: 118
-    path: os-totebox/2026.05.144
-
-licenses:
-  - id: apache
-    name: Apache 2.0
-    price_usdc: 1000000
-    description: Source-readable, fully open; may fork, redistribute, compete.
-
-  - id: fsl
-    name: FSL
-    price_usdc: 19000000
-    description: Source-readable, non-compete restriction; converts to Apache 2.0 after two years per version.
+    edition: "beta"
+    platform: "Linux x86_64"
+    size_mb: 1
+    path: os-network-admin/beta
+    license_tier: fsl
+    price_usdc: 0

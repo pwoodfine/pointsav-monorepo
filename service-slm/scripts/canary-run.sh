@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 # canary-run.sh — Run the canary task set against the running Doorman.
 #
 # Phase 3 (P3-3.2) of learning-loop-master-plan-2026-05-18.md.
@@ -32,7 +35,7 @@ set -euo pipefail
 ENDPOINT="${SLM_CANARY_ENDPOINT:-http://127.0.0.1:9090}"
 ADAPTER_VERSION="${SLM_CANARY_ADAPTER:-baseline}"
 FOUNDRY_ROOT="${FOUNDRY_ROOT:-/srv/foundry}"
-ARCHIVE_ROOT="${FOUNDRY_ROOT}/clones/project-intelligence"
+ARCHIVE_ROOT="${FOUNDRY_ROOT}/clones/project-totebox"
 TASK_SET="${ARCHIVE_ROOT}/service-slm/data/canary/v1.yaml"
 DATE_STAMP="$(date -u +%Y-%m-%dT%H%M%SZ)"
 OUT_PATH=""

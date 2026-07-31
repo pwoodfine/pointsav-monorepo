@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 Woodfine Capital Projects Inc.
+
 # eval-prepare.sh — Curate eval-holdout candidates from the training corpus.
 #
 # Phase 1 (P1-1.2-prep) of learning-loop-master-plan-2026-05-18.md.
@@ -228,5 +231,5 @@ echo "       -n eval-holdout-v1 \\"
 echo "       ${OUT_PATH}"
 echo "     mv ${OUT_PATH}.sig ${CORPUS_DIR}/eval/holdout-v1.sig"
 echo "     cp ${OUT_PATH} ${CORPUS_DIR}/eval/holdout-v1.jsonl"
-echo "  4. bin/eval-adapter.sh refuses to promote any adapter that regresses"
+echo "  4. score-gate.sh refuses to promote any adapter that regresses"
 echo "     on the held-out set."
