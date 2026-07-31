@@ -24,6 +24,9 @@ app-workplace-*/src-tauri/gen/schemas/
 # Generated outputs — not committed
 outputs/
 
+# BIM confidential reference content — real home is business-admin/project-floorplates/
+preview/
+
 # Local input/library/deployment data — not committed
 inputs/
 woodfine-bim-library/

@@ -23,6 +23,7 @@ pub mod content;
 pub mod discovery;
 pub mod error;
 pub mod history;
+pub mod legal;
 pub mod search;
 pub mod sitedata;
 pub mod ui;

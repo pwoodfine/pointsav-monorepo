@@ -10,10 +10,24 @@
 //! `static/{tokens,app}.css`. Class names match the `k-*` manifest.
 
 use maud::{html, Markup, PreEscaped, DOCTYPE};
+use serde_json::json;
 
 use super::tenant::Tenant;
 use crate::content::render::Heading;
 use crate::history::{FileDiff, Revision};
+use crate::legal::LegalTokens;
+
+/// Serialize a `serde_json::Value` for embedding inside a literal
+/// `<script type="application/ld+json">` block. `serde_json` already
+/// produces valid JSON escaping (quotes, backslashes, control characters) —
+/// the one thing it does NOT know about is HTML context: a string value
+/// containing the literal bytes `</script` would still correctly close the
+/// surrounding `<script>` tag early once parsed by the browser's HTML
+/// tokenizer, regardless of it being valid JSON. `</` → `<\/` (a valid JSON
+/// escape for `/`) neutralizes that without touching any real content.
+fn jsonld(v: serde_json::Value) -> String {
+    v.to_string().replace("</", "<\\/")
+}
 
 /// "article" / "articles" for a count.
 fn count_word(n: usize) -> &'static str {
@@ -25,14 +39,29 @@ fn count_word(n: usize) -> &'static str {
 }
 
 /// `<head>` contents (not the `<head>` element itself — `page()` supplies that).
-/// `description` may be empty (e.g. listing pages).
-pub fn doc_head(title: &str, description: &str, tenant: Tenant) -> Markup {
+/// `description` may be empty (e.g. listing pages) — the home page always
+/// supplies one (see `app::home`), so `og:description` on the highest-value
+/// URL is never silently absent. `path` is the canonical site-relative path
+/// for this page (e.g. `/wiki/foo`, `/category/bar`); pass `""` for pages
+/// that shouldn't declare a canonical URL (e.g. the 404 handler). `noindex`
+/// emits `<meta name="robots" content="noindex">` — for surfaces with an
+/// unbounded/query-driven URL space (search) that shouldn't be crawled even
+/// though they're reachable and carry a canonical URL.
+pub fn doc_head(title: &str, description: &str, tenant: Tenant, path: &str, noindex: bool) -> Markup {
     // Don't double-brand when the page title already is the site name (home).
     let full_title = if title == tenant.home_label() {
         title.to_string()
     } else {
         format!("{title} — {}", tenant.home_label())
     };
+    let base = tenant.home_url();
+    let base = base.trim_end_matches('/');
+    let canonical_url = if path.is_empty() {
+        String::new()
+    } else {
+        format!("{base}{path}")
+    };
+    let og_image = format!("{base}/static/og-image-{}.png", tenant.instance_str());
     html! {
         meta charset="utf-8";
         meta name="viewport" content="width=device-width, initial-scale=1";
@@ -42,21 +71,46 @@ pub fn doc_head(title: &str, description: &str, tenant: Tenant) -> Markup {
         @if !description.is_empty() {
             meta name="description" content=(description);
         }
+        @if noindex {
+            meta name="robots" content="noindex";
+        }
+        @if !canonical_url.is_empty() {
+            link rel="canonical" href=(canonical_url);
+        }
         meta property="og:type" content="website";
         meta property="og:site_name" content=(tenant.home_label());
         meta property="og:title" content=(full_title);
         @if !description.is_empty() {
             meta property="og:description" content=(description);
         }
+        @if !canonical_url.is_empty() {
+            meta property="og:url" content=(canonical_url);
+        }
+        meta property="og:image" content=(og_image);
+        meta name="twitter:card" content="summary_large_image";
         // schema.org structured data — identifies the site + its publisher to
         // search engines and AI agents (SYS-ADR-07-safe: static, no user data).
+        // `publisher` references the brand's apex-domain Organization node by
+        // `@id` (per project-editorial's cross-site SEO standard) rather than
+        // declaring an inline copy on every one of the 3 wikis — the apex
+        // property is what actually defines that node. `potentialAction`
+        // (site search) is low-priority per that same standard — Google
+        // retired the sitelinks searchbox 2024-11-21 — but the real
+        // /search?q= endpoint already exists, so it's cheap to include for
+        // whatever still reads it.
         script type="application/ld+json" {
-            (PreEscaped(format!(
-                r#"{{"@context":"https://schema.org","@type":"WebSite","name":"{}","url":"{}","publisher":{{"@type":"Organization","name":"{}"}}}}"#,
-                tenant.home_label(),
-                tenant.home_url().trim_end_matches('/'),
-                tenant.issuer()
-            )))
+            (PreEscaped(jsonld(json!({
+                "@context": "https://schema.org",
+                "@type": "WebSite",
+                "name": tenant.home_label(),
+                "url": base,
+                "publisher": {"@type": "Organization", "@id": tenant.organization_id()},
+                "potentialAction": {
+                    "@type": "SearchAction",
+                    "target": format!("{base}/search?q={{search_term_string}}"),
+                    "query-input": "required name=search_term_string",
+                },
+            }))))
         }
         link rel="icon" type="image/svg+xml" href="/static/favicon.svg";
         link rel="stylesheet" href="/static/fonts.css";
@@ -215,8 +269,10 @@ pub fn mobile_nav(tenant: Tenant, query: &str) -> Markup {
 }
 
 /// Footer — mirrors the marketing footer (cities line) with plain-language
-/// link columns. Disclaimer and Contact live here only.
-pub fn footer(tenant: Tenant) -> Markup {
+/// link columns. Disclaimer and Contact live here only. Copyright holder and
+/// trademark notice come from `legal` (loaded from the canonical
+/// `legal-tokens-{brand}.yaml`, falling back to `LegalTokens::default()`).
+pub fn footer(tenant: Tenant, legal: &LegalTokens) -> Markup {
     html! {
         footer."k-footer" role="contentinfo" {
             div."k-footer__inner" {
@@ -235,7 +291,7 @@ pub fn footer(tenant: Tenant) -> Markup {
                             li { a."k-footer__link" href="/wiki/about" { "About" } }
                             li { a."k-footer__link" href="/wiki/disclaimers" { "Disclaimer" } }
                             li { a."k-footer__link" href="/wiki/contact" { "Contact us" } }
-                            li { a."k-footer__link" href="/wiki/privacy" { "Privacy" } }
+                            li { a."k-footer__link" href="/wiki/page-privacy" { "Privacy" } }
                         }
                     }
                     div."k-footer__col" {
@@ -261,7 +317,7 @@ pub fn footer(tenant: Tenant) -> Markup {
                             }
                         }
                         p."k-footer__copyright" {
-                            "\u{00a9} 2026 " (tenant.copyright_holder())
+                            "\u{00a9} 2026 " (legal.copyright.holder)
                         }
                     }
                     div."k-footer__badges" {
@@ -298,11 +354,13 @@ pub fn footer(tenant: Tenant) -> Markup {
                 }
                 // Persistent one-line disclaimer (always visible; the band expands it).
                 p."k-footer__disclaimer" { (tenant.disclaimer_line()) }
-                // Trademark notice — verbatim from canonical TRADEMARK.md. The marks
-                // are reserved independently of the CC BY 4.0 content licence, so no
-                // blanket "all rights reserved" (content is openly licensed).
+                // Trademark notice — sourced from the canonical
+                // legal-tokens-{brand}.yaml (factory-release-engineering), not
+                // hardcoded here. The marks are reserved independently of the
+                // CC BY 4.0 content licence, so no blanket "all rights reserved"
+                // (content is openly licensed).
                 p."k-footer__trademark" {
-                    "Woodfine Capital Projects\u{2122}, MCorp\u{2122}, PointSav Digital Systems\u{2122}, Totebox Orchestration\u{2122}, Totebox Archive\u{2122}, and Capability Geometry\u{2122} are trademarks of Woodfine Capital Projects Inc., used in Canada, the United States, Latin America, and Europe. All other trademarks are the property of their respective owners."
+                    (legal.trademarks.statement)
                 }
             }
         }
@@ -691,9 +749,128 @@ fn sidebar(tenant: Tenant, cats: &[(String, String)], toc: &[Heading]) -> Markup
     }
 }
 
+/// `<link rel="alternate" hreflang="...">` pair for a page with a genuine
+/// translation counterpart — composed onto `doc_head`'s output (not a
+/// `doc_head` parameter: only article pages ever have a translation, so
+/// growing every call site's signature for one caller wasn't worth it).
+/// `current`/`alt` are each `(lang_code, absolute_url)`.
+pub fn hreflang_links(current: (&str, &str), alt: (&str, &str)) -> Markup {
+    html! {
+        link rel="alternate" hreflang=(current.0) href=(current.1);
+        link rel="alternate" hreflang=(alt.0) href=(alt.1);
+    }
+}
+
+/// A visible "Home › Category › Article" trail — a real finding: corporate's
+/// 66-article/12-category taxonomy had no breadcrumb trail anywhere. `trail`
+/// is `(href, label)` for every step except the final (current) one, which
+/// is rendered as plain text, not a link.
+pub fn breadcrumb(trail: &[(String, String)], current: &str) -> Markup {
+    html! {
+        nav."k-breadcrumb" aria-label="Breadcrumb" {
+            ol."k-breadcrumb__list" {
+                @for (href, label) in trail {
+                    li."k-breadcrumb__item" {
+                        a."k-breadcrumb__link" href=(href) { (label) }
+                        span."k-breadcrumb__sep" aria-hidden="true" { "\u{203a}" }
+                    }
+                }
+                li."k-breadcrumb__item" aria-current="page" { (current) }
+            }
+        }
+    }
+}
+
+/// `BreadcrumbList` structured data for the same trail `breadcrumb()` renders
+/// visibly — a real finding: corporate's 66-article/12-category taxonomy had
+/// none. `items` is `(absolute_url, label)` for the FULL trail *including*
+/// the current page (unlike `breadcrumb()`'s `trail`, which excludes it —
+/// `ListItem.item` is required by the schema even for the last entry).
+pub fn breadcrumb_jsonld(items: &[(String, String)]) -> Markup {
+    let list: Vec<serde_json::Value> = items
+        .iter()
+        .enumerate()
+        .map(|(i, (url, name))| {
+            json!({
+                "@type": "ListItem",
+                "position": i + 1,
+                "name": name,
+                "item": url,
+            })
+        })
+        .collect();
+    html! {
+        script type="application/ld+json" {
+            (PreEscaped(jsonld(json!({
+                "@context": "https://schema.org",
+                "@type": "BreadcrumbList",
+                "itemListElement": list,
+            }))))
+        }
+    }
+}
+
+/// Page-level `TechArticle` JSON-LD — a real finding: only the site-level
+/// `WebSite` entity existed anywhere, no per-article structured data, despite
+/// the render context already carrying everything this needs (title,
+/// description, last-updated date). `author` references the same brand
+/// Organization `@id` as the site-level `WebSite.publisher` (never an inline
+/// copy) — per project-editorial's cross-site SEO standard, explicitly
+/// flagged there as the one place a copy-paste error would be easy to make
+/// (`corporate.`/`projects.` reference woodfinegroup.com's node,
+/// `documentation.` references pointsav.com's, despite sharing this exact
+/// code path) — `Tenant::organization_id()` is the single source for both
+/// call sites, so they cannot drift apart.
+pub fn article_jsonld(
+    tenant: Tenant,
+    title: &str,
+    description: &str,
+    url: &str,
+    date_modified: Option<&str>,
+) -> Markup {
+    let mut obj = json!({
+        "@context": "https://schema.org",
+        "@type": "TechArticle",
+        "headline": title,
+        "url": url,
+        "author": {"@type": "Organization", "@id": tenant.organization_id()},
+        "isPartOf": {"@type": "WebSite", "url": tenant.home_url().trim_end_matches('/')},
+    });
+    if !description.is_empty() {
+        obj["description"] = json!(description);
+    }
+    if let Some(dm) = date_modified {
+        obj["dateModified"] = json!(dm);
+    }
+    html! {
+        script type="application/ld+json" {
+            (PreEscaped(jsonld(obj)))
+        }
+    }
+}
+
+/// Shift every `<h1...>`/`</h1>` in comrak-rendered HTML down to `<h2>` — used
+/// for embedded content (the Important Information band) that must never
+/// introduce a second `<h1>` alongside the page's own article title. Comrak's
+/// output is consistent enough (`<h1>` or `<h1 id="...">`, always
+/// self-closed with a plain `</h1>`) that a literal substring replace is
+/// safe here without a full HTML parser.
+fn demote_heading(html: &str) -> String {
+    html.replace("<h1>", "<h2>")
+        .replace("<h1 ", "<h2 ")
+        .replace("</h1>", "</h2>")
+}
+
 /// The "Important Information" band above the footer (native `<details>`, no JS).
 /// Content is the counsel-owned `important-information.md` when present, else a
 /// safe tenant default; forced open in print so the record copy carries it.
+///
+/// `important_info` is rendered HTML from the content repo's own Markdown —
+/// its authored heading (if any) renders as `<h1>` by default, which used to
+/// collide with the article `<h1>` on every single page of all three sites
+/// (the single most-reported finding in a 2026-07 audit, 15 hits across all
+/// dimensions). `demote_heading` fixes that structurally, in the renderer,
+/// rather than requiring every content file to avoid a leading `# heading`.
 fn compliance_band(tenant: Tenant, important_info: Option<&str>) -> Markup {
     html! {
         section."k-compliance" aria-label="Important information" {
@@ -701,7 +878,7 @@ fn compliance_band(tenant: Tenant, important_info: Option<&str>) -> Markup {
                 summary."k-compliance__summary" { "Important Information" }
                 div."k-compliance__body k-prose" {
                     @if let Some(html) = important_info {
-                        (PreEscaped(html))
+                        (PreEscaped(demote_heading(html)))
                     } @else {
                         p {
                             "This site presents records maintained by " (tenant.issuer())
@@ -723,7 +900,8 @@ fn compliance_band(tenant: Tenant, important_info: Option<&str>) -> Markup {
 }
 
 /// The full document as one balanced tree. `cats` drives the sidebar nav;
-/// `disclaimer` is the Important Information band content (None → tenant default).
+/// `disclaimer` is the Important Information band content (None → tenant default);
+/// `legal` supplies the footer's copyright/trademark text.
 #[allow(clippy::too_many_arguments)]
 pub fn page(
     tenant: Tenant,
@@ -734,6 +912,7 @@ pub fn page(
     toc: &[Heading],
     query: &str,
     disclaimer: Option<&str>,
+    legal: &LegalTokens,
 ) -> Markup {
     html! {
         (DOCTYPE)
@@ -750,10 +929,104 @@ pub fn page(
                         main."k-page__body" #"k-main" tabindex="-1" { (body) }
                     }
                     (compliance_band(tenant, disclaimer))
-                    (footer(tenant))
+                    (footer(tenant, legal))
                 }
                 script src="/static/app.js" defer {}
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn breadcrumb_renders_trail_and_current_as_plain_text() {
+        let trail = vec![("/".to_string(), "PointSav Documentation".to_string()), ("/category/architecture".to_string(), "Architecture".to_string())];
+        let html = breadcrumb(&trail, "Zero-container inference").into_string();
+        assert!(html.contains(r#"href="/""#));
+        assert!(html.contains(r#"href="/category/architecture""#));
+        assert!(html.contains("Zero-container inference"));
+        // The current page is aria-current="page" and NOT a link.
+        assert!(html.contains(r#"aria-current="page""#));
+        let current_item_start = html.find(r#"aria-current="page""#).unwrap();
+        assert!(!html[current_item_start..].contains("<a "));
+    }
+
+    #[test]
+    fn hreflang_links_emits_both_directions() {
+        let html = hreflang_links(
+            ("en", "https://documentation.pointsav.com/wiki/foo"),
+            ("es", "https://documentation.pointsav.com/es/wiki/foo"),
+        )
+        .into_string();
+        assert!(html.contains(r#"hreflang="en""#));
+        assert!(html.contains(r#"hreflang="es""#));
+        assert!(html.contains("https://documentation.pointsav.com/wiki/foo"));
+        assert!(html.contains("https://documentation.pointsav.com/es/wiki/foo"));
+    }
+
+    #[test]
+    fn breadcrumb_jsonld_emits_positioned_list() {
+        let items = vec![
+            ("https://documentation.pointsav.com/".to_string(), "PointSav Documentation".to_string()),
+            ("https://documentation.pointsav.com/category/architecture".to_string(), "Architecture".to_string()),
+            ("https://documentation.pointsav.com/wiki/foo".to_string(), "Foo".to_string()),
+        ];
+        let html = breadcrumb_jsonld(&items).into_string();
+        let json_start = html.find('{').unwrap();
+        let json_end = html.rfind('}').unwrap() + 1;
+        let parsed: serde_json::Value = serde_json::from_str(&html[json_start..json_end]).expect("valid JSON-LD");
+        assert_eq!(parsed["@type"], "BreadcrumbList");
+        let list = parsed["itemListElement"].as_array().unwrap();
+        assert_eq!(list.len(), 3);
+        assert_eq!(list[0]["position"], 1);
+        assert_eq!(list[2]["position"], 3);
+        assert_eq!(list[2]["name"], "Foo");
+        // The last entry (current page) must still carry `item` — a real
+        // finding the schema requires it even for non-linked breadcrumb steps.
+        assert_eq!(list[2]["item"], "https://documentation.pointsav.com/wiki/foo");
+    }
+
+    #[test]
+    fn article_jsonld_uses_organization_id_not_inline_name() {
+        let html = article_jsonld(
+            Tenant::Documentation,
+            "Zero-container inference",
+            "How the runtime avoids containers.",
+            "https://documentation.pointsav.com/wiki/zero-container-inference",
+            Some("2026-06-01"),
+        )
+        .into_string();
+        let json_start = html.find('{').unwrap();
+        let json_end = html.rfind('}').unwrap() + 1;
+        let parsed: serde_json::Value = serde_json::from_str(&html[json_start..json_end]).expect("valid JSON-LD");
+        assert_eq!(parsed["@type"], "TechArticle");
+        assert_eq!(parsed["headline"], "Zero-container inference");
+        assert_eq!(parsed["author"]["@id"], "https://pointsav.com/#organization");
+        assert!(parsed["author"].get("name").is_none(), "author must be an @id reference, not an inline Organization");
+        assert_eq!(parsed["dateModified"], "2026-06-01");
+    }
+
+    #[test]
+    fn jsonld_neutralizes_script_breakout() {
+        let evil = article_jsonld(Tenant::Corporate, "</script><script>alert(1)</script>", "", "https://corporate.woodfinegroup.com/wiki/x", None).into_string();
+        assert!(!evil.contains("</script><script>alert"), "raw script-breakout sequence must not survive into the HTML: {evil}");
+    }
+
+    #[test]
+    fn demote_heading_shifts_h1_to_h2() {
+        assert_eq!(demote_heading("<h1>Important Information</h1>"), "<h2>Important Information</h2>");
+        assert_eq!(
+            demote_heading(r#"<h1 id="important-information">Text</h1><p>Body</p>"#),
+            r#"<h2 id="important-information">Text</h2><p>Body</p>"#
+        );
+    }
+
+    #[test]
+    fn demote_heading_leaves_other_levels_alone() {
+        let html = "<h1>A</h1><h2>B</h2><h3>C</h3>";
+        assert_eq!(demote_heading(html), "<h2>A</h2><h2>B</h2><h3>C</h3>");
     }
 }
