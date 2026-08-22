@@ -31,8 +31,8 @@ Woodfine está desplegando activamente un Sistema Confiable PointSav para evitar
 | Asset / Activo | Track / Vía | Status / Estado | Role / Rol |
 | :--- | :--- | :--- | :--- |
 | **Node 1, 2 & 3** | 1. Infrastructure | 🟢 Active | Secure physical mesh routing. / Enrutamiento físico seguro. |
-| **Corporate Cluster** | 2. Totebox | 🟡 Provisioning | SOC 3 compliant institutional knowledge. / Conocimiento institucional. |
-| **Property Cluster** | 2. Totebox | 🟡 Provisioning | DARP compliant real estate ledgers. / Libros de bienes inmuebles. |
+| **Corporate Cluster** | 2. Totebox | 🟡 Provisioning | SOC 3-aligned institutional knowledge (planned). / Conocimiento institucional (planificado). |
+| **Property Cluster** | 2. Totebox | 🟡 Provisioning | DARP-aligned real estate ledgers (planned). / Libros de bienes inmuebles (planificado). |
 | **Workplace Terminals** | 3. Desktop | 🟡 Provisioning | Deterministic authoring (Files over Databases). / Creación determinista. |
 
 ## 📡 Operational Fleet Repositories | Repositorios de Flota
