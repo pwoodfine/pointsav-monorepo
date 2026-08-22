@@ -30,9 +30,9 @@ Estamos desplegando confianza operativa y soberanía estructural a través de tr
 | **3. Workplace** | Sovereign Desktop | 🟡 Active Engineering | Deterministic file architecture for human authoring. / Arquitectura de archivos determinista. |
 
 ## ⚖️ Mathematical Compliance | Cumplimiento Matemático
-**English:** Compliance is a mathematical primitive, not a corporate policy. Our foundational components hardcode the Six Orchestration Contracts directly into the microkernel. This architecture guarantees SOC 3 (Operational Trust) and DARP (Structural Sovereignty). We store data as deterministic files, ensuring absolute custodial ownership.
+**English:** Compliance is a mathematical primitive, not a corporate policy. Our foundational components hardcode the Six Orchestration Contracts directly into the microkernel. This architecture is designed to support SOC 3 (Operational Trust) and DARP (Structural Sovereignty). We store data as deterministic files, intended to provide custodial ownership.
 
-**Español:** El cumplimiento es una primitiva matemática, no una política corporativa. Nuestros componentes base codifican los Seis Contratos de Orquestación directamente en el micronúcleo. Esta arquitectura garantiza SOC 3 y DARP. Almacenamos datos como archivos deterministas, asegurando la propiedad de custodia absoluta.
+**Español:** El cumplimiento es una primitiva matemática, no una política corporativa. Nuestros componentes base codifican los Seis Contratos de Orquestación directamente en el micronúcleo. Esta arquitectura está diseñada para respaldar el cumplimiento de SOC 3 y DARP. Almacenamos datos como archivos deterministas, con la intención de proporcionar propiedad de custodia.
 
 ---
 *© 2026 PointSav Digital Systems™.*
