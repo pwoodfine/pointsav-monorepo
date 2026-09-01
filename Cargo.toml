@@ -32,7 +32,6 @@ members = [
     "os-privategit",
     "tool-wallet",
     "app-privategit-workbench",
-    "app-orchestration-bim",
     "tool-keyplan",
     # PPN focus crates
     "system-substrate-broadcom",
@@ -57,8 +56,6 @@ members = [
     # Marketing platform: shared chrome chassis + the marketing app
     "app-mediakit-shell",
     "app-mediakit-marketing",
-    # Cross-archive DataGraph federation gateway (Phase 1 scaffold; port 9181)
-    "app-orchestration-graph",
     # Marketing platform rewrite (parallel crate; swaps in at plan P8)
     "app-mediakit-marketing-2",
     # Food-service platform engine (foodservice.woodfinegroup.com)
